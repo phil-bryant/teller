@@ -39,13 +39,12 @@ class TellerAccount:
         return self.links["transactions"]
     
     def get_balances(self) -> Dict:
-        return self.api_client._get(self.balances_link)
+        return self.api_client.get(self.balances_link)
     
-    def get_transactions(self, date_from: str = None, date_to: str = None) -> List[Dict]:
+    def get_transactions(self, count: int = None) -> List[Dict]:
         params = {}
-        if date_from: params['from'] = date_from
-        if date_to: params['to'] = date_to
-        return self.api_client._get_paginated(self.transactions_link, params)    
+        if count: params['count'] = count
+        return self.api_client.get(self.transactions_link, params)    
     
     def __str__(self):
         return f"{self.institution_name} {self.name} ({self.subtype}) {self.last_four}" 

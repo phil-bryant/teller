@@ -7,7 +7,6 @@ from teller_account import TellerAccount
 
 class TellerAPIClient:
     BASE_URL = "https://api.teller.io"
-    PAGE_SIZE = 100
 
     def __init__(self):
         teller_dir = Path.home() / ".teller"
@@ -22,7 +21,7 @@ class TellerAPIClient:
             "Content-Type": "application/json"
         }
 
-    def _get(self, url: str, params: Dict = None) -> dict:
+    def get(self, url: str, params: Dict = None) -> dict:
         response = requests.get(
             url,
             auth=(self.auth_token, ""),
@@ -34,21 +33,8 @@ class TellerAPIClient:
             raise Exception(f"Failed to fetch data: {response.status_code} {response.text}")
         return response.json()
 
-    def _get_paginated(self, url: str, params: Dict = None) -> List[Dict]:
-        all_items = []
-        request_params = params.copy() if params else {}
-        while True:
-            batch = self._get(url, request_params)
-            if not batch:
-                break
-            all_items.extend(batch)
-            if len(batch) < self.PAGE_SIZE:
-                break
-            request_params['from_id'] = batch[-1]['id']
-        return all_items
-
     def get_accounts(self) -> List[TellerAccount]:
-        return [TellerAccount(account_data, self) for account_data in self._get(f"{self.BASE_URL}/accounts")]
+        return [TellerAccount(account_data, self) for account_data in self.get(f"{self.BASE_URL}/accounts")]
 
 def main():
     client = TellerAPIClient()
@@ -56,10 +42,9 @@ def main():
     for account in accounts:
         print(account)
     print(accounts[0].available_balance)
-    transactions = accounts[0].get_transactions(date_from="2024-01-01")
+    transactions = accounts[0].get_transactions()
     for transaction in transactions:
         print(transaction)
-    print(len(transactions))
-    
+
 if __name__ == "__main__":
     main() 
