@@ -130,6 +130,52 @@ class AccountDetail(Base):
         onupdate=func.current_timestamp()
     )
 
+class Transaction(Base):
+    __tablename__ = "transactions"
+    __table_args__ = {"schema": "teller"}
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    account_id: Mapped[str] = mapped_column(
+        ForeignKey("teller.accounts.id"), nullable=False
+    )
+    amount: Mapped[Decimal] = mapped_column(
+        Numeric(precision=19, scale=2), nullable=False
+    )
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    description: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(
+        Enum(TransactionStatus, schema="teller", name="transaction_status", native_enum=True),
+        nullable=False
+    )
+    processing_status: Mapped[str] = mapped_column(
+        Enum(ProcessingStatus, schema="teller", name="processing_status", native_enum=True),
+        nullable=False
+    )
+    category: Mapped[Optional[str]] = mapped_column(
+        Enum("accommodation", "advertising", "bar", "charity", "clothing", 
+             "dining", "education", "electronics", "entertainment", "fuel", 
+             "general", "groceries", "health", "home", "income", "insurance", 
+             "investment", "loan", "office", "phone", "service", "shopping", 
+             "software", "sport", "tax", "transport", "transportation", "utilities",
+             name="transaction_category", schema="teller", native_enum=True),
+        nullable=True
+    )
+    counterparty_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("teller.transaction_counterparties.id"), nullable=True
+    )
+    running_balance: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(precision=19, scale=2), nullable=True
+    )
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.current_timestamp()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp()
+    )
+
 class TransactionCounterparty(Base):
     __tablename__ = "transaction_counterparties"
     __table_args__ = {"schema": "teller"}

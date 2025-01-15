@@ -5,7 +5,12 @@ from typing import List, Dict
 from pathlib import Path
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
-from models import Base, Institution, Account, AccountBalance, AccountDetail, AccountType, AccountSubtype, AccountStatus
+from models import (
+    Base, Institution, Account, AccountBalance, AccountDetail,
+    AccountType, AccountSubtype, AccountStatus,
+    Transaction, TransactionCounterparty,
+    TransactionStatus, ProcessingStatus, CounterpartyType
+)
 from teller_account import TellerAccount
 from os import getenv
 from dotenv import load_dotenv
@@ -159,6 +164,49 @@ class TellerAPIClient:
             session.add(details)
         return details
 
+    def sync_transaction(self, session: Session, account_id: str, transaction_data: dict):
+        stmt = select(Transaction).where(Transaction.id == transaction_data["id"])
+        transaction = session.execute(stmt).scalar_one_or_none()
+        
+        # Sync counterparty first if it exists
+        counterparty_id = None
+        if "counterparty" in transaction_data.get("details", {}) and transaction_data["details"]["counterparty"]:
+            counterparty = self.sync_counterparty(session, transaction_data["details"]["counterparty"])
+            counterparty_id = counterparty.id
+
+        if not transaction:
+            transaction = Transaction(
+                id=transaction_data["id"],
+                account_id=account_id,
+                amount=Decimal(transaction_data["amount"]),
+                date=transaction_data["date"],
+                description=transaction_data["description"],
+                status=TransactionStatus[transaction_data["status"]],
+                processing_status=ProcessingStatus[transaction_data["details"]["processing_status"]],
+                category=transaction_data.get("details", {}).get("category"),
+                counterparty_id=counterparty_id,
+                running_balance=Decimal(transaction_data["running_balance"]) if transaction_data.get("running_balance") else None,
+                type=transaction_data["type"]
+            )
+            session.add(transaction)
+        return transaction
+
+    def sync_counterparty(self, session: Session, counterparty_data: dict) -> TransactionCounterparty:
+        # Create new counterparty if name and type combination doesn't exist
+        stmt = select(TransactionCounterparty).where(
+            TransactionCounterparty.name == counterparty_data["name"],
+            TransactionCounterparty.type == counterparty_data["type"]
+        )
+        counterparty = session.execute(stmt).scalar_one_or_none()
+        
+        if not counterparty:
+            counterparty = TransactionCounterparty(
+                name=counterparty_data["name"],
+                type=CounterpartyType[counterparty_data["type"]] if counterparty_data.get("type") else None
+            )
+            session.add(counterparty)
+        return counterparty
+
     def sync_all(self):
         # Create tables if they don't exist
         Base.metadata.create_all(self.engine)
@@ -178,6 +226,12 @@ class TellerAPIClient:
                     if "details" in account_data["links"]:
                         details_data = self.get(account_data["links"]["details"])
                         self.sync_account_details(session, account.id, details_data)
+                    
+                    # Add transactions sync
+                    if "transactions" in account_data["links"]:
+                        transactions_data = self.get(account_data["links"]["transactions"])
+                        for transaction_data in transactions_data:
+                            self.sync_transaction(session, account.id, transaction_data)
                 
                 # No need for explicit commit - handled by context manager
 
