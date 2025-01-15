@@ -5,11 +5,12 @@ from typing import List, Dict
 from pathlib import Path
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
-from models import Base, Institution, Account, AccountBalance, AccountDetail
+from models import Base, Institution, Account, AccountBalance, AccountDetail, AccountType, AccountSubtype, AccountStatus
 from teller_account import TellerAccount
 from os import getenv
 from dotenv import load_dotenv
 import argparse
+from decimal import Decimal
 
 class TellerAPIClient:
     BASE_URL = "https://api.teller.io"
@@ -120,11 +121,11 @@ class TellerAPIClient:
                 enrollment_id=account_data["enrollment_id"],
                 institution_id=account_data["institution"]["id"],
                 name=account_data["name"],
-                type=account_data["type"],
-                subtype=account_data["subtype"],
+                type=AccountType[account_data["type"]],
+                subtype=AccountSubtype[account_data["subtype"]],
                 currency=account_data["currency"],
                 last_four=account_data["last_four"],
-                status=account_data["status"]
+                status=AccountStatus[account_data["status"]]
             )
             session.add(account)
         return account
@@ -135,13 +136,13 @@ class TellerAPIClient:
         if not balance:
             balance = AccountBalance(
                 account_id=account_id,
-                ledger=balance_data.get("ledger"),
-                available=balance_data.get("available")
+                ledger=Decimal(balance_data.get("ledger", "0")) if balance_data.get("ledger") else None,
+                available=Decimal(balance_data.get("available", "0")) if balance_data.get("available") else None
             )
             session.add(balance)
         else:
-            balance.ledger = balance_data.get("ledger")
-            balance.available = balance_data.get("available")
+            balance.ledger = Decimal(balance_data.get("ledger", "0")) if balance_data.get("ledger") else None
+            balance.available = Decimal(balance_data.get("available", "0")) if balance_data.get("available") else None
         return balance
 
     def sync_account_details(self, session: Session, account_id: str, details_data: dict):

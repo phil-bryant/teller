@@ -11,7 +11,19 @@ CREATE TABLE teller.audit_log (
 
 CREATE OR REPLACE FUNCTION teller.audit_trigger_func()
 RETURNS TRIGGER AS $$
+DECLARE
+    record_pk TEXT;
 BEGIN
+    -- Determine the primary key value based on the table
+    CASE TG_TABLE_NAME
+    WHEN 'account_balances' THEN
+        record_pk := NEW.account_id::TEXT;
+    WHEN 'account_details' THEN
+        record_pk := NEW.account_id::TEXT;
+    ELSE
+        record_pk := NEW.id::TEXT;
+    END CASE;
+
     IF TG_OP = 'UPDATE' THEN
         INSERT INTO teller.audit_log (
             table_name,
@@ -22,7 +34,7 @@ BEGIN
         )
         VALUES (
             TG_TABLE_NAME::TEXT,
-            OLD.id::TEXT,
+            record_pk,
             TG_OP,
             to_jsonb(OLD),
             to_jsonb(NEW)
@@ -37,7 +49,7 @@ BEGIN
         )
         VALUES (
             TG_TABLE_NAME::TEXT,
-            OLD.id::TEXT,
+            record_pk,
             TG_OP,
             to_jsonb(OLD)
         );
@@ -51,7 +63,7 @@ BEGIN
         )
         VALUES (
             TG_TABLE_NAME::TEXT,
-            NEW.id::TEXT,
+            record_pk,
             TG_OP,
             to_jsonb(NEW)
         );
