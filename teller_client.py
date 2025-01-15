@@ -3,7 +3,7 @@ import json
 import requests
 from typing import List, Dict
 from pathlib import Path
-from teller_account import TellerAccount
+from teller.teller_account import TellerAccount
 
 class TellerAPIClient:
     BASE_URL = "https://api.teller.io"

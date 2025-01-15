@@ -1,3 +1,4 @@
+__pycache__/*
 teller-venv/*
 .DS_Store
 tokens.json
