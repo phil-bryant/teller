@@ -1,4 +1,4 @@
-from teller.teller_client import main
+from .teller_client import main
 
 if __name__ == "__main__":
     main() 
