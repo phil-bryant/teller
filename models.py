@@ -1,6 +1,6 @@
 from typing import Optional
 from decimal import Decimal
-from sqlalchemy import String, DateTime, ForeignKey, Enum, Numeric
+from sqlalchemy import String, DateTime, ForeignKey, Enum, Numeric, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -44,8 +44,8 @@ class Institution(Base):
     __tablename__ = "institutions"
     __table_args__ = {"schema": "teller"}
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.current_timestamp()
     )
@@ -59,12 +59,12 @@ class Account(Base):
     __tablename__ = "accounts"
     __table_args__ = {"schema": "teller"}
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)
-    enrollment_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    enrollment_id: Mapped[str] = mapped_column(Text, nullable=False)
     institution_id: Mapped[str] = mapped_column(
         ForeignKey("teller.institutions.id"), nullable=False
     )
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(
         Enum(AccountType, schema="teller", name="account_type", native_enum=True),
         nullable=False
@@ -73,8 +73,8 @@ class Account(Base):
         Enum(AccountSubtype, schema="teller", name="account_subtype", native_enum=True),
         nullable=False
     )
-    currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    last_four: Mapped[str] = mapped_column(String(4), nullable=False)
+    currency: Mapped[str] = mapped_column(Text, nullable=False)
+    last_four: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(
         Enum(AccountStatus, schema="teller", name="account_status", native_enum=True),
         nullable=False
@@ -117,10 +117,10 @@ class AccountDetail(Base):
     account_id: Mapped[str] = mapped_column(
         ForeignKey("teller.accounts.id"), primary_key=True
     )
-    account_number: Mapped[str] = mapped_column(String(50), nullable=False)
-    routing_number_ach: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    routing_number_wire: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    routing_number_bacs: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    account_number: Mapped[str] = mapped_column(Text, nullable=False)
+    routing_number_ach: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    routing_number_wire: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    routing_number_bacs: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.current_timestamp()
     )
@@ -134,7 +134,7 @@ class Transaction(Base):
     __tablename__ = "transactions"
     __table_args__ = {"schema": "teller"}
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
     account_id: Mapped[str] = mapped_column(
         ForeignKey("teller.accounts.id"), nullable=False
     )
@@ -142,7 +142,7 @@ class Transaction(Base):
         Numeric(precision=19, scale=2), nullable=False
     )
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    description: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(
         Enum(TransactionStatus, schema="teller", name="transaction_status", native_enum=True),
         nullable=False
@@ -166,7 +166,7 @@ class Transaction(Base):
     running_balance: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(precision=19, scale=2), nullable=True
     )
-    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    type: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.current_timestamp()
     )
@@ -181,7 +181,7 @@ class TransactionCounterparty(Base):
     __table_args__ = {"schema": "teller"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     type: Mapped[Optional[str]] = mapped_column(
         Enum(CounterpartyType, schema="teller", name="counterparty_type", native_enum=True),
         nullable=True
@@ -193,4 +193,26 @@ class TransactionCounterparty(Base):
         DateTime(timezone=True),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp()
-    ) 
+    )
+
+class AccountLinks(Base):
+    __tablename__ = "account_links"
+    __table_args__ = {"schema": "teller"}
+
+    account_id: Mapped[str] = mapped_column(ForeignKey("teller.accounts.id"), primary_key=True)
+    self_link: Mapped[str] = mapped_column(Text, nullable=False)
+    balances_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    transactions_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    details_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+class TransactionLinks(Base):
+    __tablename__ = "transaction_links"
+    __table_args__ = {"schema": "teller"}
+
+    transaction_id: Mapped[str] = mapped_column(ForeignKey("teller.transactions.id"), primary_key=True)
+    self_link: Mapped[str] = mapped_column(Text, nullable=False)
+    account_link: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.current_timestamp(), onupdate=func.current_timestamp()) 

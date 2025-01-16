@@ -1,5 +1,5 @@
 CREATE TABLE teller.account_balances (
-    account_id VARCHAR(50) PRIMARY KEY REFERENCES teller.accounts(id),
+    account_id TEXT PRIMARY KEY REFERENCES teller.accounts(id),
     ledger DECIMAL(19,2),
     available DECIMAL(19,2),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

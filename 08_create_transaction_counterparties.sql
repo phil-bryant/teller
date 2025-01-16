@@ -1,6 +1,6 @@
 CREATE TABLE teller.transaction_counterparties (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100),
+    name TEXT,
     type teller.counterparty_type,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

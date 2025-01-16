@@ -1,12 +1,12 @@
 CREATE TABLE teller.accounts (
-    id VARCHAR(50) PRIMARY KEY,
-    enrollment_id VARCHAR(50) NOT NULL,
-    institution_id VARCHAR(50) NOT NULL REFERENCES teller.institutions(id),
-    name VARCHAR(100) NOT NULL,
+    id TEXT PRIMARY KEY,
+    enrollment_id TEXT NOT NULL,
+    institution_id TEXT NOT NULL REFERENCES teller.institutions(id),
+    name TEXT NOT NULL,
     type account_type NOT NULL,
     subtype account_subtype NOT NULL,
-    currency CHAR(3) NOT NULL,
-    last_four CHAR(4) NOT NULL,
+    currency TEXT NOT NULL,
+    last_four TEXT NOT NULL,
     status account_status NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

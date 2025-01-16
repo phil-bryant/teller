@@ -1,9 +1,9 @@
 CREATE TABLE teller.account_details (
-    account_id VARCHAR(50) PRIMARY KEY REFERENCES teller.accounts(id),
-    account_number VARCHAR(50) NOT NULL,
-    routing_number_ach VARCHAR(50),
-    routing_number_wire VARCHAR(50),
-    routing_number_bacs VARCHAR(50),
+    account_id TEXT PRIMARY KEY REFERENCES teller.accounts(id),
+    account_number TEXT NOT NULL,
+    routing_number_ach TEXT,
+    routing_number_wire TEXT,
+    routing_number_bacs TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

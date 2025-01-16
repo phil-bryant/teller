@@ -1,6 +1,6 @@
 CREATE TABLE teller.identities (
     id BIGSERIAL PRIMARY KEY,
-    account_id VARCHAR(50) NOT NULL REFERENCES teller.accounts(id),
+    account_id TEXT NOT NULL REFERENCES teller.accounts(id),
     type teller.identity_type NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -10,11 +10,11 @@ COMMENT ON COLUMN teller.identities.type IS 'The type of identity: organization 
 
 CREATE TABLE teller.addresses (
     id BIGSERIAL PRIMARY KEY,
-    street VARCHAR(255) NOT NULL,
-    city VARCHAR(100) NOT NULL,
-    region VARCHAR(100) NOT NULL,
-    postal_code VARCHAR(20) NOT NULL,
-    country CHAR(2) NOT NULL,
+    street TEXT NOT NULL,
+    city TEXT NOT NULL,
+    region TEXT NOT NULL,
+    postal_code TEXT NOT NULL,
+    country TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (street, city, region, postal_code, country)
@@ -52,7 +52,7 @@ COMMENT ON COLUMN teller.identity_names.type IS 'The type of name: name or alias
 CREATE TABLE teller.identity_phone_numbers (
     id BIGSERIAL PRIMARY KEY,
     identity_id BIGINT NOT NULL REFERENCES teller.identities(id),
-    data VARCHAR(50) NOT NULL,
+    data TEXT NOT NULL,
     type teller.phone_type NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -64,7 +64,7 @@ COMMENT ON COLUMN teller.identity_phone_numbers.type IS 'The type of phone numbe
 CREATE TABLE teller.identity_emails (
     id BIGSERIAL PRIMARY KEY,
     identity_id BIGINT NOT NULL REFERENCES teller.identities(id),
-    data VARCHAR(255) NOT NULL,
+    data TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

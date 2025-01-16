@@ -20,6 +20,14 @@ BEGIN
         record_pk := NEW.account_id::TEXT;
     WHEN 'account_details' THEN
         record_pk := NEW.account_id::TEXT;
+    WHEN 'account_links' THEN
+        record_pk := NEW.account_id::TEXT;
+    WHEN 'account_detail_links' THEN
+        record_pk := NEW.account_id::TEXT;
+    WHEN 'account_balance_links' THEN
+        record_pk := NEW.account_id::TEXT;
+    WHEN 'transaction_links' THEN
+        record_pk := NEW.transaction_id::TEXT;
     ELSE
         record_pk := NEW.id::TEXT;
     END CASE;

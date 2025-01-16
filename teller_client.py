@@ -9,7 +9,8 @@ from models import (
     Base, Institution, Account, AccountBalance, AccountDetail,
     AccountType, AccountSubtype, AccountStatus,
     Transaction, TransactionCounterparty,
-    TransactionStatus, ProcessingStatus, CounterpartyType
+    TransactionStatus, ProcessingStatus, CounterpartyType,
+    AccountLinks, TransactionLinks
 )
 from teller_account import TellerAccount
 from os import getenv
@@ -133,6 +134,10 @@ class TellerAPIClient:
                 status=AccountStatus[account_data["status"]]
             )
             session.add(account)
+        
+        # Add this: Sync the links
+        self.sync_account_links(session, account.id, account_data["links"])
+        
         return account
 
     def sync_account_balance(self, session: Session, account_id: str, balance_data: dict):
@@ -164,14 +169,36 @@ class TellerAPIClient:
             session.add(details)
         return details
 
+    def sync_account_links(self, session: Session, account_id: str, links_data: dict):
+        stmt = select(AccountLinks).where(AccountLinks.account_id == account_id)
+        links = session.execute(stmt).scalar_one_or_none()
+        if not links:
+            links = AccountLinks(
+                account_id=account_id,
+                self_link=links_data["self"],
+                balances_link=links_data.get("balances"),
+                transactions_link=links_data.get("transactions"),
+                details_link=links_data.get("details")
+            )
+            session.add(links)
+        return links
+
     def sync_transaction(self, session: Session, account_id: str, transaction_data: dict):
         stmt = select(Transaction).where(Transaction.id == transaction_data["id"])
         transaction = session.execute(stmt).scalar_one_or_none()
         
+        # Add debug prints for counterparty data
+        print("\n=== Transaction Counterparty Debug ===")
+        print(f"Transaction ID: {transaction_data['id']}")
+        print(f"Description: {transaction_data['description']}")
+        print("Raw transaction details:", json.dumps(transaction_data.get('details', {}), indent=2))
+        
         # Sync counterparty first if it exists
         counterparty_id = None
         if "counterparty" in transaction_data.get("details", {}) and transaction_data["details"]["counterparty"]:
-            counterparty = self.sync_counterparty(session, transaction_data["details"]["counterparty"])
+            counterparty_data = transaction_data["details"]["counterparty"]
+            print("Found counterparty data:", json.dumps(counterparty_data, indent=2))
+            counterparty = self.sync_counterparty(session, counterparty_data)
             counterparty_id = counterparty.id
 
         if not transaction:
@@ -189,9 +216,28 @@ class TellerAPIClient:
                 type=transaction_data["type"]
             )
             session.add(transaction)
+        
+        # Add this: Sync the transaction links
+        self.sync_transaction_links(session, transaction.id, transaction_data["links"])
+        
         return transaction
 
+    def sync_transaction_links(self, session: Session, transaction_id: str, links_data: dict):
+        stmt = select(TransactionLinks).where(TransactionLinks.transaction_id == transaction_id)
+        links = session.execute(stmt).scalar_one_or_none()
+        if not links:
+            links = TransactionLinks(
+                transaction_id=transaction_id,
+                self_link=links_data["self"],
+                account_link=links_data["account"]
+            )
+            session.add(links)
+        return links
+
     def sync_counterparty(self, session: Session, counterparty_data: dict) -> TransactionCounterparty:
+        print("\n=== Syncing Counterparty ===")
+        print("Input counterparty data:", json.dumps(counterparty_data, indent=2))
+        
         # Create new counterparty if name and type combination doesn't exist
         stmt = select(TransactionCounterparty).where(
             TransactionCounterparty.name == counterparty_data["name"],
@@ -200,11 +246,15 @@ class TellerAPIClient:
         counterparty = session.execute(stmt).scalar_one_or_none()
         
         if not counterparty:
+            print(f"Creating new counterparty: {counterparty_data['name']} ({counterparty_data.get('type')})")
             counterparty = TransactionCounterparty(
                 name=counterparty_data["name"],
                 type=CounterpartyType[counterparty_data["type"]] if counterparty_data.get("type") else None
             )
             session.add(counterparty)
+        else:
+            print(f"Found existing counterparty: {counterparty.name} ({counterparty.type})")
+        
         return counterparty
 
     def sync_all(self):

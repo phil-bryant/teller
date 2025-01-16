@@ -1,5 +1,5 @@
 CREATE TABLE teller.account_links (
-    account_id VARCHAR(50) PRIMARY KEY REFERENCES teller.accounts(id),
+    account_id TEXT PRIMARY KEY REFERENCES teller.accounts(id),
     self_link TEXT NOT NULL,
     balances_link TEXT,
     transactions_link TEXT,
@@ -14,7 +14,7 @@ COMMENT ON COLUMN teller.account_links.transactions_link IS 'A link to the accou
 COMMENT ON COLUMN teller.account_links.details_link IS 'A link to the account''s details, such as account number and routing numbers. e.g., https://api.teller.io/accounts/acc_oiin624kqjrg2mp2ea000/details';
 
 CREATE TABLE teller.account_detail_links (
-    account_id VARCHAR(50) PRIMARY KEY REFERENCES teller.accounts(id),
+    account_id TEXT PRIMARY KEY REFERENCES teller.accounts(id),
     self_link TEXT NOT NULL,
     account_link TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -25,7 +25,7 @@ COMMENT ON COLUMN teller.account_detail_links.self_link IS 'A self link to the a
 COMMENT ON COLUMN teller.account_detail_links.account_link IS 'A link to the account that owns the details. e.g., https://api.teller.io/accounts/acc_oiin624kqjrg2mp2ea000';
 
 CREATE TABLE teller.account_balance_links (
-    account_id VARCHAR(50) PRIMARY KEY REFERENCES teller.accounts(id),
+    account_id TEXT PRIMARY KEY REFERENCES teller.accounts(id),
     self_link TEXT NOT NULL,
     account_link TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -36,7 +36,7 @@ COMMENT ON COLUMN teller.account_balance_links.self_link IS 'A self link to the 
 COMMENT ON COLUMN teller.account_balance_links.account_link IS 'A link to the account that owns the balances. e.g., https://api.teller.io/accounts/acc_oiin624kqjrg2mp2ea000';
 
 CREATE TABLE teller.transaction_links (
-    transaction_id VARCHAR(50) PRIMARY KEY REFERENCES teller.transactions(id),
+    transaction_id TEXT PRIMARY KEY REFERENCES teller.transactions(id),
     self_link TEXT NOT NULL,
     account_link TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

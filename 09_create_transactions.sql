@@ -1,6 +1,6 @@
 CREATE TABLE teller.transactions (
-    id VARCHAR(50) PRIMARY KEY,
-    account_id VARCHAR(50) NOT NULL REFERENCES teller.accounts(id),
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES teller.accounts(id),
     amount DECIMAL(19,2) NOT NULL,
     date DATE NOT NULL,
     description TEXT NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE teller.transactions (
     category teller.transaction_category,
     counterparty_id BIGINT REFERENCES teller.transaction_counterparties(id),
     running_balance DECIMAL(19,2),
-    type VARCHAR(50) NOT NULL,
+    type TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
