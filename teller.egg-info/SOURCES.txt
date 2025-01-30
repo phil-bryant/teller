@@ -1,5 +1,3 @@
-main.py
-models.py
 pyproject.toml
 teller_account.py
 teller_client.py
