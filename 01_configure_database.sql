@@ -16,7 +16,7 @@ CREATE USER teller WITH
     CONNECTION LIMIT 100;
 GRANT teller_admin TO teller;
 CREATE SCHEMA IF NOT EXISTS teller AUTHORIZATION teller;
-COMMENT ON SCHEMA teller IS 'Schema for Teller banking data and operations';
+COMMENT ON SCHEMA teller IS 'Schema for persisting objects fetched from the teller.io API';
 GRANT USAGE ON SCHEMA teller TO teller_read;
 GRANT USAGE ON SCHEMA teller TO teller_write;
 GRANT ALL ON SCHEMA teller TO teller_admin;

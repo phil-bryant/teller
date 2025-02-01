@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class TellerAccountDetailsLinks(TellerObject):
-    self_link: str = field(default="")
+    self_link: str = field(default="")  ## self in API
     account: str = field(default="")
 
     def __post_init__(self):

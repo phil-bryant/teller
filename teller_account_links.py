@@ -3,7 +3,7 @@ from teller_object import TellerObject
 
 @dataclass
 class TellerAccountLinks(TellerObject):
-    self_link: str = field(default="")
+    self_link: str = field(default="")  ## self in API
     details: str = field(default="")
     balances: str = field(default="")
     transactions: str = field(default="")

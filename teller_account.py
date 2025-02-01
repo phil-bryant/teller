@@ -1,24 +1,24 @@
 from dataclasses import dataclass, field
 from teller_object import TellerObject
-from teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccountStatus
-from teller_account_links import TellerAccountLinks
 from teller_institution import TellerInstitution
+from teller_account_links import TellerAccountLinks
+from teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccountStatus
 from teller_account_details import TellerAccountDetails
 from teller_balances import TellerBalances
 from teller_transaction import TellerTransaction
 
 @dataclass
 class TellerAccount(TellerObject):
+    currency: str = field(default="")
+    enrollment_id: str = field(default="")
+    id: str = field(default="")
+    institution: TellerInstitution = field(default=None)
+    last_four: str = field(default="")
+    links: TellerAccountLinks = field(default=None)
+    name: str = field(default="")
     type: TellerAccountType = field(default=None)
     subtype: TellerAccountSubtype = field(default=None)
     status: TellerAccountStatus = field(default=None)
-    name: str = field(default="")
-    links: TellerAccountLinks = field(default=None)
-    last_four: str = field(default="")
-    institution: TellerInstitution = field(default=None)
-    id: str = field(default="")
-    enrollment_id: str = field(default="")
-    currency: str = field(default="")
     details: TellerAccountDetails = field(default=None)
     balances: TellerBalances = field(default=None)
     transactions: list[TellerTransaction] = field(default_factory=list)
