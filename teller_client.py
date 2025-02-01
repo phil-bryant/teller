@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
-import json
 import argparse
+import json
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict
 import requests
 import structlog
 from dotenv import load_dotenv
@@ -36,7 +36,13 @@ class TellerAPIClient:
 def main():
     args = argparse.ArgumentParser(description='Teller API Client').parse_args()
     for account_identity in TellerAPIClient().get_account_identities():
-        print(account_identity)
+        account = account_identity.account
+        ## we cannot call account.get_data() yet because we first have to go through the microdeposit verification flow.
+        print(account)
+        for transaction in account.get_transactions(10):
+            print(transaction)
+        for owner in account_identity.owners:
+            print(owner)
 
 if __name__ == "__main__":
     main() 

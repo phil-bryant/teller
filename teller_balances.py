@@ -4,10 +4,10 @@ from teller_account_balances_links import TellerAccountBalancesLinks
 
 @dataclass
 class TellerBalances(TellerObject):
-    ledger: str = field(default="0.00")
-    available: str = field(default="0.00")
-    account_id: str = field(default=None)
+    account_id: str = field(default="")
+    ledger: str = field(default="")
+    available: str = field(default="")
     links: TellerAccountBalancesLinks = field(default=None)
 
     def __str__(self):
-        return f"{self.ledger} ledger {self.available} available" 
+        return f"Ledger: {self.ledger}, Available: {self.available}" 

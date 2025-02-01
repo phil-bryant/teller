@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
 from typing import List
-from teller_address import TellerAddress
-from teller_name import TellerName
-from teller_phone_number import TellerPhoneNumber
-from teller_email import TellerEmail
 from teller_object import TellerObject
 from teller_enums import TellerIdentityType
+from teller_name import TellerName
+from teller_email import TellerEmail
+from teller_phone_number import TellerPhoneNumber
+from teller_address import TellerAddress
 
 @dataclass
 class TellerIdentity(TellerObject):
