@@ -3,6 +3,7 @@ from teller_object import TellerObject
 from teller_transactions_details import TellerTransactionsDetails
 from teller_transactions_links import TellerTransactionsLinks
 
+## Generated from https://teller.io/docs/api/account/transactions
 @dataclass
 class TellerTransactions(TellerObject):
     account_id: str = field(default="")
