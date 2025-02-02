@@ -1,7 +1,7 @@
 CREATE TABLE teller.account_identities (
     id BIGSERIAL PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES teller.accounts(id),
-    owner_id BIGINT NOT NULL REFERENCES teller.identities(id),
+    account_id TEXT NOT NULL REFERENCES teller.account(id),
+    owner_id BIGINT NOT NULL REFERENCES teller.identity(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

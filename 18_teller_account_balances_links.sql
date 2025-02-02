@@ -2,6 +2,7 @@ CREATE TABLE teller.account_balances_links (
     account_id TEXT PRIMARY KEY REFERENCES teller.account(id),
     self_link TEXT NOT NULL,
     account_link TEXT NOT NULL,
+    balance_id BIGINT REFERENCES teller.balances(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

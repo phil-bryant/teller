@@ -7,9 +7,7 @@ CREATE TABLE teller.transaction (
     type TEXT NOT NULL,
     account_id TEXT NOT NULL REFERENCES teller.account(id),
     running_balance TEXT,
-    details_id BIGINT REFERENCES teller.transaction_details(id),
     counterparty_id BIGINT REFERENCES teller.transaction_counterparty(id),
-    links_id BIGINT REFERENCES teller.transaction_links(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

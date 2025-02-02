@@ -3,7 +3,6 @@ CREATE TABLE teller.balances (
     account_id TEXT NOT NULL REFERENCES teller.account(id),
     ledger TEXT,
     available TEXT,
-    links_id BIGINT REFERENCES teller.account_balances_links(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

@@ -7,7 +7,7 @@ CREATE TABLE teller.transaction_details (
     check_number TEXT,
     type TEXT NOT NULL,
     counterparty_id BIGINT REFERENCES teller.counterparty(id),
-    transaction_id TEXT NOT NULL REFERENCES teller.transactions(id),
+    transaction_id TEXT NOT NULL REFERENCES teller.transaction(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

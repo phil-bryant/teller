@@ -3,7 +3,7 @@ CREATE TABLE teller.routing_numbers (
     ach TEXT,
     wire TEXT,
     bacs TEXT,
-    account_id TEXT NOT NULL REFERENCES teller.accounts(id),
+    account_id TEXT NOT NULL REFERENCES teller.account(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
