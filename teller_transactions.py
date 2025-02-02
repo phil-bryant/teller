@@ -1,20 +1,21 @@
 from dataclasses import dataclass, field
 from teller_object import TellerObject
-from teller_transactions_details import TellerTransactionsDetails
-from teller_transactions_links import TellerTransactionsLinks
+from teller_transaction_details import TellerTransactionDetails
+from teller_transaction_links import TellerTransactionLinks
+from teller_transaction_type import TellerTransactionType
 
 @dataclass
-class TellerTransactions(TellerObject): ## Shape mirrors https://teller.io/docs/api/account/transactions
+class TellerTransactions(TellerObject): ## https://teller.io/docs/api/account/transactions
     account_id: str = field(default="")
     amount: str = field(default="")
     date: str = field(default="")
     description: str = field(default="")
-    details: TellerTransactionsDetails = field(default=None)
+    details: TellerTransactionDetails = field(default=None)
     status: str = field(default="")
     id: str = field(default="")
-    links: TellerTransactionsLinks = field(default=None)
+    links: TellerTransactionLinks = field(default=None)
     running_balance: str = field(default="")
-    type: str = field(default="")
+    type: TellerTransactionType = field(default=None)
 
     def __str__(self):
         return f"{self.type} {self.status} {self.amount} {self.description}"

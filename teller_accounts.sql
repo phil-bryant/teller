@@ -11,7 +11,7 @@ CREATE TABLE teller.account (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-COMMENT ON TABLE teller.account IS 'An Account represents an end-user''s individual financial account at a given financial institution';
+COMMENT ON TABLE teller.account IS 'Table for teller_accounts.py';
 COMMENT ON COLUMN teller.account.currency IS 'The ISO 4217 currency code of the account';
 COMMENT ON COLUMN teller.account.enrollment_id IS 'The id of the enrollment that the account belongs to';
 COMMENT ON COLUMN teller.account.last_four IS 'The last four digits of the account number';

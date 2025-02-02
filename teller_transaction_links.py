@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from teller_object import TellerObject
 
 @dataclass
-class TellerTransactionsLinks(TellerObject):
+class TellerTransactionLinks(TellerObject):
     self_link: str = field(default="")
     account: str = field(default="")
 

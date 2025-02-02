@@ -8,11 +8,11 @@ from teller_balances import TellerBalances
 from teller_transactions import TellerTransactions
 
 @dataclass
-class TellerAccounts(TellerObject): ## Shape mirrors https://teller.io/docs/api/accounts
+class TellerAccounts(TellerObject): ## https://teller.io/docs/api/accounts
     currency: str = field(default="")
     enrollment_id: str = field(default="")
     id: str = field(default="")
-    institution: TellerInstitution = field(default=None)
+    institution: TellerInstitutions = field(default=None)
     last_four: str = field(default="")
     links: TellerAccountLinks = field(default=None)
     name: str = field(default="")

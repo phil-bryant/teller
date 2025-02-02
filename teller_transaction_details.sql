@@ -1,13 +1,9 @@
 CREATE TABLE teller.transaction_details (
-    id BIGSERIAL PRIMARY KEY,
-    category teller.transaction_category,
     processing_status TEXT NOT NULL,
-    merchant_name TEXT,
-    merchant_website TEXT,
-    check_number TEXT,
-    type TEXT NOT NULL,
+    category teller.transaction_category,
     counterparty_id BIGINT REFERENCES teller.counterparty(id),
-    transaction_id TEXT NOT NULL REFERENCES teller.transaction(id),
+    id BIGSERIAL PRIMARY KEY,
+    transactions_id TEXT NOT NULL UNIQUE REFERENCES teller.transactions(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

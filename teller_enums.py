@@ -17,7 +17,7 @@ class TellerAccountStatus(Enum):
     OPEN = "open"
     CLOSED = "closed"
 
-class TellerProcessingStatus(Enum):
+class TellerTransactionDetailsProcessingStatus(Enum):
     PENDING = "pending"
     COMPLETE = "complete"
 
@@ -25,7 +25,7 @@ class TellerTransactionStatus(Enum):
     POSTED = "posted"
     PENDING = "pending"
 
-class TellerCounterpartyType(Enum):
+class TellerTransactionDetailsCounterpartyType(Enum):
     ORGANIZATION = "organization"
     PERSON = "person"
 
@@ -43,7 +43,7 @@ class TellerNameType(Enum):
     NAME = "name"
     ALIAS = "alias"
 
-class TellerTransactionsCategory(Enum):
+class TellerTransactionDetailsCategory(Enum):
     ACCOMMODATION = "accommodation"
     ADVERTISING = "advertising"
     BAR = "bar"
