@@ -3,7 +3,7 @@ from teller_object import TellerObject
 from teller_enums import TellerCounterpartyType
 
 @dataclass
-class TellerTransactionCounterparty(TellerObject):
+class TellerTransactionsCounterparty(TellerObject):
     name: str = field(default="")
     type: TellerCounterpartyType = field(default=None)
     routing_number: str = field(default="")

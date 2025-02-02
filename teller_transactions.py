@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from teller_object import TellerObject
-from teller_transaction_details import TellerTransactionDetails
-from teller_transaction_links import TellerTransactionLinks
+from teller_transactions_details import TellerTransactionDetails
+from teller_transactions_links import TellerTransactionLinks
 
 @dataclass
 class TellerTransactions(TellerObject):

@@ -43,7 +43,7 @@ class TellerNameType(Enum):
     NAME = "name"
     ALIAS = "alias"
 
-class TellerTransactionCategory(Enum):
+class TellerTransactionsCategory(Enum):
     ACCOMMODATION = "accommodation"
     ADVERTISING = "advertising"
     BAR = "bar"
