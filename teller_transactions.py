@@ -3,9 +3,8 @@ from teller_object import TellerObject
 from teller_transactions_details import TellerTransactionsDetails
 from teller_transactions_links import TellerTransactionsLinks
 
-## Generated from https://teller.io/docs/api/account/transactions
 @dataclass
-class TellerTransactions(TellerObject):
+class TellerTransactions(TellerObject): ## Shape mirrors https://teller.io/docs/api/account/transactions
     account_id: str = field(default="")
     amount: str = field(default="")
     date: str = field(default="")
@@ -18,4 +17,4 @@ class TellerTransactions(TellerObject):
     type: str = field(default="")
 
     def __str__(self):
-        return f"{self.type} {self.status} {self.amount} {self.description}" 
+        return f"{self.type} {self.status} {self.amount} {self.description}"

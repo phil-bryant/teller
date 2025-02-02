@@ -8,7 +8,7 @@ from teller_phone_number import TellerPhoneNumber
 from teller_email import TellerEmail
 
 @dataclass
-class TellerIdentity(TellerObject):
+class TellerIdentity(TellerObject): ## Shape mirrors https://teller.io/docs/api/identity
     type: TellerIdentityType = field(default=None)
     names: list[TellerName] = field(default_factory=list)
     addresses: list[TellerAddress] = field(default_factory=list)

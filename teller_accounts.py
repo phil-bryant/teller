@@ -1,15 +1,14 @@
 from dataclasses import dataclass, field
 from teller_object import TellerObject
-from teller_institutions import TellerInstitution
+from teller_institutions import TellerInstitutions
 from teller_account_links import TellerAccountLinks
 from teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccountStatus
 from teller_account_details import TellerAccountDetails
 from teller_balances import TellerBalances
 from teller_transactions import TellerTransactions
 
-## Generated from https://teller.io/docs/api/accounts
 @dataclass
-class TellerAccount(TellerObject):
+class TellerAccounts(TellerObject): ## Shape mirrors https://teller.io/docs/api/accounts
     currency: str = field(default="")
     enrollment_id: str = field(default="")
     id: str = field(default="")

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from teller_object import TellerObject
-from teller_account import TellerAccount
+from teller_accounts import TellerAccount
 from teller_identity import TellerIdentity
 
 @dataclass

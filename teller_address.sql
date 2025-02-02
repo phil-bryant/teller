@@ -7,4 +7,4 @@ CREATE TABLE teller.address (
 );
 COMMENT ON TABLE teller.address IS 'Address information associated with an identity';
 COMMENT ON COLUMN teller.address.primary_address IS 'Whether this is the primary address for the identity';
-COMMENT ON COLUMN teller.address.data_id IS 'Reference to the address data details'; 
+COMMENT ON COLUMN teller.address.data_id IS 'Reference to the address_data table. This design allows multiple people to share an address independent of primary designation' 
