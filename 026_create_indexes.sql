@@ -1,0 +1,16 @@
+CREATE INDEX idx_accounts_enrollment_id ON teller.account(enrollment_id);
+CREATE INDEX idx_accounts_institution_id ON teller.account(institution_id);
+CREATE INDEX idx_account_balances_account_id ON teller.balances(account_id);
+CREATE INDEX idx_transactions_account_id ON teller.transaction(account_id);
+CREATE INDEX idx_transactions_date ON teller.transaction(date);
+CREATE INDEX idx_transactions_counterparty_id ON teller.transaction(counterparty_id);
+CREATE INDEX idx_identities_account_id ON teller.identity(account_id);
+CREATE INDEX idx_identity_addresses_identity_id ON teller.identity_addresses(identity_id);
+CREATE INDEX idx_identity_addresses_address_id ON teller.identity_addresses(address_id);
+CREATE INDEX idx_identity_names_identity_id ON teller.identity_names(identity_id);
+CREATE INDEX idx_identity_phones_identity_id ON teller.identity_phone_numbers(identity_id);
+CREATE INDEX idx_identity_emails_identity_id ON teller.identity_emails(identity_id);
+CREATE INDEX idx_account_links_account_id ON teller.account_links(account_id);
+CREATE INDEX idx_account_detail_links_account_id ON teller.account_details_links(account_id);
+CREATE INDEX idx_account_balance_links_account_id ON teller.account_balances_links(account_id);
+CREATE INDEX idx_transaction_links_transaction_id ON teller.transaction_links(transaction_id); 

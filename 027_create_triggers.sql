@@ -6,13 +6,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Core tables
 CREATE TRIGGER update_institutions_updated_at
     BEFORE UPDATE ON teller.institutions
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_accounts_updated_at
-    BEFORE UPDATE ON teller.accounts
+CREATE TRIGGER update_account_updated_at
+    BEFORE UPDATE ON teller.account
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
@@ -21,63 +22,71 @@ CREATE TRIGGER update_account_details_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_account_balances_updated_at
-    BEFORE UPDATE ON teller.account_balances
+CREATE TRIGGER update_balances_updated_at
+    BEFORE UPDATE ON teller.balances
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_identities_updated_at
-    BEFORE UPDATE ON teller.identities
+-- Identity related tables
+CREATE TRIGGER update_identity_updated_at
+    BEFORE UPDATE ON teller.identity
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_addresses_updated_at
-    BEFORE UPDATE ON teller.addresses
+CREATE TRIGGER update_address_updated_at
+    BEFORE UPDATE ON teller.address
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_identity_addresses_updated_at
-    BEFORE UPDATE ON teller.identity_addresses
+CREATE TRIGGER update_address_data_updated_at
+    BEFORE UPDATE ON teller.address_data
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_identity_names_updated_at
-    BEFORE UPDATE ON teller.identity_names
+CREATE TRIGGER update_name_updated_at
+    BEFORE UPDATE ON teller.name
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_identity_phone_numbers_updated_at
-    BEFORE UPDATE ON teller.identity_phone_numbers
+CREATE TRIGGER update_phone_number_updated_at
+    BEFORE UPDATE ON teller.phone_number
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_identity_emails_updated_at
-    BEFORE UPDATE ON teller.identity_emails
+CREATE TRIGGER update_email_updated_at
+    BEFORE UPDATE ON teller.email
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_transaction_counterparties_updated_at
-    BEFORE UPDATE ON teller.transaction_counterparties
+-- Transaction related tables
+CREATE TRIGGER update_transaction_updated_at
+    BEFORE UPDATE ON teller.transaction
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_transactions_updated_at
-    BEFORE UPDATE ON teller.transactions
+CREATE TRIGGER update_transaction_counterparty_updated_at
+    BEFORE UPDATE ON teller.transaction_counterparty
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
+CREATE TRIGGER update_transaction_details_updated_at
+    BEFORE UPDATE ON teller.transaction_details
+    FOR EACH ROW
+    EXECUTE FUNCTION teller.update_updated_at();
+
+-- Links tables
 CREATE TRIGGER update_account_links_updated_at
     BEFORE UPDATE ON teller.account_links
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_account_detail_links_updated_at
-    BEFORE UPDATE ON teller.account_detail_links
+CREATE TRIGGER update_account_details_links_updated_at
+    BEFORE UPDATE ON teller.account_details_links
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
-CREATE TRIGGER update_account_balance_links_updated_at
-    BEFORE UPDATE ON teller.account_balance_links
+CREATE TRIGGER update_account_balances_links_updated_at
+    BEFORE UPDATE ON teller.account_balances_links
     FOR EACH ROW
     EXECUTE FUNCTION teller.update_updated_at();
 
