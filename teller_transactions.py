@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from teller_object import TellerObject
-from teller_transactions_details import TellerTransactionDetails
-from teller_transactions_links import TellerTransactionLinks
+from teller_transactions_details import TellerTransactionsDetails
+from teller_transactions_links import TellerTransactionsLinks
 
 @dataclass
 class TellerTransactions(TellerObject):
@@ -9,10 +9,10 @@ class TellerTransactions(TellerObject):
     amount: str = field(default="")
     date: str = field(default="")
     description: str = field(default="")
-    details: TellerTransactionDetails = field(default=None)
+    details: TellerTransactionsDetails = field(default=None)
     status: str = field(default="")
     id: str = field(default="")
-    links: TellerTransactionLinks = field(default=None)
+    links: TellerTransactionsLinks = field(default=None)
     running_balance: str = field(default="")
     type: str = field(default="")
 
