@@ -5,7 +5,7 @@ from teller_transaction_counterparty import TellerTransactionCounterparty
 from teller_transaction_links import TellerTransactionLinks
 
 @dataclass
-class TellerTransaction(TellerObject):
+class TellerTransactions(TellerObject):
     account_id: str = field(default="")
     amount: str = field(default="")
     date: str = field(default="")
