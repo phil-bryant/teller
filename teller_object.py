@@ -27,7 +27,7 @@ class TellerObject: ## https://teller.io/docs/api
         log.debug("TellerObject.__post_init__", class_name=self.__class__.__name__, api_data=self._api_data, mapped_api_data=self._mapped_api_data())
         for key, value in self._mapped_api_data().items():
             if hasattr(self, key) and value is not None:
-                setattr(self, key, self.__annotations__[key](value)) 
+                setattr(self, key, self.__annotations__[key](value)) ## Fails if key is type list but works if key is type TellerList!
 
     def __str__(self):
         return f"{self.__class__.__name__}({', '.join(f'{getattr(self, name)}' for name in self._str_field_names())}):_api_data={self._api_data}"
