@@ -1,5 +1,7 @@
 from enum import Enum, auto
 
+## https://teller.io/docs/api
+
 class TellerAccountType(Enum):
     DEPOSITORY = "depository"
     CREDIT = "credit"
@@ -33,13 +35,13 @@ class TellerIdentityType(Enum):
     ORGANIZATION = "organization"
     PERSON = "person"
 
-class TellerPhoneType(Enum):
+class TellerIdentityPhoneNumberType(Enum):
     MOBILE = "mobile"
     HOME = "home"
     WORK = "work"
     UNKNOWN = "unknown"
 
-class TellerNameType(Enum):
+class TellerIdentityNameType(Enum):
     NAME = "name"
     ALIAS = "alias"
 

@@ -1,0 +1,13 @@
+CREATE TABLE teller.identity_phone_number (
+    type teller.identity_phone_number_type NOT NULL,
+    data TEXT NOT NULL,
+    identity_phone_number_id BIGSERIAL PRIMARY KEY,
+    identity_id BIGINT NOT NULL REFERENCES teller.identity(identity_id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (data, identity_id)
+);
+COMMENT ON TABLE teller.identity_phone_number IS 'Table for teller_identity_phone_number.py';
+COMMENT ON COLUMN teller.identity_phone_number.type IS 'The type of phone number: home, work, or mobile';
+COMMENT ON COLUMN teller.identity_phone_number.data IS 'The phone number';
+COMMENT ON COLUMN teller.identity_phone_number.identity_id IS 'Reference to the identity this phone number belongs to'; 

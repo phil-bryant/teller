@@ -5,7 +5,7 @@ import structlog
 log = structlog.get_logger()
 
 @dataclass
-class TellerObject:
+class TellerObject: ## https://teller.io/docs/api
     _api_data: dict
     _api_client: ClassVar[any] = None
     
@@ -16,7 +16,6 @@ class TellerObject:
     def __init__(self, api_data: dict):
         self._api_data = api_data
         
-
     def __post_init__(self):
         ## Use python introspection to simply mirror the Teller API Objects as python objects.
         log.debug("TellerObject.__post_init__", class_name=self.__class__.__name__, api_data=self._api_data)

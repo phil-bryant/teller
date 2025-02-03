@@ -4,11 +4,7 @@ from teller_enums import TellerTransactionDetailsCategory
 from teller_transaction_details_counterparty import TellerTransactionDetailsCounterparty
 
 @dataclass
-class TellerTransactionDetails(TellerObject):
-    category: TellerTransactionDetailsCategory = field(default=None)
+class TellerTransactionDetails(TellerObject): ## https://teller.io/docs/api/account/transactions
     processing_status: str = field(default="")
-    merchant_name: str = field(default="")
-    merchant_website: str = field(default="")
-    check_number: str = field(default="")
-    type: str = field(default="")
+    category: TellerTransactionDetailsCategory = field(default=None)
     counterparty: TellerTransactionDetailsCounterparty = field(default=None) 

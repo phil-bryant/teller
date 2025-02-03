@@ -1,9 +1,10 @@
 CREATE TABLE teller.account_details (
-    account_id TEXT PRIMARY KEY REFERENCES teller.account(id),
-    account_number TEXT NOT NULL,
-    routing_numbers_id BIGINT REFERENCES teller.routing_numbers(id),
+    account_id TEXT PRIMARY KEY REFERENCES teller.account(account_id),
+    account_number TEXT NOT NULL UNIQUE,
+    account_details_links_id BIGINT NOT NULL REFERENCES teller.account_details_links(account_details_links_id) UNIQUE,
+    routing_numbers_id BIGINT REFERENCES teller.routing_numbers(routing_numbers_id) UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-COMMENT ON TABLE teller.account_details IS 'Details about a specific account including account numbers and routing information';
+COMMENT ON TABLE teller.account_details IS 'table for teller_account_details.py';
 COMMENT ON COLUMN teller.account_details.account_number IS 'The account number'; 

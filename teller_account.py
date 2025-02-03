@@ -1,18 +1,18 @@
 from dataclasses import dataclass, field
 from teller_object import TellerObject
-from teller_institutions import TellerInstitutions
+from teller_institution import TellerInstitution
 from teller_account_links import TellerAccountLinks
 from teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccountStatus
 from teller_account_details import TellerAccountDetails
-from teller_balances import TellerBalances
+from teller_account_balances import TellerAccountBalances
 from teller_transactions import TellerTransactions
 
 @dataclass
-class TellerAccounts(TellerObject): ## https://teller.io/docs/api/accounts
+class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
     currency: str = field(default="")
     enrollment_id: str = field(default="")
     id: str = field(default="")
-    institution: TellerInstitutions = field(default=None)
+    institution: TellerInstitution = field(default=None)
     last_four: str = field(default="")
     links: TellerAccountLinks = field(default=None)
     name: str = field(default="")
@@ -20,7 +20,7 @@ class TellerAccounts(TellerObject): ## https://teller.io/docs/api/accounts
     subtype: TellerAccountSubtype = field(default=None)
     status: TellerAccountStatus = field(default=None)
     details: TellerAccountDetails = field(default=None)
-    balances: TellerBalances = field(default=None)
+    balances: TellerAccountBalances = field(default=None)
     transactions: list[TellerTransactions] = field(default_factory=list)
     
     def institution_name(self) -> str:

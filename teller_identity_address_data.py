@@ -5,7 +5,7 @@ from teller_object import TellerObject
 ## This design allows multiple people to share an address independent of primary designation
 ## Defined on the Identity page: https://teller.io/docs/api/identity
 @dataclass
-class TellerAddressData(TellerObject):
+class TellerIdentityAddressData(TellerObject):
     street: str = field(default="")
     city: str = field(default="") 
     region: str = field(default="")

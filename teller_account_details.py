@@ -4,7 +4,7 @@ from teller_account_details_links import TellerAccountDetailsLinks
 from teller_routing_numbers import TellerRoutingNumbers
 
 @dataclass
-class TellerAccountDetails(TellerObject):
+class TellerAccountDetails(TellerObject): ## https://teller.io/docs/api/account/details
     account_id: str = field(default="")
     account_number: str = field(default="")    
     links: TellerAccountDetailsLinks = field(default=None)

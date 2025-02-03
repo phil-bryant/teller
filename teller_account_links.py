@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from teller_object import TellerObject
 
 @dataclass
-class TellerAccountLinks(TellerObject):
+class TellerAccountLinks(TellerObject): ## https://teller.io/docs/api/accounts
     self_link: str = field(default="")  ## self in API
     details: str = field(default="")
     balances: str = field(default="")
