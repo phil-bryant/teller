@@ -39,7 +39,7 @@ def main():
         account = account_identity.account
         ## we cannot call account.get_details() yet because we first have to go through the microdeposit verification flow.
         print(account)
-        for transaction in account.get_transactions(10):
+        for transaction in account.get_transactions(1):
             print(transaction)
             print(transaction.type)
         for owner in account_identity.owners:
