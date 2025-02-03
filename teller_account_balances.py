@@ -3,7 +3,7 @@ from teller_object import TellerObject
 from teller_account_balances_links import TellerAccountBalancesLinks
 
 @dataclass
-class TellerBalances(TellerObject): ## https://teller.io/docs/api/account/balances
+class TellerAccountBalances(TellerObject): ## https://teller.io/docs/api/account/balances
     ledger: str = field(default="")
     links: TellerAccountBalancesLinks = field(default=None)
     account_id: str = field(default="")

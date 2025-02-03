@@ -5,7 +5,7 @@ from teller_transaction_links import TellerTransactionLinks
 from teller_transaction_type import TellerTransactionType
 
 @dataclass
-class TellerTransactions(TellerObject): ## https://teller.io/docs/api/account/transactions
+class TellerTransaction(TellerObject): ## https://teller.io/docs/api/account/transactions
     account_id: str = field(default="")
     amount: str = field(default="")
     date: str = field(default="")
