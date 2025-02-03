@@ -37,7 +37,7 @@ def main():
     args = argparse.ArgumentParser(description='Teller API Client').parse_args()
     for account_identity in TellerAPIClient().get_account_identities():
         account = account_identity.account
-        ## we cannot call account.get_data() yet because we first have to go through the microdeposit verification flow.
+        ## we cannot call account.get_details() yet because we first have to go through the microdeposit verification flow.
         print(account)
         for transaction in account.get_transactions(10):
             print(transaction)
