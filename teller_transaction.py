@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from decimal import Decimal
 from iso_date import ISODate
 from teller_object import TellerObject
 from teller_transaction_details import TellerTransactionDetails
@@ -8,7 +9,7 @@ from teller_transaction_type import TellerTransactionType
 @dataclass
 class TellerTransaction(TellerObject): ## https://teller.io/docs/api/account/transactions
     account_id: str = field(default="")
-    amount: str = field(default="", metadata={"__str__": True})
+    amount: Decimal = field(default_factory=lambda: Decimal('0.00'), metadata={"__str__": True})
     transaction_date: ISODate = field(default=None, metadata={"api_name": "date", "__str__": True})
     description: str = field(default="", metadata={"__str__": True})
     details: TellerTransactionDetails = field(default=None)
