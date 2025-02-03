@@ -1,7 +1,7 @@
 CREATE TABLE teller.transaction_details (
     processing_status TEXT NOT NULL,
     category teller.transaction_category,
-    counterparty_id BIGINT REFERENCES teller.counterparty(counterparty_id),
+    counterparty_id BIGINT REFERENCES teller.transaction_details_counterparty(transaction_details_counterparty_id),
     transaction_details_id BIGSERIAL PRIMARY KEY,
     transaction_id TEXT NOT NULL UNIQUE REFERENCES teller.transaction(transaction_id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

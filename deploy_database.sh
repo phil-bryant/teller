@@ -27,6 +27,5 @@ psql -U teller -d prod -f teller_transaction_details_counterparty.sql
 psql -U teller -d prod -f teller_transaction_links.sql
 psql -U teller -d prod -f teller_transaction_details.sql
 psql -U teller -d prod -f teller_transaction.sql
-psql -U teller -d prod -f create_indexes.sql
 psql -U teller -d prod -f create_triggers.sql
 psql -U teller -d prod -f create_audit.sql

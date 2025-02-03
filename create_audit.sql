@@ -9,28 +9,43 @@ CREATE TABLE teller.audit_log (
     changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE OR REPLACE FUNCTION teller.get_primary_key_columns(p_table_name text, p_schema_name text DEFAULT 'teller')
+RETURNS text[] AS $$
+    SELECT ARRAY_AGG(kcu.column_name::text ORDER BY kcu.ordinal_position)
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.key_column_usage kcu 
+        ON tc.constraint_name = kcu.constraint_name 
+        AND tc.table_schema = kcu.table_schema
+    WHERE tc.constraint_type = 'PRIMARY KEY'
+        AND tc.table_name = p_table_name
+        AND tc.table_schema = p_schema_name;
+$$ LANGUAGE SQL STABLE;
+
 CREATE OR REPLACE FUNCTION teller.audit_trigger_func()
 RETURNS TRIGGER AS $$
 DECLARE
     record_pk TEXT;
+    pk_columns text[];
+    pk_val text;
+    col text;
 BEGIN
-    -- Determine the primary key value based on the table
-    CASE TG_TABLE_NAME
-    WHEN 'balances' THEN
-        record_pk := NEW.account_id::TEXT;
-    WHEN 'account_details' THEN
-        record_pk := NEW.account_id::TEXT;
-    WHEN 'account_links' THEN
-        record_pk := NEW.account_id::TEXT;
-    WHEN 'account_details_links' THEN
-        record_pk := NEW.account_id::TEXT;
-    WHEN 'account_balances_links' THEN
-        record_pk := NEW.account_id::TEXT;
-    WHEN 'transaction_links' THEN
-        record_pk := NEW.transaction_id::TEXT;
+    pk_columns := teller.get_primary_key_columns(TG_TABLE_NAME);
+    
+    IF array_length(pk_columns, 1) = 1 THEN
+        EXECUTE format('SELECT ($1.%I)::text', pk_columns[1])
+        USING COALESCE(NEW, OLD)
+        INTO record_pk;
     ELSE
-        record_pk := NEW.id::TEXT;
-    END CASE;
+        record_pk := '{';
+        FOREACH col IN ARRAY pk_columns LOOP
+            EXECUTE format('SELECT ($1.%I)::text', col)
+            USING COALESCE(NEW, OLD)
+            INTO pk_val;
+            
+            record_pk := record_pk || pk_val || ',';
+        END LOOP;
+        record_pk := rtrim(record_pk, ',') || '}';
+    END IF;
 
     IF TG_OP = 'UPDATE' THEN
         INSERT INTO teller.audit_log (
@@ -81,21 +96,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create audit triggers for all tables
-CREATE TRIGGER audit_institutions
-    AFTER INSERT OR UPDATE OR DELETE ON teller.institutions
-    FOR EACH ROW EXECUTE FUNCTION teller.audit_trigger_func();
-
-CREATE TRIGGER audit_account
-    AFTER INSERT OR UPDATE OR DELETE ON teller.account
-    FOR EACH ROW EXECUTE FUNCTION teller.audit_trigger_func();
-
-CREATE TRIGGER audit_balances
-    AFTER INSERT OR UPDATE OR DELETE ON teller.balances
-    FOR EACH ROW EXECUTE FUNCTION teller.audit_trigger_func();
-
-CREATE TRIGGER audit_transaction
-    AFTER INSERT OR UPDATE OR DELETE ON teller.transaction
-    FOR EACH ROW EXECUTE FUNCTION teller.audit_trigger_func();
-
--- Add similar audit triggers for all other tables... 
+DO $$ 
+DECLARE
+    table_name text;
+BEGIN
+    FOR table_name IN 
+        SELECT tables.table_name 
+        FROM information_schema.tables tables
+        WHERE table_schema = 'teller' 
+        AND table_type = 'BASE TABLE'
+        AND table_name != 'audit_log'
+    LOOP
+        EXECUTE format('
+            CREATE TRIGGER audit_%I
+                AFTER INSERT OR UPDATE OR DELETE ON teller.%I
+                FOR EACH ROW EXECUTE FUNCTION teller.audit_trigger_func();',
+            table_name, table_name
+        );
+    END LOOP;
+END;
+$$; 
