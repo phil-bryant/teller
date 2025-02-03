@@ -15,4 +15,4 @@ class TellerTransaction(TellerObject): ## https://teller.io/docs/api/account/tra
     id: str = field(default="")
     links: TellerTransactionLinks = field(default=None)
     running_balance: str = field(default="")
-    type: TellerTransactionType = field(default=None, metadata={"__str__": True})
+    type: TellerTransactionType = field(default=None)

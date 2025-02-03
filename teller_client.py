@@ -41,6 +41,7 @@ def main():
         print(account)
         for transaction in account.get_transactions(10):
             print(transaction)
+            print(transaction.type)
         for owner in account_identity.owners:
             print(owner)
 

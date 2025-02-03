@@ -33,4 +33,4 @@ class TellerObject: ## https://teller.io/docs/api
                     setattr(self, key, self.__annotations__[key](value)) 
 
     def __str__(self):
-        return f"{self.__class__.__name__}({', '.join(f'{getattr(self, name)}' for name in self._str_field_names())})"
+        return f"{self.__class__.__name__}({', '.join(f'{getattr(self, name)}' for name in self._str_field_names())}):_api_data={self._api_data}"

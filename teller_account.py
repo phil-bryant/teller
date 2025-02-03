@@ -13,11 +13,11 @@ class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
     enrollment_id: str = field(default="")
     id: str = field(default="")
     institution: TellerInstitution = field(default=None)
-    last_four: str = field(default="")
+    last_four: str = field(default="", metadata={"__str__": True})
     links: TellerAccountLinks = field(default=None)
-    name: str = field(default="")
+    name: str = field(default="", metadata={"__str__": True})
     type: TellerAccountType = field(default=None)
-    subtype: TellerAccountSubtype = field(default=None)
+    subtype: TellerAccountSubtype = field(default=None, metadata={"__str__": True})
     status: TellerAccountStatus = field(default=None)
     details: TellerAccountDetails = field(default=None)
     balances: TellerAccountBalances = field(default=None)
@@ -33,6 +33,3 @@ class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
     def get_transactions(self, count: int = None) -> list[TellerTransaction]:
         self.transactions = [TellerTransaction(td) for td in self._api_client.get(self.links.transactions, {'count': count} if count else {})]
         return self.transactions
-    
-    def __str__(self):
-        return f"{self.institution_name()} {self.name} ({self.subtype}) {self.last_four}" 
