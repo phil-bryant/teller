@@ -38,10 +38,10 @@ def main():
     for account_identity in TellerAPIClient().get_account_identities():
         account = account_identity.account
         ## we cannot call account.get_details() yet because we first have to go through the microdeposit verification flow.
-        # print(account)
-        # for transaction in account.get_transactions(3):
-        #     print(transaction)
-        #     print(transaction.type)
+        print(account)
+        for transaction in account.get_transactions(3):
+            print(transaction)
+            print(transaction.type)
         for owner in account_identity.owners:
             print(owner)
 
