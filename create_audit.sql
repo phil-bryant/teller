@@ -105,7 +105,7 @@ BEGIN
         FROM information_schema.tables tables
         WHERE table_schema = 'teller' 
         AND table_type = 'BASE TABLE'
-        AND table_name != 'audit_log'
+        AND tables.table_name != 'audit_log'
     LOOP
         EXECUTE format('
             CREATE TRIGGER audit_%I
