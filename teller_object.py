@@ -4,15 +4,10 @@ from sqlalchemy import MetaData, DateTime
 from typing import ClassVar
 from datetime import datetime
 import structlog
+import re
+from teller_base import Base
 
 log = structlog.get_logger()
-
-class Base(DeclarativeBase):
-    metadata = MetaData(schema="teller")
-
-    @declared_attr.directive
-    def __tablename__(cls):
-        return cls.__name__.lower().replace('teller', '')
 
 class TimestampMixin:
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
@@ -24,6 +19,11 @@ class TellerObject(Base, TimestampMixin):
     __allow_unmapped__ = True
     _api_data: ClassVar[dict]
     _api_client: ClassVar[any] = None
+    __table_args__ = {"schema": "teller"}
+    
+    @classmethod
+    def set_api_client(cls, client):
+        cls._api_client = client
     
     def __init__(self, api_data=None):
         log.debug("TellerObject.__init__", class_name=self.__class__.__name__, api_data=api_data)
@@ -32,9 +32,10 @@ class TellerObject(Base, TimestampMixin):
             self._api_data = api_data
             self.__post_init__()
 
-    @classmethod
-    def set_api_client(cls, client):
-        cls._api_client = client
+    @declared_attr
+    def __tablename__(cls) -> str:
+        name = cls.__name__.replace('Teller', '')
+        return re.sub('(?!^)([A-Z][a-z]+)', r'_\1', name).lower()
 
     def _mapped_api_data(self):
         ## Handle cases where python objects need field names differing from API field names. See next comment.

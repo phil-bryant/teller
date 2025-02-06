@@ -1,6 +1,6 @@
 CREATE TABLE teller.account_details (
-    account_id TEXT PRIMARY KEY REFERENCES teller.account(account_id),
-    account_number TEXT NOT NULL UNIQUE,
+    account_id TEXT REFERENCES teller.account(account_id),
+    account_number TEXT PRIMARY KEY,
     account_details_links_id BIGINT NOT NULL REFERENCES teller.account_details_links(account_details_links_id) UNIQUE,
     routing_numbers_id BIGINT REFERENCES teller.routing_numbers(routing_numbers_id) UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
