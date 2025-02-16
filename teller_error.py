@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
+from annotation import Annotation
+
 from teller_object import TellerObject
 
-@dataclass
 class TellerError(TellerObject):
-    code: str = field(default="")
-    message: str = field(default="") 
+    code: Annotation[str, {}] = ""
+    message: Annotation[str, {}] = "" 

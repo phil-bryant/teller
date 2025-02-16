@@ -12,12 +12,12 @@ class TellerAPIClient:
     def __init__(self):
         self.api = API(self.base_url, self.auth_token, self.cert_pk_tuple)
 
-    def request(self, method, path, params: dict = None) -> json:
+    def request(self, method, path, params: dict = None) -> dict:
         response = self.api.request(method, path, params)
         if response.status_code != 200: raise Exception(response)
         return response.json()
     
-    def get(self, path, params: dict = None) -> json:
+    def get(self, path, params: dict = None) -> dict:
         return self.request("GET", path, params)
 
 def main():

@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
-from typing import Annotated
+from typing import Annotated, _AnnotatedAlias
 
 # pyright: reportInvalidTypeForm=false
 #setattr(Annotated, '__init_subclass__', lambda *args, **kwargs: None)
 #setattr(Annotated, '__mro_entries__', lambda bases, *args: ())
 #setattr(Annotated, '__new__', lambda *args: print("foo1"))
 
-class APIField(Annotated, _root=True):
+class _MyAnnotatedAlias(_AnnotatedAlias, _root=True):
     #def __new__(cls, type_arg, metadata, *args, **kwargs):
     #    print("foo2")
     #    return super().__new__(cls, type_arg, metadata, *args, **kwargs).__init__(type_arg, metadata, *args, **kwargs)
@@ -18,14 +18,22 @@ class APIField(Annotated, _root=True):
     #def __init_subclass__(cls, *args, **kwargs):
     #    print("foo4")
 
+    #def __class_getitem__(cls, params):
+    #    print("foo5")  # This should actually get called
+    #    return super().__class_getitem__(params)
+    
+    #def __getattribute__(self, name):
+    #    print("foo6")
+    #    return super().__getattribute__(name)
+    
     def __class_getitem__(cls, params):
         print("foo5")  # This should actually get called
-        # return super().__class_getitem__(params)
+        return Annotated.__class_getitem__(params)
     
-
+    def noop(self): pass
     
 class Product:
-    name: APIField[str, {"max_length": 100, "required": True}] = "foo6"
+    name: _AnnotatedAlias[str, {"max_length": 100, "required": True}] = "foo6"
     price: APIField[float, {"min_value": 0, "required": True}] = 0.0
     
     def __init__(self, name: str, price: float):

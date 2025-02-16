@@ -1,5 +1,5 @@
 CREATE TABLE teller.transaction_details (
-    processing_status TEXT NOT NULL,
+    processing_status teller.processing_status NOT NULL,
     category teller.transaction_category,
     counterparty_id BIGINT REFERENCES teller.transaction_details_counterparty(transaction_details_counterparty_id),
     transaction_details_id BIGSERIAL PRIMARY KEY,

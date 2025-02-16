@@ -2,26 +2,25 @@
 from typing import Annotated
 
 # pyright: reportInvalidTypeForm=false
-#setattr(Annotated, '__init_subclass__', lambda *args, **kwargs: None)
-#setattr(Annotated, '__mro_entries__', lambda bases, *args: ())
-#setattr(Annotated, '__new__', lambda *args: print("foo1"))
+setattr(Annotated, '__init_subclass__', lambda *args, **kwargs: None)
+setattr(Annotated, '__mro_entries__', lambda bases, *args: ())
+setattr(Annotated, '__new__', lambda *args: print("foo1"))
 
 class APIField(Annotated, _root=True):
-    #def __new__(cls, type_arg, metadata, *args, **kwargs):
-    #    print("foo2")
-    #    return super().__new__(cls, type_arg, metadata, *args, **kwargs).__init__(type_arg, metadata, *args, **kwargs)
+    def __new__(cls, type_arg, metadata, *args, **kwargs):
+        print("foo2")
+        return super().__new__(cls, type_arg, metadata, *args, **kwargs)
     
-    #def __init__(self, type_arg, metadata, *args, **kwargs):
-    #    print("foo3")
-    #    #self.__metadata__[0]["api_name"] = "foo"
+    def __init__(self, type_arg, metadata, *args, **kwargs):
+        print("foo3")
+        #self.__metadata__[0]["api_name"] = "foo"
     
-    #def __init_subclass__(cls, *args, **kwargs):
-    #    print("foo4")
+    def __init_subclass__(cls, *args, **kwargs):
+        print("foo4")
 
     def __class_getitem__(cls, params):
         print("foo5")  # This should actually get called
-        # return super().__class_getitem__(params)
-    
+        return super().__class_getitem__(params)
 
     
 class Product:

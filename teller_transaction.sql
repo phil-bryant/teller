@@ -1,7 +1,7 @@
 CREATE TABLE teller.transaction (
     account_id TEXT NOT NULL REFERENCES teller.account(account_id),
     amount DECIMAL(15,2) NOT NULL,
-    date DATE NOT NULL,
+    transaction_date DATE NOT NULL,
     description TEXT NOT NULL,
     transaction_details_id BIGINT NOT NULL UNIQUE REFERENCES teller.transaction_details(transaction_details_id),
     status teller.transaction_status NOT NULL,

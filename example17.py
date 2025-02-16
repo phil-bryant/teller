@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+# pyright: reportInvalidTypeForm=false
 
 class APIField:
     def __class_getitem__(cls, params): return cls(*params)
@@ -10,8 +11,8 @@ class APIField:
 
 class Product:
     #category: str = "software"
-    names: APIField[list[str], ({"max_length": 100, "required": True}, )]
-    price: APIField[float, ({"min_value": 0, "required": True}, )]
+    names: APIField[list[str], {"max_length": 100, "required": True}]
+    price: APIField[float, {"min_value": 0, "required": True}]
     
     def __init__(self, names: list[str], price: float):
         self.name = names

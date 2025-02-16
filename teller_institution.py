@@ -1,7 +1,6 @@
-from dataclasses import dataclass, field
 from teller_object import TellerObject
+from annotation import Annotation
 
-@dataclass
 class TellerInstitution(TellerObject): ## https://teller.io/docs/api/institutions
-    institution_id: str = field(default="")
-    name: str = field(default="") 
+    institution_id: Annotation[str, ({"pk": True}, )] = ""
+    name: Annotation[str, ({}, )] = "" 

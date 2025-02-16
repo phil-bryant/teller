@@ -1,7 +1,7 @@
 CREATE TABLE teller.account_details_links (
-    account_details_links_id BIGSERIAL PRIMARY KEY,
     self_link TEXT NOT NULL UNIQUE,
-    account_link TEXT NOT NULL UNIQUE,
+    account TEXT NOT NULL UNIQUE,
+    account_details_links_id BIGSERIAL PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

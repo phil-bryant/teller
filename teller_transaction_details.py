@@ -1,10 +1,10 @@
-from dataclasses import dataclass, field
 from teller_object import TellerObject
+from annotation import Annotation
 from teller_enums import TellerTransactionDetailsCategory
 from teller_transaction_details_counterparty import TellerTransactionDetailsCounterparty
 
-@dataclass
 class TellerTransactionDetails(TellerObject): ## https://teller.io/docs/api/account/transactions
-    processing_status: str = field(default="")
-    category: TellerTransactionDetailsCategory = field(default=None)
-    counterparty: TellerTransactionDetailsCounterparty = field(default=None) 
+    processing_status: Annotation[str, ({"enum": True}, )] = ""
+    category: Annotation[TellerTransactionDetailsCategory, ({"enum": True}, )] = None
+    counterparty: Annotation[TellerTransactionDetailsCounterparty, ({"fk": True}, )] = None 
+    transaction_details_id: Annotation[int, ({"pk": True}, )] = None
