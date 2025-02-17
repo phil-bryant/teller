@@ -1,9 +1,12 @@
 from typing import _type_repr
 
 class Annotation:
-    def __class_getitem__(cls, params): return cls(*params)
+    def __class_getitem__(cls, params): 
+        print("annotation.__class_getitem__")
+        return cls(*params)
 
     def __init__(self, type_arg, metadata):
+        print("annotation.__init__")
         self.__origin__ = type_arg
         self.__metadata__ = (metadata,) if not isinstance(metadata, tuple) else metadata
         self.__args__ = (type_arg,) + self.__metadata__

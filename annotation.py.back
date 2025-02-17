@@ -1,0 +1,50 @@
+from typing import _type_repr
+import inspect
+
+class Annotation:
+    def __class_getitem__(cls, params): return cls(*params)
+
+    def __init__(self, type_arg, metadata):
+        self.__origin__ = type_arg
+        self.__metadata__ = (metadata,) if not isinstance(metadata, tuple) else metadata
+        self.__args__ = (type_arg,) + self.__metadata__
+        print("annotation.__init__")
+        self.__caller__ = None
+        frame = inspect.currentframe()
+        try:
+            if frame.f_back and frame.f_back.f_locals.get('self'):
+                self.__caller__ = frame.f_back.f_locals['self']
+            elif frame.f_back and 'cls' in frame.f_back.f_locals:
+                self.__caller__ = frame.f_back.f_locals['cls']
+            else:
+                # Walk up the stack to find the class definition
+                while frame.f_back:
+                    frame = frame.f_back
+                    if 'self' in frame.f_locals:
+                        self.__caller__ = frame.f_back.f_locals['self']
+                        break
+                    elif '__qualname__' in frame.f_locals:
+                        self.__caller__ = frame.f_locals['__qualname__']
+                        break
+        finally:
+            del frame  # Prevent reference cycles
+        print(f"__init__... self.__caller__={self.__caller__}")
+        
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}[{_type_repr(self.__origin__)}, {', '.join(repr(a) for a in self.__metadata__)}]"
+    
+    def __get__(self, instance, owner):
+        print("__get__")
+
+    def __set__(self, instance, value):
+        print("__set__")
+
+    def __delete__(self, instance):
+        print("__delete__")
+
+    def __call__(self, *args, **kwargs):
+        print("__call__")
+
+    def __set_name__(self, owner, name):
+        print("__set_name__")
