@@ -2,15 +2,17 @@
 from api import API
 import json
 from pathlib import Path
+from teller_list import TellerList
 from teller_account_identities import TellerAccountIdentities
 
 class TellerAPIClient:
     base_url = "https://api.teller.io"
-    auth_token = json.load(open(Path.home() / ".teller/auth_token.json"))["current"]
+    auth_tuple = (json.load(open(Path.home() / ".teller/auth_token.json"))["current"], "")
     cert_pk_tuple = (str(Path.home() / ".teller/certificate.pem"), str(Path.home() / ".teller/private_key.pem"))
 
     def __init__(self):
-        self.api = API(self.base_url, self.auth_token, self.cert_pk_tuple)
+        self.api = API(self.base_url, self.auth_tuple, self.cert_pk_tuple)
+        self.foo = "bar"
 
     def request(self, method, path, params: dict = None) -> dict:
         response = self.api.request(method, path, params)
@@ -21,7 +23,8 @@ class TellerAPIClient:
         return self.request("GET", path, params)
 
 def main():
-    for account_identity in TellerAccountIdentities(TellerAPIClient()):
+    accountIdentities = TellerAccountIdentities(TellerAPIClient())
+    for account_identity in accountIdentities:
         account = account_identity.account
         ## we cannot call account.get_details() yet because we first have to go through the microdeposit verification flow.
         print(account)

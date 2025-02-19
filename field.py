@@ -1,18 +1,24 @@
 from typing import Any, Type
 
 class Field:
-    def __init__(self, name: str, type_: Type, value: Any = None, metadata: dict = None, default: any = None):
-        print("Field.__init__")
-        self.name = name
-        self.type_ = type_
-        self.value = value
-        self.metadata = metadata
-        self.default = default
+    _primitive_attrs = {'name', 'type_'}
+    
+    def __init__(self, name: str, type_: Type, value: Any = None, metadata: dict = None):
+        super().__setattr__("name", name)
+        super().__setattr__("type_", type_)
+        super().__setattr__("value", type_(value))
+        super().__setattr__("metadata", metadata or {})
+    
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in Field._primitive_attrs:  
+            super().__setattr__(name, value)
+        elif name is "metadata":
+            self.metadata[name] = value  
+        elif name is "value":
+            super().__setattr__(name, self.type_(value))
 
-    def __set__(self, instance, value):
-        print("Field.__set__")
-        self.value = value
-
-    def __get__(self, instance, owner):
-        print("Field.__get__")
-        return self.value
+    def __getattr__(self, attribute_name: str) -> Any:
+        return self.metadata.get(attribute_name)
+    
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.name}: {self.type_.__name__} = {self.value} {self.metadata})"

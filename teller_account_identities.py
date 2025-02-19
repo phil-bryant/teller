@@ -10,5 +10,9 @@ class TellerAccountIdentities(TellerObject): ## https://teller.io/docs/api/ident
 
     def __init__(self, api_client: Optional[Any] = None, api_data: Optional[dict] = None):
         super().__init__(api_client, api_data)
-        self.__setattr__("account", Field(TellerAccount, None, {}))
-        self.__setattr__("owners", Field(TellerList[TellerIdentity], None, {"db_table": "identity", "fk": True}))
+        self._get_api_data()
+        self._set_field("account", TellerAccount, TellerAccount(api_client, self._get_api_data()["account"]), {})
+        self._set_field("owners", TellerList[TellerIdentity], api_data, {"db_table": "identity", "fk": True})
+
+    def get_all(cls, api_client: Any) -> list:
+        
