@@ -1,11 +1,12 @@
 #! /usr/bin/env python3
+from teller_api_client_type import TellerAPIClient
 from api import API
 import json
 from pathlib import Path
 from teller_list import TellerList
 from teller_account_identities import TellerAccountIdentities
 
-class TellerAPIClient:
+class TellerAPIClient(TellerAPIClient):
     base_url = "https://api.teller.io"
     auth_tuple = (json.load(open(Path.home() / ".teller/auth_token.json"))["current"], "")
     cert_pk_tuple = (str(Path.home() / ".teller/certificate.pem"), str(Path.home() / ".teller/private_key.pem"))

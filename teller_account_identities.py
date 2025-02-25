@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from teller_api_client_type import TellerAPIClient
 from teller_object import TellerObject
 from field import Field
 from teller_account import TellerAccount
@@ -8,11 +8,7 @@ from teller_identity import TellerIdentity
 class TellerAccountIdentities(TellerObject): ## https://teller.io/docs/api/identity#get-identity
     _path: str = "/identity"
 
-    def __init__(self, api_client: Optional[Any] = None, api_data: Optional[dict] = None):
-        super().__init__(api_client, api_data)
-        self._get_api_data()
-        self._set_field("account", TellerAccount, TellerAccount(api_client, self._get_api_data()["account"]), {})
-        self._set_field("owners", TellerList[TellerIdentity], api_data, {"db_table": "identity", "fk": True})
-
-    def get_all(cls, api_client: Any) -> list:
-        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._set_field("account", TellerAccount, None, {})
+        self._set_field("owners", TellerList[TellerIdentity], None, {"db_table": "identity", "fk": True})        

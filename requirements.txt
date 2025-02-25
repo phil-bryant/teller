@@ -1,8 +1,8 @@
 fastapi==0.110.0
 uvicorn==0.27.1
 python-dotenv==1.0.1
-sqlalchemy==2.0.28
 psycopg==3.1.18
 requests==2.31.0
 structlog==23.1.0
+multipledispatch==0.6.0
 -e .

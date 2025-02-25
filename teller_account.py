@@ -11,21 +11,21 @@ from teller_transaction import TellerTransaction
 
 class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
 
-    def __init__(self, api_client: Optional[Any] = None, api_data: Optional[dict] = None):
-        super().__init__(api_client, api_data)
-        self._set_field("currency", str, api_data, {})
-        self._set_field("enrollment_id", str, api_data, {})
+    def __init__(self):
+        super().__init__()
+        self._set_field("currency", str, None, {})
+        self._set_field("enrollment_id", str, None, {})
         self._set_field("id", str, api_data, {"pk": True, "db_name": "account_id"})
-        self._set_field("institution", TellerInstitution, api_data, {"fk": True})
-        self._set_field("last_four", str, api_data, {"__str__": True})
+        self._set_field("institution", TellerInstitution, None, {"fk": True})
+        self._set_field("last_four", str, None, {"__str__": True})
         self._set_field("links", TellerAccountLinks, api_data, {"fk": True})
-        self._set_field("name", str, api_data, {"__str__": True})
-        self._set_field("type", TellerAccountType, api_data, {"enum": True})
-        self._set_field("subtype", TellerAccountSubtype, api_data, {"__str__": True, "enum": True})
-        self._set_field("status", TellerAccountStatus, api_data, {"enum": True})
-        self._set_field("details", TellerAccountDetails, api_data, {})
-        self._set_field("balances", TellerAccountBalances, api_data, {})
-        self._set_field("transactions", TellerList[TellerTransaction], api_data, {})
+        self._set_field("name", str, None, {"__str__": True})
+        self._set_field("type", TellerAccountType, None, {"enum": True})
+        self._set_field("subtype", TellerAccountSubtype, None, {"__str__": True, "enum": True})
+        self._set_field("status", TellerAccountStatus, None, {"enum": True})
+        self._set_field("details", TellerAccountDetails, None, {})
+        self._set_field("balances", TellerAccountBalances, None, {})
+        self._set_field("transactions", TellerList[TellerTransaction], None, {})
     
     def institution_name(self) -> str:
         return self.institution.name if self.institution else ""

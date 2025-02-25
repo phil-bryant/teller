@@ -6,9 +6,9 @@ class TellerList(list):
     def __class_getitem__(cls, item):
         class SubTellerList(cls):
             __orig_type__ = item
-            def __init__(self, data=None):
+            def __init__(self, api_data=None):
                 super().__init__([
                     self.__orig_type__(api_data=x) if isinstance(x, dict) else x 
-                    for x in (data or [])
+                    for x in (api_data or [])
                 ])
         return SubTellerList

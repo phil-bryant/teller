@@ -6,7 +6,7 @@ class Field:
     def __init__(self, name: str, type_: Type, value: Any = None, metadata: dict = None):
         super().__setattr__("name", name)
         super().__setattr__("type_", type_)
-        super().__setattr__("value", type_(value))
+        super().__setattr__("value", type_(value) if value else None)
         super().__setattr__("metadata", metadata or {})
     
     def __setattr__(self, name: str, value: Any) -> None:
