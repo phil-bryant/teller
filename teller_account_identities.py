@@ -1,6 +1,4 @@
-from teller_api_client_type import TellerAPIClient
 from teller_object import TellerObject
-from field import Field
 from teller_account import TellerAccount
 from teller_identity import TellerIdentity
 
