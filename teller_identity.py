@@ -10,8 +10,8 @@ class TellerIdentity(TellerObject): ## https://teller.io/docs/api/identity
     def __init__(self, api_data: dict):
         super().__init__()
         self._set_field("type", TellerIdentityType, api_data, {"enum": True})
-        self._set_field("names", TellerIdentityName, api_data, {})
-        self._set_field("addresses", TellerIdentityAddress, api_data, {})
-        self._set_field("phone_numbers", TellerIdentityPhoneNumber, api_data, {})
-        self._set_field("emails", TellerIdentityEmail, api_data, {})
+        self._set_field("names", TellerIdentityName, api_data)
+        self._set_field("addresses", TellerIdentityAddress, api_data)
+        self._set_field("phone_numbers", TellerIdentityPhoneNumber, api_data)
+        self._set_field("emails", TellerIdentityEmail, api_data)
         self._set_field("identity_id", int, None, {"pk": True})

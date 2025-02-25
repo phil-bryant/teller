@@ -4,6 +4,6 @@ class TellerIdentityEmail(TellerObject): ## Defined on the Identity page: https:
 
     def __init__(self, api_data: dict):
         super().__init__()
-        self._set_field("data", str, api_data, {}, )
-        self._set_field("identity_email_id", int, api_data, {"pk": True}, )
-        self._set_field("identity_id", int, api_data, {"fk": True}, )
+        self._set_field("data", str, api_data)
+        self._set_field("identity_email_id", int, None, {"pk": True})
+        self._set_field("identity_id", int, None, {"fk": True})

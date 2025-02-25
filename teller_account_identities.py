@@ -9,5 +9,5 @@ class TellerAccountIdentities(TellerObject): ## https://teller.io/docs/api/ident
 
     def __init__(self, api_data: dict):
         super().__init__()
-        self._set_field("account", TellerAccount, api_data, {})
+        self._set_field("account", TellerAccount, api_data)
         self._set_field("owners", TellerIdentity, api_data, {"db_table": "identity", "fk": True})       

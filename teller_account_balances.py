@@ -8,5 +8,5 @@ class TellerAccountBalances(TellerObject):
         self._set_field("account_id", str, api_data, {"fk": True})
         self._set_field("ledger", Decimal, api_data, {"__str__": True})
         self._set_field("available", Decimal, api_data, {"__str__": True})
-        self._set_field("links", TellerAccountBalancesLinks, api_data, {})
-        self._set_field("account_balances_id", int, api_data, {"pk": True})
+        self._set_field("links", TellerAccountBalancesLinks, api_data)
+        self._set_field("account_balances_id", int, None, {"pk": True})

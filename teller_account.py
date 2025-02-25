@@ -12,8 +12,8 @@ class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
 
     def __init__(self, api_data):
         super().__init__()
-        self._set_field("currency", str, api_data, {})
-        self._set_field("enrollment_id", str, api_data, {})
+        self._set_field("currency", str, api_data)
+        self._set_field("enrollment_id", str, api_data)
         self._set_field("id", str, api_data, {"pk": True, "db_name": "account_id"})
         self._set_field("institution", TellerInstitution, api_data, {"fk": True})
         self._set_field("last_four", str, api_data, {"__str__": True})
@@ -22,9 +22,9 @@ class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
         self._set_field("type", TellerAccountType, api_data, {"enum": True})
         self._set_field("subtype", TellerAccountSubtype, api_data, {"__str__": True, "enum": True})
         self._set_field("status", TellerAccountStatus, api_data, {"enum": True})
-        self._set_field("details", TellerAccountDetails, None, {})
-        self._set_field("balances", TellerAccountBalances, None, {})
-        self._set_field("transactions", list[TellerTransaction], None, {})
+        self._set_field("details", TellerAccountDetails, None)
+        self._set_field("balances", TellerAccountBalances, None)
+        self._set_field("transactions", list[TellerTransaction], None)
 
     def institution_name(self) -> str:
         return self.institution.name if self.institution else ""

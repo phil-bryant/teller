@@ -6,8 +6,8 @@ class TellerAccountDetails(TellerObject): ## https://teller.io/docs/api/account/
 
     def __init__(self, api_data: dict):
         super().__init__()
-        self._set_field("account_id", str, api_data, {"pk": True, "fk": True}, )
-        self._set_field("account_number", str, api_data, {}, )
-        self._set_field("links", TellerAccountDetailsLinks, api_data, {}, )
-        self._set_field("routing_numbers", TellerRoutingNumbers, api_data, {}, )
+        self._set_field("account_id", str, None, {"pk": True, "fk": True})
+        self._set_field("account_number", str, api_data)
+        self._set_field("links", TellerAccountDetailsLinks, api_data)
+        self._set_field("routing_numbers", TellerRoutingNumbers, api_data)
 

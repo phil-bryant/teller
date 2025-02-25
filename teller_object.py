@@ -8,7 +8,7 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     _path: str = ""
     _api_client = None
 
-    def _set_field(self, name: str, type_: type, api_data: dict, metadata: dict):
+    def _set_field(self, name: str, type_: type, api_data: dict, metadata: dict = {}):
         ## Refactor this later
         field = Field(name, type_, api_data[metadata["api_name"] if "api_name" in metadata else name] if api_data else None, metadata)
         self._fields[field.name] = field
