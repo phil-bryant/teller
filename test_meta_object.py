@@ -11,7 +11,6 @@ class MetaObj(type):
         instance = super().__call__(*args, **kwargs)
         print_me('MetaObj.__call__', cls, super(), *args, **kwargs)
         return instance
-    
     ## class type
     ## def __init__(self, o: object, /) -> None: ...
     ## def __init__(self, name: str, bases: tuple[type, ...], dict: dict[str, Any], /, **kwds: Any) -> None: ...

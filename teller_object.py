@@ -1,53 +1,25 @@
 #! /usr/bin/env python3
-from teller_api_client_type import TellerAPIClient
+from teller_meta_object import TellerMetaObject
 from field import Field
-from typing import Any, Optional, List
 from iso_date import ISODate
+from typing import Any
 
-class TellerObjectMeta(type):
+class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     _path: str = ""
     _api_client = None
-
-    def __call__(cls, *args, **kwargs):
-        print(f"TellerObjectMeta.__call__1 cls = {cls} {args}")
-        for arg in args:
-            if isinstance(arg, TellerAPIClient): 
-                cls._api_client = arg
-                return cls.__call__(cls, cls._api_client.get(cls._path))
-            elif isinstance(arg, list):
-                objects = []
-                for api_data_item in arg:
-                    sup = super()
-                    obj = sup.__call__(sup, api_data_item)
-                    objects.append(obj)
-                return objects
-            elif isinstance(arg, dict):
-                sup = super()
-                return sup.__call__(sup, arg)
-
-class TellerObject(metaclass=TellerObjectMeta): ## https://teller.io/docs/api
-    def __call__(cls, *args, **kwargs):
-        print(f"TellerObject.__call__ cls = {cls} {args}")
 
     def _set_field(self, name: str, type_: type, value: Any, metadata: dict):
         field = Field(name, type_, value, metadata)
         self.__setattr__("_" + name, field)
-        self.__setattr__(field.name, field.value)
+        self.__setattr__(field.name, type_(field.value))
         if field.api_name: self.__setattr__("_" + field.api_name, field.value)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, api_data: dict):
         self._set_field("created_at", ISODate, None, {"db_ro": True})
         self._set_field("updated_at", ISODate, None, {"db_ro": True})
-
-    def __post_init__(self):
-        api_data = self._get_api_data()
-        fields = list(self.fields().values())
-        for api_fields in api_data:
-            for api_field_name, api_field_value in api_fields.items():
-                field = self.fields()["_" + api_field_name]
-                setattr(field, "value", field.type_(api_field_value))
-        return self
+        for key, value in (api_data or {}).items():
+            pass
+            self._set_field(key, type(value), value, {})
 
     def _field_type_(self, name: str):
         return self.__dict__["_" + name].type_

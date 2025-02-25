@@ -11,8 +11,8 @@ from teller_transaction import TellerTransaction
 
 class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, api_data):
+        super().__init__(api_data)
         self._set_field("currency", str, None, {})
         self._set_field("enrollment_id", str, None, {})
         self._set_field("id", str, api_data, {"pk": True, "db_name": "account_id"})
