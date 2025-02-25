@@ -3,7 +3,6 @@ from teller_api_client_type import TellerAPIClient
 from api import API
 import json
 from pathlib import Path
-from teller_list import TellerList
 from teller_account_identities import TellerAccountIdentities
 
 class TellerAPIClient(TellerAPIClient):

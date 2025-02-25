@@ -8,18 +8,20 @@ class TellerMetaObject(type):
             print(f"receiving with {type(arg)}")
             if isinstance(arg, TellerAPIClient): 
                 cls._api_client = arg
-                result = cls._api_client.get(cls._path)
-                print(f"calling with {type(result)}")
-                return cls.__call__(result)
+                response = cls._api_client.get(cls._path)
+                print(f"calling with {type(response)}")
+                return cls.__call__(response)
             elif isinstance(arg, list):
                 objects = []
                 for api_data_item in arg:
                     if isinstance(api_data_item, dict):
                         print(f"calling with {type(api_data_item)}")
-                        obj = super().__call__(api_data_item)
+                        obj = cls.__call__(api_data_item)
                         objects.append(obj)
                     else:
                         pass
                 return objects
-            else:
+            elif isinstance(arg, dict):
                 return super().__call__(arg)
+            else:
+                return super().__call__()
