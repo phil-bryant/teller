@@ -12,9 +12,9 @@ class Field:
     def __setattr__(self, name: str, value: Any) -> None:
         if name in Field._primitive_attrs:  
             super().__setattr__(name, value)
-        elif name is "metadata":
-            self.metadata[name] = value  
-        elif name is "value":
+        elif name == "metadata":
+            super().__setattr__(name, value or {})
+        elif name == "value":
             super().__setattr__(name, self.type_(value))
 
     def __getattr__(self, attribute_name: str) -> Any:
