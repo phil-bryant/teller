@@ -35,10 +35,29 @@ def convert_file(file_path):
     for field_name, field_type, metadata, default_value in annotations:
         content = re.sub(r'^\s*' + field_name + r': Annotation\[.*?\] = .*?$', '', content, flags=re.MULTILINE)
     
+    # Determine which fields are database-only (not in API)
+    db_only_fields = []
+    for field_name, field_type, metadata, default_value in annotations:
+        # Fields with pk=True but no api_name are likely database-only
+        if '"pk": True' in metadata and '"api_name"' not in metadata:
+            # Fields ending with _id are typically database-only
+            if field_name.endswith('_id'):
+                db_only_fields.append(field_name)
+    
     # Add or modify __init__ method
     init_code = f"    def __init__(self, api_data: dict):\n        super().__init__()\n"
     for field_name, field_type, metadata, default_value in annotations:
-        init_code += f"        self._set_field(\"{field_name}\", {field_type}, api_data, {metadata})\n"
+        # Clean up metadata - remove trailing comma if present
+        metadata = metadata.rstrip(', ')
+        
+        # Determine if this field should use api_data or None
+        data_source = "None" if field_name in db_only_fields else "api_data"
+        
+        # Skip empty metadata
+        if metadata.strip() == '{}':
+            init_code += f"        self._set_field(\"{field_name}\", {field_type}, {data_source})\n"
+        else:
+            init_code += f"        self._set_field(\"{field_name}\", {field_type}, {data_source}, {metadata})\n"
     
     if init_exists:
         # Replace existing __init__ method
@@ -49,6 +68,9 @@ def convert_file(file_path):
     
     # Clean up empty lines
     content = re.sub(r'\n\n\n+', '\n\n', content)
+    
+    # Fix any remaining issues with trailing commas in _set_field calls
+    content = re.sub(r'_set_field\((.*?), {(.*?)}, \)', r'_set_field(\1, {\2})', content)
     
     # Write the modified content back to the file
     with open(file_path, 'w') as f:

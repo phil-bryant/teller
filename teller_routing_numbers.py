@@ -1,8 +1,10 @@
 from teller_object import TellerObject
-from annotation import Annotation
 
 class TellerRoutingNumbers(TellerObject): ## https://teller.io/docs/api/account/details
-    ach: Annotation[str, ({}, )] = ""
-    wire: Annotation[str, ({}, )] = ""
-    bacs: Annotation[str, ({}, )] = "" 
-    routing_numbers_id: Annotation[int, ({"pk": True}, )] = None
+
+    def __init__(self, api_data: dict):
+        super().__init__()
+        self._set_field("ach", str, api_data, {}, )
+        self._set_field("wire", str, api_data, {}, )
+        self._set_field("bacs", str, api_data, {}, )
+        self._set_field("routing_numbers_id", int, api_data, {"pk": True}, )
