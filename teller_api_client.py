@@ -4,8 +4,6 @@ from api import API
 import json
 from pathlib import Path
 from teller_account_identities import TellerAccountIdentities
-from teller_transaction_type import TellerTransactionType
-from object_inspector import save_objects_snapshot
 
 class TellerAPIClient(TellerAPIClient):
     base_url = "https://api.teller.io"
@@ -39,8 +37,6 @@ def main():
         for owner in account_identity.owners:
             all_objects.append(owner)
             print(owner)
-    
-    save_objects_snapshot(all_objects, 'original_objects_snapshot.pickle')
 
 if __name__ == "__main__":
     main() 
