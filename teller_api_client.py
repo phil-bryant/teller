@@ -3,7 +3,11 @@ from teller_api_client_type import TellerAPIClient
 from api import API
 import json
 from pathlib import Path
+import argparse
 from teller_account_identities import TellerAccountIdentities
+import pickle
+
+
 
 class TellerAPIClient(TellerAPIClient):
     base_url = "https://api.teller.io"
@@ -12,7 +16,6 @@ class TellerAPIClient(TellerAPIClient):
 
     def __init__(self):
         self.api = API(self.base_url, self.auth_tuple, self.cert_pk_tuple)
-        self.foo = "bar"
 
     def request(self, method, path, params: dict = None) -> dict:
         response = self.api.request(method, path, params)
@@ -23,10 +26,15 @@ class TellerAPIClient(TellerAPIClient):
         return self.request("GET", path, params)
 
 def main():
+    parser = argparse.ArgumentParser(description='Teller API Client')
+    parser.add_argument('filename', help='Filename to save accountIdentities pickle')
+    args = parser.parse_args()
     accountIdentities = TellerAccountIdentities(TellerAPIClient())
     for account_identity in accountIdentities:
         account_identity.get_transactions(limit=2)
         print(account_identity)
+    with open(args.filename, 'wb') as f:
+        pickle.dump(accountIdentities, f)
 
 if __name__ == "__main__":
     main() 
