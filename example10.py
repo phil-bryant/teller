@@ -21,9 +21,7 @@ class APIField(Annotated, _root=True):
     def __class_getitem__(cls, params):
         print("foo5")  # This should actually get called
         # return super().__class_getitem__(params)
-    
 
-    
 class Product:
     name: APIField[str, {"max_length": 100, "required": True}] = "foo6"
     price: APIField[float, {"min_value": 0, "required": True}] = 0.0

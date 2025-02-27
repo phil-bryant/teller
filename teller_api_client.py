@@ -4,6 +4,7 @@ from api import API
 import json
 from pathlib import Path
 from teller_account_identities import TellerAccountIdentities
+from teller_transaction_type import TellerTransactionType
 
 class TellerAPIClient(TellerAPIClient):
     base_url = "https://api.teller.io"
@@ -23,6 +24,9 @@ class TellerAPIClient(TellerAPIClient):
         return self.request("GET", path, params)
 
 def main():
+    api_client = TellerAPIClient()
+    transaction_type = TellerTransactionType("ach")
+    print(transaction_type)
     accountIdentities = TellerAccountIdentities(TellerAPIClient())
     for account_identity in accountIdentities:
         account = account_identity.account

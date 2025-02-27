@@ -1,6 +1,4 @@
-from typing import Any, Optional
 from teller_object import TellerObject
-from field import Field
 from teller_institution import TellerInstitution
 from teller_account_links import TellerAccountLinks
 from teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccountStatus
@@ -9,6 +7,7 @@ from teller_account_balances import TellerAccountBalances
 from teller_transaction import TellerTransaction
 
 class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
+    _path: str = "/accounts"
 
     def __init__(self, api_data):
         super().__init__()
@@ -22,9 +21,9 @@ class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
         self._set_field("type", TellerAccountType, api_data, {"enum": True})
         self._set_field("subtype", TellerAccountSubtype, api_data, {"__str__": True, "enum": True})
         self._set_field("status", TellerAccountStatus, api_data, {"enum": True})
-        self._set_field("details", TellerAccountDetails, None)
-        self._set_field("balances", TellerAccountBalances, None)
-        self._set_field("transactions", list[TellerTransaction], None)
+        self._set_field("details", TellerAccountDetails, None, {}, self._api_client)
+        self._set_field("balances", TellerAccountBalances, None, {}, self._api_client)
+        self._set_field("transactions", TellerTransaction, None, {}, self._api_client)
 
     def institution_name(self) -> str:
         return self.institution.name if self.institution else ""

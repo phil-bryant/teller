@@ -1,5 +1,5 @@
 from teller_object import TellerObject
-from typing import List, Optional, Any
+from typing import Optional, Any
 from teller_enums import TellerIdentityType
 from teller_identity_name import TellerIdentityName
 from teller_identity_address import TellerIdentityAddress

@@ -3,7 +3,6 @@ from typing import _AnnotatedAlias
 
 # pyright: reportInvalidTypeForm=false
 
-
 setattr(_AnnotatedAlias, '__init_subclass__', lambda *args, **kwargs: None)
 
 class APIField2(_AnnotatedAlias):

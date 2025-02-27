@@ -1,0 +1,50 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File with External Libraries",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Python: test_urljoin.py with External Libraries",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/test_urljoin.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Python: debug_urllib_parse.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/debug_urllib_parse.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "showReturnValue": true
+        },
+        {
+            "name": "Python: find_urllib_parse.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/find_urllib_parse.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        }
+    ]
+} 
