@@ -23,20 +23,10 @@ class TellerAPIClient(TellerAPIClient):
         return self.request("GET", path, params)
 
 def main():
-    all_objects = []
     accountIdentities = TellerAccountIdentities(TellerAPIClient())
     for account_identity in accountIdentities:
-        all_objects.append(account_identity)
-        account = account_identity.account
-        all_objects.append(account)
-        ## we cannot call account.get_details() yet because we first have to go through the microdeposit verification flow.
-        print(account)
-        for transaction in account.get_transactions(2):
-            all_objects.append(transaction)
-            print(transaction)
-        for owner in account_identity.owners:
-            all_objects.append(owner)
-            print(owner)
+        account_identity.get_transactions(limit=2)
+        print(account_identity)
 
 if __name__ == "__main__":
     main() 

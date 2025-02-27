@@ -32,6 +32,6 @@ class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
         self.details = TellerAccountDetails(self._api_client.get(self.links.details))
         return self.details
     
-    def get_transactions(self, count: int = None) -> list[TellerTransaction]:
-        self.transactions = [TellerTransaction(td) for td in self._api_client.get(self.links.transactions, {'count': count} if count else {})]
+    def get_transactions(self, limit: int = 2) -> list[TellerTransaction]:
+        self.transactions = [TellerTransaction(td) for td in self._api_client.get(self.links.transactions, {'count': limit})]
         return self.transactions
