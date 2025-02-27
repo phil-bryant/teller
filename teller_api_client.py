@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from teller_account_identities import TellerAccountIdentities
 from teller_transaction_type import TellerTransactionType
+from object_inspector import save_objects_snapshot
 
 class TellerAPIClient(TellerAPIClient):
     base_url = "https://api.teller.io"
@@ -24,18 +25,22 @@ class TellerAPIClient(TellerAPIClient):
         return self.request("GET", path, params)
 
 def main():
-    api_client = TellerAPIClient()
-    transaction_type = TellerTransactionType("ach")
-    print(transaction_type)
+    all_objects = []
     accountIdentities = TellerAccountIdentities(TellerAPIClient())
     for account_identity in accountIdentities:
+        all_objects.append(account_identity)
         account = account_identity.account
+        all_objects.append(account)
         ## we cannot call account.get_details() yet because we first have to go through the microdeposit verification flow.
         print(account)
         for transaction in account.get_transactions(2):
+            all_objects.append(transaction)
             print(transaction)
         for owner in account_identity.owners:
+            all_objects.append(owner)
             print(owner)
+    
+    save_objects_snapshot(all_objects, 'original_objects_snapshot.pickle')
 
 if __name__ == "__main__":
     main() 
