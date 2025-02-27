@@ -1,6 +1,0 @@
-pyproject.toml
-teller_account.py
-teller.egg-info/PKG-INFO
-teller.egg-info/SOURCES.txt
-teller.egg-info/dependency_links.txt
-teller.egg-info/top_level.txt

@@ -1,4 +1,0 @@
-main
-models
-teller_account
-teller_client

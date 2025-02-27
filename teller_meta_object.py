@@ -3,10 +3,6 @@ from plum import dispatch
 from teller_api_client_type import TellerAPIClient
 
 class TellerMetaObject(type):
-    #@dispatch
-    #def __call__(cls, *args, **kwargs):
-    #    return super().__call__()
-
     @dispatch
     def __call__(cls, api_client: None):
         return super().__call__(None)
