@@ -34,4 +34,5 @@ class TellerAccount(TellerObject): ## https://teller.io/docs/api/accounts
     
     def get_transactions(self, limit: int = 2) -> list[TellerTransaction]:
         self.transactions = [TellerTransaction(td) for td in self._api_client.get(self.links.transactions, {'count': limit})]
+        print(f"TellerAccount.get_transactions: {self.transactions is self._fields['transactions'].value}")  ## This will print False
         return self.transactions

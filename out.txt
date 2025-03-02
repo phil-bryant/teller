@@ -1,0 +1,245 @@
+TellerAccountIdentities object
+	created_at = None
+	updated_at = None
+	account =
+		TellerAccount object
+			created_at = None
+			updated_at = None
+			currency = "USD"
+			enrollment_id = "enr_p8pa8o5d1m2this6ua000"
+			id = "acc_p7rvobesj7soqdbo6s000"
+			institution =
+				TellerInstitution object
+					created_at = None
+					updated_at = None
+					institution_id = None
+					name = "Chase"
+			last_four = "0712"
+			links =
+				TellerAccountLinks object
+					created_at = None
+					updated_at = None
+					self_link = "https://api.teller.io/accounts/acc_p7rvobesj7soqdbo6s000"
+					details = None
+					balances = "https://api.teller.io/accounts/acc_p7rvobesj7soqdbo6s000/balances"
+					transactions = "https://api.teller.io/accounts/acc_p7rvobesj7soqdbo6s000/transactions"
+					account_links_id = None
+			name = "Joint Saphire"
+			type = TellerAccountType.CREDIT
+			subtype = TellerAccountSubtype.CREDIT_CARD
+			status = TellerAccountStatus.OPEN
+			details = None
+			balances = None
+			transactions = None
+	owners = [<teller_identity.TellerIdentity object at 0x10f9fd7f0>]
+
+TellerAccountIdentities object
+	created_at = None
+	updated_at = None
+	account =
+		TellerAccount object
+			created_at = None
+			updated_at = None
+			currency = "USD"
+			enrollment_id = "enr_p8pa8o5d1m2this6ua000"
+			id = "acc_p7rvobevj7soqdbo6s000"
+			institution =
+				TellerInstitution object
+					created_at = None
+					updated_at = None
+					institution_id = None
+					name = "Chase"
+			last_four = "1739"
+			links =
+				TellerAccountLinks object
+					created_at = None
+					updated_at = None
+					self_link = "https://api.teller.io/accounts/acc_p7rvobevj7soqdbo6s000"
+					details = None
+					balances = "https://api.teller.io/accounts/acc_p7rvobevj7soqdbo6s000/balances"
+					transactions = "https://api.teller.io/accounts/acc_p7rvobevj7soqdbo6s000/transactions"
+					account_links_id = None
+			name = "Norma United"
+			type = TellerAccountType.CREDIT
+			subtype = TellerAccountSubtype.CREDIT_CARD
+			status = TellerAccountStatus.OPEN
+			details = None
+			balances = None
+			transactions = None
+	owners = [<teller_identity.TellerIdentity object at 0x10f9fe750>]
+
+TellerAccountIdentities object
+	created_at = None
+	updated_at = None
+	account =
+		TellerAccount object
+			created_at = None
+			updated_at = None
+			currency = "USD"
+			enrollment_id = "enr_p8pa8o5d1m2this6ua000"
+			id = "acc_p7rvobf0j7soqdbo6s000"
+			institution =
+				TellerInstitution object
+					created_at = None
+					updated_at = None
+					institution_id = None
+					name = "Chase"
+			last_four = "5246"
+			links =
+				TellerAccountLinks object
+					created_at = None
+					updated_at = None
+					self_link = "https://api.teller.io/accounts/acc_p7rvobf0j7soqdbo6s000"
+					details = None
+					balances = "https://api.teller.io/accounts/acc_p7rvobf0j7soqdbo6s000/balances"
+					transactions = "https://api.teller.io/accounts/acc_p7rvobf0j7soqdbo6s000/transactions"
+					account_links_id = None
+			name = "Slate Visa"
+			type = TellerAccountType.CREDIT
+			subtype = TellerAccountSubtype.CREDIT_CARD
+			status = TellerAccountStatus.OPEN
+			details = None
+			balances = None
+			transactions = None
+	owners = [<teller_identity.TellerIdentity object at 0x10f9ff080>]
+
+TellerAccountIdentities object
+	created_at = None
+	updated_at = None
+	account =
+		TellerAccount object
+			created_at = None
+			updated_at = None
+			currency = "USD"
+			enrollment_id = "enr_p8pa8o5d1m2this6ua000"
+			id = "acc_p7rvobeuj7soqdbo6s000"
+			institution =
+				TellerInstitution object
+					created_at = None
+					updated_at = None
+					institution_id = None
+					name = "Chase"
+			last_four = "3680"
+			links =
+				TellerAccountLinks object
+					created_at = None
+					updated_at = None
+					self_link = "https://api.teller.io/accounts/acc_p7rvobeuj7soqdbo6s000"
+					details = None
+					balances = "https://api.teller.io/accounts/acc_p7rvobeuj7soqdbo6s000/balances"
+					transactions = "https://api.teller.io/accounts/acc_p7rvobeuj7soqdbo6s000/transactions"
+					account_links_id = None
+			name = "Norma Personal Check"
+			type = TellerAccountType.DEPOSITORY
+			subtype = TellerAccountSubtype.CHECKING
+			status = TellerAccountStatus.OPEN
+			details = None
+			balances = None
+			transactions = None
+	owners = [<teller_identity.TellerIdentity object at 0x10fa24410>]
+
+TellerAccountIdentities object
+	created_at = None
+	updated_at = None
+	account =
+		TellerAccount object
+			created_at = None
+			updated_at = None
+			currency = "USD"
+			enrollment_id = "enr_p8pa8o5d1m2this6ua000"
+			id = "acc_p7rvobf237soqdbo6s000"
+			institution =
+				TellerInstitution object
+					created_at = None
+					updated_at = None
+					institution_id = None
+					name = "Chase"
+			last_four = "0116"
+			links =
+				TellerAccountLinks object
+					created_at = None
+					updated_at = None
+					self_link = "https://api.teller.io/accounts/acc_p7rvobf237soqdbo6s000"
+					details = None
+					balances = "https://api.teller.io/accounts/acc_p7rvobf237soqdbo6s000/balances"
+					transactions = "https://api.teller.io/accounts/acc_p7rvobf237soqdbo6s000/transactions"
+					account_links_id = None
+			name = "United Club Card"
+			type = TellerAccountType.CREDIT
+			subtype = TellerAccountSubtype.CREDIT_CARD
+			status = TellerAccountStatus.OPEN
+			details = None
+			balances = None
+			transactions = None
+	owners = [<teller_identity.TellerIdentity object at 0x10fa252b0>]
+
+TellerAccountIdentities object
+	created_at = None
+	updated_at = None
+	account =
+		TellerAccount object
+			created_at = None
+			updated_at = None
+			currency = "USD"
+			enrollment_id = "enr_p8pa8o5d1m2this6ua000"
+			id = "acc_p7rvobetj7soqdbo6s000"
+			institution =
+				TellerInstitution object
+					created_at = None
+					updated_at = None
+					institution_id = None
+					name = "Chase"
+			last_four = "2910"
+			links =
+				TellerAccountLinks object
+					created_at = None
+					updated_at = None
+					self_link = "https://api.teller.io/accounts/acc_p7rvobetj7soqdbo6s000"
+					details = None
+					balances = "https://api.teller.io/accounts/acc_p7rvobetj7soqdbo6s000/balances"
+					transactions = "https://api.teller.io/accounts/acc_p7rvobetj7soqdbo6s000/transactions"
+					account_links_id = None
+			name = "Joint Savings"
+			type = TellerAccountType.DEPOSITORY
+			subtype = TellerAccountSubtype.SAVINGS
+			status = TellerAccountStatus.OPEN
+			details = None
+			balances = None
+			transactions = None
+	owners = [<teller_identity.TellerIdentity object at 0x10fa26180>]
+
+TellerAccountIdentities object
+	created_at = None
+	updated_at = None
+	account =
+		TellerAccount object
+			created_at = None
+			updated_at = None
+			currency = "USD"
+			enrollment_id = "enr_p8pa8o5d1m2this6ua000"
+			id = "acc_p7rvobeqj7soqdbo6s000"
+			institution =
+				TellerInstitution object
+					created_at = None
+					updated_at = None
+					institution_id = None
+					name = "Chase"
+			last_four = "4244"
+			links =
+				TellerAccountLinks object
+					created_at = None
+					updated_at = None
+					self_link = "https://api.teller.io/accounts/acc_p7rvobeqj7soqdbo6s000"
+					details = None
+					balances = "https://api.teller.io/accounts/acc_p7rvobeqj7soqdbo6s000/balances"
+					transactions = "https://api.teller.io/accounts/acc_p7rvobeqj7soqdbo6s000/transactions"
+					account_links_id = None
+			name = "Joint Checking"
+			type = TellerAccountType.DEPOSITORY
+			subtype = TellerAccountSubtype.CHECKING
+			status = TellerAccountStatus.OPEN
+			details = None
+			balances = None
+			transactions = None
+	owners = [<teller_identity.TellerIdentity object at 0x10fa26e40>]
+

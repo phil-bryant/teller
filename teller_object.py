@@ -14,10 +14,22 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
         self._set_field("created_at", ISODate, None, {"db_ro": True})
         self._set_field("updated_at", ISODate, None, {"db_ro": True})
 
+    def __setattr__(self, name: str, value: object) -> None:
+        if name.startswith('_'): super().__setattr__(name, value)
+        else: self._set_field(name, type(value), value)
+
+    def _get_field(self, name: str) -> TellerObjectField:
+        return self._fields.get(name, None)
+
     def _set_field(self, name: str, type_: type, api_data, metadata: Optional[dict] = {}, api_client: Optional[TellerAPIClient] = None):
-        field = TellerObjectField(name, type_, api_data, metadata, api_client)
-        self._fields[field.name] = field
-        self.__setattr__(field.name, field.value)
+        existing_field = self._get_field(name)
+        if existing_field is None:
+            field = TellerObjectField(name, type_, api_data, metadata, api_client)
+            self._fields[field.name] = field
+        else:
+            existing_field.value = api_data
+            field = existing_field
+        super().__setattr__(field.name, field.value)
 
     def _get_api_data(self):
         api_data = getattr(self, '_api_data', None)
@@ -26,3 +38,4 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     
     def api_client_get(self) -> dict:
         return None if not self._api_client else self._api_client.get(self._path, None)
+
