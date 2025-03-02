@@ -36,4 +36,3 @@ class TellerMetaObject(type):
         for api_data_item in api_data_list:
             objects.append(cls.__call__(api_data_item))
         return objects
-

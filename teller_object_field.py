@@ -1,5 +1,6 @@
 from plum import dispatch
 from teller_api_client_type import TellerAPIClient
+from typing import Optional, Any, Dict
 
 class TellerObjectField:
     _primitive_attrs = {'name', 'type_'}
@@ -16,10 +17,13 @@ class TellerObjectField:
     @dispatch
     def __init__(self, name: str, type_: type, api_data: dict, metadata: dict, api_client: TellerAPIClient):
         api_name = self._initialize_common(name, type_, metadata)
-        super().__setattr__("value", type_(api_data[api_name], api_client))
+        if api_name in api_data:
+            super().__setattr__("value", type_(api_data[api_name], api_client))
+        else:
+            super().__setattr__("value", None)
 
     @dispatch
-    def __init__(self, name: str, type_: type, api_data: None, metadata: dict, api_client: TellerAPIClient):
+    def __init__(self, name: str, type_: type, api_data: None, metadata: dict, api_client: Optional[TellerAPIClient]):
         self._initialize_common(name, type_, metadata)
         super().__setattr__("value", None)
 
@@ -31,30 +35,21 @@ class TellerObjectField:
     @dispatch
     def __init__(self, name: str, type_: type, api_data: dict, metadata: dict, api_client: None):
         api_name = self._initialize_common(name, type_, metadata)
-        super().__setattr__("value", type_(api_data[api_name]))
+        if api_name in api_data:
+            super().__setattr__("value", type_(api_data[api_name]))
+        else:
+            super().__setattr__("value", None)
 
     @dispatch
-    def __init__(self, name: str, type_: type, api_data: None, metadata: dict, api_client: None):
-        self._initialize_common(name, type_, metadata)
-        super().__setattr__("value", None)
-
-    @dispatch
-    def __init__(self, name: str, type_: type, api_data: dict):
-        api_name = self._initialize_common(name, type_)
-        super().__setattr__("value", type_(api_data[api_name]))
-
-    @dispatch
-    def __init__(self, name: str, type_: type, api_data: dict, metadata: dict):
+    def __init__(self, name: str, type_: type, api_data: dict, metadata: Optional[dict] = None):
         api_name = self._initialize_common(name, type_, metadata)
-        super().__setattr__("value", type_(api_data[api_name]))
-
-    @dispatch
-    def __init__(self, name: str, type_: type, api_data: None, metadata: dict):
-        self._initialize_common(name, type_, metadata)
-        super().__setattr__("value", None)
+        if api_name in api_data:
+            super().__setattr__("value", type_(api_data[api_name]))
+        else:
+            super().__setattr__("value", None)
     
     def __setattr__(self, name: str, value: object) -> None:
-        if name in TellerObjectField._primitive_attrs:  
+        if name in self._primitive_attrs:  
             super().__setattr__(name, value)
         elif name == "metadata":
             super().__setattr__(name, value or {})
@@ -65,7 +60,7 @@ class TellerObjectField:
                 super().__setattr__(name, self.type_(value))
 
     def __getattr__(self, attribute_name: str) -> object:
-        # Access metadata via __dict__ to avoid recursion
+        # Access metadata via __dict__ to avoid infinite recursion
         metadata = self.__dict__.get("metadata", {})
         return metadata.get(attribute_name)
     
