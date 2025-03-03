@@ -14,6 +14,7 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
         self._set_field("created_at", ISODate, None, {"db_ro": True})
         self._set_field("updated_at", ISODate, None, {"db_ro": True})
 
+    ## Store our public attributes in a dict of TellerObjectField instances
     def __setattr__(self, name: str, value: object) -> None:
         if name.startswith('_'): super().__setattr__(name, value)
         else: self._set_field(name, type(value), value)
@@ -29,6 +30,7 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
         else:
             existing_field.value = api_data
             field = existing_field
+        ## Make the following evaluate to True: self.attrname is self._fields["attrname"].value
         super().__setattr__(field.name, field.value)
 
     def _get_api_data(self):

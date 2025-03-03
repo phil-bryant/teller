@@ -3,7 +3,7 @@ from typing import TypeAlias
 from plum import dispatch
 from teller_api_client_type import TellerAPIClient
 
-APIDataType: TypeAlias = list | dict
+APIDataType: TypeAlias = list | dict | None
 APIDataValueType: TypeAlias = dict | str | None
 
 class TellerMetaObject(type):
@@ -21,6 +21,9 @@ class TellerMetaObject(type):
     
     @dispatch
     def __call__(cls, api_data_value: APIDataValueType):
+        ## NB in a metaclass __call__(...) intercepts object construction prior to __new__
+        ## perhaps because python was named after the absurdist comedy Monty Python's Flying Circus,
+        ## here super() actually refers to the subclass-of-the-subclass of the metaclass
         return super().__call__(api_data_value)
     
     @dispatch

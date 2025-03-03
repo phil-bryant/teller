@@ -3,66 +3,16 @@ from teller_api_client_type import TellerAPIClient
 from typing import Optional, Any, Dict
 
 class TellerObjectField:
-    _primitive_attrs = {'name', 'type_'}
-    
-    def _initialize_common(self, name, type_, metadata=None):
-        metadata = metadata or {}
-        api_name = metadata.get("api_name", name)
-        super().__setattr__("name", name)
-        super().__setattr__("type_", type_)
-        super().__setattr__("metadata", metadata)
-        super().__setattr__("api_name", api_name)
-        return api_name
 
-    @dispatch
-    def __init__(self, name: str, type_: type, api_data: dict, metadata: dict, api_client: TellerAPIClient):
-        api_name = self._initialize_common(name, type_, metadata)
-        if api_name in api_data:
-            super().__setattr__("value", type_(api_data[api_name], api_client))
-        else:
-            super().__setattr__("value", None)
+    def __init__(self, name_: str, type_: type, value_: Any, metadata_: Optional[dict] = None, api_client: Optional[TellerAPIClient] = None):
+        self.name = name_
+        self.type_ = type_
+        self.metadata = metadata_ or {}
+        api_name = self.metadata.get("api_name", name_)
+        value_data = value_[api_name] if api_name in (value_ or {}) else None
+        ## NB type_(...) calls the appropriate constructor
+        if api_client is None: self.value = type_(value_data) if value_data is not None else None
+        else: self.value = type_(value_data, api_client)
 
-    @dispatch
-    def __init__(self, name: str, type_: type, api_data: None, metadata: dict, api_client: Optional[TellerAPIClient]):
-        self._initialize_common(name, type_, metadata)
-        super().__setattr__("value", None)
-
-    @dispatch
-    def __init__(self, name: str, type_: type, api_data: str, metadata: dict, api_client: None):
-        self._initialize_common(name, type_, metadata)
-        super().__setattr__("value", api_data)
-
-    @dispatch
-    def __init__(self, name: str, type_: type, api_data: dict, metadata: dict, api_client: None):
-        api_name = self._initialize_common(name, type_, metadata)
-        if api_name in api_data:
-            super().__setattr__("value", type_(api_data[api_name]))
-        else:
-            super().__setattr__("value", None)
-
-    @dispatch
-    def __init__(self, name: str, type_: type, api_data: dict, metadata: Optional[dict] = None):
-        api_name = self._initialize_common(name, type_, metadata)
-        if api_name in api_data:
-            super().__setattr__("value", type_(api_data[api_name]))
-        else:
-            super().__setattr__("value", None)
-    
-    def __setattr__(self, name: str, value: object) -> None:
-        if name in self._primitive_attrs:  
-            super().__setattr__(name, value)
-        elif name == "metadata":
-            super().__setattr__(name, value or {})
-        elif name == "value":
-            if isinstance(value, list):
-                super().__setattr__(name, value)
-            else:
-                super().__setattr__(name, self.type_(value))
-
-    def __getattr__(self, attribute_name: str) -> object:
-        # Access metadata via __dict__ to avoid infinite recursion
-        metadata = self.__dict__.get("metadata", {})
-        return metadata.get(attribute_name)
-    
     def __repr__(self):
         return f"{self.__class__.__name__}({self.name}: {self.type_.__name__} = {self.value} {self.metadata})" 
