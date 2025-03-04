@@ -25,8 +25,7 @@ def main():
     accountIdentities = TellerAccountIdentities(TellerAPIClient())
     for account_identity in accountIdentities:
         account_identity.get_transactions(limit=2)
-        pass    
-        # print(account_identity)
+        account_identity.save()
 
 if __name__ == "__main__":
     main() 

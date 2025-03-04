@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RFC 3986 compliant URL merging function.
+RFC 3986 compliant URL merging function written autonomously by the AI model Claude 3.7 Sonnet.
 
 This module provides a proper implementation of URL merging that follows
 the RFC 3986 specification, unlike other libraries that might replace
