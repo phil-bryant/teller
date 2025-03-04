@@ -117,4 +117,42 @@ The repository includes comprehensive test scripts:
 The implementation is based on RFC 3986, particularly:
 - Section 5.2 "Relative Resolution"
 - Section 5.2.3 "Merge Paths"
-- Section 5.2.4 "Remove Dot Segments" 
+- Section 5.2.4 "Remove Dot Segments"
+
+# Teller Database Client
+
+## Environment Setup
+
+The application uses environment variables for database connection. Create a `.env` file in your home directory with the following variables:
+
+```
+TELLER_POSTGRES_USER=your_username
+TELLER_POSTGRES_PASSWORD=your_password
+TELLER_POSTGRES_HOST=your_host
+TELLER_POSTGRES_PORT=your_port
+TELLER_POSTGRES_DB=your_database
+```
+
+## Usage
+
+```python
+from teller_db_client import TellerDBClient
+
+# Initialize the client
+db = TellerDBClient()
+
+# Connect to the database (uses environment variables by default)
+db.connect()
+
+# Or provide a custom connection string
+db.connect("host=custom_host dbname=custom_db user=custom_user password=custom_password")
+
+# Query tables
+tables = db.get_tables()
+```
+
+## Security
+
+- Database credentials are stored in environment variables, not in code
+- The `.env` file should be added to `.gitignore` to prevent accidental commits
+- For production deployments, use a secure secrets management solution 
