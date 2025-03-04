@@ -1,11 +1,13 @@
 #!/bin/bash
 set -e
+source ~/.env
+export PGPASSWORD=$TELLER_POSTGRES_PASSWORD
 
-# First we must use the admin user to create the prod database, teller schema, and tellerroles
+## First we must use the admin user to create the prod database, teller schema, and tellerroles
 psql -U postgres -f create_database.sql
-psql -U postgres -d prod -f configure_database.sql
+psql -U postgres -d prod -v TELLER_POSTGRES_PASSWORD="$TELLER_POSTGRES_PASSWORD" -f configure_database.sql
 
-# Then we can use the teller user to create the teller tables in dependency order
+## Then we can use the teller user to create the teller tables in dependency order
 psql -U teller -d prod -f teller_enums.sql
 psql -U teller -d prod -f teller_institution.sql
 psql -U teller -d prod -f teller_account_links.sql
@@ -29,3 +31,5 @@ psql -U teller -d prod -f teller_transaction_details.sql
 psql -U teller -d prod -f teller_transaction.sql
 psql -U teller -d prod -f create_triggers.sql
 psql -U teller -d prod -f create_audit.sql
+
+unset PGPASSWORD
