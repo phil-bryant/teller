@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+from teller_object_type import TellerObject
 from teller_meta_object import TellerMetaObject
 from teller_api_client_type import TellerAPIClient
 from iso_date import ISODate
@@ -7,8 +8,6 @@ from teller_object_field import TellerObjectField
 
 class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     _path: str = ""
-    _api_client: TellerAPIClient = None
-
     def __init__(self):
         self._fields = {}
         self._set_field("created_at", ISODate, None, {"db_ro": True})
@@ -40,4 +39,8 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     
     def api_client_get(self) -> dict:
         return None if not self._api_client else self._api_client.get(self._path, None)
+    
+    def save(self) -> TellerObject:
+
+        return self
 

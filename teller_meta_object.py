@@ -2,13 +2,14 @@
 from typing import TypeAlias
 from plum import dispatch
 from teller_api_client_type import TellerAPIClient
+from teller_db_client import TellerDBClient
 
 APIDataType: TypeAlias = list | dict | None
 APIDataValueType: TypeAlias = dict | str | None
 
 class TellerMetaObject(type):
     _api_client: TellerAPIClient = None
-
+    _db_client: TellerDBClient = None
     @dispatch
     def __call__(cls, api_client: TellerAPIClient):
         cls._api_client = api_client
@@ -32,3 +33,7 @@ class TellerMetaObject(type):
         for api_data_item in api_data_list:
             objects.append(cls.__call__(api_data_item))
         return objects
+    
+    def __init__(cls, name, bases, attrs):
+        super().__init__(name, bases, attrs)
+        cls._db_client = TellerDBClient()
