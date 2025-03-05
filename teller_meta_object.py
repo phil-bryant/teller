@@ -1,11 +1,8 @@
 #! /usr/bin/env python3
 from typing import TypeAlias
 from plum import dispatch
-from teller_api_client_type import TellerAPIClient
+from teller_api_client_type import TellerAPIClient, APIDataType, APIDataValueType
 from teller_db_client import TellerDBClient
-
-APIDataType: TypeAlias = list | dict | None
-APIDataValueType: TypeAlias = dict | str | None
 
 class TellerMetaObject(type):
     _api_client: TellerAPIClient = None

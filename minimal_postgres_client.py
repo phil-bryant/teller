@@ -25,8 +25,8 @@ class MinimalPostgresClient:
 
     def insert(self, table: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         columns = ', '.join(data.keys())
-        placeholders = ', '.join([f'%({k})s' for k in data])
-        query = f"INSERT INTO {self._schema}.{table} ({columns}) VALUES ({placeholders}) RETURNING *"
+        values = ', '.join([f'%({k})s' for k in data])
+        query = f"INSERT INTO {self._schema}.{table} ({columns}) VALUES ({values}) RETURNING *"
         rows = self.execute(query, data)
         return rows[0] if rows else None
 
