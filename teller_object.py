@@ -8,7 +8,8 @@ from teller_object_field import TellerObjectField
 
 class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     _path: str = ""
-    def __init__(self):
+    def __init__(self, api_data: dict | str):
+        self._api_data = api_data
         self._fields = {}
         self._set_field("created_at", ISODate, None, {"db_ro": True})
         self._set_field("updated_at", ISODate, None, {"db_ro": True})

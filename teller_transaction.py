@@ -7,7 +7,7 @@ from teller_transaction_type import TellerTransactionType
 
 class TellerTransaction(TellerObject): ## https://teller.io/docs/api/account/transactions
     def __init__(self, api_data: dict):
-        super().__init__()
+        super().__init__(api_data)
         self._set_field("account_id", str, api_data)
         self._set_field("amount", Decimal, api_data, {"__str__": True})
         self._set_field("transaction_date", ISODate, api_data, {"api_name": "date", "__str__": True})

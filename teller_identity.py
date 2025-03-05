@@ -8,7 +8,7 @@ from teller_identity_email import TellerIdentityEmail
 
 class TellerIdentity(TellerObject): ## https://teller.io/docs/api/identity
     def __init__(self, api_data: dict):
-        super().__init__()
+        super().__init__(api_data)
         self._set_field("type", TellerIdentityType, api_data, {"enum": True})
         self._set_field("names", TellerIdentityName, api_data)
         self._set_field("addresses", TellerIdentityAddress, api_data)

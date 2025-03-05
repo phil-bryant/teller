@@ -7,7 +7,7 @@ class TellerAccountIdentities(TellerObject): ## https://teller.io/docs/api/ident
     _path: str = "/identity"
 
     def __init__(self, api_data: dict):
-        super().__init__()
+        super().__init__(api_data)
         self._set_field("account", TellerAccount, api_data, {"db_table": "account", "fk": True}, self._api_client)
         self._set_field("owners", TellerIdentity, api_data, {"db_table": "identity", "fk": True}, self._api_client)       
 

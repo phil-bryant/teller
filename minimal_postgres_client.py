@@ -1,5 +1,7 @@
 import psycopg as db
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
+import traceback
+from pprint import pprint
 
 class MinimalPostgresClient:
     _instance = None
@@ -25,9 +27,19 @@ class MinimalPostgresClient:
 
     def insert(self, table: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         columns = ', '.join(data.keys())
-        values = ', '.join([f'%({k})s' for k in data])
-        query = f"INSERT INTO {self._schema}.{table} ({columns}) VALUES ({values}) RETURNING *"
-        rows = self.execute(query, data)
+        values = []
+        for k, val in data.items():
+            if val is None or val == '':
+                values.append("NULL")
+            else:
+                val_str = str(val).replace("'", "''")
+                values.append(f"'{val_str}'")        
+        value_str = ', '.join(values)
+        query = f"INSERT INTO {self._schema}.{table} ({columns}) VALUES ({value_str}) RETURNING *"
+        print(f"EXECUTING SQL: {query}")
+        rows = self.execute(query, None)
+        self.commit()
+        print(f"INSERT RESULT: {rows}")
         return rows[0] if rows else None
 
     def update(self, table: str, data: Dict[str, Any], pk_column: str) -> Optional[Dict[str, Any]]:

@@ -5,7 +5,7 @@ from teller_object import TellerObject
 ## Defined on the Identity page: https://teller.io/docs/api/identity
 class TellerIdentityAddressData(TellerObject):
     def __init__(self, api_data):
-        super().__init__()
+        super().__init__(api_data)
         self._set_field("street", str, api_data)
         self._set_field("city", str, api_data)
         self._set_field("region", str, api_data)

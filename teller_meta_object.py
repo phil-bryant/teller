@@ -34,3 +34,4 @@ class TellerMetaObject(type):
     def __init__(cls, name, bases, attrs):
         super().__init__(name, bases, attrs)
         cls._db_client = TellerDBClient()
+        cls._db_client.connect()
