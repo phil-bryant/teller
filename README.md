@@ -156,3 +156,70 @@ tables = db.get_tables()
 - Database credentials are stored in environment variables, not in code
 - The `.env` file should be added to `.gitignore` to prevent accidental commits
 - For production deployments, use a secure secrets management solution 
+
+# MinimalPostgresClient
+
+A lightweight PostgreSQL client wrapper built around the psycopg driver that provides simplified database operations.
+
+## Features
+
+- Singleton pattern implementation for connection reuse
+- Simple query execution with parameter support
+- Dictionary-based result rows
+- Utility methods for primary key detection and upsert operations
+- Schema support
+
+## Dependencies
+
+- psycopg (PostgreSQL driver for Python)
+
+## Basic Usage
+
+```python
+from minimal_postgres_client import MinimalPostgresClient
+
+# Initialize client (singleton instance)
+client = MinimalPostgresClient(schema="public")
+
+# Connect to database
+client.connect("postgresql://user:password@localhost:5432/database")
+
+# Execute simple query
+results = client.execute("SELECT * FROM users")
+for row in results:
+    print(row["id"], row["name"])
+
+# Execute with parameters
+user_results = client.execute(
+    "SELECT * FROM users WHERE age > %(min_age)s", 
+    {"min_age": 21}
+)
+
+# Insert or update record
+data = {"id": 1, "name": "John Doe", "email": "john@example.com"}
+client.upsert("users", data)
+client.commit()
+```
+
+## Tests
+
+The project includes unit tests that verify the functionality of the client using mocks.
+
+To run the tests:
+
+```bash
+python test_minimal_postgres_client.py
+```
+
+The tests validate:
+- Basic query execution
+- Parameter handling
+- Different result types
+- Error handling
+
+## Implementation Notes
+
+- The client uses a singleton pattern to ensure only one database connection is created
+- Row factory is used to return dictionary-based results
+- Query parameters use the psycopg named parameter style: `%(param_name)s`
+- The client handles queries that return no results 

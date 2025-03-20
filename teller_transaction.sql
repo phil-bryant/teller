@@ -15,7 +15,7 @@ CREATE TABLE teller.transaction (
 COMMENT ON TABLE teller.transaction IS 'Table for teller_transactions.py';
 COMMENT ON COLUMN teller.transaction.account_id IS 'The id of the account that the transaction belongs to';
 COMMENT ON COLUMN teller.transaction.amount IS 'The signed amount of the transaction as a string';
-COMMENT ON COLUMN teller.transaction.date IS 'The date of the transaction without timezone info because this varies by institution';
+COMMENT ON COLUMN teller.transaction.transaction_date IS 'The ISO 8601 date of the transaction but without timezone because this varies by institution';
 COMMENT ON COLUMN teller.transaction.description IS 'The unprocessed transaction description as it appears on the bank statement';
 COMMENT ON COLUMN teller.transaction.transaction_details_id IS 'Reference to additional transaction enrichment information';
 COMMENT ON COLUMN teller.transaction.status IS 'The transaction status: posted or pending';

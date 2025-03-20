@@ -45,14 +45,13 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
         return self.__module__.replace("teller_", "")
     
     def primary_key(self) -> str:
-        return next((fv.db_value() for fv in self._fields.values() if fv.is_primary_key()), None)
-    
-    def db_value(self) -> str:
-        return self.primary_key()
+        return next((field.db_value() for field in self._fields.values() if field.is_primary_key()), None)
 
     def save(self) -> TellerObject:
-        column_data = {}
-        for field_name, field in self._fields.items():
-            field.save()
-            if not field.is_db_ro(): column_data[field_name] = field.db_value()
-        return self._db_client.insert(self._table_name(), column_data)
+        print(f"DEBUG: Saving {self.__class__.__name__} with fields: {[(k, str(v.value)[:30] if v.value else None) for k, v in self._fields.items()]}")
+        for field in self._fields.values(): field.save()
+        column_data = {field.db_column_name(): field.db_value() for field in self._fields.values() if not field.is_db_ro() }
+        print(f"DEBUG: Column data for {self.__class__.__name__}: {column_data}")
+        result = self._db_client.upsert(self._table_name(), column_data)
+        print(f"DEBUG: Upsert result for {self.__class__.__name__}: {result}")
+        return result

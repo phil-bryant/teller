@@ -2,14 +2,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File with External Libraries",
+            "name": "Python: Current File",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": false,
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}"
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Attach",
+            "type": "python",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5678
             }
         },
         {
