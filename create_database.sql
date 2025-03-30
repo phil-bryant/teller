@@ -1,4 +1,4 @@
-CREATE DATABASE prod WITH 
+CREATE DATABASE teller WITH 
     OWNER = postgres
     ENCODING = 'UTF8'
     LC_COLLATE = 'en_US.UTF-8'

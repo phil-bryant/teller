@@ -1,0 +1,19 @@
+{
+    "python.analysis.extraPaths": ["."],
+    "python.analysis.indexing": true,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "editor.gotoLocation.alternativeReferencesCommand": "references-view.find",
+    "python.linting.enabled": false,
+    "search.useIgnoreFiles": false,
+    "search.useGlobalIgnoreFiles": false,
+    "python.analysis.packageIndexDepths": [
+        {"name": "", "depth": 5}
+    ],
+    "python.analysis.ignore": ["**/*.pyc"],
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none",
+        "reportMissingModuleSource": "none"
+    },
+    "python.languageServer": "Pylance"
+} 

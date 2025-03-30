@@ -24,9 +24,6 @@ class TellerObjectField:
     def is_db_ro(self) -> bool:
         return self.metadata.get("db_ro", False) ## database read only column; cannot insert it
     
-    def is_primary_key(self) -> bool:
-        return self.metadata.get("pk", False)
-    
     def is_primitive(self) -> bool:
         return self.type_ in {str, int, Decimal, bool} or issubclass(self.type_, Enum)
     

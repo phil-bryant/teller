@@ -34,6 +34,9 @@ class MinimalPostgresClient:
                         JOIN pg_attribute col ON col.attrelid = tbl.oid AND col.attnum = ANY(con.conkey)
                 WHERE   ns.nspname = '{self._schema}' AND tbl.relname = '{table}' AND con.contype IN ('p', 'u')"""))[0]["cols"]
     
+    def s(self, table: str):
+        
+    
     def commit(self) -> None:
         self._conn.commit()
 
@@ -43,7 +46,8 @@ class MinimalPostgresClient:
                 INSERT INTO {self._schema}.{table} ({", ".join(data.keys())})
                 VALUES ({", ".join(data.values())})
                 ON CONFLICT ({conflict_cols}) DO UPDATE
-                SET {", ".join([f"({col}) = EXCLUDED.{col}" for col in data.keys() if col not in conflict_cols])}
+                SET {", ".join([f"{col} = EXCLUDED.{col}" for col in data.keys() if data[col] and col not in conflict_cols])}
                 RETURNING * """))
         self.commit()
         return rows
+    

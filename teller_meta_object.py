@@ -7,6 +7,7 @@ from teller_db_client import TellerDBClient
 class TellerMetaObject(type):
     _api_client: TellerAPIClient = None
     _db_client: TellerDBClient = None
+    
     @dispatch
     def __call__(cls, api_client: TellerAPIClient):
         cls._api_client = api_client

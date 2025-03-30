@@ -8,6 +8,7 @@ from teller_object_field import TellerObjectField
 
 class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     _path: str = ""
+    
     def __init__(self, api_data: dict | str):
         self._api_data = api_data
         self._fields = {}
@@ -43,9 +44,6 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     
     def _table_name(self) -> str:
         return self.__module__.replace("teller_", "")
-    
-    def primary_key(self) -> str:
-        return next((field.db_value() for field in self._fields.values() if field.is_primary_key()), None)
 
     def save(self) -> TellerObject:
         print(f"DEBUG: Saving {self.__class__.__name__} with fields: {[(k, str(v.value)[:30] if v.value else None) for k, v in self._fields.items()]}")
