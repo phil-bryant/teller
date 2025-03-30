@@ -32,4 +32,8 @@ psql -P pager=off -U teller -d teller -f teller_transaction.sql
 psql -P pager=off -U teller -d teller -f create_triggers.sql
 psql -P pager=off -U teller -d teller -f create_audit.sql
 
+## Deploy table constraints view and function
+psql -P pager=off -U teller -d teller -f all_table_constraints.sql
+psql -P pager=off -U teller -d teller -f table_constraints.sql
+
 unset PGPASSWORD

@@ -31,14 +31,14 @@ class TellerObjectField:
         return isinstance(self.value, Iterable) and not isinstance(self.value, (str, bytes))
     
     def db_value(self) -> str:
-        result = ""
+        result = "NULL"
         if self.value is not None:
             if self.is_primitive():
-                if isinstance(self.value, str):
-                    result = "'" + self.value + "'"
-                else:
-                    result = str(self.value)
-            elif self.is_iterable(): result = ", ".join(each.db_value() for each in self.value)
+                if isinstance(self.value, str): result = "'" + self.value + "'"
+                else: result = str(self.value)
+            elif self.is_iterable():
+                values = [each.db_value() for each in self.value]
+                if values: result = ", ".join(values)
             elif hasattr(self.value, 'db_value'): result = self.value.db_value()
         return result
     

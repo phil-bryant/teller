@@ -15,6 +15,3 @@ returns table (
     where   schema_name = $1 and table_name = $2
     order by schema_name, table_name, constraint_type, num_columns desc, column_num asc, column_name;
 $$ language sql;
-
--- Example usage:
-select * from table_constraints('teller', 'account');

@@ -25,17 +25,12 @@ class MinimalPostgresClient:
                 if cursor.description: results = cursor.fetchall()
         return results
 
-    def constraint_columns(self, table: str) -> str:    ## Return columns having PK | Unique constraints
-        return self.execute(dedent(f"""
-                SELECT  string_agg(col.attname, ', ') as cols
-                FROM    pg_constraint con
-                        JOIN pg_class tbl ON tbl.oid = con.conrelid
-                        JOIN pg_namespace ns ON ns.oid = tbl.relnamespace
-                        JOIN pg_attribute col ON col.attrelid = tbl.oid AND col.attnum = ANY(con.conkey)
-                WHERE   ns.nspname = '{self._schema}' AND tbl.relname = '{table}' AND con.contype IN ('p', 'u')"""))[0]["cols"]
-    
-    def s(self, table: str):
-        
+    def constraint_columns(self, table: str) -> str:
+        constraint_data = self.execute(dedent(f"""
+                SELECT string_agg(column_name, ', ') as cols
+                FROM table_constraints('{self._schema}', '{table}')
+                WHERE constraint_type IN ('primary_key', 'unique')"""))
+        return constraint_data[0]["cols"] if constraint_data and constraint_data[0]["cols"] else ""
     
     def commit(self) -> None:
         self._conn.commit()

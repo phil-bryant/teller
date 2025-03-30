@@ -5,6 +5,11 @@ if [ "$confirmation" != "destroy" ]; then
     echo "Destruction cancelled"
     exit 1
 fi
+
+## Drop table constraints function and view
+psql -U postgres -d teller -c "DROP FUNCTION IF EXISTS table_constraints(text, text);"
+psql -U postgres -d teller -c "DROP VIEW IF EXISTS teller.all_table_constraints;"
+
 psql -U postgres -d teller -c "DROP schema IF EXISTS teller CASCADE;"
 psql -U postgres -c "ALTER DATABASE teller OWNER TO postgres;"
 psql -U postgres -d teller -c "DROP USER IF EXISTS teller;"

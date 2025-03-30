@@ -14,7 +14,7 @@ class TellerDBClient(MinimalPostgresClient):
                     "password": os.environ.get("TELLER_POSTGRES_PASSWORD"),
                     "host": os.environ.get("TELLER_POSTGRES_HOST", "localhost"),
                     "port": os.environ.get("TELLER_POSTGRES_PORT", "5432"),
-                    "dbname": os.environ.get("TELLER_POSTGRES_DB", "prod")
+                    "dbname": os.environ.get("TELLER_POSTGRES_DB", "teller")
                 }
 
     @classmethod
