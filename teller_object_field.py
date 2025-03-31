@@ -21,8 +21,14 @@ class TellerObjectField:
     def __repr__(self):
         return f"{self.__class__.__name__}({self.name}: {self.type_.__name__} = {self.value} {self.metadata})" 
     
-    def is_db_ro(self) -> bool:
-        return self.metadata.get("db_ro", False) ## database read only column; cannot insert it
+    def is_primary_key(self) -> bool:
+        parent = getattr(self, '_parent', None)
+        if parent:
+            constraints = parent._get_table_constraints()
+            field_name = self.db_column_name()
+            if field_name in constraints:
+                return 'primary_key' in constraints[field_name]
+        return False
     
     def is_primitive(self) -> bool:
         return self.type_ in {str, int, Decimal, bool} or issubclass(self.type_, Enum)
@@ -31,6 +37,9 @@ class TellerObjectField:
         return isinstance(self.value, Iterable) and not isinstance(self.value, (str, bytes))
     
     def db_value(self) -> str:
+        result = None
+        if self.is_primary_key() and self.value is None:
+            return result
         result = "NULL"
         if self.value is not None:
             if self.is_primitive():

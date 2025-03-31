@@ -8,6 +8,7 @@ from teller_object_field import TellerObjectField
 
 class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     _path: str = ""
+    _table_constraints_cache = {}
     
     def __init__(self, api_data: dict | str):
         self._api_data = api_data
@@ -28,6 +29,7 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
         if existing_field is None:
             field = TellerObjectField(name, type_, api_data, metadata, api_client)
             self._fields[field.name] = field
+            field._parent = self
         else:
             existing_field.value = api_data
             field = existing_field
@@ -45,11 +47,44 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     def _table_name(self) -> str:
         return self.__module__.replace("teller_", "")
 
+    def _get_table_constraints(self) -> dict:
+        table_name = self._table_name()
+        schema = getattr(self._db_client, "_schema", "teller")
+        class_name = self.__class__.__name__
+        if class_name not in TellerObject._table_constraints_cache:
+            constraints_data = self._db_client.execute(f"SELECT * FROM table_constraints('{schema}', '{table_name}')")
+            constraints = {}
+            for row in constraints_data:
+                col_name = row["column_name"]
+                constraint_type = row["constraint_type"]
+                if col_name not in constraints:
+                    constraints[col_name] = []
+                constraints[col_name].append(constraint_type)
+            TellerObject._table_constraints_cache[class_name] = constraints
+        return TellerObject._table_constraints_cache[class_name]
+
     def save(self) -> TellerObject:
         print(f"DEBUG: Saving {self.__class__.__name__} with fields: {[(k, str(v.value)[:30] if v.value else None) for k, v in self._fields.items()]}")
-        for field in self._fields.values(): field.save()
-        column_data = {field.db_column_name(): field.db_value() for field in self._fields.values() if not field.is_db_ro() }
-        print(f"DEBUG: Column data for {self.__class__.__name__}: {column_data}")
-        result = self._db_client.upsert(self._table_name(), column_data)
-        print(f"DEBUG: Upsert result for {self.__class__.__name__}: {result}")
-        return result
+        has_values = any(field.value is not None for field in self._fields.values())
+        if has_values:
+            for field in self._fields.values(): field.save()
+            column_data = {}
+            for field in self._fields.values():
+                field_value = field.db_value()
+                if field_value is not None:
+                    column_data[field.db_column_name()] = field_value
+            print(f"DEBUG: Column data for {self.__class__.__name__}: {column_data}")
+            result = self._db_client.upsert(self._table_name(), column_data)
+            print(f"DEBUG: Upsert result for {self.__class__.__name__}: {result}")
+            if result and len(result) > 0:
+                for field_name, field_value in result[0].items():
+                    if field_name in self._fields:
+                        field = self._fields[field_name]
+                        typed_value = field_value
+                        if field.type_ is int and field_value is not None:
+                            typed_value = int(field_value)
+                        field.value = typed_value
+                        super().__setattr__(field_name, typed_value)
+        else:
+            print(f"DEBUG: Skipping save for empty {self.__class__.__name__} object")
+        return self

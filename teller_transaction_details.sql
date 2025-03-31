@@ -9,3 +9,4 @@ CREATE TABLE teller.transaction_details (
 COMMENT ON TABLE teller.transaction_details IS 'Table for teller_transaction_details.py';
 COMMENT ON COLUMN teller.transaction_details.processing_status IS 'Indicates the transaction enrichment processing status';
 COMMENT ON COLUMN teller.transaction_details.category IS 'The category that the transaction belongs to';
+COMMENT ON COLUMN teller.transaction_details.created_at IS 'Creation timestamp automatically set by database; should never be explicitly provided in inserts';
