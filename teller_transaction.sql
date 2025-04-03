@@ -1,5 +1,5 @@
 CREATE TABLE teller.transaction (
-    account_id TEXT NOT NULL REFERENCES teller.account(account_id),
+    account_id TEXT NOT NULL REFERENCES teller.account(account_id) DEFERRABLE INITIALLY DEFERRED,
     amount DECIMAL(15,2) NOT NULL,
     transaction_date DATE NOT NULL,
     description TEXT NOT NULL,

@@ -36,13 +36,22 @@ class MinimalPostgresClient:
         self._conn.commit()
 
     def upsert(self, table: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        conflict_cols = self.constraint_columns(table)
-        rows = self.execute(dedent(f"""
-                INSERT INTO {self._schema}.{table} ({", ".join(data.keys())})
-                VALUES ({", ".join(data.values())})
-                ON CONFLICT ({conflict_cols}) DO UPDATE
-                SET {", ".join([f"{col} = EXCLUDED.{col}" for col in data.keys() if data[col] and col not in conflict_cols.split(',')])}
-                RETURNING * """))
+        constraint_query = dedent(f"""
+            SELECT constraint_type, column_name
+            FROM table_constraints('{self._schema}', '{table}')
+            WHERE constraint_type IN ('primary_key', 'unique')
+            ORDER BY constraint_type""")
+        constraints = self.execute(constraint_query)
+        conflict_cols = next((row["column_name"] for row in constraints 
+                            if row["column_name"] in data and data[row["column_name"]] != "NULL"), None)
+        if not conflict_cols and (all_cols := self.constraint_columns(table)): 
+            conflict_cols = all_cols.split(',')[0].strip()
+        query = f"INSERT INTO {self._schema}.{table} ({', '.join(data.keys())}) VALUES ({', '.join(data.values())})"
+        if conflict_cols:
+            updates = [f"{c} = EXCLUDED.{c}" for c in data if data[c] and c not in conflict_cols.split(',')]
+            query += f" ON CONFLICT ({conflict_cols}) DO {('UPDATE SET ' + ', '.join(updates)) if updates else 'NOTHING'}"
+        query += " RETURNING *"
+        rows = self.execute(dedent(query))
         self.commit()
         return rows
     

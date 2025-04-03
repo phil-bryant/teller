@@ -66,8 +66,11 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     def save(self) -> TellerObject:
         print(f"DEBUG: Saving {self.__class__.__name__} with fields: {[(k, str(v.value)[:30] if v.value else None) for k, v in self._fields.items()]}")
         has_values = any(field.value is not None for field in self._fields.values())
+        print(f"DEBUG: has_values: {has_values}")
         if has_values:
-            for field in self._fields.values(): field.save()
+            for field in self._fields.values(): 
+                print(f"DEBUG: Field: {field}")
+                field.save()
             column_data = {}
             for field in self._fields.values():
                 field_value = field.db_value()

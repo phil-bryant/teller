@@ -7,7 +7,7 @@ class ISODate(date):
         return cls.fromisoformat(iso_date_string)
 
     def db_value(self) -> str:
-        return self.isoformat()
+        return f"'{self.isoformat()}'"
     
     def save(self) -> str:
         return self.db_value()

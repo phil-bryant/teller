@@ -38,17 +38,28 @@ class TellerObjectField:
     
     def db_value(self) -> str:
         result = None
-        if self.is_primary_key() and self.value is None:
-            return result
-        result = "NULL"
-        if self.value is not None:
-            if self.is_primitive():
-                if isinstance(self.value, str): result = "'" + self.value + "'"
-                else: result = str(self.value)
+        if self.value is not None and not (self.is_primary_key() and self.value is None):
+            if isinstance(self.value, str):
+                result = "'" + self.value + "'"
+            elif isinstance(self.value, Enum):
+                result = "'" + str(self.value.value) + "'"
+            elif self.is_primitive():
+                result = str(self.value)
             elif self.is_iterable():
                 values = [each.db_value() for each in self.value]
-                if values: result = ", ".join(values)
-            elif hasattr(self.value, 'db_value'): result = self.value.db_value()
+                if values: 
+                    result = ", ".join(values)
+            elif self.metadata.get("fk", False):
+                found_id = False
+                for attr_name, attr_value in vars(self.value).items():
+                    if attr_name.endswith('_id') and attr_value is not None:
+                        result = str(attr_value)
+                        found_id = True
+                    if found_id:
+                        found_id = True
+            else:
+                result = self.value.db_value()
+            
         return result
     
     def db_column_name(self) -> str:

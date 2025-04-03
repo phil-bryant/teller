@@ -10,6 +10,13 @@ class TellerAPIClient(TellerAPIClient):
     auth_tuple = (json.load(open(Path.home() / ".teller/auth_token.json"))["current"], "")
     cert_pk_tuple = (str(Path.home() / ".teller/certificate.pem"), str(Path.home() / ".teller/private_key.pem"))
 
+    @classmethod
+    def main(cls):
+        accountIdentities = TellerAccountIdentities(cls())
+        for account_identity in accountIdentities:
+            account_identity.get_transactions(limit=2)
+            account_identity.save()
+
     def __init__(self):
         self.api = API(self.base_url, self.auth_tuple, self.cert_pk_tuple)
 
@@ -21,11 +28,5 @@ class TellerAPIClient(TellerAPIClient):
     def get(self, path, params: dict = None) -> dict:
         return self.request("GET", path, params)
 
-def main():
-    accountIdentities = TellerAccountIdentities(TellerAPIClient())
-    for account_identity in accountIdentities:
-        account_identity.get_transactions(limit=2)
-        account_identity.save()
-
 if __name__ == "__main__":
-    main() 
+    TellerAPIClient.main() 
