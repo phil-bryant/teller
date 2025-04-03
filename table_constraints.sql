@@ -8,7 +8,9 @@ returns table (
     foreign_table_name text,
     num_columns int,
     column_num int,
-    constraint_name text
+    constraint_name text,
+    is_deferrable text,
+    initially_deferred text
 ) as $$
     select  *
     from    teller.all_table_constraints

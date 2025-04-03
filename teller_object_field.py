@@ -7,7 +7,6 @@ from datetime import date
 from collections.abc import Iterable
 
 class TellerObjectField:
-
     def __init__(self, name_: str, type_: type, value_: Any, metadata_: Optional[dict] = None, api_client: Optional[TellerAPIClient] = None):
         self.name = name_
         self.type_ = type_
@@ -22,13 +21,7 @@ class TellerObjectField:
         return f"{self.__class__.__name__}({self.name}: {self.type_.__name__} = {self.value} {self.metadata})" 
     
     def is_primary_key(self) -> bool:
-        parent = getattr(self, '_parent', None)
-        if parent:
-            constraints = parent._get_table_constraints()
-            field_name = self.db_column_name()
-            if field_name in constraints:
-                return 'primary_key' in constraints[field_name]
-        return False
+        return self._parent.is_primary_key(self.db_column_name())
     
     def is_primitive(self) -> bool:
         return self.type_ in {str, int, Decimal, bool} or issubclass(self.type_, Enum)

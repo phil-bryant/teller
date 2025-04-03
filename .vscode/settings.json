@@ -15,5 +15,5 @@
         "reportMissingImports": "none",
         "reportMissingModuleSource": "none"
     },
-    "python.languageServer": "Pylance"
+    "python.languageServer": "None"
 } 

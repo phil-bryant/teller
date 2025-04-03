@@ -1,0 +1,12 @@
+---
+description: 
+globs: *.py
+alwaysApply: false
+---
+
+# Your rule content
+
+- never use break
+- never use continue
+- never use pass
+- never use return EXCEPT as as the last statement in a method. in other words never have multiple returns in the same method
