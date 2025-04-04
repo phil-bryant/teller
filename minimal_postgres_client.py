@@ -11,7 +11,7 @@ class MinimalPostgresClient:
             cls._instance = super().__new__(cls)
             cls._instance._connection = None
             cls._instance._connection_string = connection_string
-            cls._instance._schema = schema          ## "Minimal" = single-schema (for now)
+            cls._instance._schema = schema                          ## "Minimal" = single-schema (for now)
             cls._instance._table_constraints_cache = {}
         return cls._instance
 

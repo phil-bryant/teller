@@ -25,37 +25,24 @@ class TellerObjectField:
         return self._parent.is_primary_key(self.db_column_name())
     
     def is_primitive(self) -> bool:
-        return self.type_ in {str, int, Decimal, bool} or issubclass(self.type_, TellerEnum)
+        return self.type_ in {str, int, Decimal, bool}
+
+    def primitive_db_value(self) -> str:
+        return f"'{self.value}'" if isinstance(self.value, str) else str(self.value)
     
     def is_iterable(self) -> bool:
         return isinstance(self.value, Iterable) and not isinstance(self.value, (str, bytes))
     
+    def db_column_name(self) -> str:
+        return self.metadata.get("db_name", self.name)
+    
     def db_value(self) -> Optional[str]:
         result = None
         if self.value is not None:
-            if self.is_primitive():
-                if isinstance(self.value, str):
-                    result = "'" + self.value + "'"
-                else: 
-                    result = str(self.value)
-            elif self.is_iterable():
-                db_values = [v for v in (each.db_value() for each in self.value if each is not None) if v is not None]
-                if db_values:
-                    result = ", ".join(db_values)
-            elif self.metadata.get("fk", False):
-                fk_id_val = None
-                for attr_name, attr_value in vars(self.value).items():
-                    if attr_name.endswith('_id') and attr_value is not None:
-                        fk_id_val = str(attr_value)
-                if fk_id_val is not None:
-                    result = fk_id_val
-            elif hasattr(self.value, 'db_value'):
-                result = self.value.db_value()
-            
+            if self.is_primitive(): result = self.primitive_db_value()
+            elif self.is_iterable(): result = ", ".join([item.db_value() for item in self.value])
+            else: result = self.value.db_value()
         return result
-    
-    def db_column_name(self) -> str:
-        return self.metadata.get("db_name", self.name)
     
     def save(self):
         if self.is_iterable():

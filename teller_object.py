@@ -50,6 +50,12 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     def is_primary_key(self, field_name: str) -> bool:
         return self._db_client.is_primary_key(self._table_name(), field_name)
 
+    def primary_key(self) -> TellerObjectField:
+        return next((field for field in self._fields.values() if field.is_primary_key()), None)
+
+    def db_value(self) -> str:
+        return self.primary_key().db_value()
+
     def save(self) -> TellerObject:
         has_values = any(field.value is not None for field in self._fields.values())
         if has_values:
