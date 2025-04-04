@@ -59,12 +59,12 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     def save(self) -> TellerObject:
         has_values = any(field.value is not None for field in self._fields.values())
         if has_values:
-            for field in self._fields.values(): field.save()
-            column_data = {}
-            for field in self._fields.values():
-                if field.db_value() is not None: column_data[field.db_column_name()] = field.db_value()
-            table_name = self._table_name()
-            with self._db_client.smart_transaction():
+            with self._db_client.with_transaction():
+                for field in self._fields.values(): field.save()
+                column_data = {}
+                for field in self._fields.values():
+                    if field.db_value() is not None: column_data[field.db_column_name()] = field.db_value()
+                table_name = self._table_name()
                 result = self._db_client.upsert(table_name, column_data)
                 if result and len(result) > 0:
                     for field_name, field_value in result[0].items():
