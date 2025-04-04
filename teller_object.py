@@ -64,8 +64,7 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
             for field in self._fields.values():
                 if field.db_value() is not None: column_data[field.db_column_name()] = field.db_value()
             table_name = self._table_name()
-            has_foreign_keys = self._db_client.has_foreign_keys(table_name)
-            with self._db_client.smart_transaction(defer_constraints=has_foreign_keys):
+            with self._db_client.smart_transaction():
                 result = self._db_client.upsert(table_name, column_data)
                 if result and len(result) > 0:
                     for field_name, field_value in result[0].items():
