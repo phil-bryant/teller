@@ -59,21 +59,20 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     def save(self) -> TellerObject:
         has_values = any(field.value is not None for field in self._fields.values())
         if has_values:
-            for field in self._fields.values(): 
-                field.save()
+            for field in self._fields.values(): field.save()
             column_data = {}
             for field in self._fields.values():
-                field_value = field.db_value()
-                if field_value is not None:
-                    column_data[field.db_column_name()] = field_value
-            result = self._db_client.upsert(self._table_name(), column_data)
-            if result and len(result) > 0:
-                for field_name, field_value in result[0].items():
-                    if field_name in self._fields:
-                        field = self._fields[field_name]
-                        typed_value = field_value
-                        if field.type_ is int and field_value is not None:
-                            typed_value = int(field_value)
-                        field.value = typed_value
-                        super().__setattr__(field_name, typed_value)
+                if field.db_value() is not None: column_data[field.db_column_name()] = field.db_value()
+            table_name = self._table_name()
+            has_foreign_keys = self._db_client.has_foreign_keys(table_name)
+            with self._db_client.smart_transaction(defer_constraints=has_foreign_keys):
+                result = self._db_client.upsert(table_name, column_data)
+                if result and len(result) > 0:
+                    for field_name, field_value in result[0].items():
+                        if field_name in self._fields:
+                            field = self._fields[field_name]
+                            typed_value = field_value
+                            if field.type_ is int and field_value is not None: typed_value = int(field_value)
+                            field.value = typed_value
+                            super().__setattr__(field_name, typed_value)
         return self

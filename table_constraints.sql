@@ -1,4 +1,4 @@
-create or replace function table_constraints(schema_name text, table_name text)
+create or replace function teller.table_constraints(schema_name text, table_name text)
 returns table (
     schema_name text,
     table_name text,

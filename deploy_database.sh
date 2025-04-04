@@ -29,7 +29,7 @@ psql -P pager=off -U teller -d teller -f teller_transaction_details_counterparty
 psql -P pager=off -U teller -d teller -f teller_transaction_links.sql
 psql -P pager=off -U teller -d teller -f teller_transaction_details.sql
 psql -P pager=off -U teller -d teller -f teller_transaction.sql
-psql -P pager=off -U teller -d teller -f create_triggers.sql
+psql -P pager=off -U teller -d teller -f create_updated_at_triggers.sql
 psql -P pager=off -U teller -d teller -f create_audit.sql
 
 ## Deploy table constraints view and function

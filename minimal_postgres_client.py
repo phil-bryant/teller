@@ -41,7 +41,6 @@ class MinimalPostgresClient:
         connection.commit()
 
     def upsert(self, table: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        connection = self._get_connection()
         constraints = self._get_table_constraints(table)
         pk_cols = (col for col, types in constraints.items() if 'primary_key' in types and col in data and data[col] != "NULL")
         unique_cols = (col for col, types in constraints.items() if 'unique' in types and col in data and data[col] != "NULL")
@@ -52,13 +51,11 @@ class MinimalPostgresClient:
             updates = [f"{c} = EXCLUDED.{c}" for c in data if data[c] and c != conflict_cols]
             query += f" ON CONFLICT ({conflict_cols}) DO {('UPDATE SET ' + ', '.join(updates)) if updates else 'NOTHING'}"
         query += " RETURNING *"
-        rows = self.execute(dedent(query))
-        self.commit()
-        return rows
+        return self.execute(dedent(query))
 
     def _get_table_constraints(self, table_name: str) -> dict:
         if table_name not in self._table_constraints_cache:
-            constraints_data = self.execute(f"SELECT * FROM table_constraints('{self._schema}', '{table_name}')")
+            constraints_data = self.execute(f"SELECT * FROM {self._schema}.table_constraints('{self._schema}', '{table_name}')")
             constraints = defaultdict(list)
             for row in constraints_data: constraints[row["column_name"]].append(row["constraint_type"])
             self._table_constraints_cache[table_name] = dict(constraints)
@@ -67,3 +64,7 @@ class MinimalPostgresClient:
     def is_primary_key(self, table_name: str, field_name: str) -> bool:
         constraints = self._get_table_constraints(table_name)
         return field_name in constraints and 'primary_key' in constraints[field_name]
+
+    def has_foreign_keys(self, table_name: str) -> bool:
+        constraints = self._get_table_constraints(table_name)
+        return any('foreign_key' in types for types in constraints.values())
