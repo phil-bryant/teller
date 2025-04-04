@@ -1,6 +1,7 @@
 import psycopg as _db
 from typing import Dict, List, Any, Optional, Union
 from textwrap import dedent
+from collections import defaultdict
 
 class MinimalPostgresClient:
     _instance = None
@@ -46,7 +47,7 @@ class MinimalPostgresClient:
         unique_cols = (col for col, types in constraints.items() if 'unique' in types and col in data and data[col] != "NULL")
         fallback_pk = (col for col, types in constraints.items() if 'primary_key' in types)
         conflict_cols = next(pk_cols, next(unique_cols, next(fallback_pk, None)))
-        query = f"INSERT INTO {self._schema}.{table} ({', '.join(data.keys())}) VALUES ({', '.join(map(str, data.values()))})"
+        query = f"INSERT INTO {self._schema}.{table} ({', '.join(data.keys())}) VALUES ({', '.join(data.values())})"
         if conflict_cols:
             updates = [f"{c} = EXCLUDED.{c}" for c in data if data[c] and c != conflict_cols]
             query += f" ON CONFLICT ({conflict_cols}) DO {('UPDATE SET ' + ', '.join(updates)) if updates else 'NOTHING'}"
@@ -56,17 +57,11 @@ class MinimalPostgresClient:
         return rows
 
     def _get_table_constraints(self, table_name: str) -> dict:
-        schema = self._schema
         if table_name not in self._table_constraints_cache:
-            constraints_data = self.execute(f"SELECT * FROM table_constraints('{schema}', '{table_name}')")
-            constraints = {}
-            for row in constraints_data:
-                col_name = row["column_name"]
-                constraint_type = row["constraint_type"]
-                if col_name not in constraints:
-                    constraints[col_name] = []
-                constraints[col_name].append(constraint_type)
-            self._table_constraints_cache[table_name] = constraints
+            constraints_data = self.execute(f"SELECT * FROM table_constraints('{self._schema}', '{table_name}')")
+            constraints = defaultdict(list)
+            for row in constraints_data: constraints[row["column_name"]].append(row["constraint_type"])
+            self._table_constraints_cache[table_name] = dict(constraints)
         return self._table_constraints_cache[table_name]
 
     def is_primary_key(self, table_name: str, field_name: str) -> bool:

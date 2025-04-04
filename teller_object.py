@@ -32,7 +32,8 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
         else:
             existing_field.value = api_data
             field = existing_field
-        ## The line below makes the following: (self.attrname is self._fields["attrname"].value) == True
+        ## Also provide direct access to the attribute. In other words,
+        ## the line below makes the following eval to True: (self.attrname is self._fields["attrname"].value)
         super().__setattr__(field.name, field.value)
 
     def _api_client_get(self) -> dict:
@@ -50,21 +51,16 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
         return self._db_client.is_primary_key(self._table_name(), field_name)
 
     def save(self) -> TellerObject:
-        print(f"DEBUG: Saving {self.__class__.__name__} with fields: {[(k, str(v.value)[:30] if v.value else None) for k, v in self._fields.items()]}")
         has_values = any(field.value is not None for field in self._fields.values())
-        print(f"DEBUG: has_values: {has_values}")
         if has_values:
             for field in self._fields.values(): 
-                print(f"DEBUG: Field: {field}")
                 field.save()
             column_data = {}
             for field in self._fields.values():
                 field_value = field.db_value()
                 if field_value is not None:
                     column_data[field.db_column_name()] = field_value
-            print(f"DEBUG: Column data for {self.__class__.__name__}: {column_data}")
             result = self._db_client.upsert(self._table_name(), column_data)
-            print(f"DEBUG: Upsert result for {self.__class__.__name__}: {result}")
             if result and len(result) > 0:
                 for field_name, field_value in result[0].items():
                     if field_name in self._fields:
@@ -74,6 +70,4 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
                             typed_value = int(field_value)
                         field.value = typed_value
                         super().__setattr__(field_name, typed_value)
-        else:
-            print(f"DEBUG: Skipping save for empty {self.__class__.__name__} object")
         return self

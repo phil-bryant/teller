@@ -1,13 +1,14 @@
 from enum import Enum
+from teller_enum import TellerEnum
 
 ## https://teller.io/docs/api
 
-class TellerAccountType(Enum):
+class TellerAccountType(TellerEnum):
     NONE = None
     DEPOSITORY = "depository"
     CREDIT = "credit"
 
-class TellerAccountSubtype(Enum):
+class TellerAccountSubtype(TellerEnum):
     NONE = None
     CHECKING = "checking"
     SAVINGS = "savings" 
@@ -17,44 +18,44 @@ class TellerAccountSubtype(Enum):
     SWEEP = "sweep"
     CREDIT_CARD = "credit_card"
 
-class TellerAccountStatus(Enum):
+class TellerAccountStatus(TellerEnum):
     NONE = None
     OPEN = "open"
     CLOSED = "closed"
 
-class TellerTransactionDetailsProcessingStatus(Enum):
+class TellerTransactionDetailsProcessingStatus(TellerEnum):
     NONE = None
     PENDING = "pending"
     COMPLETE = "complete"
 
-class TellerTransactionStatus(Enum):
+class TellerTransactionStatus(TellerEnum):
     NONE = None
     POSTED = "posted"
     PENDING = "pending"
 
-class TellerTransactionDetailsCounterpartyType(Enum):
+class TellerTransactionDetailsCounterpartyType(TellerEnum):
     NONE = None
     ORGANIZATION = "organization"
     PERSON = "person"
 
-class TellerIdentityType(Enum):
+class TellerIdentityType(TellerEnum):
     NONE = None
     ORGANIZATION = "organization"
     PERSON = "person"
 
-class TellerIdentityPhoneNumberType(Enum):  
+class TellerIdentityPhoneNumberType(TellerEnum):  
     NONE = None
     MOBILE = "mobile"
     HOME = "home"
     WORK = "work"
     UNKNOWN = "unknown"
 
-class TellerIdentityNameType(Enum):
+class TellerIdentityNameType(TellerEnum):
     NONE = None
     NAME = "name"
     ALIAS = "alias"
 
-class TellerTransactionDetailsCategory(Enum):
+class TellerTransactionDetailsCategory(TellerEnum):
     NONE = None
     ACCOMMODATION = "accommodation"
     ADVERTISING = "advertising"
