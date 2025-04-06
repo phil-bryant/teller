@@ -10,6 +10,10 @@ fi
 psql -U postgres -d teller -c "DROP FUNCTION IF EXISTS table_constraints(text, text);"
 psql -U postgres -d teller -c "DROP VIEW IF EXISTS teller.all_table_constraints;"
 
+## Terminate all active connections to the database before dropping it
+echo "Terminating all active connections to the teller database..."
+psql -U postgres -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'teller' AND pid <> pg_backend_pid();"
+
 psql -U postgres -d teller -c "DROP schema IF EXISTS teller CASCADE;"
 psql -U postgres -c "ALTER DATABASE teller OWNER TO postgres;"
 psql -U postgres -d teller -c "DROP USER IF EXISTS teller;"

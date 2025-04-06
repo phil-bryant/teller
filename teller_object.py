@@ -5,6 +5,7 @@ from teller_api_client_type import TellerAPIClientType, APIDataType, APIDataValu
 from iso_date import ISODate
 from typing import Optional
 from teller_object_field import TellerObjectField
+from psycopg import Connection
 
 class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     _path: str = ""
@@ -60,7 +61,9 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
         has_values = any(field.value is not None for field in self._fields.values())
         if has_values:
             with self._db_client.with_transaction():
-                for field in self._fields.values(): field.save()
+                for field in self._fields.values():
+                    connection_status = Connection.TransactionStatus(self._db_client._connection.pgconn.transaction_status).name
+                    field.save()
                 column_data = {}
                 for field in self._fields.values():
                     if field.db_value() is not None: column_data[field.db_column_name()] = field.db_value()

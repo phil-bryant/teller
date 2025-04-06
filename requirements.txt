@@ -6,3 +6,4 @@ requests
 structlog==23.1.0
 multipledispatch==0.6.0
 debuggy
+plum-dispatch
