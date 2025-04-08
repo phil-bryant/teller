@@ -7,6 +7,9 @@ export PGPASSWORD=$TELLER_POSTGRES_PASSWORD
 psql -P pager=off -U postgres -f create_database.sql
 psql -P pager=off -U postgres -d teller -v TELLER_POSTGRES_PASSWORD="$TELLER_POSTGRES_PASSWORD" -f configure_database.sql
 
+## Create necessary extensions (requires superuser)
+psql -P pager=off -U postgres -d teller -c "CREATE EXTENSION IF NOT EXISTS tablefunc SCHEMA teller;"
+
 ## Then we can use the teller user to create the teller tables in dependency order
 psql -P pager=off -U teller -d teller -f teller_enums.sql
 psql -P pager=off -U teller -d teller -f teller_institution.sql
@@ -31,9 +34,8 @@ psql -P pager=off -U teller -d teller -f teller_transaction_details.sql
 psql -P pager=off -U teller -d teller -f teller_transaction.sql
 psql -P pager=off -U teller -d teller -f create_updated_at_triggers.sql
 psql -P pager=off -U teller -d teller -f create_audit.sql
-
-## Deploy table constraints view and function
-psql -P pager=off -U teller -d teller -f all_table_constraints.sql
 psql -P pager=off -U teller -d teller -f table_constraints.sql
+psql -P pager=off -U teller -d teller -f column_constraints.sql
+psql -P pager=off -U teller -d teller -f column_information.sql
 
 unset PGPASSWORD
