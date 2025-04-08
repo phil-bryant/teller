@@ -7,9 +7,9 @@ if [ "$confirmation" != "destroy" ]; then
 fi
 echo "Terminating all active connections to the teller database..."
 psql -U postgres -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'teller' AND pid <> pg_backend_pid();"
-psql -U postgres -d teller -c "DROP VIEW IF EXISTS teller.table_constraints;"
-psql -U postgres -d teller -c "DROP VIEW IF EXISTS teller.column_constraints;"
 psql -U postgres -d teller -c "DROP VIEW IF EXISTS teller.column_information;"
+psql -U postgres -d teller -c "DROP VIEW IF EXISTS teller.column_constraints;"
+psql -U postgres -d teller -c "DROP VIEW IF EXISTS teller.table_constraints;"
 psql -U postgres -d teller -c "DROP schema IF EXISTS teller CASCADE;"
 psql -U postgres -c "ALTER DATABASE teller OWNER TO postgres;"
 psql -U postgres -d teller -c "DROP USER IF EXISTS teller;"

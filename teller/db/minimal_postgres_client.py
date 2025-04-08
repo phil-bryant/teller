@@ -13,7 +13,7 @@ class MinimalPostgresClient:
             cls._instance = super().__new__(cls)
             cls._instance._connection = None
             cls._instance._connection_string = connection_string
-            cls._instance._table_constraints_cache = {}
+            cls._instance._column_information_cache = {}
             cls._instance._current_transaction_frames = set()
         return cls._instance
 
@@ -51,7 +51,7 @@ class MinimalPostgresClient:
     
     def _get_column_information(self, schema: str, table_name: str) -> dict:
         cache_key = (schema, table_name)
-        if cache_key not in self._table_constraints_cache:
+        if cache_key not in self._column_information_cache:
             sql = f"""
                 SELECT
                     *
@@ -64,16 +64,20 @@ class MinimalPostgresClient:
             column_data = self._execute(dedent(sql))
             ## Structure: {column_name: {col_info_key: col_info_value, ...}, ...}
             columns_info = {row['column_name']: dict(row) for row in column_data} 
-            self._table_constraints_cache[cache_key] = columns_info
-        return self._table_constraints_cache[cache_key]
+            self._column_information_cache[cache_key] = columns_info
+        return self._column_information_cache[cache_key]
     
-    def has_table_column(self, schema: str, table_name: str, field_name: str) -> bool:
-        columns_information = self._get_column_information(schema, table_name)
-        return field_name in columns_information
+    def has_table_column(self, schema: str, table_name: str, column_name: str) -> bool:
+        print(f"DEBUG: Checking for column: {schema}.{table_name}.{column_name}")
+        columns_info = self._get_column_information(schema, table_name)
+        found = column_name in columns_info
+        print(f"DEBUG: Column {column_name} found in cache: {found}")
+        if not found: print(f"DEBUG: Available columns in cache for {schema}.{table_name}: {list(columns_info.keys())}")
+        return found
     
-    def is_primary_key(self, schema: str, table_name: str, field_name: str) -> bool:
+    def is_primary_key(self, schema: str, table_name: str, column_name: str) -> bool:
         all_columns_info = self._get_column_information(schema, table_name)
-        column_info = all_columns_info.get(field_name)
+        column_info = all_columns_info.get(column_name)
         return column_info is not None and column_info.get('primary_key_constraint') is not None
 
     def upsert(self, schema: str, table: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

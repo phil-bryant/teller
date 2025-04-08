@@ -3,7 +3,7 @@ from .api_client_type import TellerAPIClient
 from typing import Optional, Any, Dict
 from decimal import Decimal
 from enum import Enum
-from datetime import date
+from datetime import date, datetime
 from collections.abc import Iterable
 from .enums import TellerEnum
 from dataclasses import dataclass
@@ -40,10 +40,12 @@ class TellerObjectField:
     
     def db_value(self) -> Optional[str]:
         result = None
-        if self.value is not None and self._parent.has_table_column(self.db_column_name()):
-            if self.is_primitive(): result = self.primitive_db_value()
-            elif self.is_iterable(): result = ", ".join([item.db_value() for item in self.value])
-            else: result = self.value.db_value()
+        ## Check if field is database read-only
+        if not self.metadata.get("db_ro", False):
+            if self.value is not None and self._parent.has_table_column(self.db_column_name()):
+                if self.is_primitive(): result = self.primitive_db_value()
+                elif self.is_iterable(): result = ", ".join([item.db_value() for item in self.value])
+                else: result = self.value.db_value()
         return result
     
     def save(self):
@@ -52,3 +54,11 @@ class TellerObjectField:
         else:
             print("DEBUG: teller_object_field.save()")
             if not self.is_primitive() and self.value is not None: self.value.save()
+            
+    def update_value(self, value_data):
+        result = None
+        if self.type_ is datetime and isinstance(value_data, datetime):
+            result = value_data
+        else:
+            result = self.type_(value_data)
+        self.value = result
