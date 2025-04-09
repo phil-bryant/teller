@@ -62,7 +62,6 @@ class MinimalPostgresClient:
                     AND table_name = '{table_name}'
             """
             column_data = self._execute(dedent(sql))
-            ## Structure: {column_name: {col_info_key: col_info_value, ...}, ...}
             columns_info = {row['column_name']: dict(row) for row in column_data} 
             self._column_information_cache[cache_key] = columns_info
         return self._column_information_cache[cache_key]
@@ -99,13 +98,35 @@ class MinimalPostgresClient:
             if col_name in data and data[col_name] != "NULL":
                 if col_info.get('primary_key_constraint') is not None: pk_cols.append(col_name)
                 elif col_info.get('unique_constraint') is not None: unique_cols.append(col_name)
+        
+        print(f"DEBUG: Primary key columns found: {pk_cols}")
+        print(f"DEBUG: Unique columns found: {unique_cols}")
+        print(f"DEBUG: Data keys: {list(data.keys())}")
+        
+        # Check if any PK columns from schema are missing from data
+        for col_name, col_info in all_columns_info.items():
+            if col_info.get('primary_key_constraint') is not None and col_name not in data:
+                print(f"DEBUG: Warning: Primary key column '{col_name}' exists in schema but not in data")
 
         conflict_cols = pk_cols if pk_cols else unique_cols
-        conflict_cols_str = ', '.join(conflict_cols)
+        print(f"DEBUG: Final conflict columns: {conflict_cols}")
+        
+        for col in conflict_cols:
+            pk_constraint = all_columns_info.get(col, {}).get('primary_key_constraint')
+            unique_constraint = all_columns_info.get(col, {}).get('unique_constraint')
+            print(f"DEBUG: Validating conflict column '{col}': pk_constraint={pk_constraint}, unique_constraint={unique_constraint}")
+        
         query = f"INSERT INTO {schema}.{table} ({', '.join(data.keys())}) VALUES ({', '.join(data.values())})"
+        
+        # Only add the ON CONFLICT clause if we have conflict columns
         if conflict_cols:
+            print(f"DEBUG: Adding ON CONFLICT clause with columns: {conflict_cols}")
+            conflict_cols_str = ', '.join(conflict_cols)
             update_cols = [f"{c} = EXCLUDED.{c}" for c in data if data[c] and c not in conflict_cols]
             query += f" ON CONFLICT ({conflict_cols_str}) DO {('UPDATE SET ' + ', '.join(update_cols)) if update_cols else 'NOTHING'}"
+        else:
+            print(f"DEBUG: No conflict columns found, using simple INSERT")
+        
         query += " RETURNING *"
         results = self._execute(dedent(query))
         return results[0] if results else None

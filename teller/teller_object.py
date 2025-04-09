@@ -130,5 +130,6 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
                 for field in self._fields.values():
                     if field.db_value() is not None: column_data[field.db_column_name()] = field.db_value()
                 table_name = self._table_name()
+                print(f"DEBUG: Saving to {self._table_schema()}.{table_name} with fields: {list(column_data.keys())}")
                 self.upserted(self._db_client.upsert(self._table_schema(), table_name, column_data))
         return self

@@ -36,11 +36,12 @@ class TellerObjectField:
         return isinstance(self.value, Iterable) and not isinstance(self.value, (str, bytes))
     
     def db_column_name(self) -> str:
-        return self.metadata.get("db_name", self.name)
+        db_name = self.metadata.get("db_name", self.name)
+        print(f"DEBUG: Field '{self.name}' maps to DB column '{db_name}' (metadata: {self.metadata})")
+        return db_name
     
     def db_value(self) -> Optional[str]:
         result = None
-        ## Check if field is database read-only
         if not self.metadata.get("db_ro", False):
             if self.value is not None and self._parent.has_table_column(self.db_column_name()):
                 if self.is_primitive(): result = self.primitive_db_value()

@@ -4,17 +4,18 @@ CREATE OR REPLACE VIEW teller.column_constraints (
     table_schema,
     table_name,
     column_name,
-    primary_key_constraint,
+    num_constraint_cols,
+    constraint_col_num,
+    check_constraint,
     not_null_constraint,
     unique_constraint,
+    primary_key_constraint,
     foreign_key_constraint,
-    check_constraint,
     foreign_table_schema,
     foreign_table_name,
     is_deferrable,
     initially_deferred
-) AS
-WITH distinct_cols AS (
+) AS WITH distinct_cols AS (
     -- Get the unique identifiers for rows and aggregate deferrability/FK info
     SELECT
         ac.table_schema,
@@ -25,7 +26,9 @@ WITH distinct_cols AS (
         MAX(CASE WHEN ac.constraint_type = 'foreign_key' THEN ac.foreign_table_name ELSE NULL END) AS foreign_table_name,
         -- Aggregate deferrability
         MAX(ac.is_deferrable::text) AS is_deferrable,
-        MAX(ac.initially_deferred::text) AS initially_deferred
+        MAX(ac.initially_deferred::text) AS initially_deferred,
+        MAX(ac.num_columns) AS num_constraint_cols,
+        MAX(ac.column_num) AS constraint_col_num
     FROM teller.table_constraints ac
     WHERE ac.table_schema = 'teller'
     GROUP BY
@@ -37,12 +40,13 @@ SELECT
     dc.table_schema,
     dc.table_name,
     dc.column_name,
-    -- Pivoted constraint names from crosstab
-    ct.primary_key_constraint,
+    dc.num_constraint_cols,
+    dc.constraint_col_num,
+    ct.check_constraint,
     ct.not_null_constraint,
     ct.unique_constraint,
+    ct.primary_key_constraint,
     ct.foreign_key_constraint,
-    ct.check_constraint,
     -- Aggregated FK info from distinct_cols CTE (before defer cols)
     dc.foreign_table_schema,
     dc.foreign_table_name,
