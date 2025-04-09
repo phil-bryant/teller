@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- You are prohibited from coding any fall-back scenarios. Full-stop. Fall back coding masks bugs and are never the right thing to do. Hence fall back coding is prohibited.

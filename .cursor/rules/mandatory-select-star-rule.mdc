@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- select * is a best practice in this project. 
+- you are strictly prohibited from replacing * in any queries with named columns.

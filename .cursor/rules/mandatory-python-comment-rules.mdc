@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- you are prohibited from putting any comments in a python file starting with # unless specifically and explictly requested by me.
+- you are prohibited from deleting or changing a comment starting with ##. those are mycomments. you can tell if a comment is mine because i put ## at the start. ## comments are strictly off limits to you!
+- you are prohibited from putting any comments in a python file delimited by multiple double quotes. absolutely none whatsoever.

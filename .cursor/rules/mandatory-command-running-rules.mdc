@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- never just run a bash command because it might either block you or overwhelm you.
+- if you KNOW the output will be short you can add |cat to the end of the command, eg., psql -U teller -d teller -c "SELECT enumlabel FROM pg_enum e JOIN pg_type t ON (e.enumtypid = t.oid) WHERE t.typname = 'processing_status';" |cat because without the |cat you will be blocked.
+- otherwise do ./command 1> temp_assistant.log 2&>1 then read the .log. otherwise some commands will have so much output that you will crash.

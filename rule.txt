@@ -1,8 +1,5 @@
----
-description: 
-globs: 
-alwaysApply: true
----
+- Mandatory: you must code in an object-oriented way that respects encapsulation
+
 
 # Your rule content
 

@@ -1,0 +1,9 @@
+---
+description: 
+globs: *.py
+alwaysApply: false
+---
+
+# Your rule content
+
+- You are prohibited from hard-coding any strings or numbers in any python source code.

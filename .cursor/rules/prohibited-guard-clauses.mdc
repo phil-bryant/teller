@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- You are prohibited from adding any guard clauses to code that would hide an exception. We want the code to blow up right then and there if it encounters a scenario other than what we are directly implementing.
+- Here is an example of a prohibited guard clause: if not hasattr(field, 'depends_on_parent') or not field.depends_on_parent(). you are disallowed from masking bugs with code like hasattr(field, 'depends_on_parent')

@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- you are disallowed to run "python". you are however, allowed to run ./run_api_client.py
+- you are disallowed to run "pip". you are however, allowed to run ./load_requirements.sh

@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- You are prohibited from adding any try catch to any code. We want no exception handling. Only fast failures.
+- You are prohibited from adding exception handling of any sort to any code.

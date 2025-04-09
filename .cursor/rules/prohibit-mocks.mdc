@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- Never mock anything, even for testing. Always test the live system end-to-end with real data.
