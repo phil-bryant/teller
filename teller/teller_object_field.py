@@ -37,7 +37,6 @@ class TellerObjectField:
     
     def db_column_name(self) -> str:
         db_name = self.metadata.get("db_name", self.name)
-        print(f"DEBUG: Field '{self.name}' maps to DB column '{db_name}' (metadata: {self.metadata})")
         return db_name
     
     def db_value(self) -> Optional[str]:
@@ -49,11 +48,16 @@ class TellerObjectField:
                 else: result = self.value.db_value()
         return result
     
+    def constrains(self, aTellerObject) -> bool:
+        answer = False
+        if self.is_iterable(): answer = self.value[0].constrains(aTellerObject)
+        else: answer = self.value.constrains(aTellerObject) if self.value and not self.is_primitive() else False
+        return answer
+    
     def save(self):
         if self.is_iterable():
             for each in self.value: each.save()
         else:
-            print("DEBUG: teller_object_field.save()")
             if not self.is_primitive() and self.value is not None: self.value.save()
             
     def update_value(self, value_data):

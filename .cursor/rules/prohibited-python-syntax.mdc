@@ -12,4 +12,5 @@ alwaysApply: true
 - you are prohibited from putting multiple return statements in the same method
 - you are prohibited from using return except as the very last statement in a method
 - you are prohibited from using isinstance(...) this looks like a guard clause or a violation of object-oriented principles
+- you are prohibited from using type(...) == this looks like a guard clause or a violation of object-oriented principles
 - you are prohibited from using hasattr(...) this also looks like a guard clause or a violation of object-oriented principles

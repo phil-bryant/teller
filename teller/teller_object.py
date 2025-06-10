@@ -55,7 +55,6 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
         prefix = "Teller"
         if class_name.startswith(prefix):
             class_name = class_name[len(prefix):]
-        ## Convert CamelCase to snake_case
         s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', class_name)
         return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
@@ -71,65 +70,32 @@ class TellerObject(metaclass=TellerMetaObject): ## https://teller.io/docs/api
     def has_table_column(self, column_name: str) -> bool:
         return self._db_client.has_table_column(self._table_schema(), self._table_name(), column_name)
     
+    def constrains(self, aTellerObject) -> bool:
+        return self._db_client.constrains(self._table_schema(), self._table_name(), aTellerObject._table_schema(), aTellerObject._table_name())
+    
     def upserted(self, db_result: dict) -> None:
-        print(f"\n{self.__class__.__name__} Fields vs DB Results:")
-        print(f"{'Object Field':<20} {'Object Value':<25} | {'DB Column':<20} {'DB Value':<25}")
-        print(f"{'-'*20:<20} {'-'*25:<25} | {'-'*20:<20} {'-'*25:<25}")
         for field_name, field in self._fields.items():
             db_column = field.db_column_name() if hasattr(field, 'db_column_name') else field_name
-            # Display values
             db_value = db_result.get(db_column, None)
             obj_value = field.db_value()   
-            obj_value_str = str(obj_value).strip("'\"") if obj_value is not None else 'None'
-            db_value_str = str(db_value) if db_value is not None else 'None'
-            print(f"{field_name:<20} {obj_value_str[:25]:<25} | {db_column:<20} {db_value_str[:25]:<25}")
-            # Check if values changed
-            if obj_value_str != 'None' and db_value_str != obj_value_str:
-                print(f"DEBUG: Value comparison for field '{field_name}':")
-                print(f"  - Object value: type={type(obj_value)}, repr={repr(obj_value)}")
-                print(f"  - DB value: type={type(db_value)}, repr={repr(db_value)}")
-                
-                # More intelligent comparison based on types
-                should_raise = True
-                
-                # Handle numeric types with possible precision differences
-                if (isinstance(obj_value, (int, float)) and isinstance(db_value, (int, float))):
-                    try:
-                        if abs(float(obj_value) - float(db_value)) < 0.00001:
-                            should_raise = False
-                    except (ValueError, TypeError):
-                        pass
-                
-                # Handle date/time objects with possible format differences
-                elif (isinstance(obj_value, datetime) or isinstance(db_value, datetime)):
-                    try:
-                        # Try to convert both to ISO format for comparison
-                        obj_iso = obj_value.isoformat() if isinstance(obj_value, datetime) else obj_value
-                        db_iso = db_value.isoformat() if isinstance(db_value, datetime) else db_value
-                        if str(obj_iso) == str(db_iso):
-                            should_raise = False
-                    except (ValueError, TypeError, AttributeError):
-                        pass
-                
-                if should_raise:
-                    raise Exception(f"Value mismatch for field '{field_name}': Object value '{obj_value_str}' != DB value '{db_value_str}'")
-            # Update None -> value
             if obj_value is None and db_value is not None:
                 field.update_value(db_value)
 
     def save(self) -> TellerObject:
-        print()
-        print(f"DEBUG: [TellerObject] {self.__class__.__name__}.save(): {self}")
         has_values = any(field.value is not None for field in self._fields.values())
         if has_values:
+            pass
             with self._db_client.transaction():
                 for field in self._fields.values():
-                    connection_status = Connection.TransactionStatus(self._db_client._connection.pgconn.transaction_status).name
-                    field.save()
+                    if not field.constrains(self): field.save()
+            with self._db_client.transaction():
                 column_data = {}
                 for field in self._fields.values():
-                    if field.db_value() is not None: column_data[field.db_column_name()] = field.db_value()
-                table_name = self._table_name()
-                print(f"DEBUG: Saving to {self._table_schema()}.{table_name} with fields: {list(column_data.keys())}")
-                self.upserted(self._db_client.upsert(self._table_schema(), table_name, column_data))
+                    if field.db_value() is not None and not field.constrains(self): 
+                        column_data[field.db_column_name()] = field.db_value()
+                table_name = self._table_name()                
+                if column_data: self.upserted(self._db_client.upsert(self._table_schema(), table_name, column_data))
+            with self._db_client.transaction():
+                for field in self._fields.values():
+                    if field.value is not None and field.constrains(self): field.save()
         return self

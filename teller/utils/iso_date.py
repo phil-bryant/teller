@@ -9,5 +9,8 @@ class ISODate(date):
     def db_value(self) -> str:
         return f"'{self.isoformat()}'"
     
+    def constrains(self, aTellerObject) -> bool:
+        return False
+    
     def save(self) -> str:
         return self.db_value()
