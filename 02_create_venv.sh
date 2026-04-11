@@ -5,28 +5,23 @@ set -e
 
 # Read Python version from prerequisites script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PREREQ_SCRIPT="${SCRIPT_DIR}/01_install_prerequisites.sh"
+PREREQ_SCRIPT="${SCRIPT_DIR}/01A_install_prerequisites.sh"
 
 if [ ! -f "$PREREQ_SCRIPT" ]; then
     echo "❌ ERROR: Prerequisites script not found: $PREREQ_SCRIPT"
-    echo "Please ensure 01_install_prerequisites.sh is in the same directory."
+    echo "Please ensure 01A_install_prerequisites.sh is in the same directory."
     exit 1
 fi
 
-# Extract Python version from prerequisites script
-PYTHON_VERSION=$(grep '^PYTHON_VERSION=' "$PREREQ_SCRIPT" | cut -d'"' -f2)
-
-if [ -z "$PYTHON_VERSION" ]; then
-    echo "❌ ERROR: Could not determine Python version from prerequisites script"
-    exit 1
+PYTHON_BIN=""
+if command -v python3.12 >/dev/null 2>&1; then
+    PYTHON_BIN="python3.12"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
 fi
 
-# Check if the required Python version is installed
-if ! command -v python${PYTHON_VERSION} >/dev/null 2>&1; then
-    echo "❌ ERROR: Python ${PYTHON_VERSION} is not installed."
-    echo ""
-    echo "Please run the prerequisites script first:"
-    echo "  ./01_install_prerequisites.sh"
+if [ -z "$PYTHON_BIN" ]; then
+    echo "❌ ERROR: No suitable Python interpreter found (tried python3.12, python3)."
     exit 1
 fi
 
@@ -54,7 +49,7 @@ if [ -d "$VENV_DIR" ]; then
 fi
 
 echo "Creating virtual environment..."
-python${PYTHON_VERSION} -m venv "$VENV_DIR"
+"$PYTHON_BIN" -m venv "$VENV_DIR"
 
 echo "✓ Created virtual environment: $VENV_DIR"
 echo ""
