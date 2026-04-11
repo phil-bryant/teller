@@ -7,7 +7,7 @@ CREATE ROLE teller_read;
 GRANT teller_read TO teller_write;
 GRANT teller_write TO teller_admin;
 CREATE USER teller WITH 
-    PASSWORD 'QkCV#KC*eA9BDRx'
+    PASSWORD :'teller_password'
     NOSUPERUSER
     NOCREATEDB
     NOCREATEROLE
