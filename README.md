@@ -52,6 +52,7 @@ source ./teller-venv/bin/activate
 - `06_capture_teller_token.sh`
   - Saves a fresh Teller Connect `accessToken` into `~/.teller/auth_token.json`.
   - Default mode is no copy/paste: runs local Connect capture server on `http://localhost:8080`.
+  - Persists enrollment id to `~/.teller/enrollment_id.txt` for future repair mode.
   - Also supports token argument, secure prompt (`--manual`), or macOS clipboard mode.
 - `99_destroy_database.sh`
   - Destroys `prod` database and related roles after explicit confirmation.
@@ -122,7 +123,11 @@ Default `06` behavior:
 
 - Starts local Teller Connect capture UI at `http://localhost:8080`
 - On successful enrollment, automatically writes `~/.teller/auth_token.json`
+- Persists enrollment id at `~/.teller/enrollment_id.txt`
 - Immediately verifies `/accounts` with the saved token/cert
+- Supports repair mode for disconnected enrollments without creating a new enrollment:
+  - `ENROLLMENT_ID=enr_xxx ./06_capture_teller_token.sh`
+  - Automatic when `AUTO_REPAIR=true` and `~/.teller/enrollment_id.txt` exists
 
 Other options (manual/alternative input):
 
@@ -130,6 +135,8 @@ Other options (manual/alternative input):
 ./06_capture_teller_token.sh --manual
 ./06_capture_teller_token.sh token_xxx
 ./06_capture_teller_token.sh --clipboard
+ENROLLMENT_ID=enr_xxx ./06_capture_teller_token.sh
+AUTO_REPAIR=false ./06_capture_teller_token.sh
 ```
 
 Then verify token/API access:

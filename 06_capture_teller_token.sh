@@ -5,10 +5,13 @@ set -euo pipefail
 
 TELLER_DIR="${HOME}/.teller"
 AUTH_TOKEN_FILE="${TELLER_DIR}/auth_token.json"
+ENROLLMENT_ID_FILE="${TELLER_DIR}/enrollment_id.txt"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CAPTURE_SERVER_SCRIPT="${SCRIPT_DIR}/teller_connect_token_server.py"
 PORT="${PORT:-8080}"
 CONNECT_ENVIRONMENT="${CONNECT_ENVIRONMENT:-development}"
+ENROLLMENT_ID="${ENROLLMENT_ID:-}"
+AUTO_REPAIR="${AUTO_REPAIR:-true}"
 CERT_FILE="${HOME}/.teller/certificate.pem"
 KEY_FILE="${HOME}/.teller/private_key.pem"
 
@@ -21,6 +24,8 @@ usage() {
     echo "  ./06_capture_teller_token.sh --clipboard"
     echo ""
     echo "No-copy mode starts a local Connect server on localhost:${PORT}."
+    echo "Set ENROLLMENT_ID to run Teller Connect repair mode (no new enrollment)."
+    echo "If AUTO_REPAIR=true and ~/.teller/enrollment_id.txt exists, repair mode is automatic."
 }
 
 validate_token() {
@@ -40,6 +45,27 @@ get_token_from_clipboard() {
         exit 1
     fi
     pbpaste
+}
+
+write_auth_token_file() {
+    local token="$1"
+    mkdir -p "$TELLER_DIR"
+    chmod 700 "$TELLER_DIR"
+
+    local tmp_file
+    tmp_file="$(mktemp "${TELLER_DIR}/auth_token.XXXXXX.json")"
+    printf '{"current":"%s"}\n' "$token" > "$tmp_file"
+    chmod 400 "$tmp_file"
+    mv "$tmp_file" "$AUTH_TOKEN_FILE"
+}
+
+resolve_enrollment_id() {
+    if [ -n "$ENROLLMENT_ID" ]; then
+        return
+    fi
+    if [ "$AUTO_REPAIR" = "true" ] && [ -s "$ENROLLMENT_ID_FILE" ]; then
+        ENROLLMENT_ID="$(tr -d '\r\n' < "$ENROLLMENT_ID_FILE")"
+    fi
 }
 
 verify_accounts_access() {
@@ -77,6 +103,15 @@ verify_accounts_access() {
         echo "✅ /accounts verification passed."
     else
         echo "⚠️  /accounts verification returned HTTP ${status}."
+        local error_code
+        error_code="$(jq -r '.error.code // empty' "$response_file" 2>/dev/null || echo "")"
+        if [ -n "$error_code" ]; then
+            echo "Teller error code: ${error_code}"
+        fi
+        if [[ "$error_code" == enrollment.disconnected* ]] && [ -z "$ENROLLMENT_ID" ]; then
+            echo "Use repair mode with your existing enrollment id (no re-enrollment):"
+            echo "  ENROLLMENT_ID=enr_xxx ./06_capture_teller_token.sh"
+        fi
         echo "Response:"
         cat "$response_file"
     fi
@@ -99,7 +134,12 @@ main() {
                 echo "Try: chmod +x \"$CAPTURE_SERVER_SCRIPT\""
                 exit 1
             fi
-            PORT="$PORT" CONNECT_ENVIRONMENT="$CONNECT_ENVIRONMENT" "$CAPTURE_SERVER_SCRIPT" --port "$PORT" --environment "$CONNECT_ENVIRONMENT"
+            resolve_enrollment_id
+            if [ -n "$ENROLLMENT_ID" ]; then
+                echo "Using repair mode for enrollment: ${ENROLLMENT_ID}"
+            fi
+            PORT="$PORT" CONNECT_ENVIRONMENT="$CONNECT_ENVIRONMENT" ENROLLMENT_ID="$ENROLLMENT_ID" \
+                "$CAPTURE_SERVER_SCRIPT" --port "$PORT" --environment "$CONNECT_ENVIRONMENT" --enrollment-id "$ENROLLMENT_ID"
             verify_accounts_access
             exit 0
             ;;
@@ -117,11 +157,7 @@ main() {
 
     validate_token "$token"
 
-    mkdir -p "$TELLER_DIR"
-    chmod 700 "$TELLER_DIR"
-
-    printf '{"current":"%s"}\n' "$token" > "$AUTH_TOKEN_FILE"
-    chmod 400 "$AUTH_TOKEN_FILE"
+    write_auth_token_file "$token"
 
     echo "✅ Saved Teller access token to ${AUTH_TOKEN_FILE}"
     verify_accounts_access

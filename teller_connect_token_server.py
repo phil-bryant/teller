@@ -14,20 +14,29 @@ HOME = Path.home()
 TELLER_DIR = HOME / ".teller"
 APP_ID_FILE = TELLER_DIR / "application_id.txt"
 AUTH_TOKEN_FILE = TELLER_DIR / "auth_token.json"
+ENROLLMENT_ID_FILE = TELLER_DIR / "enrollment_id.txt"
 
 
 class CaptureState:
-    def __init__(self, app_id: str, environment: str):
+    def __init__(self, app_id: str, environment: str, enrollment_id: str):
         self.app_id = app_id
         self.environment = environment
+        self.enrollment_id = enrollment_id
         self.token_saved = False
         self.saved_path = str(AUTH_TOKEN_FILE)
         self.error = ""
 
 
-def build_html(app_id: str, environment: str) -> str:
+def build_html(app_id: str, environment: str, enrollment_id: str) -> str:
     app_id_json = json.dumps(app_id)
     env_json = json.dumps(environment)
+    enrollment_id_json = json.dumps(enrollment_id)
+    button_label = "Repair Existing Enrollment" if enrollment_id else "Connect Bank Account"
+    description = (
+        "Click repair to restore your existing enrollment and auto-save your access token."
+        if enrollment_id
+        else "Click connect to enroll and auto-save your access token to ~/.teller/auth_token.json."
+    )
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -43,32 +52,34 @@ def build_html(app_id: str, environment: str) -> str:
 </head>
 <body>
   <h1>Teller Connect</h1>
-  <p>Click connect to enroll and auto-save your access token to <code>~/.teller/auth_token.json</code>.</p>
-  <button id="connect">Connect Bank Account</button>
+  <p>{description}</p>
+  <button id="connect">{button_label}</button>
   <pre id="status">Ready.</pre>
   <script>
     const statusEl = document.getElementById('status');
     const connectBtn = document.getElementById('connect');
     const appId = {app_id_json};
     const env = {env_json};
+    const enrollmentId = {enrollment_id_json};
 
     const setStatus = (msg) => {{
       statusEl.textContent = msg;
     }};
 
     connectBtn.addEventListener('click', () => {{
-      setStatus('Opening Teller Connect...');
-      TellerConnect.setup({{
+      setStatus(enrollmentId ? 'Opening Teller Connect repair flow...' : 'Opening Teller Connect...');
+      const setup = {{
         applicationId: appId,
         environment: env,
         products: ["verify", "balance", "transactions", "identity"],
         onSuccess: async (enrollment) => {{
           try {{
             const token = enrollment.accessToken;
+            const newEnrollmentId = enrollment?.enrollment?.id || "";
             const resp = await fetch('/api/store-token', {{
               method: 'POST',
               headers: {{ 'Content-Type': 'application/json' }},
-              body: JSON.stringify({{ token }})
+              body: JSON.stringify({{ token, enrollmentId: newEnrollmentId }})
             }});
             const data = await resp.json();
             if (!resp.ok) {{
@@ -82,7 +93,11 @@ def build_html(app_id: str, environment: str) -> str:
         onExit: () => {{
           setStatus('Connect exited.');
         }}
-      }}).open();
+      }};
+      if (enrollmentId) {{
+        setup.enrollmentId = enrollmentId;
+      }}
+      TellerConnect.setup(setup).open();
     }});
   </script>
 </body>
@@ -101,7 +116,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/":
-            body = build_html(self.server.capture_state.app_id, self.server.capture_state.environment).encode("utf-8")
+            body = build_html(
+                self.server.capture_state.app_id,
+                self.server.capture_state.environment,
+                self.server.capture_state.enrollment_id,
+            ).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -137,6 +156,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         token = payload.get("token", "")
+        enrollment_id = payload.get("enrollmentId", "")
         if not token:
             self._send_json(400, {"error": "token is required"})
             return
@@ -156,9 +176,21 @@ class Handler(BaseHTTPRequestHandler):
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)
 
+            if enrollment_id:
+                fd, tmp_path = tempfile.mkstemp(dir=str(TELLER_DIR), prefix="enrollment_id.", suffix=".txt")
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as f:
+                        f.write(enrollment_id)
+                        f.write("\n")
+                    os.chmod(tmp_path, 0o400)
+                    os.replace(tmp_path, ENROLLMENT_ID_FILE)
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
+
             self.server.capture_state.token_saved = True
             self.server.capture_state.error = ""
-            self._send_json(200, {"ok": True, "path": str(AUTH_TOKEN_FILE)})
+            self._send_json(200, {"ok": True, "path": str(AUTH_TOKEN_FILE), "enrollment_id_path": str(ENROLLMENT_ID_FILE)})
         except Exception as exc:
             self.server.capture_state.error = str(exc)
             self._send_json(500, {"error": str(exc)})
@@ -171,6 +203,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run local Teller Connect token capture server.")
     parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8080")))
     parser.add_argument("--environment", default=os.getenv("CONNECT_ENVIRONMENT", "development"))
+    parser.add_argument("--enrollment-id", default=os.getenv("ENROLLMENT_ID", ""))
     parser.add_argument("--no-open", action="store_true")
     args = parser.parse_args()
 
@@ -181,13 +214,15 @@ def main():
     if not app_id:
         raise SystemExit(f"Application id is empty in: {APP_ID_FILE}")
 
-    state = CaptureState(app_id=app_id, environment=args.environment)
+    state = CaptureState(app_id=app_id, environment=args.environment, enrollment_id=args.enrollment_id)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     server.capture_state = state
 
     print("Teller Connect token capture server running")
     print(f"- URL: http://localhost:{args.port}")
     print(f"- Environment: {args.environment}")
+    if args.enrollment_id:
+        print(f"- Repair Enrollment ID: {args.enrollment_id}")
     print(f"- Output: {AUTH_TOKEN_FILE}")
     print("Waiting for enrollment...")
 
