@@ -184,7 +184,48 @@ def _upsert_transaction(session, txn_data):
             status = EXCLUDED.status, running_balance = EXCLUDED.running_balance, transaction_type_id = EXCLUDED.transaction_type_id
     """, vals)
 
-def persist_all(session, raw_identities, raw_transactions_by_account):
+def _upsert_account_balances_links(session, links_data, existing_links_id=None):
+    self_link = links_data.get("self", "")
+    account_link = links_data.get("account", "")
+    if existing_links_id:
+        _exec(session, """
+            UPDATE teller.account_balances_links SET self_link = :self_link, account_link = :account_link
+            WHERE account_balances_links_id = :id
+        """, {"self_link": self_link, "account_link": account_link, "id": existing_links_id})
+        return existing_links_id
+    row = _exec(session, "SELECT account_balances_links_id FROM teller.account_balances_links WHERE self_link = :sl",
+                {"sl": self_link}).fetchone()
+    if row:
+        return row[0]
+    return _exec_returning(session, """
+        INSERT INTO teller.account_balances_links (self_link, account_link)
+        VALUES (:self_link, :account_link)
+        ON CONFLICT (self_link) DO UPDATE SET account_link = EXCLUDED.account_link
+        RETURNING account_balances_links_id
+    """, {"self_link": self_link, "account_link": account_link})[0]
+
+def _upsert_account_balances(session, bal_data):
+    account_id = bal_data["account_id"]
+    existing = _exec(session, """
+        SELECT account_balances_id, account_balances_links_id FROM teller.account_balances WHERE account_id = :id
+    """, {"id": account_id}).fetchone()
+    links_id = _upsert_account_balances_links(session, bal_data["links"], existing[1] if existing else None)
+    ledger = Decimal(bal_data["ledger"]) if bal_data.get("ledger") else None
+    available = Decimal(bal_data["available"]) if bal_data.get("available") else None
+    vals = {"account_id": account_id, "ledger": ledger, "available": available, "account_balances_links_id": links_id}
+    if existing:
+        _exec(session, """
+            UPDATE teller.account_balances SET ledger = :ledger, available = :available,
+                account_balances_links_id = :account_balances_links_id
+            WHERE account_id = :account_id
+        """, vals)
+    else:
+        _exec(session, """
+            INSERT INTO teller.account_balances (account_id, ledger, available, account_balances_links_id)
+            VALUES (:account_id, :ledger, :available, :account_balances_links_id)
+        """, vals)
+
+def persist_all(session, raw_identities, raw_transactions_by_account, raw_balances_by_account=None):
     for item in raw_identities:
         account_data = item["account"]
         _upsert_account(session, account_data)
@@ -192,6 +233,9 @@ def persist_all(session, raw_identities, raw_transactions_by_account):
             identity_id = _upsert_identity(session, owner_data)
             _upsert_account_identity(session, account_data["id"], identity_id)
         log.info("Persisted account + identities", account_id=account_data["id"], owner_count=len(item["owners"]))
+    for account_id, bal_data in (raw_balances_by_account or {}).items():
+        _upsert_account_balances(session, bal_data)
+        log.info("Persisted balances", account_id=account_id, ledger=bal_data.get("ledger"), available=bal_data.get("available"))
     for account_id, txns in raw_transactions_by_account.items():
         for txn_data in txns:
             _upsert_transaction(session, txn_data)
