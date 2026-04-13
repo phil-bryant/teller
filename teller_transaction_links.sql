@@ -1,6 +1,6 @@
 CREATE TABLE teller.transaction_links (
     self_link TEXT NOT NULL UNIQUE,
-    account TEXT NOT NULL UNIQUE,
+    account TEXT NOT NULL,
     transaction_links_id BIGSERIAL PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
