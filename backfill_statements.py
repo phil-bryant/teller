@@ -11,16 +11,15 @@ STATEMENTS_ROOT_ENV = "TELLER_BANK_STATEMENTS_ROOT"
 log = structlog.get_logger()
 
 CREDIT_PREFIXES = ('DEPOSIT', 'MOBILE DEPOSIT', 'INTEREST EARNED', 'INTEREST', 'ORIG:')
-CREDIT_CONTAINS = ('RETURN',)
+CREDIT_CONTAINS = ('RETURN', 'REBATE')
 TYPE_MAP = [
     ('POS PURCHASE', 'card_payment'), ('ATM WITHDRAWAL', 'atm'), ('DEPOSIT', 'deposit'),
     ('MOBILE DEPOSIT', 'deposit'), ('INTEREST', 'interest'), ('VERIZON/', 'ach'),
     ('BILL PAY', 'ach'), ('WEB PAY', 'ach'), ('ORIG:', 'wire'), ('INCOMING WIRE FEE', 'fee'),
 ]
-AMOUNT_RE = re.compile(r'(\d{1,3}(?:,\d{3})*\.\d{2})$')
-DOT_AMOUNT_RE = re.compile(r'(\.\d{2})$')
-ANY_AMOUNT_RE = re.compile(r'(\d{1,3}(?:,\d{3})*\.\d{2})')
-DATE_RE = re.compile(r'^(\d{1,2})/(\d{2})\s')
+AMOUNT_RE = re.compile(r'((?:\d{1,3}(?:,\d{3})*|\d+)?\.\d{2})$')
+ANY_AMOUNT_RE = re.compile(r'((?:\d{1,3}(?:,\d{3})*|\d+)?\.\d{2})')
+DATE_RE = re.compile(r'^(\d{1,2})/(\d{2})(?:\s+|$)')
 INTEREST_RE = re.compile(r'INTEREST EARNED\s+(\d{1,3}(?:,\d{3})*\.\d{2})')
 # First Arkansas-style e-statement names often embed the account last four: EStatement_6414_D_...
 FILENAME_LAST_FOUR_RE = re.compile(r'EStatement_(\d{4})_', re.I)
@@ -30,16 +29,96 @@ LAST_FOUR_OCR_RES = (
     re.compile(r'(?:ending|last)\s*(?:in|#|:)?\s*(\d{4})\b', re.I),
 )
 
+def _parse_tsv_words(tsv_text):
+    raise NotImplementedError("_parse_tsv_words is no longer used")
+
+def _build_tsv_lines(words):
+    raise NotImplementedError("_build_tsv_lines is no longer used")
+
+def _vision_ocr_pages(image_paths):
+    if not image_paths:
+        return []
+    swift_code = """
+import Foundation
+import Vision
+import AppKit
+
+func ocrRows(_ path: String) throws -> [String] {
+    let url = URL(fileURLWithPath: path)
+    guard let nsImage = NSImage(contentsOf: url) else {
+        throw NSError(domain: "vision_ocr", code: 1, userInfo: [NSLocalizedDescriptionKey: "failed to load image"])
+    }
+    var rect = NSRect(origin: .zero, size: nsImage.size)
+    guard let cgImage = nsImage.cgImage(forProposedRect: &rect, context: nil, hints: nil) else {
+        throw NSError(domain: "vision_ocr", code: 2, userInfo: [NSLocalizedDescriptionKey: "failed to create cgimage"])
+    }
+    let req = VNRecognizeTextRequest()
+    req.recognitionLevel = .accurate
+    req.usesLanguageCorrection = false
+    let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+    try handler.perform([req])
+    let observations = (req.results ?? []).compactMap { $0 as? VNRecognizedTextObservation }
+    return observations.compactMap {
+        guard let txt = $0.topCandidates(1).first?.string.trimmingCharacters(in: .whitespacesAndNewlines), !txt.isEmpty else { return nil }
+        return "\\($0.boundingBox.midY)\\t\\($0.boundingBox.minX)\\t\\(txt.replacingOccurrences(of: "\\t", with: " "))"
+    }
+}
+
+for (idx, path) in CommandLine.arguments.dropFirst().enumerated() {
+    print("__VISION_PAGE__:\\(idx)")
+    do { for row in try ocrRows(path) { print(row) } }
+    catch {
+        fputs("Vision OCR failed for \\(path): \\(error)\\n", stderr)
+        exit(1)
+    }
+}
+""".strip()
+    out = subprocess.run(['swift', '-e', swift_code, *image_paths], capture_output=True, text=True, check=True).stdout
+    pages, rows = [], []
+    for line in out.splitlines():
+        if line.startswith("__VISION_PAGE__:"):
+            if rows:
+                pages.append(rows)
+                rows = []
+            continue
+        rows.append(line)
+    if rows:
+        pages.append(rows)
+    normalized = []
+    for page_rows in pages:
+        points = []
+        for row in page_rows:
+            parts = row.split('\t', 2)
+            if len(parts) != 3:
+                continue
+            try:
+                y, x = float(parts[0]), float(parts[1])
+            except ValueError:
+                continue
+            points.append((y, x, parts[2]))
+        points.sort(key=lambda p: (-p[0], p[1]))
+        lines = []
+        for y, x, text_value in points:
+            if not lines or abs(lines[-1]['y'] - y) > 0.008:
+                lines.append({'y': y, 'chunks': [(x, text_value)]})
+            else:
+                lines[-1]['chunks'].append((x, text_value))
+        page_lines = []
+        for ln in lines:
+            ln['chunks'].sort(key=lambda c: c[0])
+            page_lines.append(' '.join(c[1] for c in ln['chunks']))
+        normalized.append('\n'.join(page_lines))
+    pages = normalized
+    if len(pages) != len(image_paths):
+        raise RuntimeError(f"Vision OCR returned {len(pages)} pages for {len(image_paths)} input images")
+    return pages
+
 def ocr_pdf(pdf_path):
     with tempfile.TemporaryDirectory() as td:
         subprocess.run(['pdftoppm', '-png', '-r', '300', str(pdf_path), os.path.join(td, 'page')],
                        capture_output=True, check=True)
-        pages = []
-        for img in sorted(os.listdir(td)):
-            r = subprocess.run(['tesseract', os.path.join(td, img), 'stdout'],
-                               capture_output=True, text=True, check=True)
-            pages.append(r.stdout)
-    return pages
+        image_paths = [os.path.join(td, img) for img in sorted(os.listdir(td))]
+        return _vision_ocr_pages(image_paths)
 
 def extract_statement_year(pages):
     for page in pages:
@@ -60,23 +139,27 @@ def extract_summary(pages):
     return dep_count, dep_total, wd_count, wd_total
 
 def _find_amount(lines):
+    def _normalize_amount(raw):
+        return f"0{raw}" if raw.startswith('.') else raw
     for i, line in enumerate(lines):
         m = AMOUNT_RE.search(line)
         if m:
-            return m.group(1), i, line[:m.start()].rstrip()
-        m = DOT_AMOUNT_RE.search(line)
-        if m:
-            return '0' + m.group(1), i, line[:m.start()].rstrip()
+            return _normalize_amount(m.group(1)), i, line[:m.start()].rstrip()
     for i, line in enumerate(lines):
         ms = list(ANY_AMOUNT_RE.finditer(line))
         if ms:
             m = ms[-1]
-            return m.group(1), i, (line[:m.start()] + line[m.end():]).replace('  ', ' ').strip()
+            return _normalize_amount(m.group(1)), i, (line[:m.start()] + line[m.end():]).replace('  ', ' ').strip()
     joined = ' '.join(lines)
     ms = list(ANY_AMOUNT_RE.finditer(joined))
     if ms:
         m = ms[-1]
-        return m.group(1), len(lines) - 1, joined[:m.start()].rstrip()
+        return _normalize_amount(m.group(1)), len(lines) - 1, joined[:m.start()].rstrip()
+    for i, line in enumerate(lines):
+        if 'RETURN CBA FEES' in line and re.search(r'\d{2}$', line):
+            m = re.search(r'(\d{2})$', line)
+            if m:
+                return f"0.{m.group(1)}", i, line[:m.start()].rstrip()
     return None, -1, None
 
 def parse_transactions(pages, year, stmt_month):
@@ -85,17 +168,29 @@ def parse_transactions(pages, year, stmt_month):
         in_section = False
         for line in page.splitlines():
             s = line.strip()
-            if 'Date Activity Description' in s:
+            has_header_terms = ('date' in s.lower() and 'activity' in s.lower() and 'description' in s.lower())
+            if has_header_terms:
                 in_section = True
             elif in_section and s:
                 all_lines.append(s)
+    normalized_lines = []
+    i = 0
+    while i < len(all_lines):
+        s = all_lines[i]
+        if re.fullmatch(r'\d{1,2}/\d{2}', s) and i + 1 < len(all_lines):
+            normalized_lines.append(f"{s} {all_lines[i + 1]}")
+            i += 2
+            continue
+        normalized_lines.append(s)
+        i += 1
     groups, current = [], None
-    for line in all_lines:
+    for line in normalized_lines:
         dm = DATE_RE.match(line)
         if dm:
             if current:
                 groups.append(current)
-            current = {'month': int(dm.group(1)), 'day': int(dm.group(2)), 'lines': [line[dm.end():].strip()]}
+            tail = line[dm.end():].strip()
+            current = {'month': int(dm.group(1)), 'day': int(dm.group(2)), 'lines': [tail] if tail else []}
         elif current:
             current['lines'].append(line)
     if current:
@@ -111,8 +206,8 @@ def parse_transactions(pages, year, stmt_month):
             desc_parts.append(trimmed if i == amt_idx else line)
         description = ' '.join(p for p in desc_parts if p)
         amount_clean = raw_amount.replace(',', '')
-        is_cred = any(description.startswith(p) for p in CREDIT_PREFIXES) or \
-                  any(p in description for p in CREDIT_CONTAINS)
+        desc_upper = description.upper()
+        is_cred = any(desc_upper.startswith(p) for p in CREDIT_PREFIXES) or any(p in desc_upper for p in CREDIT_CONTAINS)
         signed = amount_clean if is_cred else f"-{amount_clean}"
         result.append({'date': f"{year}-{g['month']:02d}-{g['day']:02d}",
                        'amount': signed, 'description': description, 'type': infer_type(description)})
@@ -141,8 +236,8 @@ def infer_type(description):
             return ttype
     return 'unknown'
 
-def make_txn_id(account_id, date_str, amount, description):
-    h = hashlib.sha256(f"{account_id}|{date_str}|{amount}|{description}".encode()).hexdigest()[:20]
+def make_txn_id(account_id, date_str, amount, description, occurrence=1):
+    h = hashlib.sha256(f"{account_id}|{date_str}|{amount}|{description}|{occurrence}".encode()).hexdigest()[:20]
     return f"stmt_{h}"
 
 def statements_root(cli_root):
@@ -264,8 +359,11 @@ def main():
                 earliest_api_date = row[0].isoformat() if row and row[0] else None
                 log.info("Earliest API transaction", institution_id=institution_id, account_id=account_id, date=earliest_api_date)
                 ins, sk = 0, 0
+                seen_occurrences = {}
                 for txn in all_txns:
-                    txn_id = make_txn_id(account_id, txn['date'], txn['amount'], txn['description'])
+                    key = (txn['date'], txn['amount'], txn['description'])
+                    seen_occurrences[key] = seen_occurrences.get(key, 0) + 1
+                    txn_id = make_txn_id(account_id, txn['date'], txn['amount'], txn['description'], seen_occurrences[key])
                     if earliest_api_date and date.fromisoformat(txn['date']) >= date.fromisoformat(earliest_api_date):
                         sk += 1
                         continue

@@ -7,3 +7,4 @@ tokens.json
 localhost.key
 localhost.pem
 bank_statements/*
+.tmp*
