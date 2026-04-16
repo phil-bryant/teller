@@ -54,6 +54,7 @@ source ./teller-venv/bin/activate
   - Default mode is no copy/paste: runs local Connect capture server on `http://localhost:8080`.
   - Persists enrollment id to `~/.teller/enrollment_id.txt` for future repair mode.
   - Also supports token argument, secure prompt (`--manual`), or macOS clipboard mode.
+  - Also provides enrollment management (`--list`, `--delete`, `--reconnect`, `--add`).
 - `99_destroy_database.sh`
   - Destroys `prod` database and related roles after explicit confirmation.
 
@@ -138,6 +139,33 @@ Other options (manual/alternative input):
 ENROLLMENT_ID=enr_xxx ./06_capture_teller_token.sh
 AUTO_REPAIR=false ./06_capture_teller_token.sh
 ```
+
+### Enrollment Management Status (`06_capture_teller_token.sh`)
+
+Requirements now define `06_capture_teller_token.sh` as the enrollment-management CLI entrypoint.
+
+Required management actions:
+
+- list all known local enrollment contexts
+- delete one selected enrollment context
+- reconnect (repair) one selected enrollment
+- add a new enrollment without overwriting existing contexts
+
+Command examples:
+
+```bash
+./06_capture_teller_token.sh --list
+./06_capture_teller_token.sh --add
+./06_capture_teller_token.sh --reconnect --institution_id first_ak_bank_trust
+./06_capture_teller_token.sh --delete --enrollment_id enr_xxx --yes
+```
+
+Behavior notes:
+
+- `--add` opens Connect and you pick institution in Teller UI; files are persisted as `auth_token_<suffix>.json`
+- `--add` suffix is derived from Teller identity data when available; fallback uses enrollment id, then unique numeric suffix
+- `--reconnect` repairs only the selected enrollment context
+- `--delete` removes only selected local files and moves them into `~/.Trash`
 
 Then verify token/API access:
 
