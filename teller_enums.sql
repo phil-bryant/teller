@@ -19,8 +19,8 @@ COMMENT ON TYPE teller.counterparty_type IS 'The counterparty type: organization
 CREATE TYPE teller.identity_type AS ENUM ('organization', 'person');
 COMMENT ON TYPE teller.identity_type IS 'The type of identity: organization or person';
 
-CREATE TYPE teller.identity_phone_number_type AS ENUM ('home', 'work', 'mobile');
-COMMENT ON TYPE teller.identity_phone_number_type IS 'The type of phone number associated with an identity: home, work, or mobile';
+CREATE TYPE teller.identity_phone_number_type AS ENUM ('home', 'work', 'mobile', 'unknown');
+COMMENT ON TYPE teller.identity_phone_number_type IS 'The type of phone number associated with an identity: home, work, mobile, or unknown';
 
 CREATE TYPE teller.identity_name_type AS ENUM ('name', 'alias');
 COMMENT ON TYPE teller.identity_name_type IS 'The type of name associated with an identity: name or alias';
