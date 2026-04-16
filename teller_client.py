@@ -57,8 +57,22 @@ class TellerAPIClient:
             try:
                 import time, threading, webbrowser
                 from http.server import ThreadingHTTPServer
-                from teller_connect_token_server import CaptureState, Handler, APP_ID_FILE
-                state = CaptureState(APP_ID_FILE.read_text(encoding="utf-8").strip(), "development", enrollment_id)
+                from teller_connect_token_server import (
+                    APP_ID_FILE,
+                    AUTH_TOKEN_FILE,
+                    ENROLLMENT_ID_FILE,
+                    CaptureState,
+                    Handler,
+                )
+                state = CaptureState(
+                    APP_ID_FILE.read_text(encoding="utf-8").strip(),
+                    "development",
+                    enrollment_id,
+                    AUTH_TOKEN_FILE,
+                    ENROLLMENT_ID_FILE,
+                    "capture",
+                    [],
+                )
                 server = ThreadingHTTPServer(("127.0.0.1", 8080), Handler)
                 server.capture_state = state
                 print(f"Enrollment disconnected — repairing {enrollment_id} via Teller Connect\n"
