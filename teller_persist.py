@@ -146,17 +146,18 @@ def _upsert_transaction_details(session, details_data, existing_details_id=None)
                 VALUES (:name, :type) RETURNING transaction_details_counterparty_id
             """, {"name": cp["name"], "type": cp["type"]})[0]
     vals = {"processing_status": details_data["processing_status"],
-            "category": details_data.get("category"), "counterparty_id": counterparty_id}
+            "category": details_data.get("category"), "transaction_details_counterparty_id": counterparty_id}
     if existing_details_id:
         _exec(session, """
             UPDATE teller.transaction_details
-            SET processing_status = :processing_status, category = :category, counterparty_id = :counterparty_id
+            SET processing_status = :processing_status, category = :category,
+                transaction_details_counterparty_id = :transaction_details_counterparty_id
             WHERE transaction_details_id = :id
         """, {**vals, "id": existing_details_id})
         return existing_details_id
     return _exec_returning(session, """
-        INSERT INTO teller.transaction_details (processing_status, category, counterparty_id)
-        VALUES (:processing_status, :category, :counterparty_id)
+        INSERT INTO teller.transaction_details (processing_status, category, transaction_details_counterparty_id)
+        VALUES (:processing_status, :category, :transaction_details_counterparty_id)
         RETURNING transaction_details_id
     """, vals)[0]
 
