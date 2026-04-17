@@ -234,7 +234,7 @@ def _build_enrollment_contexts(institution_id: str) -> List[dict]:
 def main():
     parser = argparse.ArgumentParser(description='Teller API Client')
     parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--persist', action='store_true')
+    parser.add_argument('--dry-run', action='store_true', help='Fetch and print Teller data without persisting to DB')
     parser.add_argument('--institution_id', type=str)
     args = parser.parse_args()
     structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG if args.debug else logging.INFO))
@@ -262,7 +262,7 @@ def main():
             for err in errors:
                 print(f"Enrollment failed: institution_id={err['institution_id']} enrollment_id={err['enrollment_id']}")
                 print(f"  status={err['status_code']} code={err['code']} message={err['message']}")
-        if args.persist:
+        if not args.dry_run:
             from teller_db import get_session
             from teller_persist import persist_all
             session = get_session()
@@ -275,6 +275,8 @@ def main():
                 raise
             finally:
                 session.close()
+        else:
+            print("Dry run complete. No database changes were made.")
     except TellerAPIError as exc:
         print(f"Teller API request failed ({exc.status_code}): {exc.message}")
         if exc.code:
