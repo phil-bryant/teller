@@ -27,7 +27,12 @@ if [ "$confirmation" != "destroy" ]; then
     exit 1
 fi
 
-# Drop database and roles
+# Drop view first if prod exists, then terminate sessions, then database and roles
+prod_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='prod';")"
+if [ "$prod_exists" = "1" ]; then
+    PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d prod -c "DROP VIEW IF EXISTS teller.transaction_info_view;"
+    PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='prod' AND pid <> pg_backend_pid();"
+fi
 PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS prod;"
 PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "DROP USER IF EXISTS teller;"
 PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "DROP ROLE IF EXISTS teller_admin;"

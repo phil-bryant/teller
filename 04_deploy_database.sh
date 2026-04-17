@@ -61,3 +61,7 @@ PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f teller_transaction_detai
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f teller_transaction.sql
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f create_triggers.sql
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f create_audit.sql
+PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f teller_nys_snw_category.sql
+PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f teller_transaction_nys_snw_category.sql
+PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f teller_transaction_info_view.sql
+
