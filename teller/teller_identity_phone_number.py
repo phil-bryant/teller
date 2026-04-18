@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from sqlalchemy import String, BigInteger, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column
-from teller_object import TellerObject
-from teller_enums import TellerIdentityPhoneNumberType
+from .teller_object import TellerObject
+from .teller_enums import TellerIdentityPhoneNumberType
 
 @dataclass
 class TellerIdentityPhoneNumber(TellerObject): ## https://teller.io/docs/api/identity

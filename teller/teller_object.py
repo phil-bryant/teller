@@ -6,7 +6,7 @@ from datetime import datetime
 import typing
 import structlog
 import re
-from teller_base import Base
+from .teller_base import Base
 
 log = structlog.get_logger()
 

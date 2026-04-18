@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from sqlalchemy import String, BigInteger, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from teller_object import TellerObject
-from teller_enums import TellerTransactionDetailsCategory, TellerTransactionDetailsProcessingStatus
-from teller_transaction_details_counterparty import TellerTransactionDetailsCounterparty
+from .teller_object import TellerObject
+from .teller_enums import TellerTransactionDetailsCategory, TellerTransactionDetailsProcessingStatus
+from .teller_transaction_details_counterparty import TellerTransactionDetailsCounterparty
 
 @dataclass
 class TellerTransactionDetails(TellerObject): ## https://teller.io/docs/api/account/transactions

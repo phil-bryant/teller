@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from sqlalchemy import String, BigInteger, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from teller_object import TellerObject
-from teller_account_balances_links import TellerAccountBalancesLinks
+from .teller_object import TellerObject
+from .teller_account_balances_links import TellerAccountBalancesLinks
 from typing import TYPE_CHECKING
-if TYPE_CHECKING: from teller_account import TellerAccount
+if TYPE_CHECKING: from .teller_account import TellerAccount
 
 @dataclass
 class TellerAccountBalances(TellerObject):

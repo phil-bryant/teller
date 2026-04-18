@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from sqlalchemy import String, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
-from teller_object import TellerObject
+from .teller_object import TellerObject
 
 ## Physical address data associated with an Address
 ## This design allows multiple people to share an address independent of primary designation

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from sqlalchemy import String, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
-from teller_object import TellerObject
+from .teller_object import TellerObject
 
 @dataclass
 class TellerRoutingNumbers(TellerObject): ## https://teller.io/docs/api/account/details
