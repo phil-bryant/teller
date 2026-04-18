@@ -1,0 +1,40 @@
+{
+  "": {
+    "swift-dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/primary.swiftdeps"
+  },
+  "/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/APIClient.swift": {
+    "dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.d",
+    "object": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.swift.o",
+    "swiftmodule": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient~partial.swiftmodule",
+    "swift-dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.swiftdeps",
+    "diagnostics": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.dia"
+  },
+  "/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/ContentView.swift": {
+    "dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.d",
+    "object": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.swift.o",
+    "swiftmodule": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView~partial.swiftmodule",
+    "swift-dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.swiftdeps",
+    "diagnostics": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.dia"
+  },
+  "/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/Models.swift": {
+    "dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.d",
+    "object": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.swift.o",
+    "swiftmodule": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models~partial.swiftmodule",
+    "swift-dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.swiftdeps",
+    "diagnostics": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.dia"
+  },
+  "/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/ReclassificationViewModel.swift": {
+    "dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.d",
+    "object": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.swift.o",
+    "swiftmodule": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.swiftdeps",
+    "diagnostics": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.dia"
+  },
+  "/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/TellerReclassifierApp.swift": {
+    "dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.d",
+    "object": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.swift.o",
+    "swiftmodule": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.swiftdeps",
+    "diagnostics": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.dia"
+  }
+}

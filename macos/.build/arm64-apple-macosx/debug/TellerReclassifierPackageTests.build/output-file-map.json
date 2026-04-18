@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/primary.swiftdeps"
+  },
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.derived/runner.swift": {
+    "dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/runner.d",
+    "object": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/runner.swift.o",
+    "swiftmodule": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/runner.swiftdeps",
+    "diagnostics": "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/runner.dia"
+  }
+}

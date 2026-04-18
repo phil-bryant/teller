@@ -10,3 +10,5 @@ bank_statements/*
 .tmp*
 debug*.py
 backups
+bin/*
+.cursor/rules/*

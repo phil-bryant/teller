@@ -1,0 +1,146 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "PackageStructure": ["<PackageStructure>"]
+  "TellerReclassifier-arm64-apple-macosx-debug.exe": ["<TellerReclassifier-arm64-apple-macosx-debug.exe>"]
+  "TellerReclassifier-arm64-apple-macosx-debug.module": ["<TellerReclassifier-arm64-apple-macosx-debug.module>"]
+  "TellerReclassifierPackageTests-arm64-apple-macosx-debug.module": ["<TellerReclassifierPackageTests-arm64-apple-macosx-debug.module>"]
+  "TellerReclassifierPackageTests-arm64-apple-macosx-debug.test": ["<TellerReclassifierPackageTests-arm64-apple-macosx-debug.test>"]
+  "TellerReclassifierTests-arm64-apple-macosx-debug.module": ["<TellerReclassifierTests-arm64-apple-macosx-debug.module>"]
+  "main": ["<TellerReclassifier-arm64-apple-macosx-debug.exe>","<TellerReclassifier-arm64-apple-macosx-debug.module>"]
+  "test": ["<TellerReclassifier-arm64-apple-macosx-debug.exe>","<TellerReclassifier-arm64-apple-macosx-debug.module>","<TellerReclassifierPackageTests-arm64-apple-macosx-debug.test>","<TellerReclassifierTests-arm64-apple-macosx-debug.module>"]
+default: "main"
+nodes:
+  "/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/Users/phil/local/src/teller/macos/Tests/TellerReclassifierTests/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier":
+    is-mutated: true
+commands:
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier-entitlement.plist":
+    tool: write-auxiliary-file
+    inputs: ["<entitlement-plist>","<com.apple.security.get-task-allow>"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier-entitlement.plist"]
+    description: "Write auxiliary file /Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier-entitlement.plist"
+
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/APIClient.swift","/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/ContentView.swift","/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/Models.swift","/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/ReclassificationViewModel.swift","/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/TellerReclassifierApp.swift"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/sources"]
+    description: "Write auxiliary file /Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/sources"
+
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.swift.o"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.product/Objects.LinkFileList"
+
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.derived/runner.swift"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/sources"]
+    description: "Write auxiliary file /Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/sources"
+
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.derived/runner.swift":
+    tool: test-entry-point-tool
+    inputs: []
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.derived/runner.swift"]
+
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/runner.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/ReclassificationViewModelTests.swift.o"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.product/Objects.LinkFileList"
+
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/phil/local/src/teller/macos/Tests/TellerReclassifierTests/ReclassificationViewModelTests.swift"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/sources"]
+    description: "Write auxiliary file /Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/sources"
+
+  "/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+
+  "<TellerReclassifier-arm64-apple-macosx-debug.exe>":
+    tool: phony
+    inputs: ["<TellerReclassifier-arm64-apple-macosx-debug.exe-CodeSigning>"]
+    outputs: ["<TellerReclassifier-arm64-apple-macosx-debug.exe>"]
+
+  "<TellerReclassifier-arm64-apple-macosx-debug.module>":
+    tool: phony
+    inputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifier.swiftmodule"]
+    outputs: ["<TellerReclassifier-arm64-apple-macosx-debug.module>"]
+
+  "<TellerReclassifierPackageTests-arm64-apple-macosx-debug.module>":
+    tool: phony
+    inputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/runner.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifierPackageTests.swiftmodule"]
+    outputs: ["<TellerReclassifierPackageTests-arm64-apple-macosx-debug.module>"]
+
+  "<TellerReclassifierPackageTests-arm64-apple-macosx-debug.test>":
+    tool: phony
+    inputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.xctest/Contents/MacOS/TellerReclassifierPackageTests"]
+    outputs: ["<TellerReclassifierPackageTests-arm64-apple-macosx-debug.test>"]
+
+  "<TellerReclassifierTests-arm64-apple-macosx-debug.module>":
+    tool: phony
+    inputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/ReclassificationViewModelTests.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifierTests.swiftmodule"]
+    outputs: ["<TellerReclassifierTests-arm64-apple-macosx-debug.module>"]
+
+  "C.TellerReclassifier-arm64-apple-macosx-debug.exe":
+    tool: shell
+    inputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.product/Objects.LinkFileList"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/TellerReclassifier"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-L","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug","-o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier","-module-name","TellerReclassifier","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-alias","-Xlinker","_TellerReclassifier_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-6.2/macosx","-target","arm64-apple-macosx14.0","-Xlinker","-add_ast_path","-Xlinker","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifier.swiftmodule","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g"]
+
+  "C.TellerReclassifier-arm64-apple-macosx-debug.exe-entitlements":
+    tool: shell
+    inputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier-entitlement.plist"]
+    outputs: ["<TellerReclassifier-arm64-apple-macosx-debug.exe-CodeSigning>"]
+    description: "Applying debug entitlements to ./.build/arm64-apple-macosx/debug/TellerReclassifier"
+    args: ["codesign","--force","--sign","-","--entitlements","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier-entitlement.plist","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier"]
+
+  "C.TellerReclassifier-arm64-apple-macosx-debug.module":
+    tool: shell
+    inputs: ["/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/APIClient.swift","/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/ContentView.swift","/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/Models.swift","/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/ReclassificationViewModel.swift","/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/TellerReclassifierApp.swift","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/sources"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifier.swiftmodule"]
+    description: "Compiling Swift Module 'TellerReclassifier' (5 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","TellerReclassifier","-emit-dependencies","-emit-module","-emit-module-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifier.swiftmodule","-output-file-map","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/output-file-map.json","-incremental","-c","@/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/sources","-I","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j16","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","TellerReclassifier_main","-swift-version","5","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","macos"]
+
+  "C.TellerReclassifierPackageTests-arm64-apple-macosx-debug.module":
+    tool: shell
+    inputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.derived/runner.swift","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifierTests.swiftmodule","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/sources"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/runner.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifierPackageTests.swiftmodule"]
+    description: "Compiling Swift Module 'TellerReclassifierPackageTests' (1 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","TellerReclassifierPackageTests","-emit-dependencies","-emit-module","-emit-module-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifierPackageTests.swiftmodule","-output-file-map","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/sources","-I","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j16","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/include/TellerReclassifierPackageTests-Swift.h","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","macos"]
+
+  "C.TellerReclassifierPackageTests-arm64-apple-macosx-debug.test":
+    tool: shell
+    inputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/APIClient.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ContentView.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/Models.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/ReclassificationViewModel.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier.build/TellerReclassifierApp.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.build/runner.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/ReclassificationViewModelTests.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.product/Objects.LinkFileList"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.xctest/Contents/MacOS/TellerReclassifierPackageTests"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.xctest/Contents/MacOS/TellerReclassifierPackageTests"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-L","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug","-o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.xctest/Contents/MacOS/TellerReclassifierPackageTests","-module-name","TellerReclassifierPackageTests","-Xlinker","-no_warn_duplicate_libraries","-Xlinker","-bundle","-Xlinker","-rpath","-Xlinker","@loader_path/../../../","@/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierPackageTests.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-6.2/macosx","-target","arm64-apple-macosx14.0","-Xlinker","-add_ast_path","-Xlinker","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifier.swiftmodule","-Xlinker","-add_ast_path","-Xlinker","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifierPackageTests.swiftmodule","-Xlinker","-add_ast_path","-Xlinker","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifierTests.swiftmodule","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g"]
+
+  "C.TellerReclassifierTests-arm64-apple-macosx-debug.module":
+    tool: shell
+    inputs: ["/Users/phil/local/src/teller/macos/Tests/TellerReclassifierTests/ReclassificationViewModelTests.swift","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifier","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/sources"]
+    outputs: ["/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/ReclassificationViewModelTests.swift.o","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifierTests.swiftmodule"]
+    description: "Compiling Swift Module 'TellerReclassifierTests' (1 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","TellerReclassifierTests","-emit-dependencies","-emit-module","-emit-module-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules/TellerReclassifierTests.swiftmodule","-output-file-map","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/TellerReclassifierTests.build/sources","-I","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j16","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/phil/local/src/teller/macos/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","5","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.4.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","macos"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/phil/local/src/teller/macos/Sources/TellerReclassifier/","/Users/phil/local/src/teller/macos/Tests/TellerReclassifierTests/","/Users/phil/local/src/teller/macos/Package.swift","/Users/phil/local/src/teller/macos/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+
