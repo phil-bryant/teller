@@ -9,3 +9,4 @@ localhost.pem
 bank_statements/*
 .tmp*
 debug*.py
+backups
