@@ -85,6 +85,12 @@ Active secret and credential sources are:
   - Runs Teller API client operations.
 - `08_backfill_statements.py`
   - Backfills statements data.
+- `09_transaction_reclassification_api.py`
+  - Starts local FastAPI service for listing transactions/categories and saving user SNW reclassifications.
+- `10_run_reclassification_api_tests.py`
+  - Runs unit tests for reclassification API behavior.
+- `11_verify_reclassification_persistence.sh`
+  - End-to-end check: writes one classification via API then confirms DB persistence.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
   - Also captures matching cluster globals (roles/grants) for reliable restores.

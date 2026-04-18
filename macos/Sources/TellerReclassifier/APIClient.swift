@@ -1,0 +1,68 @@
+import Foundation
+
+enum APIError: Error, LocalizedError {
+    case invalidResponse
+    case requestFailed(String)
+    case encodeFailed
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse: return "Invalid server response."
+        case .requestFailed(let msg): return msg
+        case .encodeFailed: return "Failed to encode request payload."
+        }
+    }
+}
+
+protocol ReclassificationAPI: Sendable {
+    func fetchCategories() async throws -> [CategoryOption]
+    func fetchTransactions(search: String, onlyUnclassified: Bool) async throws -> TransactionListResponse
+    func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse]
+}
+
+actor APIClient: ReclassificationAPI {
+    private let session: URLSession
+    private let baseURL: URL
+    init(baseURL: URL = URL(string: ProcessInfo.processInfo.environment["TELLER_CLASSIFIER_API_URL"] ?? "http://127.0.0.1:8787")!,
+         session: URLSession = .shared) {
+        self.baseURL = baseURL
+        self.session = session
+    }
+
+    func fetchCategories() async throws -> [CategoryOption] {
+        try await send(path: "/v1/categories")
+    }
+
+    func fetchTransactions(search: String, onlyUnclassified: Bool) async throws -> TransactionListResponse {
+        var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/transactions"), resolvingAgainstBaseURL: false)!
+        comp.queryItems = [
+            URLQueryItem(name: "search", value: search),
+            URLQueryItem(name: "only_unclassified", value: onlyUnclassified ? "true" : "false"),
+            URLQueryItem(name: "limit", value: "300"),
+            URLQueryItem(name: "offset", value: "0"),
+        ]
+        return try await send(url: comp.url!)
+    }
+
+    func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse] {
+        let body = ClassificationBatchRequest(updates: updates)
+        guard let data = try? JSONEncoder().encode(body) else { throw APIError.encodeFailed }
+        return try await send(path: "/v1/transactions/classifications", method: "POST", body: data)
+    }
+
+    private func send<T: Decodable>(path: String, method: String = "GET", body: Data? = nil) async throws -> T {
+        try await send(url: baseURL.appendingPathComponent(path), method: method, body: body)
+    }
+
+    private func send<T: Decodable>(url: URL, method: String = "GET", body: Data? = nil) async throws -> T {
+        var req = URLRequest(url: url)
+        req.httpMethod = method
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let body { req.httpBody = body; req.setValue("application/json", forHTTPHeaderField: "Content-Type") }
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else {
+            throw APIError.requestFailed(String(data: data, encoding: .utf8) ?? "Server error \(http.statusCode)")
+        }
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+}
