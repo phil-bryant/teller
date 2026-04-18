@@ -35,6 +35,10 @@ source ./teller-venv/bin/activate
 ./06_capture_teller_token.sh
 ```
 
+## API Reference Docs
+
+Local Teller API reference notes now live under `docs/teller-api-reference/`.
+
 ## What Each Core Script Does
 
 - `01A_install_prerequisites.sh`
@@ -48,7 +52,7 @@ source ./teller-venv/bin/activate
   - Must be run with the project virtual environment active.
 - `04_deploy_database.sh`
   - Creates/configures the `prod` database.
-  - Applies SQL schema objects in dependency order.
+  - Applies SQL schema objects in dependency order from `sql/postgres/`.
 - `05_configure_teller_io.sh`
   - Ensures `~/.teller` contains required Teller credentials/config files.
   - Supports importing Teller secrets from environment variables or `1psa`.
@@ -88,7 +92,7 @@ Manual steps (cannot be provisioned through Teller API endpoints):
 
 Automated by `05_configure_teller_io.sh`:
 
-- Clones Teller's examples repo into `./examples` by default (not a sibling under `../src`).
+- Clones Teller's examples repo into `./teller-connect-ui` by default (not a sibling under `../src`).
 - Creates and permissions `~/.teller`.
 - Writes:
   - `application_id.txt`
@@ -114,7 +118,7 @@ Use one of the following patterns:
   - `TELLER_KEY_PSA_ITEM`, `TELLER_KEY_PSA_FIELD`
   - `TELLER_AUTH_PSA_ITEM`, `TELLER_AUTH_PSA_FIELD` (optional)
 - Examples repo controls:
-  - `TELLER_EXAMPLES_DIR` (default `./examples`)
+  - `TELLER_EXAMPLES_DIR` (default `./teller-connect-ui`)
   - `EXAMPLES_REPO_URL` (default `https://github.com/tellerhq/examples.git`)
   - `CONFIGURE_TELLER_EXAMPLES=true|false` (default `true`)
 
