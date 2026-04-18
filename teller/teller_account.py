@@ -1,17 +1,17 @@
 from dataclasses import dataclass
 from sqlalchemy import String, Enum, ForeignKey, DateTime, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from teller_object import TellerObject
-from teller_base import Base
-from teller_institution import TellerInstitution
-from teller_account_links import TellerAccountLinks
-from teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccountStatus
-from teller_account_details import TellerAccountDetails
-from teller_account_balances import TellerAccountBalances
-from teller_transaction import TellerTransaction
+from .teller_object import TellerObject
+from .teller_base import Base
+from .teller_institution import TellerInstitution
+from .teller_account_links import TellerAccountLinks
+from .teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccountStatus
+from .teller_account_details import TellerAccountDetails
+from .teller_account_balances import TellerAccountBalances
+from .teller_transaction import TellerTransaction
 from typing import List, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
-    from teller_account_identities import TellerAccountIdentities
+    from .teller_account_identities import TellerAccountIdentities
 
 @dataclass
 class TellerAccount(TellerObject):

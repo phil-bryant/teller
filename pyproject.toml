@@ -12,9 +12,4 @@ description = "Teller API Integration"
 requires-python = ">=3.8"
 
 [tool.setuptools]
-py-modules = [
-    "teller_client",
-    "models",
-    "teller_account",
-    "main"
-] 
+packages = ["teller"]

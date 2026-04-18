@@ -8,11 +8,11 @@ from typing import Dict, List
 import requests
 import structlog
 from dotenv import load_dotenv
-from teller_object import TellerObject
-from teller_account import TellerAccount
-from teller_account_identities import TellerAccountIdentities  # noqa: F401 — registers class with SQLAlchemy mapper
-from teller_identity import TellerIdentity
-from teller_transaction import TellerTransaction
+from teller.teller_object import TellerObject
+from teller.teller_account import TellerAccount
+from teller.teller_account_identities import TellerAccountIdentities  # noqa: F401 — registers class with SQLAlchemy mapper
+from teller.teller_identity import TellerIdentity
+from teller.teller_transaction import TellerTransaction
 
 log = structlog.get_logger()
 TELLER_DIR = Path.home() / ".teller"
@@ -161,7 +161,7 @@ def _infer_enrollment_ids_from_db(institution_id: str) -> List[str]:
     inferred = []
     try:
         from sqlalchemy import text
-        from teller_db import get_session
+        from teller.teller_db import get_session
         session = get_session()
         try:
             rows = session.execute(text("""
@@ -263,8 +263,8 @@ def main():
                 print(f"Enrollment failed: institution_id={err['institution_id']} enrollment_id={err['enrollment_id']}")
                 print(f"  status={err['status_code']} code={err['code']} message={err['message']}")
         if not args.dry_run:
-            from teller_db import get_session
-            from teller_persist import persist_all
+            from teller.teller_db import get_session
+            from teller.teller_persist import persist_all
             session = get_session()
             try:
                 persist_all(session, raw_identities, raw_transactions_by_account, raw_balances_by_account)

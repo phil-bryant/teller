@@ -316,8 +316,8 @@ def main():
     structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(
         logging.DEBUG if args.debug else logging.INFO))
     root = statements_root(args.statements_root)
-    from teller_db import get_session
-    from teller_persist import _upsert_transaction
+    from teller.teller_db import get_session
+    from teller.teller_persist import _upsert_transaction
     session = get_session()
     inserted_total, skipped_total, parsed_total = 0, 0, 0
     try:

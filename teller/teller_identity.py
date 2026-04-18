@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from sqlalchemy import BigInteger, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from teller_object import TellerObject
-from teller_enums import TellerIdentityType
-from teller_identity_name import TellerIdentityName
-from teller_identity_address import TellerIdentityAddress
-from teller_identity_phone_number import TellerIdentityPhoneNumber
-from teller_identity_email import TellerIdentityEmail
+from .teller_object import TellerObject
+from .teller_enums import TellerIdentityType
+from .teller_identity_name import TellerIdentityName
+from .teller_identity_address import TellerIdentityAddress
+from .teller_identity_phone_number import TellerIdentityPhoneNumber
+from .teller_identity_email import TellerIdentityEmail
 from typing import List
 
 @dataclass

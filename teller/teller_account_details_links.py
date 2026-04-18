@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from sqlalchemy import String, ForeignKey, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
-from teller_object import TellerObject
+from .teller_object import TellerObject
 
 @dataclass
 class TellerAccountDetailsLinks(TellerObject):
