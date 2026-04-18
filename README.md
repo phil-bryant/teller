@@ -39,6 +39,24 @@ source ./teller-venv/bin/activate
 
 Local Teller API reference notes now live under `docs/teller-api-reference/`.
 
+## Secret Sources
+
+`secrets.txt` is archival context only and is not read by scripts.
+
+Active secret and credential sources are:
+
+- `~/.teller/` files used by Teller workflows:
+  - `application_id.txt`
+  - `certificate.pem`
+  - `private_key.pem`
+  - `auth_token.json` and optional `auth_token_<suffix>.json`
+  - `enrollment_id.txt` and optional `enrollment_id_<suffix>.txt`
+- `1psa` items used by database and setup scripts:
+  - `localhost_postgres_postgres` / `localhost_postgres_teller` by default for DB scripts
+  - optional Teller item lookups in `05_configure_teller_io.sh`
+- Environment variables passed to scripts (for example `TELLER_APPLICATION_ID`, `TELLER_ACCESS_TOKEN`, `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`)
+- `~/.env` for local runtime settings loaded by `07_teller_client.py`
+
 ## What Each Core Script Does
 
 - `01A_install_prerequisites.sh`
