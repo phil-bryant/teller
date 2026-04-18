@@ -12,3 +12,5 @@ debug*.py
 backups
 bin/*
 .cursor/rules/*
+macos/.build/
+macos/.swiftpm/
