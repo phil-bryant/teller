@@ -12,8 +12,12 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `04_deploy_database.sh`
 - `05_configure_teller_io.sh`
 - `06_capture_teller_token.sh`
+- `07_teller_client.py`
+- `08_backfill_statements.py`
 - `...` (any future numbered scripts)
-- `99_destroy_database.sh` (cleanup/teardown)
+- `97_backup_database.sh` (creates timestamped backup + globals)
+- `98_destroy_database.sh` (cleanup/teardown)
+- `99_restore_database.sh` (restores latest or selected backup)
 
 Do not skip ahead unless you know a later script's dependencies are already satisfied.
 
@@ -55,8 +59,19 @@ source ./teller-venv/bin/activate
   - Persists enrollment id to `~/.teller/enrollment_id.txt` for future repair mode.
   - Also supports token argument, secure prompt (`--manual`), or macOS clipboard mode.
   - Also provides enrollment management (`--list`, `--delete`, `--reconnect`, `--add`).
-- `99_destroy_database.sh`
+- `07_teller_client.py`
+  - Runs Teller API client operations.
+- `08_backfill_statements.py`
+  - Backfills statements data.
+- `97_backup_database.sh`
+  - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
+  - Also captures matching cluster globals (roles/grants) for reliable restores.
+- `98_destroy_database.sh`
   - Destroys `prod` database and related roles after explicit confirmation.
+- `99_restore_database.sh`
+  - Restores latest backup by default (or accepts `--from /path/to/backup.dump`).
+  - Exits if `teller` schema already exists in `prod`.
+  - Restores matching globals before database objects.
 
 ## Reconfiguring Teller.io
 
@@ -175,7 +190,7 @@ Then verify token/API access:
 
 ## 1psa Items Used by Database Scripts
 
-`04_deploy_database.sh` and `99_destroy_database.sh` read credentials from `1psa`.
+`04_deploy_database.sh`, `97_backup_database.sh`, `98_destroy_database.sh`, and `99_restore_database.sh` read credentials from `1psa`.
 
 Default items/fields:
 
