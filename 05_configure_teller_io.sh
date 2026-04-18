@@ -10,7 +10,7 @@ CERT_FILE="${TELLER_DIR}/certificate.pem"
 KEY_FILE="${TELLER_DIR}/private_key.pem"
 AUTH_TOKEN_FILE="${TELLER_DIR}/auth_token.json"
 EXAMPLES_REPO_URL="${EXAMPLES_REPO_URL:-https://github.com/tellerhq/examples.git}"
-TELLER_EXAMPLES_DIR="${TELLER_EXAMPLES_DIR:-${SCRIPT_DIR}/examples}"
+TELLER_EXAMPLES_DIR="${TELLER_EXAMPLES_DIR:-${SCRIPT_DIR}/teller-connect-ui}"
 CONFIGURE_TELLER_EXAMPLES="${CONFIGURE_TELLER_EXAMPLES:-true}"
 
 TELLER_APP_PSA_ITEM="${TELLER_APP_PSA_ITEM:-}"
@@ -45,15 +45,15 @@ ensure_teller_dir() {
 }
 
 ensure_examples_repo() {
-    status "examples" "Checking..."
+    status "teller-connect-ui" "Checking..."
 
     if [ "${CONFIGURE_TELLER_EXAMPLES}" != "true" ]; then
-        status "examples" "Skipped (CONFIGURE_TELLER_EXAMPLES=${CONFIGURE_TELLER_EXAMPLES})"
+        status "teller-connect-ui" "Skipped (CONFIGURE_TELLER_EXAMPLES=${CONFIGURE_TELLER_EXAMPLES})"
         return
     fi
 
     if [ -d "${TELLER_EXAMPLES_DIR}/.git" ]; then
-        status "examples" "Found existing repo at ${TELLER_EXAMPLES_DIR}"
+        status "teller-connect-ui" "Found existing repo at ${TELLER_EXAMPLES_DIR}"
         return
     fi
 
@@ -63,9 +63,9 @@ ensure_examples_repo() {
         exit 1
     fi
 
-    status "examples" "Cloning Teller examples into ${TELLER_EXAMPLES_DIR}..."
+    status "teller-connect-ui" "Cloning Teller examples into ${TELLER_EXAMPLES_DIR}..."
     git clone "$EXAMPLES_REPO_URL" "$TELLER_EXAMPLES_DIR"
-    status "examples" "Cloned"
+    status "teller-connect-ui" "Cloned"
 }
 
 write_secret_file() {
