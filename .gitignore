@@ -8,3 +8,4 @@ localhost.key
 localhost.pem
 bank_statements/*
 .tmp*
+debug*.py
