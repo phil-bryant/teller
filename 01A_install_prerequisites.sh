@@ -1,6 +1,7 @@
 #!/bin/bash
 umask 007
 
+#R001: Run with bash and fail fast on unrecoverable errors.
 set -e
 
 # Configuration
@@ -11,6 +12,7 @@ ONEPSA_DIR="${PARENT_DIR}/1psa"
 ONEPSA_LOCAL_BIN="${ONEPSA_DIR}/bin/1psa"
 PG_INSTALL_REPO_URL="https://github.com/phil-bryant/pg_install"
 PG_INSTALL_DIR="${PARENT_DIR}/pg_install"
+#R020: Default sudo credential item/field, overridable via environment.
 PSA_INSTALL_SUDO_ITEM="${PSA_INSTALL_SUDO_ITEM:-odus}"
 
 print_header() {
@@ -21,6 +23,8 @@ print_header() {
 }
 
 ensure_homebrew() {
+    #R005: Verify Homebrew is present before package actions.
+    #R035: Emit explicit status lines for this prerequisite phase.
     echo "[Homebrew] Checking..."
     if ! command -v brew >/dev/null 2>&1; then
         echo "❌ [Homebrew] Not installed."
@@ -36,6 +40,8 @@ ensure_homebrew() {
 }
 
 ensure_brew_formula() {
+    #R012 #R030: Ensure required brew formulas (go/git) are available.
+    #R035 #R040: Print status and skip install when already available.
     FORMULA="$1"
 
     if command -v "$FORMULA" >/dev/null 2>&1; then
@@ -56,16 +62,21 @@ ensure_brew_formula() {
 }
 
 ensure_1psa() {
+    #R010: Ensure 1psa is available on PATH.
+    #R035: Print explicit status for the 1psa phase.
     echo ""
     echo "[1psa] Checking..."
     if command -v 1psa >/dev/null 2>&1; then
+        #R040: Idempotent reruns skip re-install when requirement is already met.
         echo "✅ [1psa] Available on PATH"
         return
     fi
 
+    #R012: Ensure Go and Git prerequisites before clone/build.
     ensure_brew_formula "go"
     ensure_brew_formula "git"
 
+    #R010: Clone 1psa source when sibling tree is missing.
     if [ ! -d "$ONEPSA_DIR" ]; then
         echo "[1psa] Cloning source into ${PARENT_DIR}..."
         git clone "$ONEPSA_REPO_URL" "$ONEPSA_DIR"
@@ -73,11 +84,13 @@ ensure_1psa() {
         echo "✅ [1psa] Source directory already exists at ${ONEPSA_DIR}"
     fi
 
+    #R010: Require upstream Makefile before build/install.
     if [ ! -f "${ONEPSA_DIR}/Makefile" ]; then
         echo "❌ [1psa] Missing Makefile in ${ONEPSA_DIR}"
         exit 1
     fi
 
+    #R015: Build using upstream Makefile target.
     echo "[1psa] Building from source..."
     make -C "$ONEPSA_DIR"
 
@@ -86,6 +99,7 @@ ensure_1psa() {
         exit 1
     fi
 
+    #R020 #R045: Use runtime 1psa lookup for sudo credential; no hardcoded secret.
     echo "[1psa] Installing with sudo credential from local 1psa item..."
     "$ONEPSA_LOCAL_BIN" -f "$PSA_INSTALL_SUDO_ITEM" "$PSA_INSTALL_SUDO_ITEM" | sudo -S make -C "$ONEPSA_DIR" install
 
@@ -98,15 +112,19 @@ ensure_1psa() {
 }
 
 ensure_pg_install() {
+    #R025: Ensure pg_install repository exists and is verifiable.
+    #R035: Print explicit status for the pg_install phase.
     echo ""
     echo "[pg_install] Checking..."
     if [ -d "$PG_INSTALL_DIR/.git" ]; then
+        #R040: Idempotent reruns skip clone when repository already exists.
         echo "✅ [pg_install] Repository present at ${PG_INSTALL_DIR}"
     elif [ -e "$PG_INSTALL_DIR" ]; then
         echo "❌ [pg_install] ${PG_INSTALL_DIR} exists but is not a git repository"
         echo "Please remove or rename it, then run this script again."
         exit 1
     else
+        #R030: Ensure git exists before clone operations.
         ensure_brew_formula "git"
         echo "[pg_install] Cloning repository into ${PARENT_DIR}..."
         git clone "$PG_INSTALL_REPO_URL" "$PG_INSTALL_DIR"
@@ -120,6 +138,7 @@ ensure_pg_install() {
 }
 
 print_final_guidance() {
+    #R050: Print final readiness guidance and local source paths.
     echo ""
     echo "✅ All prerequisites are satisfied!"
     echo ""

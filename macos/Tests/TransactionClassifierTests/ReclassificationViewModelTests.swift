@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import TellerReclassifier
+@testable import TransactionClassifier
 
 actor MockAPI: ReclassificationAPI {
     var categories: [CategoryOption]
@@ -87,5 +87,40 @@ final class ReclassificationViewModelTests: XCTestCase {
         vm.selection = ["txn_a"]
         vm.nextUnclassified()
         XCTAssertEqual(vm.selection, ["txn_b"])
+    }
+
+    func testRankedCategoryOptionsKeepsNoCategoryFirstAndRanksExactBest() {
+        let options = rankedCategoryOptions(
+            query: "utilities",
+            categories: [sampleCategory(10, "Utilities"), sampleCategory(11, "Utility Services"), sampleCategory(12, "Dining")]
+        )
+        XCTAssertEqual(options.first?.categoryId, nil)
+        XCTAssertEqual(options.dropFirst().first?.categoryId, 10)
+    }
+
+    func testRankedCategoryOptionsSupportsFuzzySubsequenceMatches() {
+        let options = rankedCategoryOptions(
+            query: "gst",
+            categories: [sampleCategory(1, "Dining"), sampleCategory(2, "Gas Station"), sampleCategory(3, "Groceries")]
+        )
+        XCTAssertEqual(options.first?.categoryId, nil)
+        XCTAssertEqual(options.dropFirst().first?.categoryId, 2)
+    }
+
+    @MainActor
+    func testSelectedCategoryDidChangeSavesOnlyRowsThatActuallyChange() async {
+        let dining = sampleCategory(22, "Dining")
+        let current = TransactionCategory(nys_snw_category_id: 22, display_label: "Dining")
+        let rows = [sampleTransaction("txn_1", classification: current), sampleTransaction("txn_2", classification: nil)]
+        let api = MockAPI(categories: [dining], response: .init(total: 2, items: rows))
+        let vm = ReclassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_1", "txn_2"]
+        vm.selectedCategoryId = 22
+        await vm.selectedCategoryDidChange()
+        let saved = await api.lastSaved
+        XCTAssertEqual(saved.count, 1)
+        XCTAssertEqual(saved.first?.transaction_id, "txn_2")
+        XCTAssertEqual(vm.transactions.first(where: { $0.transaction_id == "txn_2" })?.classification?.nys_snw_category_id, 22)
     }
 }
