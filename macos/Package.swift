@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "TellerReclassifier",
+    name: "TransactionClassifier",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "TellerReclassifier", targets: ["TellerReclassifier"])],
+    products: [.executable(name: "TransactionClassifier", targets: ["TransactionClassifier"])],
     targets: [
-        .executableTarget(name: "TellerReclassifier"),
-        .testTarget(name: "TellerReclassifierTests", dependencies: ["TellerReclassifier"]),
+        .executableTarget(name: "TransactionClassifier"),
+        .testTarget(name: "TransactionClassifierTests", dependencies: ["TransactionClassifier"]),
     ]
 )

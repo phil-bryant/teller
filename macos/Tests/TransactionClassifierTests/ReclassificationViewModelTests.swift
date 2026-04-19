@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import TellerReclassifier
+@testable import TransactionClassifier
 
 actor MockAPI: ReclassificationAPI {
     var categories: [CategoryOption]
