@@ -5,8 +5,10 @@ from teller.teller_reclassification_api import create_app
 
 
 def main():
+    #R001: Resolve bind host/port from environment with localhost defaults.
     host = os.environ.get("TELLER_CLASSIFIER_API_HOST", "127.0.0.1")
     port = int(os.environ.get("TELLER_CLASSIFIER_API_PORT", "8787"))
+    #R005: Launch uvicorn using teller reclassification ASGI app.
     uvicorn.run(create_app(), host=host, port=port)
 
 

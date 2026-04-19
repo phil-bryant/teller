@@ -38,6 +38,7 @@ debug_log() {
 }
 
 print_context_row() {
+    #R055: Produce one normalized context row for list output.
     local source="$1" institution_id="$2" enrollment_id="$3" token_path="$4" enrollment_path="$5"
     local display_institution="$institution_id" display_enrollment="$enrollment_id"
     [ -n "$display_institution" ] || display_institution="<default>"
@@ -59,6 +60,7 @@ token_from_file() {
 }
 
 collect_context_rows() {
+    #R055: Discover default and suffixed enrollment contexts.
     local token enrollment suffix token_file enrollment_file
     if [ -f "$AUTH_TOKEN_FILE" ] || [ -f "$ENROLLMENT_ID_FILE" ]; then
         token="$(token_from_file "$AUTH_TOKEN_FILE")"
@@ -78,7 +80,7 @@ collect_context_rows() {
 }
 
 list_contexts() {
-    # R055: list all discovered local enrollment contexts.
+    #R055: List all discovered local enrollment contexts.
     local rows
     rows="$(collect_context_rows)"
     if [ -z "$rows" ]; then
@@ -93,6 +95,7 @@ list_contexts() {
 }
 
 parse_selector_args() {
+    #R085: Parse selector arguments for scoped context operations.
     while [ $# -gt 0 ]; do
         case "$1" in
             --institution_id|--institution-id)
@@ -118,6 +121,7 @@ parse_selector_args() {
 }
 
 resolve_single_context() {
+    #R085: Resolve exactly one context; reject missing or ambiguous selectors.
     local rows matched line source institution enrollment token_path enrollment_path count
     rows="$(collect_context_rows)"
     [ -n "$rows" ] || { echo "❌ No local enrollment contexts found."; return 10; }
@@ -151,7 +155,7 @@ EOF
 }
 
 move_to_trash() {
-    # R060: delete mode must be reversible locally (trash, not permanent delete).
+    #R060: Delete mode must be reversible locally (Trash, not permanent delete).
     local path="$1"
     [ -e "$path" ] || return
     local trash_dir timestamp base dest
@@ -165,7 +169,7 @@ move_to_trash() {
 }
 
 run_connect_capture() {
-    # R065/R070: reconnect and add share Connect capture flow with caller-selected output files.
+    #R065 #R070: Reconnect and add share capture flow with caller-selected outputs.
     local repair_enrollment_id="$1" output_token_file="$2" output_enrollment_file="$3" capture_mode="${4:-capture}"
     if [ ! -x "$CAPTURE_SERVER_SCRIPT" ]; then
         echo "❌ Missing executable capture server: $CAPTURE_SERVER_SCRIPT"
@@ -221,6 +225,7 @@ ensure_unique_suffix() {
 }
 
 usage() {
+    #R050 #R055 #R060 #R065 #R070: Document supported enrollment-management modes.
     echo "Usage:"
     echo "  ./06_capture_teller_token.sh                 # default: no copy/paste flow"
     echo "  ./06_capture_teller_token.sh --connect      # explicit no copy/paste flow"
@@ -238,6 +243,7 @@ usage() {
 }
 
 validate_token() {
+    #R075: Validate captured token before writing auth file.
     local token="$1"
     if [ -z "$token" ]; then
         echo "❌ Access token is empty."
@@ -249,6 +255,7 @@ validate_token() {
 }
 
 get_token_from_clipboard() {
+    #R075: Support clipboard-based token ingestion.
     if ! command -v pbpaste >/dev/null 2>&1; then
         echo "❌ pbpaste is not available; cannot read clipboard."
         exit 1
@@ -257,6 +264,7 @@ get_token_from_clipboard() {
 }
 
 write_auth_token_file() {
+    #R075 #R090: Write auth token atomically with restrictive permissions.
     local token="$1"
     mkdir -p "$TELLER_DIR"
     chmod 700 "$TELLER_DIR"
@@ -269,6 +277,7 @@ write_auth_token_file() {
 }
 
 verify_accounts_access() {
+    #R080: Run best-effort accounts verification with warning-only skip paths.
     if ! command -v curl >/dev/null 2>&1; then
         echo "⚠️  curl not found; skipping /accounts verification."
         return
@@ -330,16 +339,17 @@ main() {
             exit 0
             ;;
         ""|--connect)
+            #R050: Default/connect mode launches local enrollment manager.
             run_connect_capture "" "$AUTH_TOKEN_FILE" "$ENROLLMENT_ID_FILE" "manage"
             exit 0
             ;;
         --list)
-            # R050/R055: enrollment-management list action.
+            #R055: Enrollment-management list action.
             list_contexts
             exit 0
             ;;
         --delete)
-            # R050/R060: delete selected enrollment context only.
+            #R060 #R085: Delete selected enrollment context only.
             parse_selector_args "$@"
             resolve_single_context || {
                 case "$?" in
@@ -366,7 +376,7 @@ EOF
             exit 0
             ;;
         --reconnect)
-            # R050/R065: reconnect selected enrollment via repair mode.
+            #R065 #R085: Reconnect selected enrollment via repair mode.
             parse_selector_args "$@"
             resolve_single_context || exit 1
             selected="$RESOLVED_CONTEXT"
@@ -381,7 +391,7 @@ EOF
             exit 0
             ;;
         --add)
-            # R050/R070: add new enrollment without touching existing contexts.
+            #R070 #R090: Add new enrollment without touching existing contexts.
             [ $# -eq 0 ] || { echo "❌ --add takes no selector args; choose institution in Teller Connect UI."; exit 1; }
             mkdir -p "$TELLER_DIR"
             token_out="$(mktemp "${TELLER_DIR}/auth_token.add.XXXXXX.json")"
