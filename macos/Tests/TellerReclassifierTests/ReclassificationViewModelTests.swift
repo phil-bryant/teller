@@ -18,9 +18,9 @@ actor MockAPI: ReclassificationAPI {
     }
 }
 
-private func sampleCategory(_ id: Int, _ name: String) -> CategoryOption {
+private func sampleCategory(_ id: Int, _ name: String, applicability: String? = nil) -> CategoryOption {
     .init(nys_snw_category_id: id, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil,
-          level_4: nil, categorization: name, applicability: nil, display_label: name)
+          level_4: nil, categorization: name, applicability: applicability, display_label: name)
 }
 
 private func sampleTransaction(_ id: String, classification: TransactionCategory?) -> TransactionRow {
@@ -29,6 +29,16 @@ private func sampleTransaction(_ id: String, classification: TransactionCategory
 }
 
 final class ReclassificationViewModelTests: XCTestCase {
+    func testTransactionListDecodesDecimalAmountString() throws {
+        let data = """
+        {"total":1,"items":[{"transaction_id":"txn_1","account_id":"acc_1","date":"2026-04-18","amount":"33.21",
+        "description":"DoorDash","status":"pending","transaction_type_code":"card_payment","teller_category":null,
+        "classification":null}]}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(TransactionListResponse.self, from: data)
+        XCTAssertEqual(decoded.items.first?.amount, Decimal(string: "33.21"))
+    }
+
     @MainActor
     func testLoadAllPopulatesViewModel() async {
         let cat = sampleCategory(11, "Utilities")
@@ -38,6 +48,16 @@ final class ReclassificationViewModelTests: XCTestCase {
         XCTAssertEqual(vm.categories.count, 1)
         XCTAssertEqual(vm.transactions.count, 1)
         XCTAssertTrue(vm.statusText.contains("Loaded"))
+    }
+
+    @MainActor
+    func testLoadAllFiltersNaApplicabilityCategories() async {
+        let include = sampleCategory(1, "Dining", applicability: nil)
+        let exclude = sampleCategory(2, "Other", applicability: "N/A")
+        let api = MockAPI(categories: [include, exclude], response: .init(total: 1, items: [sampleTransaction("txn_1", classification: nil)]))
+        let vm = ReclassificationViewModel(api: api)
+        await vm.loadAll()
+        XCTAssertEqual(vm.categories.map(\.nys_snw_category_id), [1])
     }
 
     @MainActor

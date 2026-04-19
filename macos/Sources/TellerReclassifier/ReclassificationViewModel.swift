@@ -19,6 +19,7 @@ final class ReclassificationViewModel {
     var undoStack: [UndoAction] = []
     var statusText = "Ready"
     private let api: any ReclassificationAPI
+    private var suppressAutoApply = false
 
     init(api: any ReclassificationAPI = APIClient()) { self.api = api }
 
@@ -30,11 +31,23 @@ final class ReclassificationViewModel {
         do {
             async let cats = api.fetchCategories()
             async let txs = api.fetchTransactions(search: searchText, onlyUnclassified: onlyUnclassified)
-            categories = try await cats
+            categories = try await cats.filter { (($0.applicability ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased() != "N/A") }
             transactions = try await txs.items
+            syncPickerToSelection()
             statusText = "Loaded \(transactions.count) transactions"
             errorText = ""
         } catch { errorText = error.localizedDescription; statusText = "Load failed" }
+    }
+
+    func selectionDidChange() { syncPickerToSelection() }
+
+    func selectedCategoryDidChange() async {
+        if suppressAutoApply || selection.isEmpty { return }
+        let updates: [ClassificationMutation] = selectedRows.compactMap { row -> ClassificationMutation? in
+            if row.classification?.nys_snw_category_id == selectedCategoryId { return nil }
+            return ClassificationMutation(transaction_id: row.transaction_id, nys_snw_category_id: selectedCategoryId)
+        }
+        await apply(updates: updates)
     }
 
     func saveSelection() async {
@@ -61,10 +74,11 @@ final class ReclassificationViewModel {
     func nextUnclassified() {
         guard let idx = transactions.firstIndex(where: { selection.contains($0.transaction_id) }),
               let target = transactions[(idx + 1)...].first(where: { $0.classification == nil }) else {
-            if let first = transactions.first(where: { $0.classification == nil }) { selection = [first.transaction_id] }
+            if let first = transactions.first(where: { $0.classification == nil }) { selection = [first.transaction_id]; syncPickerToSelection() }
             return
         }
         selection = [target.transaction_id]
+        syncPickerToSelection()
     }
 
     private func apply(updates: [ClassificationMutation], shouldRecordUndo: Bool = true) async {
@@ -89,6 +103,7 @@ final class ReclassificationViewModel {
             }
             statusText = "Saved \(updates.count) classification(s)"
             errorText = ""
+            syncPickerToSelection()
         } catch {
             restore(previous)
             updates.forEach { rowState[$0.transaction_id] = .failed(error.localizedDescription) }
@@ -115,5 +130,15 @@ final class ReclassificationViewModel {
             transactions[idx].classification = previousCategory
             rowState[transactionId] = .idle
         }
+        syncPickerToSelection()
+    }
+
+    private func syncPickerToSelection() {
+        let rows = selectedRows
+        let current = rows.first?.classification?.nys_snw_category_id
+        let normalized = rows.allSatisfy { $0.classification?.nys_snw_category_id == current } ? current : nil
+        suppressAutoApply = true
+        selectedCategoryId = normalized
+        suppressAutoApply = false
     }
 }
