@@ -46,7 +46,7 @@ struct ContentView: View {
                     }
                 }
         }
-        .navigationTitle("Teller Reclassifier")
+        .navigationTitle("Transaction Classifier")
         .navigationSplitViewStyle(.balanced)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {

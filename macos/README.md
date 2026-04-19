@@ -1,4 +1,4 @@
-# TellerReclassifier (macOS SwiftUI)
+# TransactionClassifier (macOS SwiftUI)
 
 Native macOS UI for reclassifying `teller.transaction` records into `teller.nys_snw_category`.
 
@@ -20,7 +20,7 @@ Defaults to `http://127.0.0.1:8787`. Override with:
 From `macos/`:
 
 ```zsh
-swift run TellerReclassifier
+swift run TransactionClassifier
 ```
 
 Or open `macos/` directly in Xcode and run the executable target.
