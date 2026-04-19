@@ -15,24 +15,28 @@ struct ContentView: View {
                     Button("Refresh") { Task { await viewModel.loadAll() } }
                 }
                 List(viewModel.transactions, selection: $viewModel.selection) { row in
+                    let classificationLabel = row.classification?.display_label ?? "Unclassified"
+                    let classificationColor: Color = row.classification == nil ? .secondary : .blue
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text(row.description).lineLimit(1)
+                            Text(row.description).lineLimit(1).font(.body.weight(.medium))
                             Spacer()
-                            Text(row.amount as NSNumber, formatter: amountFormatter).monospacedDigit()
+                            Text(row.amount as NSNumber, formatter: amountFormatter).monospacedDigit().foregroundStyle(.primary)
                         }
                         HStack {
-                            Text(row.date).foregroundStyle(.secondary)
+                            Text(row.date).foregroundStyle(.secondary).lineLimit(1)
                             Text("• \(row.status)").foregroundStyle(.secondary)
-                            if let klass = row.classification {
-                                Text("• \(klass.display_label)").lineLimit(1).foregroundStyle(.blue)
-                            }
                             Spacer()
                             SaveStateDot(state: viewModel.rowState[row.transaction_id] ?? .idle)
                         }.font(.caption)
+                        Text(classificationLabel).font(.caption).lineLimit(1).foregroundStyle(classificationColor)
                     }.tag(row.transaction_id)
+                        .padding(.vertical, 3)
                 }.listStyle(.inset(alternatesRowBackgrounds: true))
-            }.padding(12)
+            }
+            .padding(12)
+            .frame(minWidth: 360, idealWidth: 420)
+            .navigationSplitViewColumnWidth(min: 340, ideal: 420, max: 560)
         } detail: {
             DetailPane(viewModel: viewModel)
                 .padding(12)
@@ -43,6 +47,7 @@ struct ContentView: View {
                 }
         }
         .navigationTitle("Teller Reclassifier")
+        .navigationSplitViewStyle(.balanced)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Focus Search") { searchFocused = true }.keyboardShortcut("f", modifiers: .command)
@@ -52,6 +57,7 @@ struct ContentView: View {
         }
         .task { await viewModel.loadAll() }
         .onSubmit(of: .text) { Task { await viewModel.loadAll() } }
+        .onChange(of: viewModel.selection) { _, _ in viewModel.selectionDidChange() }
     }
 }
 
@@ -69,6 +75,7 @@ private struct DetailPane: View {
             }
             .labelsHidden()
             .frame(maxWidth: .infinity)
+            .onChange(of: viewModel.selectedCategoryId) { _, _ in Task { await viewModel.selectedCategoryDidChange() } }
             HStack(spacing: 8) {
                 Button("Apply to Selected") { Task { await viewModel.saveSelection() } }
                     .keyboardShortcut(.return, modifiers: .command)
