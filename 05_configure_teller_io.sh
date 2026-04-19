@@ -1,4 +1,5 @@
 #!/bin/bash
+#R001: Enforce strict shell mode and secure default permissions.
 umask 007
 
 set -euo pipefail
@@ -40,11 +41,13 @@ read_1psa_field() {
 }
 
 ensure_teller_dir() {
+    #R005: Ensure ~/.teller exists with restricted permissions.
     mkdir -p "$TELLER_DIR"
     chmod 700 "$TELLER_DIR"
 }
 
 ensure_examples_repo() {
+    #R010: Optionally clone Teller examples repository.
     status "teller-connect-ui" "Checking..."
 
     if [ "${CONFIGURE_TELLER_EXAMPLES}" != "true" ]; then
@@ -69,6 +72,7 @@ ensure_examples_repo() {
 }
 
 write_secret_file() {
+    #R015 #R020 #R025: Centralized secure write for sensitive secret files.
     local path="$1"
     local value="$2"
     printf "%s" "$value" > "$path"
@@ -76,6 +80,7 @@ write_secret_file() {
 }
 
 ensure_application_id() {
+    #R015: Resolve application id from existing file, env, or 1psa.
     status "application_id" "Checking..."
 
     if [ -s "$APP_ID_FILE" ]; then
@@ -102,6 +107,7 @@ ensure_application_id() {
 }
 
 ensure_cert_and_key() {
+    #R020: Resolve cert/key from existing files, env paths, or 1psa.
     status "certificates" "Checking..."
 
     if [ -s "$CERT_FILE" ] && [ -s "$KEY_FILE" ]; then
@@ -136,6 +142,7 @@ ensure_cert_and_key() {
 }
 
 ensure_auth_token_if_provided() {
+    #R025: Optionally provision auth token json from env or 1psa.
     status "auth_token" "Checking..."
 
     if [ -s "$AUTH_TOKEN_FILE" ]; then
@@ -164,6 +171,7 @@ ensure_auth_token_if_provided() {
 }
 
 smoke_test_teller_api() {
+    #R030 #R035: Run institutions smoke test; run accounts smoke test when token exists.
     local app_id
     app_id="$(tr -d '\r\n' < "$APP_ID_FILE")"
     if [ -z "$app_id" ]; then
@@ -215,6 +223,7 @@ smoke_test_teller_api() {
 }
 
 main() {
+    #R040: Print final readiness summary after configuration flow.
     echo "============================================================"
     echo "Teller.io Configuration"
     echo "============================================================"

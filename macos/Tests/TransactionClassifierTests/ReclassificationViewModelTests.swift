@@ -89,13 +89,12 @@ final class ReclassificationViewModelTests: XCTestCase {
         XCTAssertEqual(vm.selection, ["txn_b"])
     }
 
-    func testRankedCategoryOptionsKeepsNoCategoryFirstAndRanksExactBest() {
+    func testRankedCategoryOptionsRanksExactBest() {
         let options = rankedCategoryOptions(
             query: "utilities",
             categories: [sampleCategory(10, "Utilities"), sampleCategory(11, "Utility Services"), sampleCategory(12, "Dining")]
         )
-        XCTAssertEqual(options.first?.categoryId, nil)
-        XCTAssertEqual(options.dropFirst().first?.categoryId, 10)
+        XCTAssertEqual(options.first?.categoryId, 10)
     }
 
     func testRankedCategoryOptionsSupportsFuzzySubsequenceMatches() {
@@ -103,8 +102,7 @@ final class ReclassificationViewModelTests: XCTestCase {
             query: "gst",
             categories: [sampleCategory(1, "Dining"), sampleCategory(2, "Gas Station"), sampleCategory(3, "Groceries")]
         )
-        XCTAssertEqual(options.first?.categoryId, nil)
-        XCTAssertEqual(options.dropFirst().first?.categoryId, 2)
+        XCTAssertEqual(options.first?.categoryId, 2)
     }
 
     @MainActor

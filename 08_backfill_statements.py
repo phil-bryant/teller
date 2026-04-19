@@ -36,6 +36,7 @@ def _build_tsv_lines(words):
     raise NotImplementedError("_build_tsv_lines is no longer used")
 
 def _vision_ocr_pages(image_paths):
+    #R001: Run Vision OCR and normalize recognized text into line-oriented page strings.
     if not image_paths:
         return []
     swift_code = """
@@ -114,6 +115,7 @@ for (idx, path) in CommandLine.arguments.dropFirst().enumerated() {
     return pages
 
 def ocr_pdf(pdf_path):
+    #R001: Convert PDF pages to images before Vision OCR.
     with tempfile.TemporaryDirectory() as td:
         subprocess.run(['pdftoppm', '-png', '-r', '300', str(pdf_path), os.path.join(td, 'page')],
                        capture_output=True, check=True)
@@ -163,6 +165,7 @@ def _find_amount(lines):
     return None, -1, None
 
 def parse_transactions(pages, year, stmt_month):
+    #R005: Parse transaction rows from OCR pages and infer signed amounts/types.
     all_lines = []
     for page in pages:
         in_section = False
@@ -280,6 +283,7 @@ def extract_last_four_hint(pdf_path: Path, pages):
     return None
 
 def match_statement_to_account(pdf_path: Path, pages, account_rows, account_id_override):
+    #R010: Match statement to account via override, single-account shortcut, or last-four hints.
     if account_id_override:
         for r in account_rows:
             if r[0] == account_id_override:
@@ -303,6 +307,7 @@ def match_statement_to_account(pdf_path: Path, pages, account_rows, account_id_o
     raise SystemExit(f"Multiple accounts with last_four={hint!r} in DB (unexpected).")
 
 def main():
+    #R020: Parse CLI controls for scope, account override, statement root, dry-run, and debug.
     parser = argparse.ArgumentParser(description='Backfill transactions from bank statement PDFs')
     parser.add_argument('--institution-id', help='Limit to one teller.institution.institution_id; default: all in teller.account')
     parser.add_argument('--account-id', help='Optional: force all PDFs for --institution-id to this Teller account_id (skip auto-match)')
@@ -345,6 +350,7 @@ def main():
                 log.info("Parsed statement", institution_id=institution_id, account_id=account_id, year=year, month=month,
                          txn_count=len(txns), deposits=str(parsed_dep), withdrawals=str(parsed_wd),
                          expected_dep=str(dep_total), expected_wd=str(wd_total))
+                #R025: Log parsed-vs-summary mismatches for audit visibility.
                 if dep_total and parsed_dep != dep_total:
                     log.warning("Deposit total mismatch", institution_id=institution_id, parsed=str(parsed_dep), expected=str(dep_total))
                 if wd_total and parsed_wd != wd_total:
@@ -363,6 +369,7 @@ def main():
                 for txn in all_txns:
                     key = (txn['date'], txn['amount'], txn['description'])
                     seen_occurrences[key] = seen_occurrences.get(key, 0) + 1
+                    #R015: Generate deterministic statement transaction IDs and skip overlap with API-sourced history.
                     txn_id = make_txn_id(account_id, txn['date'], txn['amount'], txn['description'], seen_occurrences[key])
                     if earliest_api_date and date.fromisoformat(txn['date']) >= date.fromisoformat(earliest_api_date):
                         sk += 1
@@ -371,6 +378,7 @@ def main():
                         print(f"  {txn['date']} {txn['amount']:>10} {txn['description'][:80]}")
                         ins += 1
                         continue
+                    #R015: Persist each eligible backfilled transaction via upsert helper.
                     _upsert_transaction(session, {
                         'id': txn_id, 'account_id': account_id, 'amount': txn['amount'],
                         'date': txn['date'], 'description': txn['description'], 'type': txn['type'],
@@ -387,6 +395,7 @@ def main():
                     log.info("Database commit complete", institution_id=institution_id, account_id=account_id, inserted=ins, skipped=sk)
     finally:
         session.close()
+    #R025: Emit completion summary counters.
     log.info("Backfill complete", inserted=inserted_total, skipped=skipped_total, total_parsed=parsed_total)
 
 if __name__ == '__main__':
