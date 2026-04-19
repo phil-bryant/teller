@@ -25,6 +25,11 @@ final class ReclassificationViewModel {
 
     var selectedCategory: CategoryOption? { categories.first { $0.nys_snw_category_id == selectedCategoryId } }
     var selectedRows: [TransactionRow] { transactions.filter { selection.contains($0.transaction_id) } }
+    var selectionHasMixedCategories: Bool {
+        let rows = selectedRows
+        guard let first = rows.first?.classification?.nys_snw_category_id else { return rows.contains { $0.classification != nil } }
+        return rows.contains { $0.classification?.nys_snw_category_id != first }
+    }
 
     func loadAll() async {
         busy = true; defer { busy = false }
