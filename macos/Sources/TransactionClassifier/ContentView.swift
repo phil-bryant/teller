@@ -174,7 +174,7 @@ private struct CategoryTypeaheadField: View {
     private func syncTextFromSelection() {
         guard hasSelection else { queryText = ""; return }
         if showsMixedSelection { queryText = ""; return }
-        queryText = selectedCategoryId.flatMap { id in categories.first { $0.nys_snw_category_id == id }?.display_label } ?? "No category"
+        queryText = selectedCategoryId.flatMap { id in categories.first { $0.nys_snw_category_id == id }?.display_label } ?? ""
     }
 }
 

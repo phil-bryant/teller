@@ -8,10 +8,8 @@ struct CategoryTypeaheadOption: Equatable, Identifiable {
 
 func rankedCategoryOptions(query: String, categories: [CategoryOption]) -> [CategoryTypeaheadOption] {
     let normalizedQuery = normalizeSearchText(query)
-    let noneOption = CategoryTypeaheadOption(categoryId: nil, label: "No category")
     if normalizedQuery.isEmpty {
-        let categoryOptions = categories.map { CategoryTypeaheadOption(categoryId: $0.nys_snw_category_id, label: $0.display_label) }
-        return [noneOption] + categoryOptions
+        return categories.map { CategoryTypeaheadOption(categoryId: $0.nys_snw_category_id, label: $0.display_label) }
     }
     let ranked = categories.enumerated().compactMap { index, category -> (Int, Int, CategoryTypeaheadOption)? in
         guard let score = fuzzyCategoryScore(label: category.display_label, query: normalizedQuery) else { return nil }
@@ -22,7 +20,7 @@ func rankedCategoryOptions(query: String, categories: [CategoryOption]) -> [Cate
         if $0.1 != $1.1 { return $0.1 < $1.1 }
         return $0.2.label.localizedCaseInsensitiveCompare($1.2.label) == .orderedAscending
     }.map(\.2)
-    return [noneOption] + ranked
+    return ranked
 }
 
 private func fuzzyCategoryScore(label: String, query: String) -> Int? {

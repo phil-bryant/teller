@@ -33,6 +33,7 @@ class TellerAPIClient:
         TellerObject.set_api_client(self)
 
     def _load_auth(self):
+        #R005: Load auth token and TLS cert/key from ~/.teller (or explicit auth token override).
         token = self._auth_token or json.loads((TELLER_DIR / "auth_token.json").read_text())["current"]
         self.kwargs = {
             'auth': (token, ""),
@@ -50,6 +51,7 @@ class TellerAPIClient:
         return code, message
 
     def _repair_enrollment(self) -> bool:
+        #R010: Attempt local Teller Connect repair for disconnected enrollments.
         enrollment_id_file = TELLER_DIR / "enrollment_id.txt"
         enrollment_id = self._enrollment_id or (enrollment_id_file.read_text().strip() if enrollment_id_file.is_file() else "")
         repaired = False
@@ -99,6 +101,7 @@ class TellerAPIClient:
         log.info("Connecting to Teller API", url=url, params=params, auth_token=self.kwargs['auth'][0][:5])
         response = requests.get(url, params=params, **self.kwargs)
         code = self._parse_error(response)[0] if response.status_code != 200 else ""
+        #R010: Retry once after successful enrollment repair.
         if code.startswith("enrollment.disconnected") and self._repair_enrollment():
             log.info("Retrying after enrollment repair", url=url)
             response = requests.get(url, params=params, **self.kwargs)
@@ -109,6 +112,7 @@ class TellerAPIClient:
 
 
 def _fetch_all_transactions(client, txn_url):
+    #R015: Fetch complete transaction history by paging with from_id cursor.
     all_txns, page = [], client.get(txn_url)
     while page:
         all_txns.extend(page)
@@ -213,6 +217,7 @@ def _fetch_context_data(client: TellerAPIClient, institution_id: str) -> tuple:
     return filtered_identities, raw_transactions_by_account, raw_balances_by_account
 
 def _build_enrollment_contexts(institution_id: str) -> List[dict]:
+    #R020: Merge default/metadata/suffix enrollment contexts, then dedupe and optionally scope by institution.
     contexts = [{
         "enrollment_id": _read_text_file(TELLER_DIR / "enrollment_id.txt"),
         "token": _read_token_file(TELLER_DIR / "auth_token.json"),
@@ -232,6 +237,7 @@ def _build_enrollment_contexts(institution_id: str) -> List[dict]:
     return contexts
 
 def main():
+    #R001: Parse CLI flags and configure runtime log level.
     parser = argparse.ArgumentParser(description='Teller API Client')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--dry-run', action='store_true', help='Fetch and print Teller data without persisting to DB')
@@ -262,6 +268,7 @@ def main():
             for err in errors:
                 print(f"Enrollment failed: institution_id={err['institution_id']} enrollment_id={err['enrollment_id']}")
                 print(f"  status={err['status_code']} code={err['code']} message={err['message']}")
+        #R025: Persist fetched Teller data unless running in dry-run mode.
         if not args.dry_run:
             from teller.teller_db import get_session
             from teller.teller_persist import persist_all

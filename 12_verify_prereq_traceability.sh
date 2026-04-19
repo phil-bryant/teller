@@ -1,7 +1,9 @@
 #!/bin/bash
+#R001: Use strict mode and temp files for deterministic comparisons.
 umask 007
 set -euo pipefail
 
+#R005: Accept optional requirements/script paths with defaults.
 REQUIREMENTS_FILE="${1:-A_install_prerequisites-requirements.md}"
 SCRIPT_FILE="${2:-01A_install_prerequisites.sh}"
 REQ_IDS_FILE="$(mktemp)"
@@ -9,22 +11,26 @@ SCRIPT_IDS_FILE="$(mktemp)"
 MISSING_IDS_FILE="$(mktemp)"
 EXTRA_IDS_FILE="$(mktemp)"
 
+#R010: Fail clearly when requirements file is missing.
 if [ ! -f "$REQUIREMENTS_FILE" ]; then
     echo "❌ Requirements file not found: $REQUIREMENTS_FILE"
     exit 1
 fi
 
+#R010: Fail clearly when script file is missing.
 if [ ! -f "$SCRIPT_FILE" ]; then
     echo "❌ Script file not found: $SCRIPT_FILE"
     exit 1
 fi
 
+#R015: Parse requirement IDs from requirements file entries.
 awk '
 match($0, /^R[0-9]{3}(-[0-9]{3})?/) {
     print substr($0, RSTART, RLENGTH)
 }
 ' "$REQUIREMENTS_FILE" | sort -u > "$REQ_IDS_FILE"
 
+#R020: Parse all #R tags from script content.
 awk '
 {
     while (match($0, /#R[0-9]{3}(-[0-9]{3})?/)) {
@@ -35,6 +41,7 @@ awk '
 }
 ' "$SCRIPT_FILE" | sort -u > "$SCRIPT_IDS_FILE"
 
+#R025: Compute missing/extra ID set differences.
 comm -23 "$REQ_IDS_FILE" "$SCRIPT_IDS_FILE" > "$MISSING_IDS_FILE"
 comm -13 "$REQ_IDS_FILE" "$SCRIPT_IDS_FILE" > "$EXTRA_IDS_FILE"
 
@@ -43,6 +50,7 @@ echo "- requirements: $REQUIREMENTS_FILE"
 echo "- script: $SCRIPT_FILE"
 echo ""
 
+#R030: Pass only when missing/extra sets are both empty.
 if [ ! -s "$MISSING_IDS_FILE" ] && [ ! -s "$EXTRA_IDS_FILE" ]; then
     echo "✅ PASS: Every requirement ID has a matching #R tag, and no extra tags were found."
     exit 0
