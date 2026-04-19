@@ -46,7 +46,7 @@ struct ContentView: View {
                     }
                 }
         }
-        .navigationTitle("Teller Reclassifier")
+        .navigationTitle("Transaction Classifier")
         .navigationSplitViewStyle(.balanced)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -67,15 +67,14 @@ private struct DetailPane: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Selection").font(.headline)
             Text("\(viewModel.selection.count) transaction(s)").foregroundStyle(.secondary)
-            Picker("Category", selection: $viewModel.selectedCategoryId) {
-                Text("No category").tag(Optional<Int>.none)
-                ForEach(viewModel.categories) { category in
-                    Text(category.display_label).tag(Optional(category.nys_snw_category_id))
-                }
+            CategoryTypeaheadField(
+                selectedCategoryId: $viewModel.selectedCategoryId,
+                categories: viewModel.categories,
+                hasSelection: !viewModel.selection.isEmpty,
+                showsMixedSelection: viewModel.selectionHasMixedCategories
+            ) { _ in
+                await viewModel.selectedCategoryDidChange()
             }
-            .labelsHidden()
-            .frame(maxWidth: .infinity)
-            .onChange(of: viewModel.selectedCategoryId) { _, _ in Task { await viewModel.selectedCategoryDidChange() } }
             HStack(spacing: 8) {
                 Button("Apply to Selected") { Task { await viewModel.saveSelection() } }
                     .keyboardShortcut(.return, modifiers: .command)
@@ -99,6 +98,83 @@ private struct DetailPane: View {
             Spacer()
             Text(viewModel.statusText).foregroundStyle(.secondary).font(.caption)
         }
+    }
+}
+
+private struct CategoryTypeaheadField: View {
+    @Binding var selectedCategoryId: Int?
+    let categories: [CategoryOption]
+    let hasSelection: Bool
+    let showsMixedSelection: Bool
+    let onCommit: (Int?) async -> Void
+    @State private var queryText = ""
+    @State private var highlightedIndex = 0
+    @FocusState private var isFocused: Bool
+    private var options: [CategoryTypeaheadOption] { rankedCategoryOptions(query: queryText, categories: categories) }
+    private var isExpanded: Bool { isFocused || !queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("Type to search categories...", text: $queryText)
+                .textFieldStyle(.roundedBorder)
+                .focused($isFocused)
+                .onSubmit { commitHighlightedOption() }
+                .onChange(of: queryText) { _, _ in highlightedIndex = 0 }
+                .onAppear { syncTextFromSelection() }
+                .onChange(of: selectedCategoryId) { _, _ in syncTextFromSelection() }
+                .onChange(of: hasSelection) { _, _ in syncTextFromSelection() }
+                .onChange(of: showsMixedSelection) { _, _ in syncTextFromSelection() }
+                .onKeyPress(.downArrow) { moveHighlight(by: 1); return .handled }
+                .onKeyPress(.upArrow) { moveHighlight(by: -1); return .handled }
+                .onKeyPress(.escape) { syncTextFromSelection(); isFocused = false; return .handled }
+            if isExpanded {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
+                            Button {
+                                commit(option)
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Text(option.label).lineLimit(1)
+                                    Spacer()
+                                    if selectedCategoryId == option.categoryId { Image(systemName: "checkmark").font(.caption) }
+                                }.padding(.horizontal, 8).padding(.vertical, 6)
+                            }
+                            .buttonStyle(.plain)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(index == highlightedIndex ? Color.accentColor.opacity(0.18) : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                        }
+                        if options.isEmpty {
+                            Text("No matches").foregroundStyle(.secondary).font(.caption).padding(.horizontal, 8).padding(.vertical, 6)
+                        }
+                    }.padding(4)
+                }
+                .frame(maxHeight: 180)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.25), lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+    private func moveHighlight(by delta: Int) {
+        guard !options.isEmpty else { return }
+        highlightedIndex = max(0, min(options.count - 1, highlightedIndex + delta))
+    }
+    private func commitHighlightedOption() {
+        guard !options.isEmpty else { return }
+        commit(options[max(0, min(options.count - 1, highlightedIndex))])
+    }
+    private func commit(_ option: CategoryTypeaheadOption) {
+        selectedCategoryId = option.categoryId
+        queryText = option.label
+        highlightedIndex = 0
+        Task { await onCommit(option.categoryId) }
+    }
+    private func syncTextFromSelection() {
+        guard hasSelection else { queryText = ""; return }
+        if showsMixedSelection { queryText = ""; return }
+        queryText = selectedCategoryId.flatMap { id in categories.first { $0.nys_snw_category_id == id }?.display_label } ?? "No category"
     }
 }
 
