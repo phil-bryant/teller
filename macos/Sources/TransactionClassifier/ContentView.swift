@@ -101,7 +101,12 @@ private struct DetailPane: View {
                 ContentUnavailableView("Select a transaction", systemImage: "square.grid.2x2")
             }
             Spacer()
-            Text(viewModel.statusText).foregroundStyle(.secondary).font(.caption)
+            HStack(spacing: 8) {
+                Text(viewModel.statusText).foregroundStyle(.secondary).font(.caption)
+                Spacer()
+                Button("Load more") { Task { await viewModel.loadMore() } }
+                    .disabled(!viewModel.canLoadMore || viewModel.busy)
+            }
         }
     }
 }
