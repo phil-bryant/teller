@@ -15,7 +15,7 @@ enum APIError: Error, LocalizedError {
 
 protocol ReclassificationAPI: Sendable {
     func fetchCategories() async throws -> [CategoryOption]
-    func fetchTransactions(search: String, onlyUnclassified: Bool) async throws -> TransactionListResponse
+    func fetchTransactions(search: String, onlyUnclassified: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse]
 }
 
@@ -32,13 +32,13 @@ actor APIClient: ReclassificationAPI {
         try await send(path: "/v1/categories")
     }
 
-    func fetchTransactions(search: String, onlyUnclassified: Bool) async throws -> TransactionListResponse {
+    func fetchTransactions(search: String, onlyUnclassified: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
         var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/transactions"), resolvingAgainstBaseURL: false)!
         comp.queryItems = [
             URLQueryItem(name: "search", value: search),
             URLQueryItem(name: "only_unclassified", value: onlyUnclassified ? "true" : "false"),
-            URLQueryItem(name: "limit", value: "300"),
-            URLQueryItem(name: "offset", value: "0"),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "offset", value: String(offset)),
         ]
         return try await send(url: comp.url!)
     }

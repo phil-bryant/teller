@@ -6,8 +6,10 @@ struct UndoAction { let prior: [String: TransactionCategory?]; let next: [String
 @MainActor
 @Observable
 final class ReclassificationViewModel {
+    private let pageSize = 300
     var categories: [CategoryOption] = []
     var transactions: [TransactionRow] = []
+    var totalTransactions = 0
     var selection: Set<String> = []
     var searchText = ""
     var onlyUnclassified = false
@@ -30,18 +32,41 @@ final class ReclassificationViewModel {
         guard let first = rows.first?.classification?.nys_snw_category_id else { return rows.contains { $0.classification != nil } }
         return rows.contains { $0.classification?.nys_snw_category_id != first }
     }
+    var canLoadMore: Bool { transactions.count < totalTransactions }
 
     func loadAll() async {
         busy = true; defer { busy = false }
         do {
             async let cats = api.fetchCategories()
-            async let txs = api.fetchTransactions(search: searchText, onlyUnclassified: onlyUnclassified)
+            async let txs = api.fetchTransactions(search: searchText, onlyUnclassified: onlyUnclassified, limit: pageSize, offset: 0)
             categories = try await cats.filter { (($0.applicability ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased() != "N/A") }
-            transactions = try await txs.items
+            let response = try await txs
+            transactions = response.items
+            totalTransactions = response.total
             syncPickerToSelection()
-            statusText = "Loaded \(transactions.count) transactions"
+            statusText = loadStatusText(for: transactions)
             errorText = ""
         } catch { errorText = error.localizedDescription; statusText = "Load failed" }
+    }
+
+    func loadMore() async {
+        guard !busy, canLoadMore else { return }
+        busy = true; defer { busy = false }
+        do {
+            let response = try await api.fetchTransactions(
+                search: searchText,
+                onlyUnclassified: onlyUnclassified,
+                limit: pageSize,
+                offset: transactions.count
+            )
+            totalTransactions = response.total
+            mergeTransactions(response.items)
+            statusText = loadStatusText(for: transactions)
+            errorText = ""
+        } catch {
+            statusText = "Load failed"
+            errorText = error.localizedDescription
+        }
     }
 
     func selectionDidChange() { syncPickerToSelection() }
@@ -145,5 +170,21 @@ final class ReclassificationViewModel {
         suppressAutoApply = true
         selectedCategoryId = normalized
         suppressAutoApply = false
+    }
+
+    private func loadStatusText(for rows: [TransactionRow]) -> String {
+        guard let firstDate = rows.first?.date else { return "Loaded 0 transactions" }
+        let minDate = rows.map(\.date).min() ?? firstDate
+        let maxDate = rows.map(\.date).max() ?? firstDate
+        return "Loaded \(rows.count) transactions (\(minDate) to \(maxDate))"
+    }
+
+    private func mergeTransactions(_ newRows: [TransactionRow]) {
+        guard !newRows.isEmpty else { return }
+        var seen = Set(transactions.map(\.transaction_id))
+        for row in newRows where !seen.contains(row.transaction_id) {
+            transactions.append(row)
+            seen.insert(row.transaction_id)
+        }
     }
 }

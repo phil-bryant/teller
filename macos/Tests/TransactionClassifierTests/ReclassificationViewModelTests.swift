@@ -5,13 +5,22 @@ import XCTest
 actor MockAPI: ReclassificationAPI {
     var categories: [CategoryOption]
     var response: TransactionListResponse
+    var pagedResponses: [Int: TransactionListResponse]
+    var fetchOffsets: [Int] = []
     var lastSaved: [ClassificationMutation] = []
-    init(categories: [CategoryOption], response: TransactionListResponse) {
+    init(categories: [CategoryOption], response: TransactionListResponse, pagedResponses: [Int: TransactionListResponse] = [:]) {
         self.categories = categories
         self.response = response
+        var merged = pagedResponses
+        merged[0] = response
+        self.pagedResponses = merged
     }
     func fetchCategories() async throws -> [CategoryOption] { categories }
-    func fetchTransactions(search: String, onlyUnclassified: Bool) async throws -> TransactionListResponse { response }
+    func fetchTransactions(search: String, onlyUnclassified: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
+        fetchOffsets.append(offset)
+        return pagedResponses[offset] ?? response
+    }
+    func recordedFetchOffsets() -> [Int] { fetchOffsets }
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse] {
         lastSaved = updates
         return updates.map { .init(transaction_id: $0.transaction_id, nys_snw_category_id: $0.nys_snw_category_id, type: "user", updated_at: "now") }
@@ -23,8 +32,8 @@ private func sampleCategory(_ id: Int, _ name: String, applicability: String? = 
           level_4: nil, categorization: name, applicability: applicability, display_label: name)
 }
 
-private func sampleTransaction(_ id: String, classification: TransactionCategory?) -> TransactionRow {
-    .init(transaction_id: id, account_id: "acc", date: "2026-04-18", amount: Decimal(10), description: id, status: "posted",
+private func sampleTransaction(_ id: String, date: String = "2026-04-18", classification: TransactionCategory?) -> TransactionRow {
+    .init(transaction_id: id, account_id: "acc", date: date, amount: Decimal(10), description: id, status: "posted",
           transaction_type_code: "card_payment", teller_category: "food", classification: classification)
 }
 
@@ -42,12 +51,16 @@ final class ReclassificationViewModelTests: XCTestCase {
     @MainActor
     func testLoadAllPopulatesViewModel() async {
         let cat = sampleCategory(11, "Utilities")
-        let api = MockAPI(categories: [cat], response: .init(total: 1, items: [sampleTransaction("txn_1", classification: nil)]))
+        let rows = [
+            sampleTransaction("txn_1", date: "2026-04-17", classification: nil),
+            sampleTransaction("txn_2", date: "2026-04-19", classification: nil),
+        ]
+        let api = MockAPI(categories: [cat], response: .init(total: 2, items: rows))
         let vm = ReclassificationViewModel(api: api)
         await vm.loadAll()
         XCTAssertEqual(vm.categories.count, 1)
-        XCTAssertEqual(vm.transactions.count, 1)
-        XCTAssertTrue(vm.statusText.contains("Loaded"))
+        XCTAssertEqual(vm.transactions.count, 2)
+        XCTAssertEqual(vm.statusText, "Loaded 2 transactions (2026-04-17 to 2026-04-19)")
     }
 
     @MainActor
@@ -103,6 +116,28 @@ final class ReclassificationViewModelTests: XCTestCase {
             categories: [sampleCategory(1, "Dining"), sampleCategory(2, "Gas Station"), sampleCategory(3, "Groceries")]
         )
         XCTAssertEqual(options.first?.categoryId, 2)
+    }
+
+    @MainActor
+    func testLoadMoreAppendsAdditionalTransactions() async {
+        let cat = sampleCategory(11, "Utilities")
+        let firstPage = TransactionListResponse(total: 4, items: [
+            sampleTransaction("txn_1", date: "2026-04-20", classification: nil),
+            sampleTransaction("txn_2", date: "2026-04-19", classification: nil),
+        ])
+        let secondPage = TransactionListResponse(total: 4, items: [
+            sampleTransaction("txn_3", date: "2026-04-18", classification: nil),
+            sampleTransaction("txn_4", date: "2026-04-17", classification: nil),
+        ])
+        let api = MockAPI(categories: [cat], response: firstPage, pagedResponses: [2: secondPage])
+        let vm = ReclassificationViewModel(api: api)
+        await vm.loadAll()
+        await vm.loadMore()
+        XCTAssertEqual(vm.transactions.map(\.transaction_id), ["txn_1", "txn_2", "txn_3", "txn_4"])
+        XCTAssertEqual(vm.statusText, "Loaded 4 transactions (2026-04-17 to 2026-04-20)")
+        XCTAssertFalse(vm.canLoadMore)
+        let offsets = await api.recordedFetchOffsets()
+        XCTAssertEqual(offsets, [0, 2])
     }
 
     @MainActor
