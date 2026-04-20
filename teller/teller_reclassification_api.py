@@ -29,6 +29,8 @@ class TransactionCategory(BaseModel):
 class TransactionRow(BaseModel):
     transaction_id: str
     account_id: str
+    institution_id: Optional[str] = None
+    account_last_four: Optional[str] = None
     date: date
     amount: Decimal
     description: str
@@ -161,6 +163,7 @@ def create_app() -> FastAPI:
         where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
         base_query = f"""
             FROM teller.transaction tt
+            LEFT JOIN teller.account ta USING (account_id)
             LEFT JOIN teller.transaction_type ttt USING (transaction_type_id)
             LEFT JOIN teller.transaction_details ttd USING (transaction_details_id)
             LEFT JOIN LATERAL (
@@ -176,7 +179,8 @@ def create_app() -> FastAPI:
         with get_session() as session:
             total = session.execute(text(f"SELECT COUNT(*) {base_query}"), params).scalar_one()
             rows = session.execute(text(f"""
-                SELECT tt.transaction_id, tt.account_id, tt.date, tt.amount, tt.description, tt.status,
+                SELECT tt.transaction_id, tt.account_id, ta.institution_id, ta.last_four AS account_last_four,
+                       tt.date, tt.amount, tt.description, tt.status,
                        ttt.code AS transaction_type_code, ttd.category AS teller_category,
                        m.nys_snw_category_id, nsc.level_1, nsc.level_1_name, nsc.level_2, nsc.level_2_name,
                        nsc.level_3, nsc.level_4, nsc.categorization
@@ -192,9 +196,10 @@ def create_app() -> FastAPI:
                     nys_snw_category_id=row["nys_snw_category_id"],
                     display_label=_display_label(row),
                 )
-            items.append(TransactionRow(transaction_id=row["transaction_id"], account_id=row["account_id"], date=row["date"],
-                                        amount=row["amount"], description=row["description"], status=row["status"],
-                                        transaction_type_code=row["transaction_type_code"],
+            items.append(TransactionRow(transaction_id=row["transaction_id"], account_id=row["account_id"],
+                                        institution_id=row["institution_id"], account_last_four=row["account_last_four"],
+                                        date=row["date"], amount=row["amount"], description=row["description"],
+                                        status=row["status"], transaction_type_code=row["transaction_type_code"],
                                         teller_category=row["teller_category"], classification=classification))
         return TransactionListResponse(total=total, items=items)
 
