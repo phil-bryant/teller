@@ -29,6 +29,8 @@ struct TransactionCategory: Codable, Hashable {
 struct TransactionRow: Codable, Identifiable, Hashable {
     let transaction_id: String
     let account_id: String
+    let institution_id: String?
+    let account_last_four: String?
     let date: String
     let amount: Decimal
     let description: String
@@ -39,13 +41,17 @@ struct TransactionRow: Codable, Identifiable, Hashable {
     var id: String { transaction_id }
 
     enum CodingKeys: String, CodingKey {
-        case transaction_id, account_id, date, amount, description, status, transaction_type_code, teller_category, classification
+        case transaction_id, account_id, institution_id, account_last_four, date, amount, description, status
+        case transaction_type_code, teller_category, classification
     }
 
-    init(transaction_id: String, account_id: String, date: String, amount: Decimal, description: String, status: String,
-         transaction_type_code: String?, teller_category: String?, classification: TransactionCategory?) {
+    init(transaction_id: String, account_id: String, institution_id: String? = nil, account_last_four: String? = nil,
+         date: String, amount: Decimal, description: String, status: String, transaction_type_code: String?,
+         teller_category: String?, classification: TransactionCategory?) {
         self.transaction_id = transaction_id
         self.account_id = account_id
+        self.institution_id = institution_id
+        self.account_last_four = account_last_four
         self.date = date
         self.amount = amount
         self.description = description
@@ -59,6 +65,8 @@ struct TransactionRow: Codable, Identifiable, Hashable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         transaction_id = try c.decode(String.self, forKey: .transaction_id)
         account_id = try c.decode(String.self, forKey: .account_id)
+        institution_id = try c.decodeIfPresent(String.self, forKey: .institution_id)
+        account_last_four = try c.decodeIfPresent(String.self, forKey: .account_last_four)
         date = try c.decode(String.self, forKey: .date)
         description = try c.decode(String.self, forKey: .description)
         status = try c.decode(String.self, forKey: .status)
