@@ -17,6 +17,10 @@ struct ContentView: View {
                 List(viewModel.transactions, selection: $viewModel.selection) { row in
                     let classificationLabel = row.classification?.display_label ?? "Unclassified"
                     let classificationColor: Color = row.classification == nil ? .secondary : .blue
+                    let accountContext = [row.institution_id, row.account_last_four]
+                        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " • ")
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text(row.description).lineLimit(1).font(.body.weight(.medium))
@@ -25,7 +29,8 @@ struct ContentView: View {
                         }
                         HStack {
                             Text(row.date).foregroundStyle(.secondary).lineLimit(1)
-                            Text("• \(row.status)").foregroundStyle(.secondary)
+                            Text("• \(row.status)\(accountContext.isEmpty ? "" : " • \(accountContext)")")
+                                .foregroundStyle(.secondary)
                             Spacer()
                             SaveStateDot(state: viewModel.rowState[row.transaction_id] ?? .idle)
                         }.font(.caption)
