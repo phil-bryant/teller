@@ -11,9 +11,11 @@ Tests:
 
 R005  Statement: Auto-resolve identifiers when env vars are missing.
 Design: When `TXN_ID` and/or `CATEGORY_ID` are unset, query DB defaults from `teller.transaction` and `teller.nys_snw_category`.
+Design: If either query returns no row, fail with actionable guidance instead of a generic parameter expansion error.
 Tests:
 - Run without `TXN_ID` and verify script auto-selects one.
 - Run without `CATEGORY_ID` and verify script auto-selects one.
+- Run with empty `teller.transaction` and verify explicit guidance to load data or pass `TXN_ID`.
 
 R006  Statement: Support strict env-only identifier mode.
 Design: `--require-env-ids` enforces required parameter expansion for `TXN_ID` and `CATEGORY_ID`.
@@ -41,7 +43,20 @@ Design: Execute `psql` query ordered by `updated_at DESC LIMIT 1`.
 Tests:
 - Verify output line is `<transaction_id>:<nys_snw_category_id>:<type>`.
 
+R030  Statement: Print explicit pass/fail verification result.
+Design: Print a `✅ PASS:` line when persisted value matches expected `<TXN_ID>:<CATEGORY_ID>:user`.
+Design: Print a `❌ FAIL:` line and exit non-zero on API failure, mismatch, or missing persisted row.
+Design: Always print API response and persisted-row details before pass/fail status.
+Tests:
+- On matching persisted classification, verify output starts with `✅ PASS:`.
+- On mismatch or empty persisted row, verify output starts with `❌ FAIL:` and script exits non-zero.
+- On API request failure, verify output starts with `❌ FAIL:` and script exits non-zero.
+- On all outcomes after API call, verify output includes `API response:` and `Persisted row:` detail lines.
+
 ## Changelog
 
 - 2026-04-19: Initial reverse-engineered requirements for `11_verify_reclassification_persistence.sh`.
 - 2026-04-20: Made smart identifier auto-resolution the default and added `--require-env-ids` strict mode.
+- 2026-04-21: Added explicit, actionable failure behavior when auto-resolve queries return no rows.
+- 2026-04-21: Added explicit `PASS:`/`FAIL:` result output with non-zero failures for API or persistence mismatch.
+- 2026-04-21: Restored detailed output (API response + persisted row) while keeping icon pass/fail status lines.
