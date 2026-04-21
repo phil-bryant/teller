@@ -167,6 +167,7 @@ def find_context(local_contexts: List[Dict[str, str]], key: str) -> Optional[Dic
 
 
 def render_contexts_html(local_contexts: List[Dict[str, str]]) -> str:
+    #R075: Render known local enrollment contexts (or explicit empty state) before Connect actions.
     if not local_contexts:
         return (
             "<section class='contexts'><h2>Known Local Enrollments</h2>"
@@ -208,6 +209,7 @@ def build_html(app_id: str, environment: str, enrollment_id: str, mode: str, loc
         "Click repair to restore your existing enrollment and auto-save your access token."
         if enrollment_id else "Click connect to enroll and auto-save your access token to ~/.teller/auth_token.json."
     )
+    #R080: Management mode exposes add/reconnect/delete actions from the same page.
     manage_controls = (
         "<div class='controls'><button onclick='startAdd()'>Add Enrollment</button></div>" if mode == "manage" else ""
     )
@@ -379,6 +381,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/api/delete-context":
+            #R080: Delete selected local enrollment context only in management mode.
             target_key = payload.get("targetKey", "")
             if self.server.capture_state.mode != "manage":
                 self._send_json(400, {"error": "delete is only available in management mode"})
@@ -418,6 +421,7 @@ class Handler(BaseHTTPRequestHandler):
             enrollment_id_file = self.server.capture_state.enrollment_id_file
             if self.server.capture_state.mode == "manage":
                 if action == "reconnect":
+                    #R080: Reconnect updates only the selected context file pair.
                     context = find_context(self.server.capture_state.local_contexts, target_key)
                     if not context:
                         self._send_json(404, {"error": "context not found"})
@@ -425,6 +429,7 @@ class Handler(BaseHTTPRequestHandler):
                     auth_token_file = Path(context["token_path"])
                     enrollment_id_file = Path(context["enrollment_path"])
                 elif action == "add":
+                    #R080: Add writes to a new unique suffixed context without overwriting existing contexts.
                     suffix = ensure_unique_suffix(sanitize_suffix(institution_hint or enrollment_id))
                     auth_token_file = TELLER_DIR / f"auth_token_{suffix}.json"
                     enrollment_id_file = TELLER_DIR / f"enrollment_id_{suffix}.txt"
