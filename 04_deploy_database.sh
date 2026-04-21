@@ -69,9 +69,10 @@ PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_trans
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_transaction_links.sql"
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_transaction_details.sql"
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_transaction.sql"
-PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/create_triggers.sql"
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_nys_snw_category.sql"
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_transaction_nys_snw_category.sql"
+#R040: Attach updated_at triggers only after all updated_at tables exist.
+PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/create_triggers.sql"
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_transaction_info_view.sql"
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/create_audit.sql"
 
