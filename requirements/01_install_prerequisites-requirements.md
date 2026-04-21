@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `01A_install_prerequisites.sh` and any successor installer for local macOS setup.
+Applies to `01_install_prerequisites.sh` and any successor installer for local macOS setup.
 
 R001  Statement: Run on macOS with `bash` and fail fast.
 Design: Use `set -e`; return non-zero on unrecoverable failures.

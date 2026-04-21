@@ -37,3 +37,4 @@ Tests:
 ## Changelog
 
 - 2026-04-19: Initial reverse-engineered requirements for `08_backfill_statements.py`.
+- 2026-04-20: Reviewed multi-enrollment requirements; no additional enrollment-selection or Connect-UI requirements apply here.
