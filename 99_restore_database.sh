@@ -12,9 +12,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="${SCRIPT_DIR}/backups"
 BACKUP_PATH=""
 GLOBALS_BACKUP_PATH=""
+TABLE_NAME=""
+TABLE_SCHEMA=""
+TABLE_RELATION=""
 
 usage() {
-    echo "Usage: $0 [--from /path/to/backup.dump]"
+    echo "Usage: $0 [--from /path/to/backup.dump] [--table table_name|schema.table_name]"
 }
 
 latest_backup_path() {
@@ -32,6 +35,7 @@ latest_backup_path() {
 }
 
 #R005: Parse optional --from backup source argument.
+#R040: Parse optional --table table scope argument.
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --from)
@@ -40,6 +44,14 @@ while [ "$#" -gt 0 ]; do
                 exit 1
             fi
             BACKUP_PATH="$2"
+            shift 2
+            ;;
+        --table)
+            if [ "$#" -lt 2 ]; then
+                usage
+                exit 1
+            fi
+            TABLE_NAME="$2"
             shift 2
             ;;
         -h|--help)
@@ -101,26 +113,47 @@ if [ ! -f "$BACKUP_PATH" ]; then
     exit 1
 fi
 
-#R020: Require matching globals dump file.
-GLOBALS_BACKUP_PATH="${BACKUP_PATH%.dump}_globals.sql"
-if [ ! -f "$GLOBALS_BACKUP_PATH" ]; then
-    echo "Matching globals backup is missing: $GLOBALS_BACKUP_PATH"
-    echo "Recreate backup with 97_backup_database.sh to include roles and grants."
-    exit 1
-fi
-
-#R025: Refuse restore into db that already contains teller schema.
-database_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${DATABASE_NAME}';")"
-if [ "$database_exists" = "1" ]; then
-    schema_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d "$DATABASE_NAME" -tAc "SELECT 1 FROM information_schema.schemata WHERE schema_name='teller';")"
-    if [ "$schema_exists" = "1" ]; then
-        echo "Schema teller already exists in ${DATABASE_NAME}; refusing to restore."
+#R020: Require matching globals dump file only for full restore mode.
+if [ -z "$TABLE_NAME" ]; then
+    GLOBALS_BACKUP_PATH="${BACKUP_PATH%.dump}_globals.sql"
+    if [ ! -f "$GLOBALS_BACKUP_PATH" ]; then
+        echo "Matching globals backup is missing: $GLOBALS_BACKUP_PATH"
+        echo "Recreate backup with 97_backup_database.sh to include roles and grants."
         exit 1
     fi
 fi
 
-#R030: Restore globals first, then restore database dump.
-PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH"
-PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d postgres --clean --if-exists --create "$BACKUP_PATH"
+#R025: Refuse full restore into db that already contains teller schema.
+database_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${DATABASE_NAME}';")"
+if [ "$database_exists" = "1" ]; then
+    schema_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d "$DATABASE_NAME" -tAc "SELECT 1 FROM information_schema.schemata WHERE schema_name='teller';")"
+    if [ "$schema_exists" = "1" ] && [ -z "$TABLE_NAME" ]; then
+        echo "Schema teller already exists in ${DATABASE_NAME}; refusing full restore."
+        echo "Pass --table schema.table_name to run table-scoped restore into existing schema."
+        exit 1
+    fi
+fi
+
+#R040: Add table scope to restore when --table is provided.
+RESTORE_TABLE_ARGS=()
+if [ -n "$TABLE_NAME" ]; then
+    if [[ "$TABLE_NAME" == *.* ]]; then
+        TABLE_SCHEMA="${TABLE_NAME%%.*}"
+        TABLE_RELATION="${TABLE_NAME#*.}"
+    else
+        TABLE_SCHEMA="teller"
+        TABLE_RELATION="$TABLE_NAME"
+    fi
+    RESTORE_TABLE_ARGS=(--schema "$TABLE_SCHEMA" --table "$TABLE_RELATION")
+fi
+
+#R030: In full restore mode, restore globals first, then restore database dump.
+if [ -n "$TABLE_NAME" ]; then
+    PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d "$DATABASE_NAME" --clean --if-exists "${RESTORE_TABLE_ARGS[@]}" "$BACKUP_PATH"
+else
+    PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH"
+    PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d postgres --clean --if-exists --create "$BACKUP_PATH"
+fi
+#R045: Support combining --from with --table for scoped restore from explicit dump.
 #R035: Print completion status with source backup path.
 echo "Restore complete from: $BACKUP_PATH"

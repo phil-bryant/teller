@@ -25,26 +25,43 @@ Design: Read via `1psa -p` default or `1psa -f` override field, then validate no
 Tests:
 - Force empty password response and verify non-zero exit.
 
-R020  Statement: Require both database dump and matching globals dump files.
-Design: Validate selected `.dump` path and sibling `_globals.sql` file.
+R020  Statement: Require globals dump file only for full restore mode.
+Design: Validate selected `.dump` path always; require sibling `_globals.sql` only when `--table` is not provided.
 Tests:
-- Delete matching globals file and verify restore is refused.
+- Run full restore with missing globals file and verify restore is refused.
+- Run table-scoped restore with missing globals file and verify restore still runs.
 
-R025  Statement: Refuse restore when target database already has teller schema.
-Design: Query target database and abort if schema `teller` exists.
+R025  Statement: Refuse full restore when target database already has teller schema unless table scope is provided.
+Design: Query target database and abort only when schema `teller` exists and `--table` is not provided.
 Tests:
-- Restore into existing initialized db and verify refusal message.
+- Restore into existing initialized db without `--table` and verify refusal message.
+- Restore into existing initialized db with `--table` and verify restore is allowed.
 
-R030  Statement: Restore globals before database content restore.
-Design: Run globals SQL with `psql` then run `pg_restore --clean --if-exists --create`.
+R030  Statement: Restore globals only for full restore mode.
+Design: For full restore, run globals SQL with `psql` then run `pg_restore --clean --if-exists --create`; for `--table` restore skip globals replay.
 Tests:
-- Verify restore order is globals first, then database content.
+- Verify full restore order is globals first, then database content.
+- Verify table-scoped restore does not run globals replay.
 
 R035  Statement: Print completion output with source backup path.
 Design: Emit final restore-complete message with selected dump file path.
 Tests:
 - Verify successful run prints completion line with backup path.
 
+R040  Statement: Accept optional table-scoped restore selection.
+Design: Parse `--table <table_name|schema.table_name>` and restore only that table when provided.
+Tests:
+- Run with `--table teller.transaction` and verify only that table is restored.
+- Run with `--table transaction` and verify teller schema-qualified restore target is used.
+
+R045  Statement: Support combining explicit backup source with table-scoped restore.
+Design: Allow `--from` and `--table` together so table-scoped restore can target any selected dump.
+Tests:
+- Run with both `--from <path.dump>` and `--table <table_name>` and verify selected dump plus table scope.
+
 ## Changelog
 
+- 2026-04-21: Refined R020/R030 for table mode to skip globals requirements/replay and updated R040 table-name format.
+- 2026-04-21: Refined R025 to allow restore into existing teller schema when `--table` is provided.
+- 2026-04-21: Added R040 and R045 for optional `--table` restore scope and `--from` composition.
 - 2026-04-19: Initial reverse-engineered requirements for `99_restore_database.sh`.

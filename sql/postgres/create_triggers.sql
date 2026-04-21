@@ -23,11 +23,24 @@ BEGIN
         ORDER BY tables.table_name
     LOOP
         trigger_name := format('update_%s_updated_at', table_name);
-        EXECUTE format(
-            'DROP TRIGGER IF EXISTS %I ON teller.%I;',
-            trigger_name,
-            table_name
-        );
+        IF EXISTS (
+            SELECT 1
+            FROM pg_trigger trg
+            JOIN pg_class rel
+                ON rel.oid = trg.tgrelid
+            JOIN pg_namespace rel_ns
+                ON rel_ns.oid = rel.relnamespace
+            WHERE rel_ns.nspname = 'teller'
+                AND rel.relname = table_name
+                AND trg.tgname = trigger_name
+                AND trg.tgisinternal = false
+        ) THEN
+            EXECUTE format(
+                'DROP TRIGGER %I ON teller.%I;',
+                trigger_name,
+                table_name
+            );
+        END IF;
         EXECUTE format(
             'CREATE TRIGGER %I
                 BEFORE UPDATE ON teller.%I
