@@ -35,6 +35,77 @@ source ./teller-venv/bin/activate
 ./06_capture_teller_token.sh
 ```
 
+## Testing and Verification
+
+Run these checks from the project root after activating the project virtual environment:
+
+```bash
+source ./teller-venv/bin/activate
+```
+
+There are currently no repository CI workflow files under `.github/workflows`; verification is script-driven and run locally.
+
+### 1) Requirements Traceability Verification
+
+Verifies every requirement ID in `requirements/*.md` is mapped to matching `#R...` tags in referenced source files.
+
+```bash
+./00_verify_requirements_traceability.sh
+```
+
+Optional single-pair mode:
+
+```bash
+./00_verify_requirements_traceability.sh requirements/11_verify_reclassification_persistence-requirements.md 11_verify_reclassification_persistence.sh
+```
+
+### 2) Reclassification API Unit Tests
+
+Runs Python `unittest` coverage for `tests/test_teller_reclassification_api.py`.
+
+```bash
+python3 ./10_run_reclassification_api_tests.py
+```
+
+Equivalent direct unittest invocation:
+
+```bash
+python3 -m unittest tests.test_teller_reclassification_api
+```
+
+### 3) Reclassification Persistence End-to-End Verification
+
+This checks API-to-database persistence by writing one classification via API and reading it back from Postgres.
+
+1. Start the API in one terminal:
+
+```bash
+./09_transaction_reclassification_api.py
+```
+
+2. Run the verifier in another terminal:
+
+```bash
+./11_verify_reclassification_persistence.sh
+```
+
+Strict/CI-style mode requiring explicit IDs:
+
+```bash
+TXN_ID=txn_xxx CATEGORY_ID=123 ./11_verify_reclassification_persistence.sh --require-env-ids
+```
+
+### 4) Built-In Smoke Verifications in Setup Scripts
+
+These checks run automatically as part of existing setup/token workflows:
+
+- `./05_configure_teller_io.sh`
+  - Verifies Teller mTLS connectivity using `GET /institutions`.
+  - If `~/.teller/auth_token.json` exists, also checks `GET /accounts`.
+- `./06_capture_teller_token.sh`
+  - After capture/reconnect/manual token save, runs a best-effort `GET /accounts` verification when `curl`, `jq`, cert/key, and token are available.
+  - Prints diagnostics/warnings when verification cannot run or returns non-200.
+
 ## API Reference Docs
 
 Local Teller API reference notes now live under `docs/teller-api-reference/`.
