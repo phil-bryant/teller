@@ -91,6 +91,7 @@ Active secret and credential sources are:
   - Runs unit tests for reclassification API behavior.
 - `11_verify_reclassification_persistence.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
+  - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
   - Also captures matching cluster globals (roles/grants) for reliable restores.
