@@ -44,6 +44,12 @@ Design: Use `sql/postgres` under script directory.
 Tests:
 - Run script from a different working directory and verify SQL files still resolve.
 
+R040  Statement: Attach updated_at triggers after all table DDL creation.
+Design: Execute `create_triggers.sql` only after all `teller_*.sql` table files that define `updated_at` are applied.
+Tests:
+- Verify deploy order runs `create_triggers.sql` after `teller_transaction_nys_snw_category.sql`.
+
 ## Changelog
 
+- 2026-04-21: Added R040 trigger-order requirement to ensure full updated_at coverage.
 - 2026-04-19: Initial reverse-engineered requirements for `04_deploy_database.sh`.
