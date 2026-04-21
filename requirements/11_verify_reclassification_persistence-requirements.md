@@ -9,11 +9,17 @@ Design: Use `zsh` shebang and `set -euo pipefail`.
 Tests:
 - Cause command failure and verify script exits non-zero.
 
-R005  Statement: Require transaction and category identifiers from environment.
-Design: Enforce `TXN_ID` and `CATEGORY_ID` via required parameter expansion.
+R005  Statement: Auto-resolve identifiers when env vars are missing.
+Design: When `TXN_ID` and/or `CATEGORY_ID` are unset, query DB defaults from `teller.transaction` and `teller.nys_snw_category`.
 Tests:
-- Run without `TXN_ID` and verify immediate failure.
-- Run without `CATEGORY_ID` and verify immediate failure.
+- Run without `TXN_ID` and verify script auto-selects one.
+- Run without `CATEGORY_ID` and verify script auto-selects one.
+
+R006  Statement: Support strict env-only identifier mode.
+Design: `--require-env-ids` enforces required parameter expansion for `TXN_ID` and `CATEGORY_ID`.
+Tests:
+- Run with `--require-env-ids` and missing `TXN_ID` to verify immediate failure.
+- Run with `--require-env-ids` and missing `CATEGORY_ID` to verify immediate failure.
 
 R010  Statement: Support configurable API endpoint and database connection defaults.
 Design: Use `TELLER_CLASSIFIER_API_URL` and `TELLER_DB_*` overrides with localhost defaults.
@@ -38,3 +44,4 @@ Tests:
 ## Changelog
 
 - 2026-04-19: Initial reverse-engineered requirements for `11_verify_reclassification_persistence.sh`.
+- 2026-04-20: Made smart identifier auto-resolution the default and added `--require-env-ids` strict mode.

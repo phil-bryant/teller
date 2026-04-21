@@ -37,4 +37,5 @@ Or open `macos/` directly in Xcode and run the executable target.
 From repo root:
 
 - `./10_run_reclassification_api_tests.py` (API unit tests)
-- `TXN_ID=... CATEGORY_ID=... ./11_verify_reclassification_persistence.sh` (end-to-end persistence check)
+- `./11_verify_reclassification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./11_verify_reclassification_persistence.sh --require-env-ids` (strict CI mode)
