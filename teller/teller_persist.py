@@ -217,7 +217,7 @@ def _upsert_account_balances(session, bal_data):
     if existing:
         _exec(session, """
             UPDATE teller.account_balances SET ledger = :ledger, available = :available,
-                account_balances_links_id = :account_balances_links_id
+                account_balances_links_id = :account_balances_links_id, updated_at = CURRENT_TIMESTAMP
             WHERE account_id = :account_id
         """, vals)
     else:
