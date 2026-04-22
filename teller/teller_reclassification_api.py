@@ -85,7 +85,15 @@ def _ensure_exists(session, table: str, column: str, value: object, error: str):
 
 
 def _write_one(session, transaction_id: str, nys_snw_category_id: Optional[int]) -> ClassificationWriteResponse:
-    _ensure_exists(session, "transaction", "transaction_id", transaction_id, f"Unknown transaction_id: {transaction_id}")
+    posted_row = session.execute(text("""
+        SELECT 1
+          FROM teller.transaction
+         WHERE transaction_id = :transaction_id
+           AND status = 'posted'
+         LIMIT 1
+    """), {"transaction_id": transaction_id}).fetchone()
+    if not posted_row:
+        raise HTTPException(status_code=404, detail=f"Unknown transaction_id: {transaction_id}")
     if nys_snw_category_id is None:
         session.execute(text("DELETE FROM teller.transaction_nys_snw_category WHERE transaction_id = :transaction_id"),
                         {"transaction_id": transaction_id})
@@ -151,7 +159,7 @@ def create_app() -> FastAPI:
         limit: int = Query(default=150, ge=1, le=500),
         offset: int = Query(default=0, ge=0),
     ):
-        filters, params = [], {"limit": limit, "offset": offset}
+        filters, params = ["tt.status = 'posted'"], {"limit": limit, "offset": offset}
         if search:
             filters.append("(tt.description ILIKE :search OR tt.transaction_id ILIKE :search)")
             params["search"] = f"%{search}%"
