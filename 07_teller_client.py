@@ -274,7 +274,7 @@ def main():
             from teller.teller_persist import persist_all
             session = get_session()
             try:
-                #R030: Transaction canonicalization/upsert durability is handled inside persist_all.
+                #R030 #R035: Transaction canonicalization and stale-graph cleanup are handled inside persist_all.
                 persist_all(session, raw_identities, raw_transactions_by_account, raw_balances_by_account)
                 print("Persisted to database.")
             except Exception as exc:

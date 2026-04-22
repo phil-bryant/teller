@@ -49,7 +49,14 @@ Design: Execute `create_triggers.sql` only after all `teller_*.sql` table files 
 Tests:
 - Verify deploy order runs `create_triggers.sql` after `teller_transaction_nys_snw_category.sql`.
 
+R045  Statement: Ensure transaction classifications cascade-delete with parent transaction removal.
+Design: Enforce `ON DELETE CASCADE` on `teller.transaction_nys_snw_category(transaction_id)` during deploy, including existing databases.
+Tests:
+- Delete a row from `teller.transaction` with a linked `transaction_nys_snw_category` row and verify child row is removed automatically.
+- Re-run deploy and verify FK remains present with cascade behavior.
+
 ## Changelog
 
 - 2026-04-21: Added R040 trigger-order requirement to ensure full updated_at coverage.
+- 2026-04-22: Added R045 to enforce cascading delete behavior for transaction classifications.
 - 2026-04-19: Initial reverse-engineered requirements for `04_deploy_database.sh`.

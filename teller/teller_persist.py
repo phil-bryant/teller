@@ -226,6 +226,40 @@ def _reconcile_missing_pending_transactions(session, account_id, fetched_transac
         """, {"account_id": account_id}).fetchall()
     return [row[0] for row in deleted]
 
+def _prune_unreferenced_transaction_relations(session):
+    removed_links = _exec(session, """
+        DELETE FROM teller.transaction_links tl
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM teller.transaction t
+            WHERE t.transaction_links_id = tl.transaction_links_id
+        )
+        RETURNING transaction_links_id
+    """).fetchall()
+    removed_details = _exec(session, """
+        DELETE FROM teller.transaction_details td
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM teller.transaction t
+            WHERE t.transaction_details_id = td.transaction_details_id
+        )
+        RETURNING transaction_details_id
+    """).fetchall()
+    removed_counterparties = _exec(session, """
+        DELETE FROM teller.transaction_details_counterparty tdc
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM teller.transaction_details td
+            WHERE td.transaction_details_counterparty_id = tdc.transaction_details_counterparty_id
+        )
+        RETURNING transaction_details_counterparty_id
+    """).fetchall()
+    return {
+        "transaction_links": len(removed_links),
+        "transaction_details": len(removed_details),
+        "transaction_details_counterparty": len(removed_counterparties),
+    }
+
 def _upsert_account_balances_links(session, links_data, existing_links_id=None):
     self_link = links_data.get("self", "")
     account_link = links_data.get("account", "")
@@ -290,5 +324,8 @@ def persist_all(session, raw_identities, raw_transactions_by_account, raw_balanc
         log.info("Persisted transactions", account_id=account_id, count=len(canonical_txns))
         if deleted_pending_ids:
             log.info("Removed stale pending transactions", account_id=account_id, count=len(deleted_pending_ids))
+    pruned = _prune_unreferenced_transaction_relations(session)
+    if any(pruned.values()):
+        log.info("Pruned unreferenced transaction relation rows", **pruned)
     session.commit()
     log.info("Database commit complete")
