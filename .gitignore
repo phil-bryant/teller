@@ -10,6 +10,7 @@ bank_statements/*
 .tmp*
 debug*.py
 backups
+archive/backup_extracts
 bin/*
 .cursor/rules/*
 macos/.build/

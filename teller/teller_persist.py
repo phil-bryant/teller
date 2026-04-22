@@ -181,9 +181,84 @@ def _upsert_transaction(session, txn_data):
             (transaction_id, account_id, amount, date, description, transaction_details_id, status, transaction_links_id, running_balance, transaction_type_id)
         VALUES (:transaction_id, :account_id, :amount, :date, :description, :transaction_details_id, :status, :transaction_links_id, :running_balance, :transaction_type_id)
         ON CONFLICT (transaction_id) DO UPDATE SET
-            amount = EXCLUDED.amount, date = EXCLUDED.date, description = EXCLUDED.description,
-            status = EXCLUDED.status, running_balance = EXCLUDED.running_balance, transaction_type_id = EXCLUDED.transaction_type_id
+            account_id = EXCLUDED.account_id,
+            amount = EXCLUDED.amount,
+            date = EXCLUDED.date,
+            description = EXCLUDED.description,
+            transaction_details_id = EXCLUDED.transaction_details_id,
+            status = EXCLUDED.status,
+            transaction_links_id = EXCLUDED.transaction_links_id,
+            running_balance = EXCLUDED.running_balance,
+            transaction_type_id = EXCLUDED.transaction_type_id,
+            updated_at = CURRENT_TIMESTAMP
     """, vals)
+
+def _canonicalize_transactions(txns):
+    #R030: Canonicalize duplicate IDs so posted snapshots win over pending.
+    by_id = {}
+    for txn_data in txns:
+        txn_id = txn_data["id"]
+        existing = by_id.get(txn_id)
+        if not existing:
+            by_id[txn_id] = txn_data
+            continue
+        existing_status = existing.get("status")
+        incoming_status = txn_data.get("status")
+        if existing_status != "posted" and incoming_status == "posted":
+            by_id[txn_id] = txn_data
+    return list(by_id.values())
+
+def _reconcile_missing_pending_transactions(session, account_id, fetched_transaction_ids):
+    if fetched_transaction_ids:
+        deleted = _exec(session, """
+            DELETE FROM teller.transaction
+            WHERE account_id = :account_id
+              AND status = 'pending'
+              AND transaction_id != ALL(:fetched_ids)
+            RETURNING transaction_id
+        """, {"account_id": account_id, "fetched_ids": fetched_transaction_ids}).fetchall()
+    else:
+        deleted = _exec(session, """
+            DELETE FROM teller.transaction
+            WHERE account_id = :account_id
+              AND status = 'pending'
+            RETURNING transaction_id
+        """, {"account_id": account_id}).fetchall()
+    return [row[0] for row in deleted]
+
+def _prune_unreferenced_transaction_relations(session):
+    removed_links = _exec(session, """
+        DELETE FROM teller.transaction_links tl
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM teller.transaction t
+            WHERE t.transaction_links_id = tl.transaction_links_id
+        )
+        RETURNING transaction_links_id
+    """).fetchall()
+    removed_details = _exec(session, """
+        DELETE FROM teller.transaction_details td
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM teller.transaction t
+            WHERE t.transaction_details_id = td.transaction_details_id
+        )
+        RETURNING transaction_details_id
+    """).fetchall()
+    removed_counterparties = _exec(session, """
+        DELETE FROM teller.transaction_details_counterparty tdc
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM teller.transaction_details td
+            WHERE td.transaction_details_counterparty_id = tdc.transaction_details_counterparty_id
+        )
+        RETURNING transaction_details_counterparty_id
+    """).fetchall()
+    return {
+        "transaction_links": len(removed_links),
+        "transaction_details": len(removed_details),
+        "transaction_details_counterparty": len(removed_counterparties),
+    }
 
 def _upsert_account_balances_links(session, links_data, existing_links_id=None):
     self_link = links_data.get("self", "")
@@ -238,8 +313,19 @@ def persist_all(session, raw_identities, raw_transactions_by_account, raw_balanc
         _upsert_account_balances(session, bal_data)
         log.info("Persisted balances", account_id=account_id, ledger=bal_data.get("ledger"), available=bal_data.get("available"))
     for account_id, txns in raw_transactions_by_account.items():
-        for txn_data in txns:
+        canonical_txns = _canonicalize_transactions(txns)
+        for txn_data in canonical_txns:
             _upsert_transaction(session, txn_data)
-        log.info("Persisted transactions", account_id=account_id, count=len(txns))
+        deleted_pending_ids = _reconcile_missing_pending_transactions(
+            session,
+            account_id,
+            [txn_data["id"] for txn_data in canonical_txns],
+        )
+        log.info("Persisted transactions", account_id=account_id, count=len(canonical_txns))
+        if deleted_pending_ids:
+            log.info("Removed stale pending transactions", account_id=account_id, count=len(deleted_pending_ids))
+    pruned = _prune_unreferenced_transaction_relations(session)
+    if any(pruned.values()):
+        log.info("Pruned unreferenced transaction relation rows", **pruned)
     session.commit()
     log.info("Database commit complete")

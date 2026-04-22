@@ -71,6 +71,12 @@ PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_trans
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_transaction.sql"
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_nys_snw_category.sql"
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_transaction_nys_snw_category.sql"
+#R045: Ensure transaction classification FK cascades deletes from teller.transaction.
+PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -c \
+"ALTER TABLE teller.transaction_nys_snw_category \
+ DROP CONSTRAINT IF EXISTS transaction_nys_snw_category_transaction_id_fkey, \
+ ADD CONSTRAINT transaction_nys_snw_category_transaction_id_fkey \
+ FOREIGN KEY (transaction_id) REFERENCES teller.transaction(transaction_id) ON DELETE CASCADE;"
 #R040: Attach updated_at triggers only after all updated_at tables exist.
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/create_triggers.sql"
 PGPASSWORD="$TELLER_PASSWORD" psql -U teller -d prod -f "${SQL_DIR}/teller_transaction_info_view.sql"

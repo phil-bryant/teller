@@ -2,7 +2,7 @@ CREATE TYPE teller.transaction_categorization_method AS ENUM ('user', 'ai');
 COMMENT ON TYPE teller.transaction_categorization_method IS 'How was a transaction classified: manually by the user or automatically via ai';
 
 CREATE TABLE teller.transaction_nys_snw_category (
-    transaction_id TEXT PRIMARY KEY REFERENCES teller.transaction(transaction_id),
+    transaction_id TEXT PRIMARY KEY REFERENCES teller.transaction(transaction_id) ON DELETE CASCADE,
     nys_snw_category_id BIGINT NOT NULL REFERENCES teller.nys_snw_category(nys_snw_category_id),
     type teller.transaction_categorization_method NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
