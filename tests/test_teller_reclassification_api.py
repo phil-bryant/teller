@@ -42,6 +42,7 @@ class ReclassificationApiTests(unittest.TestCase):
         response = _write_one(session, "txn_2", 33)
         self.assertEqual(response.nys_snw_category_id, 33)
         self.assertEqual(session.commits, 1)
+        self.assertIn("status = 'posted'", session.calls[0][0])
 
     def test_write_one_deletes_mapping_when_category_is_none(self):
         session = _FakeSession(rows=[(1,)])
