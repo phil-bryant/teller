@@ -16,7 +16,7 @@ fi
 
 #R015: Refuse verification when DB password resolves empty.
 if [[ -z "$DB_PASSWORD" ]]; then
-  echo "Failed to resolve teller DB password."
+  echo "❌ FAIL: Failed to resolve teller DB password."
   exit 1
 fi
 
@@ -69,7 +69,7 @@ missing_tables="$(
 
 #R025: Exit non-zero when any table is missing trigger coverage.
 if [[ -n "$missing_tables" ]]; then
-  echo "Missing teller.update_updated_at trigger coverage:"
+  echo "❌ FAIL: Missing teller.update_updated_at trigger coverage:"
   while IFS= read -r table_name; do
     [[ -n "$table_name" ]] || continue
     echo "- $table_name"
@@ -78,4 +78,4 @@ if [[ -n "$missing_tables" ]]; then
 fi
 
 #R030: Print success message when all updated_at tables are covered.
-echo "All teller tables with updated_at are covered by teller.update_updated_at."
+echo "✅ PASS: All teller tables with updated_at are covered by teller.update_updated_at."
