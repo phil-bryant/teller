@@ -49,7 +49,14 @@ Tests:
 - Run with `--dry-run` and verify no persistence call path is taken.
 - Simulate one failing enrollment and verify other selected enrollments continue.
 
+R030  Statement: Canonicalize duplicate transaction IDs during persistence so status transitions are durable.
+Design: Before writing account transactions, dedupe by transaction ID and prefer `posted` snapshots over `pending`; then upsert all mutable transaction columns.
+Tests:
+- Feed duplicate transaction IDs with mixed statuses and verify the stored row ends as `posted`.
+- Verify transaction upsert conflict updates refresh links/details/type/status fields on reruns.
+
 ## Changelog
 
 - 2026-04-19: Initial reverse-engineered requirements for `07_teller_client.py`.
 - 2026-04-20: Merged ingestion-side multi-enrollment requirements from `multi-enrollment-requirements.md`.
+- 2026-04-22: Added duplicate-transaction canonicalization requirement to preserve pending-to-posted updates.
