@@ -56,9 +56,12 @@ else
 fi
 
 #R020: Submit classification update payload to classifier API.
+API_RESPONSE="<request failed>"
 if ! API_RESPONSE="$(curl -f -sS -X POST "${API_URL}/v1/transactions/classifications" \
   -H "Content-Type: application/json" \
   -d "{\"updates\":[{\"transaction_id\":\"${TXN_ID}\",\"nys_snw_category_id\":${CATEGORY_ID}}]}")"; then
+  echo "API response: ${API_RESPONSE}"
+  echo "Persisted row: <not checked>"
   echo "❌ FAIL: reclassification API request failed for transaction_id=${TXN_ID} nys_snw_category_id=${CATEGORY_ID}" >&2
   exit 1
 fi

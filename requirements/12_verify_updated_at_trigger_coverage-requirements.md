@@ -20,9 +20,9 @@ Tests:
 - Unset `TELLER_DB_PASSWORD` and verify fallback credential lookup path is used.
 
 R015  Statement: Refuse verification when DB password resolves empty.
-Design: Validate resolved password before executing SQL checks.
+Design: Validate resolved password before executing SQL checks and print `❌ FAIL:` with a clear reason before exiting non-zero.
 Tests:
-- Force empty password and verify script exits non-zero with clear error.
+- Force empty password and verify output starts with `❌ FAIL:` and script exits non-zero.
 
 R020  Statement: Detect tables missing updated_at trigger coverage.
 Design: Compare tables with `updated_at` columns against enabled `teller.update_updated_at` trigger attachments via catalog query.
@@ -30,15 +30,16 @@ Tests:
 - Remove one trigger in a test DB and verify the table appears in failure output.
 
 R025  Statement: Exit non-zero when coverage gaps are detected.
-Design: Treat any missing table rows from verification query as failure.
+Design: Treat any missing table rows from verification query as failure, print a `❌ FAIL:` header, and list missing table names.
 Tests:
-- Verify exit code is non-zero when SQL query returns at least one table.
+- Verify output starts with `❌ FAIL:` and exit code is non-zero when SQL query returns at least one table.
 
 R030  Statement: Print explicit success when coverage is complete.
-Design: Print a single pass message when no missing tables are returned.
+Design: Print a single `✅ PASS:` message when no missing tables are returned.
 Tests:
-- Verify success output string after full trigger coverage is present.
+- Verify output starts with `✅ PASS:` after full trigger coverage is present.
 
 ## Changelog
 
+- 2026-04-22: Require `✅ PASS:` and `❌ FAIL:` output prefixes for verification outcomes.
 - 2026-04-21: Initial requirements for `12_verify_updated_at_trigger_coverage.sh`.
