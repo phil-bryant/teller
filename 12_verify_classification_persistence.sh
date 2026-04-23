@@ -38,13 +38,13 @@ if [[ "$STRICT_IDS" == true ]]; then
   : "${CATEGORY_ID:?Set CATEGORY_ID to a valid teller.nys_snw_category.nys_snw_category_id}"
 else
   if [[ -z "${TXN_ID:-}" ]]; then
-    TXN_ID="$(db_scalar "SELECT transaction_id FROM teller.transaction ORDER BY date DESC, transaction_id DESC LIMIT 1;")"
+    TXN_ID="$(db_scalar "SELECT transaction_id FROM teller.transaction WHERE status = 'posted' ORDER BY date DESC, transaction_id DESC LIMIT 1;")"
   fi
   if [[ -z "${CATEGORY_ID:-}" ]]; then
     CATEGORY_ID="$(db_scalar "SELECT nys_snw_category_id FROM teller.nys_snw_category ORDER BY nys_snw_category_id LIMIT 1;")"
   fi
   if [[ -z "${TXN_ID:-}" ]]; then
-    echo "Unable to auto-resolve TXN_ID: no rows found in teller.transaction." >&2
+    echo "Unable to auto-resolve TXN_ID: no posted rows found in teller.transaction." >&2
     echo "Load/import transactions first, or run with TXN_ID=... (or --require-env-ids)." >&2
     exit 1
   fi
