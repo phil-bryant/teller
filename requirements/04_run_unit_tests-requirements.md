@@ -24,13 +24,14 @@ Design: Use strict shell settings so non-zero exit from unittest propagates to t
 Tests:
 - Introduce a failing test and verify script exits non-zero.
 
-R020  Statement: Execute Swift package tests under `macos/`.
-Design: Run `swift test --package-path ./macos` when Swift tests are enabled.
+R020  Statement: Execute Swift package tests under `macos-ui/`.
+Design: Remove stale `./macos-ui/.build` cache before running `swift test --package-path ./macos-ui` when Swift tests are enabled.
 Tests:
-- With Swift tests enabled, verify `swift test --package-path ./macos` is invoked.
+- With Swift tests enabled, verify `swift test --package-path ./macos-ui` is invoked.
+- Pre-create stale Swift module cache tied to an old package path and verify the runner clears cache before test invocation.
 - Disable Swift tests and verify runner skips Swift invocation.
 
 ## Changelog
 
-- 2026-04-23: Added R020 to run Swift package tests from `./macos`.
+- 2026-04-23: Added R020 to run Swift package tests from `./macos-ui`.
 - 2026-04-23: Initial requirements for `04_run_unit_tests.sh`.

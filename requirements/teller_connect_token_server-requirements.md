@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `teller_connect_token_server.py`.
+Applies to `teller/teller_connect_token_server.py`.
 
 ## Requirements
 
@@ -13,8 +13,8 @@ Constraints:
 - List MUST include `institution_id` and `enrollment_id` when available.
 - Missing context files MUST NOT fail the page; render an explicit empty-state message instead.
 Tests:
-- Run `./08_capture_teller_token.sh --add` and verify the page shows known local enrollments before connecting.
-- Run `./08_capture_teller_token.sh` with no local contexts and verify the page shows a no-enrollments message.
+- Run `./08_run_teller-connect-ui.sh --add` and verify the page shows known local enrollments before connecting.
+- Run `./08_run_teller-connect-ui.sh` with no local contexts and verify the page shows a no-enrollments message.
 
 R080  Statement: Manage enrollment actions directly from Connect UI.
 Design: Management mode provides reconnect, delete, and add actions without requiring CLI selectors.
@@ -24,7 +24,7 @@ Constraints:
 - Add action MUST launch Connect enrollment flow and persist a new context file pair without overwriting existing contexts.
 - Enrollment list display MUST show user-facing `institution_id`; internal source fields MUST NOT be shown.
 Tests:
-- Run `./08_capture_teller_token.sh` and verify existing rows expose reconnect/delete controls.
+- Run `./08_run_teller-connect-ui.sh` and verify existing rows expose reconnect/delete controls.
 - Reconnect one row from UI and verify only that row's context files are updated.
 - Delete one row from UI and verify only that row's local files are moved to Trash.
 - Add one enrollment from UI and verify a new suffix context is created.
@@ -40,4 +40,4 @@ Tests:
 ## Changelog
 
 - 2026-04-13: Initial multi-enrollment requirements document.
-- 2026-04-20: Reduced scope to `teller_connect_token_server.py`; moved ingestion and CLI-management requirements to file-specific docs.
+- 2026-04-20: Reduced scope to `teller/teller_connect_token_server.py`; moved ingestion and CLI-management requirements to file-specific docs.
