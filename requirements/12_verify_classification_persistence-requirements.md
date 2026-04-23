@@ -10,10 +10,10 @@ Tests:
 - Cause command failure and verify script exits non-zero.
 
 R005  Statement: Auto-resolve identifiers when env vars are missing.
-Design: When `TXN_ID` and/or `CATEGORY_ID` are unset, query DB defaults from `teller.transaction` and `teller.nys_snw_category`.
+Design: When `TXN_ID` and/or `CATEGORY_ID` are unset, query DB defaults from posted rows in `teller.transaction` and from `teller.nys_snw_category`.
 Design: If either query returns no row, fail with actionable guidance instead of a generic parameter expansion error.
 Tests:
-- Run without `TXN_ID` and verify script auto-selects one.
+- Run without `TXN_ID` and verify script auto-selects one from `status='posted'` transactions.
 - Run without `CATEGORY_ID` and verify script auto-selects one.
 - Run with empty `teller.transaction` and verify explicit guidance to load data or pass `TXN_ID`.
 
