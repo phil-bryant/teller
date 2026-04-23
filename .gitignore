@@ -1,2 +1,8 @@
+.env
+*.pyc
+__pycache__/
 teller-venv/*
 .DS_Store
+tokens.json
+localhost.key
+localhost.pem

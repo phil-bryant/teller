@@ -1,0 +1,6 @@
+Metadata-Version: 2.2
+Name: teller
+Version: 0.1.0
+Summary: Teller API Integration
+Author: Your Name
+Requires-Python: >=3.8

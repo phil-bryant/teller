@@ -1,4 +1,8 @@
-python-dotenv>=1.0.0
-requests>=2.31.0
-pdf2image>=1.16.3
-Pillow>=9.0.0
+fastapi==0.110.0
+uvicorn==0.27.1
+python-dotenv==1.0.1
+psycopg==3.1.18
+requests==2.31.0
+structlog==23.1.0
+psycopg2
+-e ../sqlalchemy
