@@ -1,12 +1,15 @@
-#! /usr/bin/env python3
-import unittest
+#!/usr/bin/env bash
+set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+#R001: Run tests from repository root regardless of caller working directory.
+cd "$SCRIPT_DIR"
 
-def main():
-    suite = unittest.defaultTestLoader.discover("tests", pattern="test_teller_reclassification_api.py")
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
-    raise SystemExit(0 if result.wasSuccessful() else 1)
+#R005: Prefer project venv when available.
+if [[ -d "./teller-venv" ]]; then
+  # shellcheck disable=SC1091
+  source "./teller-venv/bin/activate"
+fi
 
-
-if __name__ == "__main__":
-    main()
+#R010 #R015: Discover all unittest modules and propagate failures.
+python3 -m unittest discover tests

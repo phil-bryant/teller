@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `06_configure_teller_io.sh`.
+Applies to `07_configure_teller_io.sh`.
 
 R001  Statement: Run in strict shell mode with private-default file permissions.
 Design: Use `umask 007` and `set -euo pipefail`.
@@ -60,4 +60,4 @@ Tests:
 
 ## Changelog
 
-- 2026-04-19: Initial reverse-engineered requirements for `06_configure_teller_io.sh`.
+- 2026-04-19: Initial reverse-engineered requirements for `07_configure_teller_io.sh`.
