@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `07_capture_teller_token.sh`.
+Applies to `08_capture_teller_token.sh`.
 
 R050  Statement: Default invocation launches local enrollment manager mode.
 Design: Empty mode and `--connect` run capture server in `manage` mode.
@@ -53,4 +53,4 @@ Tests:
 
 ## Changelog
 
-- 2026-04-19: Initial reverse-engineered requirements for `07_capture_teller_token.sh`.
+- 2026-04-19: Initial reverse-engineered requirements for `08_capture_teller_token.sh`.

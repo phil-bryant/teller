@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `04_deploy_database.sh`.
+Applies to `05_deploy_database.sh`.
 
 R001  Statement: Fail fast when deployment steps fail.
 Design: Use `set -e` and exit non-zero on unrecoverable errors.
@@ -59,4 +59,4 @@ Tests:
 
 - 2026-04-21: Added R040 trigger-order requirement to ensure full updated_at coverage.
 - 2026-04-22: Added R045 to enforce cascading delete behavior for transaction classifications.
-- 2026-04-19: Initial reverse-engineered requirements for `04_deploy_database.sh`.
+- 2026-04-19: Initial reverse-engineered requirements for `05_deploy_database.sh`.
