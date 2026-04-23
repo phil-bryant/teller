@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from teller.teller_reclassification_api import _display_label, _write_one, create_app, ClassificationMutation, ClassificationBatchRequest
+from teller.teller_classification_api import _display_label, _write_one, create_app, ClassificationMutation, ClassificationBatchRequest
 
 
 class _Result:
@@ -51,7 +51,7 @@ class _SessionContext:
         return False
 
 
-class ReclassificationApiTests(unittest.TestCase):
+class ClassificationApiTests(unittest.TestCase):
     def _route_endpoint(self, app, path, method):
         for route in app.routes:
             if getattr(route, "path", None) == path and method in getattr(route, "methods", set()):
@@ -111,7 +111,7 @@ class ReclassificationApiTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 404)
         self.assertIn("Unknown nys_snw_category_id", ctx.exception.detail)
 
-    @patch("teller.teller_reclassification_api.get_session")
+    @patch("teller.teller_classification_api.get_session")
     def test_categories_endpoint_returns_display_labels(self, get_session_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories", "GET")
@@ -138,7 +138,7 @@ class ReclassificationApiTests(unittest.TestCase):
         body = endpoint()
         self.assertEqual(body[0].display_label, "EXPENSES > Groceries")
 
-    @patch("teller.teller_reclassification_api.get_session")
+    @patch("teller.teller_classification_api.get_session")
     def test_category_counts_includes_zero_assignment_categories(self, get_session_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories/counts", "GET")
@@ -176,7 +176,7 @@ class ReclassificationApiTests(unittest.TestCase):
         body = endpoint()
         self.assertEqual(body[1].assigned_transactions, 0)
 
-    @patch("teller.teller_reclassification_api.get_session")
+    @patch("teller.teller_classification_api.get_session")
     def test_transactions_endpoint_applies_filters_and_returns_total(self, get_session_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
@@ -223,8 +223,8 @@ class ReclassificationApiTests(unittest.TestCase):
         self.assertEqual(list_params["limit"], 10)
         self.assertEqual(list_params["offset"], 2)
 
-    @patch("teller.teller_reclassification_api._write_one")
-    @patch("teller.teller_reclassification_api.get_session")
+    @patch("teller.teller_classification_api._write_one")
+    @patch("teller.teller_classification_api.get_session")
     def test_single_classification_rejects_path_payload_mismatch(self, get_session_mock, write_one_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/{transaction_id}/classification", "PUT")
@@ -234,8 +234,8 @@ class ReclassificationApiTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 400)
         write_one_mock.assert_not_called()
 
-    @patch("teller.teller_reclassification_api._write_one")
-    @patch("teller.teller_reclassification_api.get_session")
+    @patch("teller.teller_classification_api._write_one")
+    @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_requires_non_empty_updates(self, get_session_mock, write_one_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/classifications", "POST")
@@ -245,8 +245,8 @@ class ReclassificationApiTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 400)
         write_one_mock.assert_not_called()
 
-    @patch("teller.teller_reclassification_api._write_one")
-    @patch("teller.teller_reclassification_api.get_session")
+    @patch("teller.teller_classification_api._write_one")
+    @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_returns_one_row_per_input(self, get_session_mock, write_one_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/classifications", "POST")

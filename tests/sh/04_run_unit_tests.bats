@@ -22,7 +22,7 @@ EOF
   stub_cmd swift "exit 0"
   stub_cmd bats "exit 0"
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
-  mkdir -p "${FIXTURE_ROOT}/macos/Tests"
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
   run bash -c "cd '${TEST_TMPDIR}' && RUN_SHELL_TESTS=false RUN_SWIFT_TESTS=false '${FIXTURE_ROOT}/04_run_unit_tests.sh'"
   [ "$status" -eq 0 ]
@@ -34,7 +34,7 @@ EOF
   stub_cmd python3 "exit 0"
   stub_cmd swift "exit 0"
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
-  mkdir -p "${FIXTURE_ROOT}/macos/Tests"
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
   run bash -c "cd '${FIXTURE_ROOT}' && RUN_SHELL_TESTS=true RUN_SWIFT_TESTS=false ./04_run_unit_tests.sh"
   [ "$status" -eq 1 ]
@@ -51,7 +51,7 @@ exit 1
 EOF
   chmod +x "${STUB_BIN}/python3"
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
-  mkdir -p "${FIXTURE_ROOT}/macos/Tests"
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
   run bash -c "cd '${FIXTURE_ROOT}' && RUN_SHELL_TESTS=true RUN_PYTHON_TESTS=false RUN_SWIFT_TESTS=false ./04_run_unit_tests.sh"
   [ "$status" -eq 0 ]
@@ -67,12 +67,12 @@ exit 0
 EOF
   chmod +x "${STUB_BIN}/swift"
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
-  mkdir -p "${FIXTURE_ROOT}/macos/Tests"
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
   run bash -c "cd '${FIXTURE_ROOT}' && ./04_run_unit_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"swift test --package-path ./macos"* ]]
+  [[ "$calls" == *"swift test --package-path ./macos-ui"* ]]
 }
 
 @test "can disable swift suite via RUN_SWIFT_TESTS=false" {
@@ -85,7 +85,7 @@ exit 1
 EOF
   chmod +x "${STUB_BIN}/swift"
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
-  mkdir -p "${FIXTURE_ROOT}/macos/Tests"
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
   run bash -c "cd '${FIXTURE_ROOT}' && RUN_SWIFT_TESTS=false ./04_run_unit_tests.sh"
   [ "$status" -eq 0 ]

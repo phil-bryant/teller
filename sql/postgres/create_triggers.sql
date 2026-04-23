@@ -1,3 +1,4 @@
+-- #R001: Provide a shared trigger function that sets updated_at on row updates.
 CREATE OR REPLACE FUNCTION teller.update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -6,11 +7,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- #R005: Attach updated_at triggers to every teller base table that exposes updated_at.
 DO $$
 DECLARE
     table_name text;
     trigger_name text;
 BEGIN
+    -- #R010: Discover trigger targets from information_schema for deterministic coverage.
     FOR table_name IN
         SELECT tables.table_name
         FROM information_schema.tables tables
@@ -23,6 +26,7 @@ BEGIN
         ORDER BY tables.table_name
     LOOP
         trigger_name := format('update_%s_updated_at', table_name);
+        -- #R015: Replace existing non-internal trigger definitions to keep deployment idempotent.
         IF EXISTS (
             SELECT 1
             FROM pg_trigger trg
@@ -41,6 +45,7 @@ BEGIN
                 table_name
             );
         END IF;
+        -- #R020: Create BEFORE UPDATE trigger namespaced per table using update_updated_at().
         EXECUTE format(
             'CREATE TRIGGER %I
                 BEFORE UPDATE ON teller.%I

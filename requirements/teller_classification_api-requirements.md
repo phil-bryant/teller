@@ -1,10 +1,10 @@
-# Teller Reclassification API Module Requirements
+# Teller Classification API Module Requirements
 
 ## Scope
 
-Applies to `teller/teller_reclassification_api.py`.
+Applies to `teller/teller_classification_api.py`.
 
-R001  Statement: Expose a FastAPI app factory for reclassification workflows.
+R001  Statement: Expose a FastAPI app factory for classification workflows.
 Design: `create_app()` constructs FastAPI app metadata (`title`, `version`) and registers health/read/write endpoints.
 Tests:
 - Build app from `create_app()` and verify route registration includes `/health` and `/v1/*` resources.
@@ -51,4 +51,4 @@ Tests:
 
 ## Changelog
 
-- 2026-04-22: Initial reverse-engineered requirements for `teller/teller_reclassification_api.py`.
+- 2026-04-22: Initial reverse-engineered requirements for `teller/teller_classification_api.py`.
