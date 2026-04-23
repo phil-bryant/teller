@@ -43,8 +43,9 @@ ensure_brew_formula() {
     #R012 #R030: Ensure required brew formulas (go/git) are available.
     #R035 #R040: Print status and skip install when already available.
     FORMULA="$1"
+    COMMAND_NAME="${2:-$FORMULA}"
 
-    if command -v "$FORMULA" >/dev/null 2>&1; then
+    if command -v "$COMMAND_NAME" >/dev/null 2>&1; then
         echo "✅ [$FORMULA] Available on PATH"
         return
     fi
@@ -53,7 +54,7 @@ ensure_brew_formula() {
     echo "[${FORMULA}] Installing via Homebrew..."
     brew install "$FORMULA"
 
-    if command -v "$FORMULA" >/dev/null 2>&1; then
+    if command -v "$COMMAND_NAME" >/dev/null 2>&1; then
         echo "✅ [$FORMULA] Installed and available"
     else
         echo "❌ [$FORMULA] Install completed but command still unavailable"
@@ -155,6 +156,8 @@ echo ""
 echo "[Tooling] Checking build dependencies..."
 ensure_brew_formula "go"
 ensure_brew_formula "git"
+#R055: Ensure bats shell test runner dependency is installed via Homebrew.
+ensure_brew_formula "bats-core" "bats"
 
 ensure_1psa
 ensure_pg_install
