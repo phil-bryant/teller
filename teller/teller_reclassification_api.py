@@ -8,6 +8,7 @@ from sqlalchemy import text
 from teller.teller_db import get_session
 
 
+#R001: FastAPI app factory and route wiring for reclassification APIs.
 class CategoryOption(BaseModel):
     nys_snw_category_id: int
     level_1: Optional[str] = None
@@ -67,6 +68,7 @@ class CategoryCountsRow(BaseModel):
     assigned_transactions: int
 
 
+#R005: Build hierarchical category display labels.
 def _display_label(row: Dict[str, object]) -> str:
     parts = [
         row.get("level_1_name") or row.get("level_1"),
@@ -78,12 +80,14 @@ def _display_label(row: Dict[str, object]) -> str:
     return " > ".join(str(v).strip() for v in parts if v and str(v).strip())
 
 
+#R025: Validate referenced IDs before writes.
 def _ensure_exists(session, table: str, column: str, value: object, error: str):
     row = session.execute(text(f"SELECT 1 FROM teller.{table} WHERE {column} = :value LIMIT 1"), {"value": value}).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail=error)
 
 
+#R025: Validate and apply transaction classification mutation.
 def _write_one(session, transaction_id: str, nys_snw_category_id: Optional[int]) -> ClassificationWriteResponse:
     posted_row = session.execute(text("""
         SELECT 1
@@ -121,10 +125,12 @@ def _write_one(session, transaction_id: str, nys_snw_category_id: Optional[int])
 def create_app() -> FastAPI:
     app = FastAPI(title="Teller Reclassification API", version="0.1.0")
 
+    #R001: Health endpoint exposed by app factory.
     @app.get("/health")
     def health():
         return {"ok": True}
 
+    #R010: List category options with computed display labels.
     @app.get("/v1/categories", response_model=List[CategoryOption])
     def list_categories():
         with get_session() as session:
@@ -136,6 +142,7 @@ def create_app() -> FastAPI:
             """)).mappings().all()
         return [CategoryOption(**row, display_label=_display_label(row)) for row in rows]
 
+    #R015: Aggregate assignment counts including zero-assignment categories.
     @app.get("/v1/categories/counts", response_model=List[CategoryCountsRow])
     def category_counts():
         with get_session() as session:
@@ -151,6 +158,7 @@ def create_app() -> FastAPI:
         return [CategoryCountsRow(nys_snw_category_id=row["nys_snw_category_id"], display_label=_display_label(row),
                                   assigned_transactions=row["assigned_transactions"]) for row in rows]
 
+    #R020: Posted transaction listing with filters and latest classification context.
     @app.get("/v1/transactions", response_model=TransactionListResponse)
     def list_transactions(
         search: str = Query(default="", min_length=0, max_length=120),
@@ -211,6 +219,7 @@ def create_app() -> FastAPI:
                                         teller_category=row["teller_category"], classification=classification))
         return TransactionListResponse(total=total, items=items)
 
+    #R030: Enforce path/body transaction ID consistency.
     @app.put("/v1/transactions/{transaction_id}/classification", response_model=ClassificationWriteResponse)
     def set_classification(transaction_id: str, body: ClassificationMutation):
         if body.transaction_id != transaction_id:
@@ -218,6 +227,7 @@ def create_app() -> FastAPI:
         with get_session() as session:
             return _write_one(session, transaction_id, body.nys_snw_category_id)
 
+    #R035: Batch classification writes require non-empty updates.
     @app.post("/v1/transactions/classifications", response_model=List[ClassificationWriteResponse])
     def set_classifications(body: ClassificationBatchRequest):
         if not body.updates:

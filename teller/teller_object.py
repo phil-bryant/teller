@@ -11,6 +11,7 @@ from .teller_base import Base
 log = structlog.get_logger()
 
 class TimestampMixin:
+    # #R001: Shared timestamp columns for Teller ORM models.
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -20,12 +21,15 @@ class TellerObject(Base, TimestampMixin):
     __allow_unmapped__ = True
     _api_data: ClassVar[dict]
     _api_client: ClassVar[any] = None
+    # #R001: All subclasses live in the teller schema.
     __table_args__ = {"schema": "teller"}
     
     @classmethod
+    # #R010: Class-level API client injection.
     def set_api_client(cls, client):
         cls._api_client = client
     
+    # #R015: Initialize from optional API payload and trigger hydration.
     def __init__(self, api_data=None):
         log.debug("TellerObject.__init__", class_name=self.__class__.__name__, api_data=api_data)
         super().__init__()
@@ -34,10 +38,12 @@ class TellerObject(Base, TimestampMixin):
             self.__post_init__()
 
     @declared_attr
+    # #R005: Derive snake_case table names from Teller* class names.
     def __tablename__(cls) -> str:
         name = cls.__name__.replace('Teller', '')
         return re.sub('(?!^)([A-Z][a-z]+)', r'_\1', name).lower()
 
+    # #R020: Map API payload keys using optional column api_name aliases.
     def _mapped_api_data(self):
         ## Handle cases where python objects need field names differing from API field names. See next comment.
         from sqlalchemy import inspect as sa_inspect
@@ -56,6 +62,7 @@ class TellerObject(Base, TimestampMixin):
         inner_origin, inner_args = typing.get_origin(inner), typing.get_args(inner)
         return (inner_args[0], True) if (inner_origin is list and inner_args) else (inner, False)
 
+    # #R025: Coerce API data into annotated field types when possible.
     def __post_init__(self):
         ## Use python introspection to otherwise simply mirror the Teller API Objects as python objects.
         try:
@@ -75,5 +82,6 @@ class TellerObject(Base, TimestampMixin):
     def _str_field_names(self):
         return [field.name for field in fields(self.__class__) if field.metadata.get("__str__", False)]
 
+    # #R030: Include selected fields and API payload in debug string output.
     def __str__(self):
         return f"{self.__class__.__name__}({', '.join(f'{getattr(self, name)}' for name in self._str_field_names())}):_api_data={self._api_data}"

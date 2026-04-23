@@ -1,12 +1,19 @@
+"""Persistence helpers for Teller ingestion workflows.
+
+#R001 #R005 #R010 #R015 #R020 #R025 #R030 #R035 #R040
+"""
+
 from decimal import Decimal
 from sqlalchemy import text
 import structlog
 
 log = structlog.get_logger()
 
+#R001: Shared SQL execution helper.
 def _exec(session, sql, params=None):
     return session.execute(text(sql), params or {})
 
+#R001: Shared SQL execution helper with RETURNING row support.
 def _exec_returning(session, sql, params=None):
     return _exec(session, sql, params).fetchone()
 
@@ -34,6 +41,7 @@ def _upsert_account_links(session, links_data, existing_links_id=None):
     """, vals)
     return row[0]
 
+#R005: Idempotent account-level upsert orchestration.
 def _upsert_account(session, account_data):
     acct_id = account_data["id"]
     inst_data, links_data = account_data["institution"], account_data["links"]
@@ -52,6 +60,7 @@ def _upsert_account(session, account_data):
             last_four = EXCLUDED.last_four, name = EXCLUDED.name, type = EXCLUDED.type, subtype = EXCLUDED.subtype, status = EXCLUDED.status
     """, vals)
 
+#R010: Identity graph upsert and reuse via known email linkage.
 def _upsert_identity(session, owner_data):
     identity_id = None
     for email_data in (owner_data.get("emails") or []):
@@ -161,6 +170,7 @@ def _upsert_transaction_details(session, details_data, existing_details_id=None)
         RETURNING transaction_details_id
     """, vals)[0]
 
+#R015: Transaction upsert with relation normalization and decimal casting.
 def _upsert_transaction(session, txn_data):
     txn_id = txn_data["id"]
     existing = _exec(session, """
@@ -209,6 +219,7 @@ def _canonicalize_transactions(txns):
     return list(by_id.values())
 
 def _reconcile_missing_pending_transactions(session, account_id, fetched_transaction_ids):
+    #R025: Delete stale pending transactions absent from current fetch.
     if fetched_transaction_ids:
         deleted = _exec(session, """
             DELETE FROM teller.transaction
@@ -227,6 +238,7 @@ def _reconcile_missing_pending_transactions(session, account_id, fetched_transac
     return [row[0] for row in deleted]
 
 def _prune_unreferenced_transaction_relations(session):
+    #R030: Remove orphaned transaction relation rows after reconciliation.
     removed_links = _exec(session, """
         DELETE FROM teller.transaction_links tl
         WHERE NOT EXISTS (
@@ -280,6 +292,7 @@ def _upsert_account_balances_links(session, links_data, existing_links_id=None):
         RETURNING account_balances_links_id
     """, {"self_link": self_link, "account_link": account_link})[0]
 
+#R035: Account balances upsert with optional decimal fields.
 def _upsert_account_balances(session, bal_data):
     account_id = bal_data["account_id"]
     existing = _exec(session, """
@@ -301,6 +314,7 @@ def _upsert_account_balances(session, bal_data):
             VALUES (:account_id, :ledger, :available, :account_balances_links_id)
         """, vals)
 
+#R040: Persist identities, balances, transactions, then commit once.
 def persist_all(session, raw_identities, raw_transactions_by_account, raw_balances_by_account=None):
     for item in raw_identities:
         account_data = item["account"]
