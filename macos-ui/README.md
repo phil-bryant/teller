@@ -7,7 +7,7 @@ Native macOS UI for reclassifying `teller.transaction` records into `teller.nys_
 From repo root:
 
 ```zsh
-./11_transaction_classification_api.py
+./11_run_transaction_classification_api.py
 ```
 
 Defaults to `http://127.0.0.1:8787`. Override with:
