@@ -10,10 +10,10 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
 - `04_deploy_database.sh`
-- `05_configure_teller_io.sh`
-- `06_capture_teller_token.sh`
-- `07_teller_client.py`
-- `08_backfill_statements.py`
+- `06_configure_teller_io.sh`
+- `07_capture_teller_token.sh`
+- `08_teller_client.py`
+- `09_backfill_statements.py`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -31,8 +31,8 @@ From the project root:
 source ./teller-venv/bin/activate
 ./03_load_requirements.sh
 ./04_deploy_database.sh
-./05_configure_teller_io.sh
-./06_capture_teller_token.sh
+./06_configure_teller_io.sh
+./07_capture_teller_token.sh
 ```
 
 ## Testing and Verification
@@ -56,7 +56,7 @@ Verifies every requirement ID in `requirements/*.md` is mapped to matching `#R..
 Optional single-pair mode:
 
 ```bash
-./00_verify_requirements_traceability.sh requirements/11_verify_reclassification_persistence-requirements.md 11_verify_reclassification_persistence.sh
+./00_verify_requirements_traceability.sh requirements/12_verify_reclassification_persistence-requirements.md 12_verify_reclassification_persistence.sh
 ```
 
 ### 2) Reclassification API Unit Tests
@@ -64,7 +64,7 @@ Optional single-pair mode:
 Runs Python `unittest` coverage for `tests/test_teller_reclassification_api.py`.
 
 ```bash
-python3 ./10_run_reclassification_api_tests.py
+python3 ./11_run_reclassification_api_tests.py
 ```
 
 Equivalent direct unittest invocation:
@@ -80,29 +80,29 @@ This checks API-to-database persistence by writing one classification via API an
 1. Start the API in one terminal:
 
 ```bash
-./09_transaction_reclassification_api.py
+./10_transaction_reclassification_api.py
 ```
 
 2. Run the verifier in another terminal:
 
 ```bash
-./11_verify_reclassification_persistence.sh
+./12_verify_reclassification_persistence.sh
 ```
 
 Strict/CI-style mode requiring explicit IDs:
 
 ```bash
-TXN_ID=txn_xxx CATEGORY_ID=123 ./11_verify_reclassification_persistence.sh --require-env-ids
+TXN_ID=txn_xxx CATEGORY_ID=123 ./12_verify_reclassification_persistence.sh --require-env-ids
 ```
 
 ### 4) Built-In Smoke Verifications in Setup Scripts
 
 These checks run automatically as part of existing setup/token workflows:
 
-- `./05_configure_teller_io.sh`
+- `./06_configure_teller_io.sh`
   - Verifies Teller mTLS connectivity using `GET /institutions`.
   - If `~/.teller/auth_token.json` exists, also checks `GET /accounts`.
-- `./06_capture_teller_token.sh`
+- `./07_capture_teller_token.sh`
   - After capture/reconnect/manual token save, runs a best-effort `GET /accounts` verification when `curl`, `jq`, cert/key, and token are available.
   - Prints diagnostics/warnings when verification cannot run or returns non-200.
 
@@ -124,9 +124,9 @@ Active secret and credential sources are:
   - `enrollment_id.txt` and optional `enrollment_id_<suffix>.txt`
 - `1psa` items used by database and setup scripts:
   - `localhost_postgres_postgres` / `localhost_postgres_teller` by default for DB scripts
-  - optional Teller item lookups in `05_configure_teller_io.sh`
+  - optional Teller item lookups in `06_configure_teller_io.sh`
 - Environment variables passed to scripts (for example `TELLER_APPLICATION_ID`, `TELLER_ACCESS_TOKEN`, `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`)
-- `~/.env` for local runtime settings loaded by `07_teller_client.py`
+- `~/.env` for local runtime settings loaded by `08_teller_client.py`
 
 ## What Each Core Script Does
 
@@ -142,25 +142,25 @@ Active secret and credential sources are:
 - `04_deploy_database.sh`
   - Creates/configures the `prod` database.
   - Applies SQL schema objects in dependency order from `sql/postgres/`.
-- `05_configure_teller_io.sh`
+- `06_configure_teller_io.sh`
   - Ensures `~/.teller` contains required Teller credentials/config files.
   - Supports importing Teller secrets from environment variables or `1psa`.
   - Runs Teller API smoke tests (`/institutions`, optionally `/accounts`).
-- `06_capture_teller_token.sh`
+- `07_capture_teller_token.sh`
   - Saves a fresh Teller Connect `accessToken` into `~/.teller/auth_token.json`.
   - Default mode is no copy/paste: runs local Connect capture server on `http://localhost:8080`.
   - Persists enrollment id to `~/.teller/enrollment_id.txt` for future repair mode.
   - Also supports token argument, secure prompt (`--manual`), or macOS clipboard mode.
   - Also provides enrollment management (`--list`, `--delete`, `--reconnect`, `--add`).
-- `07_teller_client.py`
+- `08_teller_client.py`
   - Runs Teller API client operations.
-- `08_backfill_statements.py`
+- `09_backfill_statements.py`
   - Backfills statements data.
-- `09_transaction_reclassification_api.py`
+- `10_transaction_reclassification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW reclassifications.
-- `10_run_reclassification_api_tests.py`
+- `11_run_reclassification_api_tests.py`
   - Runs unit tests for reclassification API behavior.
-- `11_verify_reclassification_persistence.sh`
+- `12_verify_reclassification_persistence.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `97_backup_database.sh`
@@ -175,7 +175,7 @@ Active secret and credential sources are:
 
 ## Reconfiguring Teller.io
 
-`05_configure_teller_io.sh` automates local Teller file provisioning and API checks, but some setup is dashboard/UI-only.
+`06_configure_teller_io.sh` automates local Teller file provisioning and API checks, but some setup is dashboard/UI-only.
 
 Manual steps (cannot be provisioned through Teller API endpoints):
 
@@ -186,7 +186,7 @@ Manual steps (cannot be provisioned through Teller API endpoints):
 - If you need a fresh access token, run a Teller Connect enrollment flow and capture `enrollment.accessToken`.
   - This requires user interaction and cannot be fully automated server-side.
 
-Automated by `05_configure_teller_io.sh`:
+Automated by `06_configure_teller_io.sh`:
 
 - Clones Teller's examples repo into `./teller-connect-ui` by default (not a sibling under `../src`).
 - Creates and permissions `~/.teller`.
@@ -198,7 +198,7 @@ Automated by `05_configure_teller_io.sh`:
 - Verifies Teller API connectivity using mTLS (`/institutions`).
 - Verifies token-based account access (`/accounts`) when `auth_token.json` is present.
 
-### `05_configure_teller_io.sh` Input Options
+### `06_configure_teller_io.sh` Input Options
 
 Use one of the following patterns:
 
@@ -224,7 +224,7 @@ Example (1psa-backed):
 TELLER_APP_PSA_ITEM=localhost_teller_app \
 TELLER_CERT_PSA_ITEM=localhost_teller_cert \
 TELLER_KEY_PSA_ITEM=localhost_teller_key \
-./05_configure_teller_io.sh
+./06_configure_teller_io.sh
 ```
 
 ### Save Refreshed Access Token
@@ -232,7 +232,7 @@ TELLER_KEY_PSA_ITEM=localhost_teller_key \
 After completing Teller Connect, capture the returned `accessToken`:
 
 ```bash
-./06_capture_teller_token.sh
+./07_capture_teller_token.sh
 ```
 
 Default `06` behavior:
@@ -242,22 +242,22 @@ Default `06` behavior:
 - Persists enrollment id at `~/.teller/enrollment_id.txt`
 - Immediately verifies `/accounts` with the saved token/cert
 - Supports repair mode for disconnected enrollments without creating a new enrollment:
-  - `ENROLLMENT_ID=enr_xxx ./06_capture_teller_token.sh`
+  - `ENROLLMENT_ID=enr_xxx ./07_capture_teller_token.sh`
   - Automatic when `AUTO_REPAIR=true` and `~/.teller/enrollment_id.txt` exists
 
 Other options (manual/alternative input):
 
 ```bash
-./06_capture_teller_token.sh --manual
-./06_capture_teller_token.sh token_xxx
-./06_capture_teller_token.sh --clipboard
-ENROLLMENT_ID=enr_xxx ./06_capture_teller_token.sh
-AUTO_REPAIR=false ./06_capture_teller_token.sh
+./07_capture_teller_token.sh --manual
+./07_capture_teller_token.sh token_xxx
+./07_capture_teller_token.sh --clipboard
+ENROLLMENT_ID=enr_xxx ./07_capture_teller_token.sh
+AUTO_REPAIR=false ./07_capture_teller_token.sh
 ```
 
-### Enrollment Management Status (`06_capture_teller_token.sh`)
+### Enrollment Management Status (`07_capture_teller_token.sh`)
 
-Requirements now define `06_capture_teller_token.sh` as the enrollment-management CLI entrypoint.
+Requirements now define `07_capture_teller_token.sh` as the enrollment-management CLI entrypoint.
 
 Required management actions:
 
@@ -269,10 +269,10 @@ Required management actions:
 Command examples:
 
 ```bash
-./06_capture_teller_token.sh --list
-./06_capture_teller_token.sh --add
-./06_capture_teller_token.sh --reconnect --institution_id first_ak_bank_trust
-./06_capture_teller_token.sh --delete --enrollment_id enr_xxx --yes
+./07_capture_teller_token.sh --list
+./07_capture_teller_token.sh --add
+./07_capture_teller_token.sh --reconnect --institution_id first_ak_bank_trust
+./07_capture_teller_token.sh --delete --enrollment_id enr_xxx --yes
 ```
 
 Behavior notes:
@@ -285,7 +285,7 @@ Behavior notes:
 Then verify token/API access:
 
 ```bash
-./06_capture_teller_token.sh
+./07_capture_teller_token.sh
 ```
 
 ## 1psa Items Used by Database Scripts

@@ -7,7 +7,7 @@ Native macOS UI for reclassifying `teller.transaction` records into `teller.nys_
 From repo root:
 
 ```zsh
-./09_transaction_reclassification_api.py
+./10_transaction_reclassification_api.py
 ```
 
 Defaults to `http://127.0.0.1:8787`. Override with:
@@ -36,6 +36,6 @@ Or open `macos/` directly in Xcode and run the executable target.
 
 From repo root:
 
-- `./10_run_reclassification_api_tests.py` (API unit tests)
-- `./11_verify_reclassification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./11_verify_reclassification_persistence.sh --require-env-ids` (strict CI mode)
+- `./11_run_reclassification_api_tests.py` (API unit tests)
+- `./12_verify_reclassification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./12_verify_reclassification_persistence.sh --require-env-ids` (strict CI mode)

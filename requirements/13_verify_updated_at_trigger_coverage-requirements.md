@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `12_verify_updated_at_trigger_coverage.sh`.
+Applies to `13_verify_updated_at_trigger_coverage.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `zsh` shebang and `set -euo pipefail`.
@@ -42,4 +42,4 @@ Tests:
 ## Changelog
 
 - 2026-04-22: Require `✅ PASS:` and `❌ FAIL:` output prefixes for verification outcomes.
-- 2026-04-21: Initial requirements for `12_verify_updated_at_trigger_coverage.sh`.
+- 2026-04-21: Initial requirements for `13_verify_updated_at_trigger_coverage.sh`.
