@@ -13,13 +13,15 @@ enum APIError: Error, LocalizedError {
     }
 }
 
-protocol ReclassificationAPI: Sendable {
+protocol ClassificationAPI: Sendable {
+    // #R001: Fetch categories and transaction listings from the local classifier API.
     func fetchCategories() async throws -> [CategoryOption]
     func fetchTransactions(search: String, onlyUnclassified: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse
+    // #R005: Persist one or more classification mutations in a single batch request.
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse]
 }
 
-actor APIClient: ReclassificationAPI {
+actor APIClient: ClassificationAPI {
     private let session: URLSession
     private let baseURL: URL
     init(baseURL: URL = URL(string: ProcessInfo.processInfo.environment["TELLER_CLASSIFIER_API_URL"] ?? "http://127.0.0.1:8787")!,
@@ -54,6 +56,7 @@ actor APIClient: ReclassificationAPI {
     }
 
     private func send<T: Decodable>(url: URL, method: String = "GET", body: Data? = nil) async throws -> T {
+        // #R010: Apply shared JSON request/response handling and raise API-aware errors on non-2xx status codes.
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Accept")

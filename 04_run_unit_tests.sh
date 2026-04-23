@@ -42,14 +42,16 @@ fi
 
 #R020 #R015: Run Swift package tests and propagate failures.
 if [[ "$RUN_SWIFT_TESTS" == "true" ]]; then
-  if [[ -d "./macos/Tests" ]]; then
+  if [[ -d "./macos-ui/Tests" ]]; then
     if ! command -v swift >/dev/null 2>&1; then
       echo "❌ swift is required for Swift unit tests. Install Xcode command line tools and rerun."
       exit 1
     fi
     echo "▶ Running Swift unit tests (swift test)..."
-    swift test --package-path ./macos
+    #R020: Clear stale SPM build cache to avoid module-cache path mismatches after folder renames.
+    rm -rf ./macos-ui/.build
+    swift test --package-path ./macos-ui
   else
-    echo "ℹ️  Skipping Swift unit tests: ./macos/Tests not found."
+    echo "ℹ️  Skipping Swift unit tests: ./macos-ui/Tests not found."
   fi
 fi

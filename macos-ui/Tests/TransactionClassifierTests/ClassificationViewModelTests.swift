@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import TransactionClassifier
 
-actor MockAPI: ReclassificationAPI {
+actor MockAPI: ClassificationAPI {
     var categories: [CategoryOption]
     var response: TransactionListResponse
     var pagedResponses: [Int: TransactionListResponse]
@@ -37,7 +37,7 @@ private func sampleTransaction(_ id: String, date: String = "2026-04-18", classi
           transaction_type_code: "card_payment", teller_category: "food", classification: classification)
 }
 
-final class ReclassificationViewModelTests: XCTestCase {
+final class ClassificationViewModelTests: XCTestCase {
     func testTransactionListDecodesDecimalAmountString() throws {
         let data = """
         {"total":1,"items":[{"transaction_id":"txn_1","account_id":"acc_1","date":"2026-04-18","amount":"33.21",
@@ -56,7 +56,7 @@ final class ReclassificationViewModelTests: XCTestCase {
             sampleTransaction("txn_2", date: "2026-04-19", classification: nil),
         ]
         let api = MockAPI(categories: [cat], response: .init(total: 2, items: rows))
-        let vm = ReclassificationViewModel(api: api)
+        let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
         XCTAssertEqual(vm.categories.count, 1)
         XCTAssertEqual(vm.transactions.count, 2)
@@ -68,7 +68,7 @@ final class ReclassificationViewModelTests: XCTestCase {
         let include = sampleCategory(1, "Dining", applicability: nil)
         let exclude = sampleCategory(2, "Other", applicability: "N/A")
         let api = MockAPI(categories: [include, exclude], response: .init(total: 1, items: [sampleTransaction("txn_1", classification: nil)]))
-        let vm = ReclassificationViewModel(api: api)
+        let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
         XCTAssertEqual(vm.categories.map(\.nys_snw_category_id), [1])
     }
@@ -77,7 +77,7 @@ final class ReclassificationViewModelTests: XCTestCase {
     func testSaveSelectionUpdatesClassificationOptimistically() async {
         let cat = sampleCategory(22, "Dining")
         let api = MockAPI(categories: [cat], response: .init(total: 1, items: [sampleTransaction("txn_2", classification: nil)]))
-        let vm = ReclassificationViewModel(api: api)
+        let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
         vm.selection = ["txn_2"]
         vm.selectedCategoryId = 22
@@ -95,7 +95,7 @@ final class ReclassificationViewModelTests: XCTestCase {
             sampleTransaction("txn_c", classification: nil),
         ]
         let api = MockAPI(categories: [cat], response: .init(total: 3, items: items))
-        let vm = ReclassificationViewModel(api: api)
+        let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
         vm.selection = ["txn_a"]
         vm.nextUnclassified()
@@ -130,7 +130,7 @@ final class ReclassificationViewModelTests: XCTestCase {
             sampleTransaction("txn_4", date: "2026-04-17", classification: nil),
         ])
         let api = MockAPI(categories: [cat], response: firstPage, pagedResponses: [2: secondPage])
-        let vm = ReclassificationViewModel(api: api)
+        let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
         await vm.loadMore()
         XCTAssertEqual(vm.transactions.map(\.transaction_id), ["txn_1", "txn_2", "txn_3", "txn_4"])
@@ -146,7 +146,7 @@ final class ReclassificationViewModelTests: XCTestCase {
         let current = TransactionCategory(nys_snw_category_id: 22, display_label: "Dining")
         let rows = [sampleTransaction("txn_1", classification: current), sampleTransaction("txn_2", classification: nil)]
         let api = MockAPI(categories: [dining], response: .init(total: 2, items: rows))
-        let vm = ReclassificationViewModel(api: api)
+        let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
         vm.selection = ["txn_1", "txn_2"]
         vm.selectedCategoryId = 22

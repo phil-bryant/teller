@@ -8,7 +8,7 @@ from sqlalchemy import text
 from teller.teller_db import get_session
 
 
-#R001: FastAPI app factory and route wiring for reclassification APIs.
+#R001: FastAPI app factory and route wiring for classification APIs.
 class CategoryOption(BaseModel):
     nys_snw_category_id: int
     level_1: Optional[str] = None
@@ -123,7 +123,7 @@ def _write_one(session, transaction_id: str, nys_snw_category_id: Optional[int])
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Teller Reclassification API", version="0.1.0")
+    app = FastAPI(title="Teller Classification API", version="0.1.0")
 
     #R001: Health endpoint exposed by app factory.
     @app.get("/health")
