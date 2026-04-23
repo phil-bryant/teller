@@ -59,7 +59,7 @@ class TellerAPIClient:
             try:
                 import time, threading, webbrowser
                 from http.server import ThreadingHTTPServer
-                from teller_connect_token_server import (
+                from teller.teller_connect_token_server import (
                     APP_ID_FILE,
                     AUTH_TOKEN_FILE,
                     ENROLLMENT_ID_FILE,
@@ -290,7 +290,7 @@ def main():
         if exc.code:
             print(f"Error code: {exc.code}")
         if exc.code.startswith("enrollment.disconnected"):
-            print("Auto-repair failed. Run ./08_capture_teller_token.sh to repair the enrollment manually.")
+            print("Auto-repair failed. Run ./08_run_teller-connect-ui.sh to repair the enrollment manually.")
         sys.exit(1)
 
 if __name__ == "__main__":

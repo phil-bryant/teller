@@ -62,7 +62,7 @@ if ! API_RESPONSE="$(curl -f -sS -X POST "${API_URL}/v1/transactions/classificat
   -d "{\"updates\":[{\"transaction_id\":\"${TXN_ID}\",\"nys_snw_category_id\":${CATEGORY_ID}}]}")"; then
   echo "API response: ${API_RESPONSE}"
   echo "Persisted row: <not checked>"
-  echo "❌ FAIL: reclassification API request failed for transaction_id=${TXN_ID} nys_snw_category_id=${CATEGORY_ID}" >&2
+  echo "❌ FAIL: classification API request failed for transaction_id=${TXN_ID} nys_snw_category_id=${CATEGORY_ID}" >&2
   exit 1
 fi
 
@@ -79,7 +79,7 @@ echo "API response: ${API_RESPONSE}"
 echo "Persisted row: ${PERSISTED_LINE:-<empty>}"
 #R030: Print explicit pass/fail status after reporting API and persisted-row details.
 if [[ "$PERSISTED_LINE" == "$EXPECTED_LINE" ]]; then
-  echo "✅ PASS: persisted reclassification ${PERSISTED_LINE}"
+  echo "✅ PASS: persisted classification ${PERSISTED_LINE}"
 else
   echo "❌ FAIL: expected ${EXPECTED_LINE} but got ${PERSISTED_LINE:-<empty>}" >&2
   exit 1

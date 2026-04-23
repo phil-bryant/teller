@@ -1,13 +1,15 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Bindable var viewModel: ReclassificationViewModel
+    @Bindable var viewModel: ClassificationViewModel
     @FocusState private var searchFocused: Bool
 
     var body: some View {
+        // #R001: Render split-view transaction browsing with list and detail panes.
         NavigationSplitView {
             VStack(spacing: 8) {
                 HStack(spacing: 8) {
+                    // #R005: Provide search/filter controls and manual refresh in the list header.
                     TextField("Search description / transaction id", text: $viewModel.searchText)
                         .textFieldStyle(.roundedBorder)
                         .focused($searchFocused)
@@ -55,6 +57,7 @@ struct ContentView: View {
         .navigationSplitViewStyle(.balanced)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                // #R010: Expose keyboard-first shortcuts for search focus, next-unclassified, and undo.
                 Button("Focus Search") { searchFocused = true }.keyboardShortcut("f", modifiers: .command)
                 Button("Next Unclassified") { viewModel.nextUnclassified() }.keyboardShortcut("]", modifiers: .command)
                 Button("Undo") { Task { await viewModel.undoLast() } }.keyboardShortcut("z", modifiers: .command)
@@ -67,7 +70,7 @@ struct ContentView: View {
 }
 
 private struct DetailPane: View {
-    @Bindable var viewModel: ReclassificationViewModel
+    @Bindable var viewModel: ClassificationViewModel
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Selection").font(.headline)
@@ -81,6 +84,7 @@ private struct DetailPane: View {
                 await viewModel.selectedCategoryDidChange()
             }
             HStack(spacing: 8) {
+                // #R015: Allow apply/clear actions from detail pane for selected rows.
                 Button("Apply to Selected") { Task { await viewModel.saveSelection() } }
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(viewModel.selection.isEmpty || viewModel.selectedCategoryId == nil)

@@ -13,5 +13,5 @@ backups
 archive/backup_extracts
 bin/*
 .cursor/rules/*
-macos/.build/
-macos/.swiftpm/
+macos-ui/.build/
+macos-ui/.swiftpm/

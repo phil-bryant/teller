@@ -1,3 +1,4 @@
+-- #R001: Persist immutable audit entries for row-level data changes.
 CREATE TABLE teller.audit_log (
     id BIGSERIAL PRIMARY KEY,
     table_name TEXT NOT NULL,
@@ -9,6 +10,7 @@ CREATE TABLE teller.audit_log (
     changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- #R005: Resolve ordered primary-key column names for a target table.
 CREATE OR REPLACE FUNCTION teller.get_primary_key_columns(p_table_name text, p_schema_name text DEFAULT 'teller')
 RETURNS text[] AS $$
     SELECT ARRAY_AGG(kcu.column_name::text ORDER BY kcu.ordinal_position)
@@ -21,6 +23,7 @@ RETURNS text[] AS $$
         AND tc.table_schema = p_schema_name;
 $$ LANGUAGE SQL STABLE;
 
+-- #R010: Record INSERT/UPDATE/DELETE events with operation-specific old/new JSON payloads.
 CREATE OR REPLACE FUNCTION teller.audit_trigger_func()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -31,6 +34,7 @@ DECLARE
 BEGIN
     pk_columns := teller.get_primary_key_columns(TG_TABLE_NAME);
     
+    -- #R015: Normalize record identifiers for single-column and composite primary keys.
     IF array_length(pk_columns, 1) = 1 THEN
         EXECUTE format('SELECT ($1.%I)::text', pk_columns[1])
         USING COALESCE(NEW, OLD)
@@ -96,6 +100,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- #R020: Attach audit triggers to every teller base table except audit_log itself.
 DO $$ 
 DECLARE
     table_name text;

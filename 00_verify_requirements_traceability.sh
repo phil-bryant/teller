@@ -31,7 +31,7 @@ extract_source_files_from_requirements() {
             while (match(line, /`[^`]+`/)) {
                 token = substr(line, RSTART + 1, RLENGTH - 2)
                 sub(/^\.\//, "", token)
-                if (token ~ /^[A-Za-z0-9._\/-]+\.(sh|py|swift)$/) {
+                if (token ~ /^[A-Za-z0-9._\/-]+\.(sh|py|swift|sql)$/) {
                     print token
                 }
                 line = substr(line, RSTART + RLENGTH)

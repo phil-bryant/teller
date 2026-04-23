@@ -3,7 +3,7 @@ import SwiftUI
 
 @main
 struct TransactionClassifierApp: App {
-    @State private var viewModel = ReclassificationViewModel()
+    @State private var viewModel = ClassificationViewModel()
     var body: some Scene {
         WindowGroup {
             ContentView(viewModel: viewModel)

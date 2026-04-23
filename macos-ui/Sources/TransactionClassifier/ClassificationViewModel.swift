@@ -5,7 +5,7 @@ struct UndoAction { let prior: [String: TransactionCategory?]; let next: [String
 
 @MainActor
 @Observable
-final class ReclassificationViewModel {
+final class ClassificationViewModel {
     private let pageSize = 300
     var categories: [CategoryOption] = []
     var transactions: [TransactionRow] = []
@@ -20,10 +20,10 @@ final class ReclassificationViewModel {
     var errorText = ""
     var undoStack: [UndoAction] = []
     var statusText = "Ready"
-    private let api: any ReclassificationAPI
+    private let api: any ClassificationAPI
     private var suppressAutoApply = false
 
-    init(api: any ReclassificationAPI = APIClient()) { self.api = api }
+    init(api: any ClassificationAPI = APIClient()) { self.api = api }
 
     var selectedCategory: CategoryOption? { categories.first { $0.nys_snw_category_id == selectedCategoryId } }
     var selectedRows: [TransactionRow] { transactions.filter { selection.contains($0.transaction_id) } }
@@ -35,6 +35,7 @@ final class ReclassificationViewModel {
     var canLoadMore: Bool { transactions.count < totalTransactions }
 
     func loadAll() async {
+        // #R001: Load categories and the first transaction page together, then refresh derived UI state.
         busy = true; defer { busy = false }
         do {
             async let cats = api.fetchCategories()
@@ -50,6 +51,7 @@ final class ReclassificationViewModel {
     }
 
     func loadMore() async {
+        // #R020: Load additional pages and merge by transaction id without duplicates.
         guard !busy, canLoadMore else { return }
         busy = true; defer { busy = false }
         do {
@@ -72,6 +74,7 @@ final class ReclassificationViewModel {
     func selectionDidChange() { syncPickerToSelection() }
 
     func selectedCategoryDidChange() async {
+        // #R005: Only send updates for rows whose selected category actually changes.
         if suppressAutoApply || selection.isEmpty { return }
         let updates: [ClassificationMutation] = selectedRows.compactMap { row -> ClassificationMutation? in
             if row.classification?.nys_snw_category_id == selectedCategoryId { return nil }
@@ -96,12 +99,14 @@ final class ReclassificationViewModel {
     }
 
     func undoLast() async {
+        // #R015: Replay prior category assignments for the most recent save action.
         guard let last = undoStack.popLast() else { return }
         let updates = last.prior.map { ClassificationMutation(transaction_id: $0.key, nys_snw_category_id: $0.value?.nys_snw_category_id) }
         await apply(updates: updates, shouldRecordUndo: false)
     }
 
     func nextUnclassified() {
+        // #R015: Jump selection to the next unclassified transaction for keyboard-first triage.
         guard let idx = transactions.firstIndex(where: { selection.contains($0.transaction_id) }),
               let target = transactions[(idx + 1)...].first(where: { $0.classification == nil }) else {
             if let first = transactions.first(where: { $0.classification == nil }) { selection = [first.transaction_id]; syncPickerToSelection() }
@@ -112,6 +117,7 @@ final class ReclassificationViewModel {
     }
 
     private func apply(updates: [ClassificationMutation], shouldRecordUndo: Bool = true) async {
+        // #R010: Apply optimistic UI state, commit via API, then rollback on errors.
         guard !updates.isEmpty else { return }
         let previous = Dictionary(uniqueKeysWithValues: updates.compactMap { mutation in
             transactions.first(where: { $0.transaction_id == mutation.transaction_id }).map { (mutation.transaction_id, $0.classification) }
