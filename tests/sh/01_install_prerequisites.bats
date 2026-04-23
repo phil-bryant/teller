@@ -1,0 +1,127 @@
+#!/usr/bin/env bats
+
+load "helpers/common.bash"
+
+setup() {
+  setup_shell_test
+  create_repo_fixture
+  copy_script_to_fixture "01_install_prerequisites.sh"
+}
+
+teardown() {
+  teardown_shell_test
+}
+
+@test "fails clearly when brew is missing" {
+  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"[Homebrew] Not installed."* ]]
+}
+
+@test "idempotent path skips installs when dependencies already exist" {
+  mkdir -p "${TEST_TMPDIR}/pg_install/.git"
+  stub_cmd brew "exit 0"
+  stub_cmd go "exit 0"
+  stub_cmd git "exit 0"
+  stub_cmd bats "exit 0"
+  stub_cmd 1psa "echo installed; exit 0"
+
+  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[1psa] Available on PATH"* ]]
+  [[ "$output" == *"[pg_install] Repository present"* ]]
+}
+
+@test "clones pg_install when missing" {
+  stub_cmd brew "exit 0"
+  stub_cmd go "exit 0"
+  stub_cmd bats "exit 0"
+  cat > "${STUB_BIN}/git" <<EOF
+#!/usr/bin/env bash
+echo git "\$*" >> "${CALLS_LOG}"
+if [[ "\$1" == "clone" ]]; then
+  mkdir -p "\$3/.git"
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/git"
+  stub_cmd 1psa "echo installed; exit 0"
+
+  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[pg_install] Installed"* ]]
+}
+
+@test "uses PSA_INSTALL_SUDO_ITEM during install flow" {
+  stub_cmd brew "exit 0"
+  stub_cmd go "exit 0"
+  stub_cmd bats "exit 0"
+  cat > "${STUB_BIN}/git" <<EOF
+#!/usr/bin/env bash
+echo git "\$*" >> "${CALLS_LOG}"
+if [[ "\$1" == "clone" ]]; then
+  mkdir -p "\$3/.git" "\$3/bin"
+  cat > "\$3/Makefile" <<'MAKE'
+all:
+	@true
+install:
+	@true
+MAKE
+  cat > "\$3/bin/1psa" <<'ONEPSA'
+#!/usr/bin/env bash
+echo local-1psa "\$*" >> "${CALLS_LOG}"
+echo fake-pass
+ONEPSA
+  chmod +x "\$3/bin/1psa"
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/git"
+  stub_cmd make '
+if [[ "$*" == *"install"* ]]; then
+  cat > "'"${STUB_BIN}"'/1psa" <<'"'"'EOF'"'"'
+#!/usr/bin/env bash
+echo installed-1psa
+EOF
+  chmod +x "'"${STUB_BIN}"'/1psa"
+fi
+exit 0'
+  cat > "${STUB_BIN}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-S" ]]; then
+  shift
+fi
+"$@"
+EOF
+  chmod +x "${STUB_BIN}/sudo"
+
+  run env PSA_INSTALL_SUDO_ITEM="custom_item" bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"local-1psa -f custom_item custom_item"* ]]
+}
+
+@test "installs bats-core when bats is missing" {
+  mkdir -p "${TEST_TMPDIR}/pg_install/.git"
+  stub_cmd go "exit 0"
+  stub_cmd git "exit 0"
+  stub_cmd 1psa "echo installed; exit 0"
+  cat > "${STUB_BIN}/brew" <<EOF
+#!/usr/bin/env bash
+echo brew "\$*" >> "${CALLS_LOG}"
+if [[ "\$1" == "install" && "\$2" == "bats-core" ]]; then
+  cat > "${STUB_BIN}/bats" <<'BATS'
+#!/usr/bin/env bash
+exit 0
+BATS
+  chmod +x "${STUB_BIN}/bats"
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/brew"
+
+  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"brew install bats-core"* ]]
+}

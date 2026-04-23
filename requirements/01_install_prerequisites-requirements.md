@@ -78,8 +78,15 @@ Design: End with success banner and example path references for `../1psa` and `.
 Tests:
 - On successful run, verify final message includes `../1psa` and `../pg_install`.
 
+R055  Statement: Ensure shell unit-test runner dependency is available.
+Design: Install Homebrew formula `bats-core` and verify `bats` resolves on `PATH`.
+Tests:
+- Run without `bats` and verify installer installs `bats-core`.
+- Rerun with `bats` already available and verify no reinstall occurs.
+
 ## Changelog
 
+- 2026-04-23: Added R055 to require `bats-core` installation for shell unit-test support.
 - 2026-04-07: Added R012 for Go/Git bootstrap prerequisites used by `1psa` install flow.
 - 2026-04-06: Restored full standalone installer requirements (not split-index form).
 - 2026-04-11: Replaced SQL/Azure CLI requirements with `pg_install` prerequisite and updated readiness guidance.
