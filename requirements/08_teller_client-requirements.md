@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `07_teller_client.py`.
+Applies to `08_teller_client.py`.
 
 R001  Statement: Configure CLI behavior and log level from runtime flags.
 Design: Parse `--debug`, `--dry-run`, and optional `--institution_id`; configure structlog by debug flag.
@@ -63,7 +63,7 @@ Tests:
 
 ## Changelog
 
-- 2026-04-19: Initial reverse-engineered requirements for `07_teller_client.py`.
+- 2026-04-19: Initial reverse-engineered requirements for `08_teller_client.py`.
 - 2026-04-20: Merged ingestion-side multi-enrollment requirements from `multi-enrollment-requirements.md`.
 - 2026-04-22: Added duplicate-transaction canonicalization requirement to preserve pending-to-posted updates.
 - 2026-04-22: Added R035 to prune unreferenced transaction relation rows after stale pending cleanup.

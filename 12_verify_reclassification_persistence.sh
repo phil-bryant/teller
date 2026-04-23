@@ -77,6 +77,7 @@ PERSISTED_LINE="$(PGPASSWORD="$DB_PASSWORD" psql \
 EXPECTED_LINE="${TXN_ID}:${CATEGORY_ID}:user"
 echo "API response: ${API_RESPONSE}"
 echo "Persisted row: ${PERSISTED_LINE:-<empty>}"
+#R030: Print explicit pass/fail status after reporting API and persisted-row details.
 if [[ "$PERSISTED_LINE" == "$EXPECTED_LINE" ]]; then
   echo "✅ PASS: persisted reclassification ${PERSISTED_LINE}"
 else
