@@ -12,6 +12,8 @@ ONEPSA_DIR="${PARENT_DIR}/1psa"
 ONEPSA_LOCAL_BIN="${ONEPSA_DIR}/bin/1psa"
 PG_INSTALL_REPO_URL="https://github.com/phil-bryant/pg_install"
 PG_INSTALL_DIR="${PARENT_DIR}/pg_install"
+ZAP_APP_PATH="${ZAP_APP_PATH:-/Applications/ZAP.app}"
+ZAP_CLI_PATH="${ZAP_CLI_PATH:-${ZAP_APP_PATH}/Contents/MacOS/ZAP.sh}"
 #R020: Default sudo credential item/field, overridable via environment.
 PSA_INSTALL_SUDO_ITEM="${PSA_INSTALL_SUDO_ITEM:-odus}"
 
@@ -58,6 +60,31 @@ ensure_brew_formula() {
         echo "✅ [$FORMULA] Installed and available"
     else
         echo "❌ [$FORMULA] Install completed but command still unavailable"
+        exit 1
+    fi
+}
+
+ensure_zap_cli() {
+    #R070: Ensure local OWASP ZAP CLI is installed via Homebrew cask when missing.
+    #R075: Verify expected CLI wrapper path after install.
+    #R035 #R040: Emit status lines and keep phase idempotent.
+    echo ""
+    echo "[ZAP] Checking..."
+
+    if [ -x "$ZAP_CLI_PATH" ]; then
+        echo "✅ [ZAP] CLI available at ${ZAP_CLI_PATH}"
+        return
+    fi
+
+    echo "⚠️  [ZAP] CLI wrapper missing at ${ZAP_CLI_PATH}"
+    echo "[ZAP] Installing Homebrew cask 'zap'..."
+    brew install --cask zap
+
+    if [ -x "$ZAP_CLI_PATH" ]; then
+        echo "✅ [ZAP] Installed and CLI available at ${ZAP_CLI_PATH}"
+    else
+        echo "❌ [ZAP] Install completed but CLI wrapper is still missing at ${ZAP_CLI_PATH}"
+        echo "Open ZAP.app once if macOS blocked first launch, then rerun this script."
         exit 1
     fi
 }
@@ -194,6 +221,7 @@ ensure_brew_formula "go"
 ensure_brew_formula "git"
 #R055: Ensure bats shell test runner dependency is installed via Homebrew.
 ensure_brew_formula "bats-core" "bats"
+ensure_zap_cli
 
 ensure_1psa
 ensure_xcode_ready
