@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `06_verify_deploy_database.sh`.
+Applies to `07_verify_deploy_database.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `zsh` shebang and `set -euo pipefail`.
@@ -25,7 +25,7 @@ Tests:
 - Force empty password and verify output starts with `❌ FAIL:` and script exits non-zero.
 
 R020  Statement: Verify required deployed database objects exist.
-Design: Check for required roles/schema/core relations deployed by `05_deploy_database.sh` and report missing objects.
+Design: Check for required roles/schema/core relations deployed by `06_deploy_database.sh` and report missing objects.
 Tests:
 - Drop or rename one required object in a test DB and verify it appears in failure output.
 
@@ -47,4 +47,4 @@ Tests:
 
 ## Changelog
 
-- 2026-04-22: Initial requirements for `06_verify_deploy_database.sh`.
+- 2026-04-22: Initial requirements for `07_verify_deploy_database.sh`.

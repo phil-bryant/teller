@@ -1,4 +1,4 @@
-# Verify Prereq Traceability Requirements
+# Verify Requirements Traceability Requirements
 
 ## Scope
 
@@ -47,8 +47,22 @@ Tests:
 - Verify all discovered pairs matching returns pass.
 - Verify any discovered mismatch returns non-zero.
 
+R040  Statement: Enforce numbered script coverage by numbered requirements docs.
+Design: During full-run mode, compare repository `NN_*.sh`/`NN_*.py` scripts against `requirements/NN_*-requirements.md` and fail when any numbered script lacks a matching numbered requirements document.
+Tests:
+- Add a numbered script without a matching numbered requirements doc and verify explicit failure output.
+- Add matching numbered requirements doc and verify coverage pass output.
+
+R045  Statement: Enforce numbered requirements scope alignment with numbered scripts.
+Design: For each `requirements/NN_*-requirements.md`, require at least one numbered source reference in Scope that starts with the same `NN_` prefix.
+Tests:
+- Point a numbered requirements file to a differently numbered script and verify explicit mismatch failure.
+- Point it back to matching `NN_` source and verify alignment pass output.
+
 ## Changelog
 
+- 2026-04-24: Added numbered script coverage enforcement for `NN_` script/requirements parity.
+- 2026-04-24: Added `NN_` requirements-to-source prefix alignment enforcement.
 - 2026-04-20: Updated verifier requirements to require discovery of all `requirements/*.md` files and all referenced source files.
 - 2026-04-20: Merged `12_verify_prereq_traceability.sh` and `13_verify_traceability_batch.sh` into `verify_requirements_traceability.sh`.
 - 2026-04-19: Initial reverse-engineered requirements for `12_verify_prereq_traceability.sh`.

@@ -13,52 +13,52 @@
 				<key>testApplyCategoryFromTypeaheadUpdatesSelection</key>
 				<dict>
 					<key>mrnet</key>
-					<real>11.134235024452209</real>
+					<real>10.430001974105835</real>
 				</dict>
 				<key>testDetailHeaderShowsTransactionIdentifier</key>
 				<dict>
 					<key>mrnet</key>
-					<real>4.8064680099487305</real>
+					<real>4.8958659172058105</real>
 				</dict>
 				<key>testInitialUnclassifiedToggleIsOnByDefault</key>
 				<dict>
 					<key>mrnet</key>
-					<real>5.3933230638504028</real>
+					<real>5.4223289489746094</real>
 				</dict>
 				<key>testLoadMoreAppendsRowsAndUpdatesStatusText</key>
 				<dict>
 					<key>mrnet</key>
-					<real>9.9348039627075195</real>
+					<real>9.8231019973754883</real>
 				</dict>
 				<key>testNextUnclassifiedScrollsTargetIntoView</key>
 				<dict>
 					<key>mrnet</key>
-					<real>13.485761046409607</real>
+					<real>13.166222095489502</real>
 				</dict>
 				<key>testNextUnclassifiedShortcutUpdatesDetailSelection</key>
 				<dict>
 					<key>mrnet</key>
-					<real>7.8898520469665527</real>
+					<real>7.5080749988555908</real>
 				</dict>
 				<key>testSearchFilterFindsFixtureRow</key>
 				<dict>
 					<key>mrnet</key>
-					<real>5.5444729328155518</real>
+					<real>5.3568130731582642</real>
 				</dict>
 				<key>testTogglingUnclassifiedAutomaticallyRefreshesList</key>
 				<dict>
 					<key>mrnet</key>
-					<real>7.7602850198745728</real>
+					<real>7.3793470859527588</real>
 				</dict>
 				<key>testUndoRestoresPriorCategoryOnAlreadyClassifiedRow</key>
 				<dict>
 					<key>mrnet</key>
-					<real>19.826902031898499</real>
+					<real>18.334182977676392</real>
 				</dict>
 				<key>testUndoShortcutRestoresClassification</key>
 				<dict>
 					<key>mrnet</key>
-					<real>15.91598105430603</real>
+					<real>14.876012921333313</real>
 				</dict>
 			</dict>
 		</dict>

@@ -6,6 +6,7 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "00_verify_requirements_traceability.sh"
+  mv "${FIXTURE_ROOT}/00_verify_requirements_traceability.sh" "${FIXTURE_ROOT}/verify_requirements_traceability.sh"
 }
 
 teardown() {
@@ -13,7 +14,7 @@ teardown() {
 }
 
 @test "prints usage with --help" {
-  run bash "${FIXTURE_ROOT}/00_verify_requirements_traceability.sh" --help
+  run bash "${FIXTURE_ROOT}/verify_requirements_traceability.sh" --help
   [ "$status" -eq 0 ]
   [[ "$output" == *"Usage:"* ]]
 }
@@ -31,7 +32,7 @@ EOF
 #R001
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && ./00_verify_requirements_traceability.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"All traceability checks passed."* ]]
 }
@@ -49,7 +50,7 @@ EOF
 #R001
 EOF
 
-  run bash "${FIXTURE_ROOT}/00_verify_requirements_traceability.sh" "${FIXTURE_ROOT}/req.md" "${FIXTURE_ROOT}/src.sh"
+  run bash "${FIXTURE_ROOT}/verify_requirements_traceability.sh" "${FIXTURE_ROOT}/req.md" "${FIXTURE_ROOT}/src.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Missing #R tags"* ]]
   [[ "$output" == *"R002"* ]]
@@ -64,7 +65,7 @@ Applies to `missing_source.sh`.
 R001 Statement: One.
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && ./00_verify_requirements_traceability.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"references missing source file missing_source.sh"* ]]
 }

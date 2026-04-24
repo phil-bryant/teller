@@ -6,20 +6,23 @@ Local PostgreSQL schema setup and management scripts for Teller data.
 
 Run setup scripts in numeric order. The workflow is designed around:
 
-- `01A_install_prerequisites.sh`
+- `01_install_prerequisites.sh`
   - Ensures Homebrew, required tooling, `1psa`, and `pg_install` are present.
   - Ensures Xcode first-launch and license acceptance are completed (using `1psa` for sudo credential input when needed).
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
 - `04_run_unit_tests.sh`
-- `05_deploy_database.sh`
-- `06_verify_deploy_database.sh`
-- `07_configure_teller_io.sh`
-- `08_run_teller-connect-ui.sh`
-- `09_fetch_teller_api_data.py`
-- `10_backfill_bank_statements.py`
-- `11_run_transaction_classification_api.py`
-- `16_run_macos_ui_regression_tests.sh`
+- `06_deploy_database.sh`
+- `07_verify_deploy_database.sh`
+- `05_run_macos_ui_regression_tests.sh` (recommended pre-merge gate; can also be run via `RUN_MACOS_UI_REGRESSION_TESTS=true ./04_run_unit_tests.sh`)
+- `08_verify_updated_at_trigger_coverage.sh`
+- `10_configure_teller_io.sh`
+- `11_run_teller-connect-ui.sh`
+- `12_fetch_teller_api_data.py`
+- `13_backfill_bank_statements.py`
+- `14_run_transaction_classification_api.py`
+- `15_run_transaction_classification_macos-ui.sh`
+- `16_verify_classification_persistence.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -32,15 +35,17 @@ Do not skip ahead unless you know a later script's dependencies are already sati
 From the project root:
 
 ```bash
-./01A_install_prerequisites.sh
+./01_install_prerequisites.sh
 ./02_create_venv.sh
 source ./teller-venv/bin/activate
 ./03_load_requirements.sh
 ./04_run_unit_tests.sh
-./05_deploy_database.sh
-./06_verify_deploy_database.sh
-./07_configure_teller_io.sh
-./08_run_teller-connect-ui.sh
+./06_deploy_database.sh
+./07_verify_deploy_database.sh
+./05_run_macos_ui_regression_tests.sh
+./08_verify_updated_at_trigger_coverage.sh
+./10_configure_teller_io.sh
+./11_run_teller-connect-ui.sh
 ```
 
 ## Testing and Verification
@@ -64,7 +69,7 @@ Verifies every requirement ID in `requirements/*.md` is mapped to matching `#R..
 Optional single-pair mode:
 
 ```bash
-./00_verify_requirements_traceability.sh requirements/12_verify_classification_persistence-requirements.md 12_verify_classification_persistence.sh
+./00_verify_requirements_traceability.sh requirements/16_verify_classification_persistence-requirements.md 16_verify_classification_persistence.sh
 ```
 
 ### 2) Unit Tests
@@ -91,8 +96,10 @@ RUN_MACOS_UI_REGRESSION_TESTS=true ./04_run_unit_tests.sh
 
 Runs deterministic snapshot tests and macOS XCUITest smoke flows for `macos-ui`.
 
+This lane can run before Teller configuration (`09`) and Connect enrollment (`10`).
+
 ```bash
-./16_run_macos_ui_regression_tests.sh
+./05_run_macos_ui_regression_tests.sh
 ```
 
 Common flags:
@@ -108,29 +115,29 @@ This checks API-to-database persistence by writing one classification via API an
 1. Start the API in one terminal:
 
 ```bash
-./11_run_transaction_classification_api.py
+./14_run_transaction_classification_api.py
 ```
 
 2. Run the verifier in another terminal:
 
 ```bash
-./12_verify_classification_persistence.sh
+./16_verify_classification_persistence.sh
 ```
 
 Strict/CI-style mode requiring explicit IDs:
 
 ```bash
-TXN_ID=txn_xxx CATEGORY_ID=123 ./12_verify_classification_persistence.sh --require-env-ids
+TXN_ID=txn_xxx CATEGORY_ID=123 ./16_verify_classification_persistence.sh --require-env-ids
 ```
 
 ### 4) Built-In Smoke Verifications in Setup Scripts
 
 These checks run automatically as part of existing setup/token workflows:
 
-- `./07_configure_teller_io.sh`
+- `./10_configure_teller_io.sh`
   - Verifies Teller mTLS connectivity using `GET /institutions`.
   - If `~/.teller/auth_token.json` exists, also checks `GET /accounts`.
-- `./08_run_teller-connect-ui.sh`
+- `./11_run_teller-connect-ui.sh`
   - After capture/reconnect/manual token save, runs a best-effort `GET /accounts` verification when `curl`, `jq`, cert/key, and token are available.
   - Prints diagnostics/warnings when verification cannot run or returns non-200.
 
@@ -152,13 +159,13 @@ Active secret and credential sources are:
   - `enrollment_id.txt` and optional `enrollment_id_<suffix>.txt`
 - `1psa` items used by database and setup scripts:
   - `localhost_postgres_postgres` / `localhost_postgres_teller` by default for DB scripts
-  - optional Teller item lookups in `07_configure_teller_io.sh`
+  - optional Teller item lookups in `10_configure_teller_io.sh`
 - Environment variables passed to scripts (for example `TELLER_APPLICATION_ID`, `TELLER_ACCESS_TOKEN`, `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`)
-- `~/.env` for local runtime settings loaded by `09_fetch_teller_api_data.py`
+- `~/.env` for local runtime settings loaded by `12_fetch_teller_api_data.py`
 
 ## What Each Core Script Does
 
-- `01A_install_prerequisites.sh`
+- `01_install_prerequisites.sh`
   - Ensures Homebrew is installed.
   - Ensures `go` and `git` are available.
   - Installs `1psa` (from `../1psa`) and clones `pg_install` into `../pg_install`.
@@ -169,31 +176,35 @@ Active secret and credential sources are:
   - Must be run with the project virtual environment active.
 - `04_run_unit_tests.sh`
   - Runs unit tests with `python3 -m unittest discover tests`.
-- `05_deploy_database.sh`
+- `06_deploy_database.sh`
   - Creates/configures the `prod` database.
   - Applies SQL schema objects in dependency order from `sql/postgres/`.
-- `06_verify_deploy_database.sh`
+- `07_verify_deploy_database.sh`
   - Verifies required database objects and trigger/FK invariants after deploy.
-- `07_configure_teller_io.sh`
+- `05_run_macos_ui_regression_tests.sh`
+  - Runs `macos-ui` snapshot regression tests and the macOS XCUITest smoke suite.
+  - Supports selective gates with `RUN_SNAPSHOT_TESTS`, `SNAPSHOT_RECORD`, and `RUN_XCUITESTS`.
+- `08_verify_updated_at_trigger_coverage.sh`
+  - Verifies all `teller` tables with `updated_at` are covered by `teller.update_updated_at`.
+- `10_configure_teller_io.sh`
   - Ensures `~/.teller` contains required Teller credentials/config files.
   - Supports importing Teller secrets from environment variables or `1psa`.
   - Runs Teller API smoke tests (`/institutions`, optionally `/accounts`).
-- `08_run_teller-connect-ui.sh`
+- `11_run_teller-connect-ui.sh`
   - Saves a fresh Teller Connect `accessToken` into `~/.teller/auth_token.json`.
   - Default mode is no copy/paste: runs local Connect capture server on `http://localhost:8080`.
   - Persists enrollment id to `~/.teller/enrollment_id.txt` for future repair mode.
   - Also supports token argument, secure prompt (`--manual`), or macOS clipboard mode.
   - Also provides enrollment management (`--list`, `--delete`, `--reconnect`, `--add`).
-- `09_fetch_teller_api_data.py`
+- `12_fetch_teller_api_data.py`
   - Runs Teller API client operations.
-- `10_backfill_bank_statements.py`
+- `13_backfill_bank_statements.py`
   - Backfills statements data.
-- `11_run_transaction_classification_api.py`
+- `14_run_transaction_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
-- `16_run_macos_ui_regression_tests.sh`
-  - Runs `macos-ui` snapshot regression tests and the macOS XCUITest smoke suite.
-  - Supports selective gates with `RUN_SNAPSHOT_TESTS`, `SNAPSHOT_RECORD`, and `RUN_XCUITESTS`.
-- `12_verify_classification_persistence.sh`
+- `15_run_transaction_classification_macos-ui.sh`
+  - Runs the local macOS UI app wrapper (`swift run TransactionClassifier`) from the repo root.
+- `16_verify_classification_persistence.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `97_backup_database.sh`
@@ -208,7 +219,7 @@ Active secret and credential sources are:
 
 ## Reconfiguring Teller.io
 
-`07_configure_teller_io.sh` automates local Teller file provisioning and API checks, but some setup is dashboard/UI-only.
+`10_configure_teller_io.sh` automates local Teller file provisioning and API checks, but some setup is dashboard/UI-only.
 
 Manual steps (cannot be provisioned through Teller API endpoints):
 
@@ -219,7 +230,7 @@ Manual steps (cannot be provisioned through Teller API endpoints):
 - If you need a fresh access token, run a Teller Connect enrollment flow and capture `enrollment.accessToken`.
   - This requires user interaction and cannot be fully automated server-side.
 
-Automated by `07_configure_teller_io.sh`:
+Automated by `10_configure_teller_io.sh`:
 
 - Clones Teller's examples repo into `./teller-connect-ui` by default (not a sibling under `../src`).
 - Creates and permissions `~/.teller`.
@@ -231,7 +242,7 @@ Automated by `07_configure_teller_io.sh`:
 - Verifies Teller API connectivity using mTLS (`/institutions`).
 - Verifies token-based account access (`/accounts`) when `auth_token.json` is present.
 
-### `07_configure_teller_io.sh` Input Options
+### `10_configure_teller_io.sh` Input Options
 
 Use one of the following patterns:
 
@@ -257,7 +268,7 @@ Example (1psa-backed):
 TELLER_APP_PSA_ITEM=localhost_teller_app \
 TELLER_CERT_PSA_ITEM=localhost_teller_cert \
 TELLER_KEY_PSA_ITEM=localhost_teller_key \
-./07_configure_teller_io.sh
+./10_configure_teller_io.sh
 ```
 
 ### Save Refreshed Access Token
@@ -265,7 +276,7 @@ TELLER_KEY_PSA_ITEM=localhost_teller_key \
 After completing Teller Connect, capture the returned `accessToken`:
 
 ```bash
-./08_run_teller-connect-ui.sh
+./11_run_teller-connect-ui.sh
 ```
 
 Default `08` behavior:
@@ -275,22 +286,22 @@ Default `08` behavior:
 - Persists enrollment id at `~/.teller/enrollment_id.txt`
 - Immediately verifies `/accounts` with the saved token/cert
 - Supports repair mode for disconnected enrollments without creating a new enrollment:
-  - `ENROLLMENT_ID=enr_xxx ./08_run_teller-connect-ui.sh`
+  - `ENROLLMENT_ID=enr_xxx ./11_run_teller-connect-ui.sh`
   - Automatic when `AUTO_REPAIR=true` and `~/.teller/enrollment_id.txt` exists
 
 Other options (manual/alternative input):
 
 ```bash
-./08_run_teller-connect-ui.sh --manual
-./08_run_teller-connect-ui.sh token_xxx
-./08_run_teller-connect-ui.sh --clipboard
-ENROLLMENT_ID=enr_xxx ./08_run_teller-connect-ui.sh
-AUTO_REPAIR=false ./08_run_teller-connect-ui.sh
+./11_run_teller-connect-ui.sh --manual
+./11_run_teller-connect-ui.sh token_xxx
+./11_run_teller-connect-ui.sh --clipboard
+ENROLLMENT_ID=enr_xxx ./11_run_teller-connect-ui.sh
+AUTO_REPAIR=false ./11_run_teller-connect-ui.sh
 ```
 
-### Enrollment Management Status (`08_run_teller-connect-ui.sh`)
+### Enrollment Management Status (`11_run_teller-connect-ui.sh`)
 
-Requirements now define `08_run_teller-connect-ui.sh` as the enrollment-management CLI entrypoint.
+Requirements now define `11_run_teller-connect-ui.sh` as the enrollment-management CLI entrypoint.
 
 Required management actions:
 
@@ -302,10 +313,10 @@ Required management actions:
 Command examples:
 
 ```bash
-./08_run_teller-connect-ui.sh --list
-./08_run_teller-connect-ui.sh --add
-./08_run_teller-connect-ui.sh --reconnect --institution_id first_ak_bank_trust
-./08_run_teller-connect-ui.sh --delete --enrollment_id enr_xxx --yes
+./11_run_teller-connect-ui.sh --list
+./11_run_teller-connect-ui.sh --add
+./11_run_teller-connect-ui.sh --reconnect --institution_id first_ak_bank_trust
+./11_run_teller-connect-ui.sh --delete --enrollment_id enr_xxx --yes
 ```
 
 Behavior notes:
@@ -318,12 +329,12 @@ Behavior notes:
 Then verify token/API access:
 
 ```bash
-./08_run_teller-connect-ui.sh
+./11_run_teller-connect-ui.sh
 ```
 
 ## 1psa Items Used by Database Scripts
 
-`05_deploy_database.sh`, `97_backup_database.sh`, `98_destroy_database.sh`, and `99_restore_database.sh` read credentials from `1psa`.
+`06_deploy_database.sh`, `97_backup_database.sh`, `98_destroy_database.sh`, and `99_restore_database.sh` read credentials from `1psa`.
 
 Default items/fields:
 
@@ -344,7 +355,7 @@ Optional overrides:
 Example:
 
 ```bash
-POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./05_deploy_database.sh
+POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./06_deploy_database.sh
 ```
 
 ## Troubleshooting
@@ -354,7 +365,7 @@ POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./05_deploy_d
   - Fix: use `password` field (default), or set `POSTGRES_PSA_FIELD=password`.
 - `1psa is required but was not found on PATH`
   - Cause: `1psa` is not installed or not in shell `PATH`.
-  - Fix: rerun `./01A_install_prerequisites.sh`, then open a new shell.
+  - Fix: rerun `./01_install_prerequisites.sh`, then open a new shell.
 - `Failed to read postgres password from 1psa item ...`
   - Cause: item name is wrong, inaccessible, or missing `password` field.
   - Fix: verify with `1psa -l localhost_postgres_postgres` and `1psa -p localhost_postgres_postgres`.
@@ -363,7 +374,7 @@ POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./05_deploy_d
   - Fix: verify with `1psa -l localhost_postgres_teller` and `1psa -p localhost_postgres_teller`.
 - `psql: ... password authentication failed for user ...`
   - Cause: stored credential does not match the database user password.
-  - Fix: update the corresponding `1psa` item, then rerun `./05_deploy_database.sh`.
+  - Fix: update the corresponding `1psa` item, then rerun `./06_deploy_database.sh`.
 - `could not connect to server on socket ...`
   - Cause: PostgreSQL is not running or listening on expected host/socket.
   - Fix: start PostgreSQL (for example via Homebrew service) and retry.

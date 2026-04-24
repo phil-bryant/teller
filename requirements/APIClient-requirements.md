@@ -19,6 +19,13 @@ Design: Shared `send(...)` methods set JSON headers, decode typed responses, and
 Tests:
 - Return a non-2xx response and verify the thrown error includes server-provided message text.
 
+R040  Statement: Support category lifecycle mutations from the macOS classification UI.
+Design: `ClassificationAPI` declares `createCategory(...)`, `updateCategory(...)`, and `deleteCategory(...)`; `APIClient` implements these by encoding `CategoryMutationRequest` for create/update and targeting `/v1/categories` REST endpoints.
+Tests:
+- Create a category and verify POST `/v1/categories` returns the created `CategoryOption`.
+- Update and delete a category and verify PUT/DELETE requests hit `/v1/categories/{id}` and decode typed responses.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `APIClient.swift` based on classifier app behavior.
+- 2026-04-24: Added `R040` to document category create/update/delete API client support.

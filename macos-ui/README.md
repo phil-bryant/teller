@@ -7,7 +7,7 @@ Native macOS UI for reclassifying `teller.transaction` records into `teller.nys_
 From repo root:
 
 ```zsh
-./11_run_transaction_classification_api.py
+./14_run_transaction_classification_api.py
 ```
 
 Defaults to `http://127.0.0.1:8787`. Override with:
@@ -37,16 +37,16 @@ Or open `macos-ui/` directly in Xcode and run the executable target.
 From repo root:
 
 - `./04_run_unit_tests.sh` (API/unit tests)
-- `./16_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
-- `./12_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./12_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
+- `./05_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
+- `./16_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./16_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
 
 ## 5) Automated UI regression testing
 
 Run from repo root:
 
 ```zsh
-./16_run_macos_ui_regression_tests.sh
+./05_run_macos_ui_regression_tests.sh
 ```
 
 Available gates/flags:

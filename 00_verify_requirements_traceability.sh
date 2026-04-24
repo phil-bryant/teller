@@ -109,7 +109,6 @@ verify_single_pair() {
     echo "Traceability check"
     echo "- requirements: $requirements_file"
     echo "- source: $source_file"
-    echo ""
     #R015: Fail clearly when requirements file is missing.
     if [ ! -f "$requirements_file" ]; then
         echo "❌ Requirements file not found: $requirements_file"
@@ -149,8 +148,10 @@ verify_requirements_file_sources() {
         fi
         if verify_single_pair "$requirements_file" "$source_file"; then
             echo "✅ PASS: ${requirements_file} -> ${source_file}"
+            echo ""
         else
             echo "❌ FAIL: ${requirements_file} -> ${source_file}"
+            echo ""
             file_fail=1
         fi
     done < "$source_list_file"
@@ -178,6 +179,10 @@ verify_all_requirements() {
             fail=$((fail + 1))
         fi
     done
+    #R040: Enforce numbered-script-to-numbered-requirements coverage completeness.
+    verify_numbered_script_requirements_coverage || fail=$((fail + 1))
+    #R045: Enforce numbered requirements docs map to same-numbered numbered scripts.
+    verify_numbered_requirement_scope_alignment || fail=$((fail + 1))
     echo ""
     echo "Summary: total=${total} pass=${pass} fail=${fail}"
     if [ "$fail" -eq 0 ]; then
@@ -185,6 +190,79 @@ verify_all_requirements() {
         return 0
     fi
     echo "❌ One or more traceability checks failed."
+    return 1
+}
+
+verify_numbered_script_requirements_coverage() {
+    local script_file req_file num base missing script_num_file req_num_file
+    missing="false"
+    script_num_file="$(mktemp)"
+    req_num_file="$(mktemp)"
+    for script_file in [0-9][0-9]_*.sh [0-9][0-9]_*.py; do
+        [ -e "$script_file" ] || continue
+        num="${script_file%%_*}"
+        printf "%s|%s\n" "$num" "$script_file" >> "$script_num_file"
+    done
+    for req_file in requirements/[0-9][0-9]_*-requirements.md; do
+        [ -e "$req_file" ] || continue
+        base="$(basename "$req_file")"
+        num="${base%%_*}"
+        printf "%s|%s\n" "$num" "$req_file" >> "$req_num_file"
+    done
+    sort -u "$script_num_file" -o "$script_num_file"
+    sort -u "$req_num_file" -o "$req_num_file"
+    while IFS='|' read -r num script_file; do
+        [ -n "$num" ] || continue
+        if ! awk -F'|' -v n="$num" '$1 == n { found=1 } END { exit found ? 0 : 1 }' "$req_num_file"; then
+            if [ "$missing" = "false" ]; then
+                echo "❌ FAIL: missing numbered requirements docs for numbered scripts:"
+            fi
+            echo "  - ${script_file} (expected requirements/${num}_*-requirements.md)"
+            missing="true"
+        fi
+    done < "$script_num_file"
+    if [ "$missing" = "false" ]; then
+        echo "✅ PASS: numbered script coverage complete (every numbered script has a numbered requirements doc)."
+        return 0
+    fi
+    return 1
+}
+
+verify_numbered_requirement_scope_alignment() {
+    local req_file base req_num source_list_file source_file
+    local found_numbered_source matched_numbered_source failed
+    failed="false"
+    for req_file in requirements/[0-9][0-9]_*-requirements.md; do
+        [ -e "$req_file" ] || continue
+        base="$(basename "$req_file")"
+        req_num="${base%%_*}"
+        source_list_file="$(mktemp)"
+        extract_source_files_from_requirements "$req_file" "$source_list_file"
+        found_numbered_source="false"
+        matched_numbered_source="false"
+        while IFS= read -r source_file; do
+            [ -n "$source_file" ] || continue
+            case "$source_file" in
+                [0-9][0-9]_*.sh|[0-9][0-9]_*.py)
+                    found_numbered_source="true"
+                    if [ "${source_file%%_*}" = "$req_num" ]; then
+                        matched_numbered_source="true"
+                    fi
+                    ;;
+            esac
+        done < "$source_list_file"
+        if [ "$found_numbered_source" = "false" ] || [ "$matched_numbered_source" = "false" ]; then
+            if [ "$failed" = "false" ]; then
+                echo "❌ FAIL: numbered requirements scope mismatch:"
+            fi
+            echo "  - ${req_file} must reference a numbered source starting with ${req_num}_"
+            failed="true"
+        fi
+    done
+    if [ "$failed" = "false" ]; then
+        echo "✅ PASS: numbered requirements scope alignment complete (NN requirements map to NN scripts)."
+        return 0
+    fi
     return 1
 }
 
