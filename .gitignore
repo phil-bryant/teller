@@ -15,3 +15,5 @@ bin/*
 .cursor/rules/*
 macos-ui/.build/
 macos-ui/.swiftpm/
+macos-ui/.derivedData-ui-tests/
+macos/.build/
