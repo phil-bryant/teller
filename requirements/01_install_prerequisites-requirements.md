@@ -84,9 +84,28 @@ Tests:
 - Run without `bats` and verify installer installs `bats-core`.
 - Rerun with `bats` already available and verify no reinstall occurs.
 
+R060  Statement: Ensure Xcode first-launch prerequisites are satisfied.
+Design: Verify `xcodebuild` exists and run first-launch initialization when required.
+Constraints:
+- Fail with clear guidance when `xcodebuild` is unavailable.
+- Re-check first-launch status after initialization and fail if still incomplete.
+Tests:
+- Run on a machine without first-launch complete and verify initialization is attempted.
+- Run on a machine already initialized and verify the phase is skipped.
+
+R065  Statement: Use 1psa-provided sudo credential for privileged Xcode initialization.
+Design: Pipe local `../1psa/bin/1psa` item lookup to `sudo -S` for first-launch/license commands.
+Constraints:
+- Reuse `PSA_INSTALL_SUDO_ITEM` for credential source.
+- Avoid interactive password prompts in non-interactive runs.
+Tests:
+- Verify first-launch setup command uses piped credential input.
+- Verify license-accept path also uses piped credential input when needed.
+
 ## Changelog
 
 - 2026-04-23: Added R055 to require `bats-core` installation for shell unit-test support.
+- 2026-04-24: Added R060 and R065 to cover Xcode first-launch readiness and credentialed sudo flow.
 - 2026-04-07: Added R012 for Go/Git bootstrap prerequisites used by `1psa` install flow.
 - 2026-04-06: Restored full standalone installer requirements (not split-index form).
 - 2026-04-11: Replaced SQL/Azure CLI requirements with `pg_install` prerequisite and updated readiness guidance.
