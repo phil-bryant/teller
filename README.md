@@ -23,6 +23,8 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `14_run_classification_api.py`
 - `15_run_classification_macos-ui.sh`
 - `16_verify_classification_persistence.sh`
+- `17_run_security_checks.sh`
+- `18_run_dast_checks.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -44,6 +46,7 @@ source ./teller-venv/bin/activate
 ./07_verify_deploy_database.sh
 ./05_run_macos_ui_regression_tests.sh
 ./08_verify_updated_at_trigger_coverage.sh
+./17_run_security_checks.sh
 ./10_configure_teller_io.sh
 ./11_run_teller-connect-ui.sh
 ```
@@ -56,7 +59,7 @@ Run these checks from the project root after activating the project virtual envi
 source ./teller-venv/bin/activate
 ```
 
-There are currently no repository CI workflow files under `.github/workflows`; verification is script-driven and run locally.
+Security scanning can run locally via scripts and in CI via `.github/workflows/security.yml`.
 
 ### 1) Requirements Traceability Verification
 
@@ -141,6 +144,33 @@ These checks run automatically as part of existing setup/token workflows:
   - After capture/reconnect/manual token save, runs a best-effort `GET /accounts` verification when `curl`, `jq`, cert/key, and token are available.
   - Prints diagnostics/warnings when verification cannot run or returns non-200.
 
+### 5) Security Scanning (SAST/DAST)
+
+Security scanners are installed automatically into an isolated `.security-venv` when you run the security lane (avoids dependency conflicts with the app venv).
+
+Manual install into `.security-venv` (optional):
+
+```bash
+python3 -m venv .security-venv
+./.security-venv/bin/pip install --upgrade pip
+./.security-venv/bin/pip install -r requirements-security.txt
+```
+
+Run the full security lane:
+
+```bash
+./17_run_security_checks.sh
+```
+
+Useful flags:
+
+- `RUN_SAST=true|false` (default `true`)
+- `RUN_DAST=true|false` (default `true`)
+- `SECURITY_FAIL_ON_HIGH_CRITICAL=true|false` (default `true`)
+- `RUN_TOKEN_CAPTURE_DAST=true|false|auto` (default `auto`)
+
+For policy details, see `docs/security-scanning.md`.
+
 ## API Reference Docs
 
 Local Teller API reference notes now live under `docs/teller-api-reference/`.
@@ -207,6 +237,12 @@ Active secret and credential sources are:
 - `16_verify_classification_persistence.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
+- `17_run_security_checks.sh`
+  - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets).
+  - Optionally runs DAST by calling `18_run_dast_checks.sh`.
+- `18_run_dast_checks.sh`
+  - Starts local API target(s), runs Schemathesis against OpenAPI, and runs OWASP ZAP Baseline.
+  - Supports optional token-capture target scanning when Teller local credentials are present.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
   - Also captures matching cluster globals (roles/grants) for reliable restores.
