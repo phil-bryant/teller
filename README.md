@@ -20,8 +20,8 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `11_run_teller-connect-ui.sh`
 - `12_fetch_teller_api_data.py`
 - `13_backfill_bank_statements.py`
-- `14_run_transaction_classification_api.py`
-- `15_run_transaction_classification_macos-ui.sh`
+- `14_run_classification_api.py`
+- `15_run_classification_macos-ui.sh`
 - `16_verify_classification_persistence.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
@@ -115,7 +115,7 @@ This checks API-to-database persistence by writing one classification via API an
 1. Start the API in one terminal:
 
 ```bash
-./14_run_transaction_classification_api.py
+./14_run_classification_api.py
 ```
 
 2. Run the verifier in another terminal:
@@ -200,9 +200,9 @@ Active secret and credential sources are:
   - Runs Teller API client operations.
 - `13_backfill_bank_statements.py`
   - Backfills statements data.
-- `14_run_transaction_classification_api.py`
+- `14_run_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
-- `15_run_transaction_classification_macos-ui.sh`
+- `15_run_classification_macos-ui.sh`
   - Runs the local macOS UI app wrapper (`swift run TransactionClassifier`) from the repo root.
 - `16_verify_classification_persistence.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
