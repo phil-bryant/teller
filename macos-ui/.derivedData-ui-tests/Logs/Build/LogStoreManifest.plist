@@ -6,7 +6,7 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>668BDC90-6DAF-44E7-B51D-B961E0A7DE30</key>
+		<key>2359B08E-480E-4ECB-9801-9175EC204E30</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,7 +15,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>668BDC90-6DAF-44E7-B51D-B961E0A7DE30.xcactivitylog</string>
+			<string>2359B08E-480E-4ECB-9801-9175EC204E30.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -40,15 +40,15 @@
 			<key>signature</key>
 			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
 			<key>timeStartedRecording</key>
-			<real>798692993.74919796</real>
+			<real>798722960.28579295</real>
 			<key>timeStoppedRecording</key>
-			<real>798692996.71983099</real>
+			<real>798722961.00699997</real>
 			<key>title</key>
 			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
-			<string>668BDC90-6DAF-44E7-B51D-B961E0A7DE30</string>
+			<string>2359B08E-480E-4ECB-9801-9175EC204E30</string>
 		</dict>
-		<key>86D1CF38-252F-4465-80D7-8E6110F9D733</key>
+		<key>96A38F9B-6712-49E0-848C-577E2C1BFA50</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -57,7 +57,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>86D1CF38-252F-4465-80D7-8E6110F9D733.xcactivitylog</string>
+			<string>96A38F9B-6712-49E0-848C-577E2C1BFA50.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -82,13 +82,13 @@
 			<key>signature</key>
 			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
 			<key>timeStartedRecording</key>
-			<real>798692464.94836199</real>
+			<real>798723218.73861897</real>
 			<key>timeStoppedRecording</key>
-			<real>798692469.77972901</real>
+			<real>798723220.41317594</real>
 			<key>title</key>
 			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
-			<string>86D1CF38-252F-4465-80D7-8E6110F9D733</string>
+			<string>96A38F9B-6712-49E0-848C-577E2C1BFA50</string>
 		</dict>
 	</dict>
 </dict>

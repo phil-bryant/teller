@@ -82,10 +82,10 @@
 		<dict>
 			<key>cdhash</key>
 			<data>
-			igrsn1C8OP1Bm+7hLDNNdt36jmk=
+			JDo56MW9YzXXQC3qZbL77O6bSaw=
 			</data>
 			<key>requirement</key>
-			<string>cdhash H"8a0aec9f50bc38fd419beee12c334d76ddfa8e69" or cdhash H"541f0369a046da28c2beb64a98e0f545afb027c4"</string>
+			<string>cdhash H"243a39e8c5bd6335d7402dea65b2fbecee9b49ac" or cdhash H"265f879712e3a0c227ee50f804a94dab9751fb5e"</string>
 		</dict>
 	</dict>
 	<key>rules</key>

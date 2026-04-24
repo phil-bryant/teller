@@ -28,12 +28,12 @@
                     [   A     !     ] h=-&- v=-&- _TtC7SwiftUIP33_1246D37251EA3A918B392E2B95F8B7EF14PlatformSwitch "0" f=(0,0,54,24) b=(-)
                       [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$1950f1ea812AppKitSwitch_ f=(0,0,54,24) b=(-) => <NSViewBackingLayer>
                   [   AF    ! W U ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(337,12,71,24) b=(-) => <NSViewBackingLayer>
-                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_24OutlineListRepresentableGOS_19SelectionManagerBoxSS___ f=(12,44,396,648) b=(-) => <NSViewBackingLayer>
-                    [   AF    !     ] h=-&- v=-&- SwiftUI.ListCoreScrollView f=(0,0,396,648) b=(-)
-                      [   A     !     ] h=--- v=--- NSVisualEffectView f=(0,0,396,648) b=(-)
-                      [   AF    !     ] h=-&- v=-&- SwiftUI.ListCoreClipView f=(0,0,396,648) b=(-)
-                        [   AF    !     ] h=-&- v=-&- SwiftUI.SwiftUIOutlineListView f=(0,0,396,648) b=(-)
-                      [  HAF    ! W   ] h=--- v=--- NSScroller f=(-17,0,17,0) b=(-) => <NSViewBackingLayer>
+                  [   A     ! W U ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView17PlatformContainer f=(12,44,396,648) b=(-) => <NSViewBackingLayer>
+                    [   AF    !   U ] h=--- v=--- SwiftUI.HostingScrollView f=(0,0,396,648) b=(-)
+                      [   AF    !   U ] h=--- v=--- NSClipView f=(0,0,396,648) b=(-)
+                        [   AF    !   U ] h=--- v=--- _TtC7SwiftUIP33_6B9589E2B2301F373BAB5CF17408C38412DocumentView f=(0,0,0,0) b=(-)
+                          [   AF    ! W U ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView22PlatformGroupContainer f=(0,0,0,0) b=(-) => <NSViewBackingLayer>
+                      [  HAF    ! W U ] h=--- v=--- NSScroller f=(0,0,0,100) b=(-) => <NSViewBackingLayer>
             [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVES_CSo17NSGlassEffectViewP10$1950f52888RootView_ f=(0,0,420,704) b=(-) => <NSViewBackingLayer>
         [  HA     !   U ] h=--- v=--- NSSplitDividerView f=(428,0,0,720) b=(-)
         [   A     !     ] h=--- v=--- _NSSplitViewCollapsedInteractionsView f=(0,0,15,720) b=(-)
