@@ -81,7 +81,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
 
   echo "▶ Running detect-secrets"
   detect-secrets scan --all-files --force-use-all-plugins \
-    --exclude-files '(^\.git/|^teller-venv/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/)' \
+    --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/)' \
     > "${REPORT_DIR}/detect-secrets.json"
 
   python3 - <<'PY' "${REPORT_DIR}" "${FAIL_ON_HIGH_CRITICAL}"
