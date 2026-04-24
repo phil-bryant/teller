@@ -3,6 +3,12 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var viewModel: ClassificationViewModel
     @FocusState private var searchFocused: Bool
+    let autoLoadOnAppear: Bool
+
+    init(viewModel: ClassificationViewModel, autoLoadOnAppear: Bool = true) {
+        self.viewModel = viewModel
+        self.autoLoadOnAppear = autoLoadOnAppear
+    }
 
     var body: some View {
         // #R001: Render split-view transaction browsing with list and detail panes.
@@ -13,8 +19,11 @@ struct ContentView: View {
                     TextField("Search description / transaction id", text: $viewModel.searchText)
                         .textFieldStyle(.roundedBorder)
                         .focused($searchFocused)
+                        .accessibilityIdentifier("search-field")
                     Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
+                        .accessibilityIdentifier("only-unclassified-toggle")
                     Button("Refresh") { Task { await viewModel.loadAll() } }
+                        .accessibilityIdentifier("refresh-button")
                 }
                 List(viewModel.transactions, selection: $viewModel.selection) { row in
                     let classificationLabel = row.classification?.display_label ?? "Unclassified"
@@ -26,8 +35,10 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text(row.description).lineLimit(1).font(.body.weight(.medium))
+                                .accessibilityIdentifier("transaction-description-\(row.transaction_id)")
                             Spacer()
                             Text(row.amount as NSNumber, formatter: amountFormatter).monospacedDigit().foregroundStyle(.primary)
+                                .accessibilityIdentifier("transaction-amount-\(row.transaction_id)")
                         }
                         HStack {
                             Text(row.date).foregroundStyle(.secondary).lineLimit(1)
@@ -37,9 +48,13 @@ struct ContentView: View {
                             SaveStateDot(state: viewModel.rowState[row.transaction_id] ?? .idle)
                         }.font(.caption)
                         Text(classificationLabel).font(.caption).lineLimit(1).foregroundStyle(classificationColor)
+                            .accessibilityIdentifier("transaction-classification-\(row.transaction_id)")
                     }.tag(row.transaction_id)
+                        .accessibilityIdentifier("transaction-row-\(row.transaction_id)")
                         .padding(.vertical, 3)
-                }.listStyle(.inset(alternatesRowBackgrounds: true))
+                }
+                .accessibilityIdentifier("transaction-list")
+                .listStyle(.inset(alternatesRowBackgrounds: true))
             }
             .padding(12)
             .frame(minWidth: 360, idealWidth: 420)
@@ -49,7 +64,11 @@ struct ContentView: View {
                 .padding(12)
                 .overlay(alignment: .top) {
                     if !viewModel.errorText.isEmpty {
-                        Text(viewModel.errorText).foregroundStyle(.red).font(.caption).padding(.top, 4)
+                        Text(viewModel.errorText)
+                            .foregroundStyle(.red)
+                            .font(.caption)
+                            .padding(.top, 4)
+                            .accessibilityIdentifier("error-banner")
                     }
                 }
         }
@@ -59,13 +78,20 @@ struct ContentView: View {
             ToolbarItemGroup(placement: .primaryAction) {
                 // #R010: Expose keyboard-first shortcuts for search focus, next-unclassified, and undo.
                 Button("Focus Search") { searchFocused = true }.keyboardShortcut("f", modifiers: .command)
+                    .accessibilityIdentifier("focus-search-button")
                 Button("Next Unclassified") { viewModel.nextUnclassified() }.keyboardShortcut("]", modifiers: .command)
+                    .accessibilityIdentifier("next-unclassified-button")
                 Button("Undo") { Task { await viewModel.undoLast() } }.keyboardShortcut("z", modifiers: .command)
+                    .accessibilityIdentifier("undo-button")
             }
         }
-        .task { await viewModel.loadAll() }
+        .task {
+            guard autoLoadOnAppear else { return }
+            await viewModel.loadAll()
+        }
         .onSubmit(of: .text) { Task { await viewModel.loadAll() } }
         .onChange(of: viewModel.selection) { _, _ in viewModel.selectionDidChange() }
+        .accessibilityIdentifier("content-root")
     }
 }
 
@@ -75,6 +101,7 @@ private struct DetailPane: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Selection").font(.headline)
             Text("\(viewModel.selection.count) transaction(s)").foregroundStyle(.secondary)
+                .accessibilityIdentifier("selection-count")
             CategoryTypeaheadField(
                 selectedCategoryId: $viewModel.selectedCategoryId,
                 categories: viewModel.categories,
@@ -88,30 +115,44 @@ private struct DetailPane: View {
                 Button("Apply to Selected") { Task { await viewModel.saveSelection() } }
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(viewModel.selection.isEmpty || viewModel.selectedCategoryId == nil)
+                    .accessibilityIdentifier("apply-selected-button")
                 Button("Clear Classification") { Task { await viewModel.clearSelectionClassification() } }
                     .disabled(viewModel.selection.isEmpty)
+                    .accessibilityIdentifier("clear-selection-button")
             }
             Divider()
             if let selected = viewModel.selectedRows.first {
                 Text("Transaction").font(.headline)
                 Text(selected.description)
-                Text("Teller Category: \(selected.teller_category ?? "n/a")").foregroundStyle(.secondary)
+                    .accessibilityIdentifier("selected-transaction-description")
+                Text("Teller Category: \(selected.teller_category ?? "n/a")")
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("selected-teller-category")
                 if let klass = selected.classification {
-                    Text("Assigned: \(klass.display_label)").foregroundStyle(.blue)
+                    Text("Assigned: \(klass.display_label)")
+                        .foregroundStyle(.blue)
+                        .accessibilityIdentifier("selected-assigned-category")
                 } else {
-                    Text("Assigned: none").foregroundStyle(.secondary)
+                    Text("Assigned: none")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("selected-assigned-category")
                 }
             } else {
                 ContentUnavailableView("Select a transaction", systemImage: "square.grid.2x2")
+                    .accessibilityIdentifier("selection-empty")
             }
             Spacer()
             HStack(spacing: 8) {
                 Text(viewModel.statusText).foregroundStyle(.secondary).font(.caption)
+                    .accessibilityIdentifier("status-text")
                 Spacer()
                 Button("Load more") { Task { await viewModel.loadMore() } }
                     .disabled(!viewModel.canLoadMore || viewModel.busy)
+                    .accessibilityIdentifier("load-more-button")
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("detail-pane")
     }
 }
 
@@ -140,6 +181,7 @@ private struct CategoryTypeaheadField: View {
                 .onKeyPress(.downArrow) { moveHighlight(by: 1); return .handled }
                 .onKeyPress(.upArrow) { moveHighlight(by: -1); return .handled }
                 .onKeyPress(.escape) { syncTextFromSelection(); isFocused = false; return .handled }
+                .accessibilityIdentifier("category-typeahead-field")
             if isExpanded {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
@@ -157,9 +199,11 @@ private struct CategoryTypeaheadField: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(index == highlightedIndex ? Color.accentColor.opacity(0.18) : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: 5))
+                            .accessibilityIdentifier("category-option-\(option.id)")
                         }
                         if options.isEmpty {
                             Text("No matches").foregroundStyle(.secondary).font(.caption).padding(.horizontal, 8).padding(.vertical, 6)
+                                .accessibilityIdentifier("category-no-matches")
                         }
                     }.padding(4)
                 }
@@ -167,9 +211,12 @@ private struct CategoryTypeaheadField: View {
                 .background(Color(nsColor: .controlBackgroundColor))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.25), lineWidth: 1))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                .accessibilityIdentifier("category-options-list")
             }
         }
+        .accessibilityElement(children: .contain)
         .frame(maxWidth: .infinity)
+        .accessibilityIdentifier("category-typeahead-container")
     }
     private func moveHighlight(by delta: Int) {
         guard !options.isEmpty else { return }
@@ -195,7 +242,11 @@ private struct CategoryTypeaheadField: View {
 private struct SaveStateDot: View {
     let state: SaveState
     var body: some View {
-        Circle().fill(color).frame(width: 8, height: 8).help(label)
+        Circle()
+            .fill(color)
+            .frame(width: 8, height: 8)
+            .help(label)
+            .accessibilityIdentifier("save-state-dot-\(state.uiToken)")
     }
     private var color: Color {
         switch state {
@@ -211,6 +262,21 @@ private struct SaveStateDot: View {
         case .saving: return "Saving"
         case .saved(let date): return "Saved \(date.formatted(date: .omitted, time: .shortened))"
         case .failed(let reason): return "Failed: \(reason)"
+        }
+    }
+}
+
+private extension SaveState {
+    var uiToken: String {
+        switch self {
+        case .idle:
+            return "idle"
+        case .saving:
+            return "saving"
+        case .saved:
+            return "saved"
+        case .failed:
+            return "failed"
         }
     }
 }
