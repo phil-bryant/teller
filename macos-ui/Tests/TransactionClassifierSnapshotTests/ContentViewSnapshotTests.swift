@@ -55,6 +55,7 @@ final class ContentViewSnapshotTests: XCTestCase {
     @MainActor
     private func assertContentSnapshot(named: String, configure: (ClassificationViewModel) -> Void) async {
         let viewModel = ClassificationViewModel(api: SnapshotFixtureAPI())
+        viewModel.onlyUnclassified = false
         await viewModel.loadAll()
         configure(viewModel)
 

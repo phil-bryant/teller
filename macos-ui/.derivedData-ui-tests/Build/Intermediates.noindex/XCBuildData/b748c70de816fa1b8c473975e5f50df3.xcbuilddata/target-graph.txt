@@ -1,4 +1,0 @@
-Target dependency graph (2 targets)
-Target 'TransactionClassifierUITests' in project 'TransactionClassifierUIAutomation'
-➜ Explicit dependency on target 'TransactionClassifierUITestHost' in project 'TransactionClassifierUIAutomation'
-Target 'TransactionClassifierUITestHost' in project 'TransactionClassifierUIAutomation' (no dependencies)

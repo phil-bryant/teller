@@ -37,7 +37,7 @@ Or open `macos-ui/` directly in Xcode and run the executable target.
 From repo root:
 
 - `./04_run_unit_tests.sh` (API/unit tests)
-- `./15_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
+- `./16_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
 - `./12_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
 - `TXN_ID=... CATEGORY_ID=... ./12_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
 
@@ -46,7 +46,7 @@ From repo root:
 Run from repo root:
 
 ```zsh
-./15_run_macos_ui_regression_tests.sh
+./16_run_macos_ui_regression_tests.sh
 ```
 
 Available gates/flags:
