@@ -214,7 +214,7 @@ infer_institution_id_from_token_file() {
 
 ensure_unique_suffix() {
     #region agent log
-    debug_log "H1" "08_run_teller-connect-ui.sh:ensure_unique_suffix" "entry" "raw_arg=$1"
+    debug_log "H1" "11_run_teller-connect-ui.sh:ensure_unique_suffix" "entry" "raw_arg=$1"
     #endregion
     local base="$1" candidate="$base" i=1
     while [ -e "${TELLER_DIR}/auth_token_${candidate}.json" ] || [ -e "${TELLER_DIR}/enrollment_id_${candidate}.txt" ]; do
@@ -227,15 +227,15 @@ ensure_unique_suffix() {
 usage() {
     #R050 #R055 #R060 #R065 #R070: Document supported enrollment-management modes.
     echo "Usage:"
-    echo "  ./08_run_teller-connect-ui.sh                 # default: no copy/paste flow"
-    echo "  ./08_run_teller-connect-ui.sh --connect      # explicit no copy/paste flow"
-    echo "  ./08_run_teller-connect-ui.sh --manual"
-    echo "  ./08_run_teller-connect-ui.sh [token_xxx]"
-    echo "  ./08_run_teller-connect-ui.sh --clipboard"
-    echo "  ./08_run_teller-connect-ui.sh --list"
-    echo "  ./08_run_teller-connect-ui.sh --delete --institution_id <id>|--enrollment_id <id> [--yes]"
-    echo "  ./08_run_teller-connect-ui.sh --reconnect --institution_id <id>|--enrollment_id <id>"
-    echo "  ./08_run_teller-connect-ui.sh --add"
+    echo "  ./11_run_teller-connect-ui.sh                 # default: no copy/paste flow"
+    echo "  ./11_run_teller-connect-ui.sh --connect      # explicit no copy/paste flow"
+    echo "  ./11_run_teller-connect-ui.sh --manual"
+    echo "  ./11_run_teller-connect-ui.sh [token_xxx]"
+    echo "  ./11_run_teller-connect-ui.sh --clipboard"
+    echo "  ./11_run_teller-connect-ui.sh --list"
+    echo "  ./11_run_teller-connect-ui.sh --delete --institution_id <id>|--enrollment_id <id> [--yes]"
+    echo "  ./11_run_teller-connect-ui.sh --reconnect --institution_id <id>|--enrollment_id <id>"
+    echo "  ./11_run_teller-connect-ui.sh --add"
     echo ""
     echo "Default mode opens a local enrollment manager UI on localhost:${PORT}."
     echo "Use the page to reconnect, delete local contexts, or add an enrollment."
@@ -319,7 +319,7 @@ verify_accounts_access() {
         fi
         if [[ "$error_code" == enrollment.disconnected* ]] && [ -z "$ENROLLMENT_ID" ]; then
             echo "Use repair mode with your existing enrollment id (no re-enrollment):"
-            echo "  ENROLLMENT_ID=enr_xxx ./08_run_teller-connect-ui.sh"
+            echo "  ENROLLMENT_ID=enr_xxx ./11_run_teller-connect-ui.sh"
         fi
         echo "Response:"
         cat "$response_file"
@@ -398,20 +398,20 @@ EOF
             enrollment_out="$(mktemp "${TELLER_DIR}/enrollment_id.add.XXXXXX.txt")"
             chmod 400 "$token_out" "$enrollment_out"
             #region agent log
-            debug_log "H2" "08_run_teller-connect-ui.sh:main:add" "temp_output_paths" "token_out=$token_out enrollment_out=$enrollment_out"
+            debug_log "H2" "11_run_teller-connect-ui.sh:main:add" "temp_output_paths" "token_out=$token_out enrollment_out=$enrollment_out"
             #endregion
             run_connect_capture "" "$token_out" "$enrollment_out" "capture"
             institution="$(infer_institution_id_from_token_file "$token_out")"
             #region agent log
-            debug_log "H3" "08_run_teller-connect-ui.sh:main:add" "institution_from_identity" "institution=$institution"
+            debug_log "H3" "11_run_teller-connect-ui.sh:main:add" "institution_from_identity" "institution=$institution"
             #endregion
             [ -n "$institution" ] || institution="$(tr -d '\r\n' < "$enrollment_out")"
             #region agent log
-            debug_log "H4" "08_run_teller-connect-ui.sh:main:add" "institution_after_fallback" "institution=$institution"
+            debug_log "H4" "11_run_teller-connect-ui.sh:main:add" "institution_after_fallback" "institution=$institution"
             #endregion
             institution="$(sanitize_suffix "$institution")"
             #region agent log
-            debug_log "H5" "08_run_teller-connect-ui.sh:main:add" "institution_after_sanitize" "institution=$institution"
+            debug_log "H5" "11_run_teller-connect-ui.sh:main:add" "institution_after_sanitize" "institution=$institution"
             #endregion
             institution="$(ensure_unique_suffix "$institution")"
             token_path="${TELLER_DIR}/auth_token_${institution}.json"

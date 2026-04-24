@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+#R001: Run in strict shell mode and fail fast.
 set -euo pipefail
 
+#R005: Resolve script directory and run from repository root.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -12,8 +14,10 @@ XCUITEST_SCHEME="${XCUITEST_SCHEME:-TransactionClassifierUITestHost}"
 XCUITEST_DESTINATION="${XCUITEST_DESTINATION:-platform=macOS}"
 XCUITEST_DERIVED_DATA_PATH="${XCUITEST_DERIVED_DATA_PATH:-./macos-ui/.derivedData-ui-tests}"
 
+#R010: Run snapshot regression lane when enabled.
 if [[ "$RUN_SNAPSHOT_TESTS" == "true" ]]; then
   echo "▶ Running macOS UI snapshot regression tests..."
+  #R015: Support explicit snapshot record mode for baseline updates.
   if [[ "$SNAPSHOT_RECORD" == "true" ]]; then
     SNAPSHOT_RECORD=1 swift test --package-path ./macos-ui --filter ContentViewSnapshotTests
   else
@@ -23,6 +27,7 @@ else
   echo "ℹ️  Skipping snapshot regression tests (RUN_SNAPSHOT_TESTS=false)."
 fi
 
+#R020: Run XCUITest smoke suite when enabled and required tools exist.
 if [[ "$RUN_XCUITESTS" == "true" ]]; then
   if [[ ! -d "$XCUITEST_PROJECT" ]]; then
     echo "❌ XCUITest project not found at $XCUITEST_PROJECT"

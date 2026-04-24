@@ -290,7 +290,7 @@ def main():
         if exc.code:
             print(f"Error code: {exc.code}")
         if exc.code.startswith("enrollment.disconnected"):
-            print("Auto-repair failed. Run ./08_run_teller-connect-ui.sh to repair the enrollment manually.")
+            print("Auto-repair failed. Run ./11_run_teller-connect-ui.sh to repair the enrollment manually.")
         sys.exit(1)
 
 if __name__ == "__main__":

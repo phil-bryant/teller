@@ -2,12 +2,59 @@ import Foundation
 import Observation
 
 struct UndoAction { let prior: [String: TransactionCategory?]; let next: [String: TransactionCategory?] }
+struct CategoryDraft: Equatable {
+    var level_1 = ""
+    var level_1_name = ""
+    var level_2 = ""
+    var level_2_name = ""
+    var level_3 = ""
+    var level_4 = ""
+    var categorization = ""
+    var applicability = ""
+
+    init() {}
+
+    init(category: CategoryOption) {
+        level_1 = category.level_1 ?? ""
+        level_1_name = category.level_1_name ?? ""
+        level_2 = category.level_2 ?? ""
+        level_2_name = category.level_2_name ?? ""
+        level_3 = category.level_3 ?? ""
+        level_4 = category.level_4 ?? ""
+        categorization = category.categorization ?? ""
+        applicability = category.applicability ?? ""
+    }
+
+    var isEmpty: Bool {
+        [level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability]
+            .allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
+    var payload: CategoryMutationRequest {
+        CategoryMutationRequest(
+            level_1: normalize(level_1),
+            level_1_name: normalize(level_1_name),
+            level_2: normalize(level_2),
+            level_2_name: normalize(level_2_name),
+            level_3: normalize(level_3),
+            level_4: normalize(level_4),
+            categorization: normalize(categorization),
+            applicability: normalize(applicability)
+        )
+    }
+
+    private func normalize(_ value: String) -> String? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
 
 @MainActor
 @Observable
 final class ClassificationViewModel {
     private let pageSize = 300
     var categories: [CategoryOption] = []
+    var allCategories: [CategoryOption] = []
     var transactions: [TransactionRow] = []
     var totalTransactions = 0
     var selection: Set<String> = []
@@ -20,6 +67,11 @@ final class ClassificationViewModel {
     var errorText = ""
     var undoStack: [UndoAction] = []
     var statusText = "Ready"
+    var categoryEditorSelectionId: Int?
+    var categoryEditorDraft = CategoryDraft()
+    var categoryEditorBusy = false
+    var categoryEditorStatusText = "Select a category to edit, or create a new one."
+    var categoryEditorErrorText = ""
     private let api: any ClassificationAPI
     private var suppressAutoApply = false
 
@@ -40,7 +92,8 @@ final class ClassificationViewModel {
         do {
             async let cats = api.fetchCategories()
             async let txs = api.fetchTransactions(search: searchText, onlyUnclassified: onlyUnclassified, limit: pageSize, offset: 0)
-            categories = try await cats.filter { (($0.applicability ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased() != "N/A") }
+            let fetchedCategories = try await cats
+            setCategories(fetchedCategories)
             let response = try await txs
             transactions = response.items
             totalTransactions = response.total
@@ -48,6 +101,24 @@ final class ClassificationViewModel {
             statusText = loadStatusText(for: transactions)
             errorText = ""
         } catch { errorText = error.localizedDescription; statusText = "Load failed" }
+    }
+
+    func reloadCategories() async {
+        categoryEditorBusy = true
+        defer { categoryEditorBusy = false }
+        do {
+            let fetchedCategories = try await api.fetchCategories()
+            setCategories(fetchedCategories)
+            if let selectedId = categoryEditorSelectionId, allCategories.first(where: { $0.nys_snw_category_id == selectedId }) == nil {
+                beginNewCategoryDraft()
+            }
+            categoryEditorErrorText = ""
+            categoryEditorStatusText = "Loaded \(allCategories.count) categories."
+            syncPickerToSelection()
+        } catch {
+            categoryEditorErrorText = error.localizedDescription
+            categoryEditorStatusText = "Category load failed"
+        }
     }
 
     func loadMore() async {
@@ -98,6 +169,64 @@ final class ClassificationViewModel {
         await apply(updates: [.init(transaction_id: transactionId, nys_snw_category_id: categoryId)])
     }
 
+    func beginNewCategoryDraft() {
+        categoryEditorSelectionId = nil
+        categoryEditorDraft = CategoryDraft()
+        categoryEditorErrorText = ""
+        categoryEditorStatusText = "Creating a new category."
+    }
+
+    func selectCategoryForEditing(_ categoryId: Int?) {
+        guard let categoryId, let category = allCategories.first(where: { $0.nys_snw_category_id == categoryId }) else {
+            beginNewCategoryDraft()
+            return
+        }
+        categoryEditorSelectionId = categoryId
+        categoryEditorDraft = CategoryDraft(category: category)
+        categoryEditorErrorText = ""
+        categoryEditorStatusText = "Editing category \(categoryId)."
+    }
+
+    func saveCategoryDraft() async {
+        categoryEditorBusy = true
+        defer { categoryEditorBusy = false }
+        do {
+            let saved: CategoryOption
+            if let categoryId = categoryEditorSelectionId {
+                saved = try await api.updateCategory(id: categoryId, category: categoryEditorDraft.payload)
+            } else {
+                saved = try await api.createCategory(categoryEditorDraft.payload)
+            }
+            let fetchedCategories = try await api.fetchCategories()
+            setCategories(fetchedCategories)
+            categoryEditorSelectionId = saved.nys_snw_category_id
+            categoryEditorDraft = CategoryDraft(category: saved)
+            categoryEditorErrorText = ""
+            categoryEditorStatusText = "Saved category \(saved.nys_snw_category_id)."
+            syncPickerToSelection()
+        } catch {
+            categoryEditorErrorText = error.localizedDescription
+            categoryEditorStatusText = "Category save failed"
+        }
+    }
+
+    func deleteSelectedCategory() async {
+        guard let categoryId = categoryEditorSelectionId else { return }
+        categoryEditorBusy = true
+        defer { categoryEditorBusy = false }
+        do {
+            _ = try await api.deleteCategory(id: categoryId)
+            let fetchedCategories = try await api.fetchCategories()
+            setCategories(fetchedCategories)
+            beginNewCategoryDraft()
+            categoryEditorStatusText = "Deleted category \(categoryId)."
+            syncPickerToSelection()
+        } catch {
+            categoryEditorErrorText = error.localizedDescription
+            categoryEditorStatusText = "Category delete failed"
+        }
+    }
+
     func undoLast() async {
         // #R015: Replay prior category assignments for the most recent save action.
         guard let last = undoStack.popLast() else { return }
@@ -137,7 +266,7 @@ final class ClassificationViewModel {
             if shouldRecordUndo {
                 let next = Dictionary(uniqueKeysWithValues: effectiveUpdates.map { mutation in
                     let cat = mutation.nys_snw_category_id.flatMap { id in
-                        categories.first(where: { $0.nys_snw_category_id == id }).map {
+                        allCategories.first(where: { $0.nys_snw_category_id == id }).map {
                             TransactionCategory(nys_snw_category_id: $0.nys_snw_category_id, display_label: $0.display_label)
                         }
                     }
@@ -160,7 +289,7 @@ final class ClassificationViewModel {
         for mutation in updates {
             guard let idx = transactions.firstIndex(where: { $0.transaction_id == mutation.transaction_id }) else { continue }
             transactions[idx].classification = mutation.nys_snw_category_id.flatMap { id in
-                categories.first(where: { $0.nys_snw_category_id == id }).map {
+                allCategories.first(where: { $0.nys_snw_category_id == id }).map {
                     .init(nys_snw_category_id: $0.nys_snw_category_id, display_label: $0.display_label)
                 }
             }
@@ -200,5 +329,10 @@ final class ClassificationViewModel {
             transactions.append(row)
             seen.insert(row.transaction_id)
         }
+    }
+
+    private func setCategories(_ fetched: [CategoryOption]) {
+        allCategories = fetched
+        categories = fetched.filter { (($0.applicability ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased() != "N/A") }
     }
 }

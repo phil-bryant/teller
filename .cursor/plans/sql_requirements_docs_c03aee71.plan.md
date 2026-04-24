@@ -17,7 +17,7 @@ isProject: false
 # SQL Requirements Documentation Recommendation
 
 ## What already exists and should remain authoritative
-- Keep [`/Users/phil/local/src/teller/requirements/05_deploy_database-requirements.md`](/Users/phil/local/src/teller/requirements/05_deploy_database-requirements.md) as the deployment-orchestration contract for [`/Users/phil/local/src/teller/05_deploy_database.sh`](/Users/phil/local/src/teller/05_deploy_database.sh), including ordered execution of SQL files and post-DDL steps.
+- Keep [`/Users/phil/local/src/teller/requirements/06_deploy_database-requirements.md`](/Users/phil/local/src/teller/requirements/06_deploy_database-requirements.md) as the deployment-orchestration contract for [`/Users/phil/local/src/teller/06_deploy_database.sh`](/Users/phil/local/src/teller/06_deploy_database.sh), including ordered execution of SQL files and post-DDL steps.
 - Keep [`/Users/phil/local/src/teller/requirements/teller_object-requirements.md`](/Users/phil/local/src/teller/requirements/teller_object-requirements.md) as the source of truth for ORM naming/mapping behavior (table-name derivation and API aliasing), which already explains most table-column correspondence.
 
 ## SQL files that should get their own requirements docs
@@ -29,14 +29,14 @@ isProject: false
 - Do not create per-file requirements docs for the core table DDL files under [`/Users/phil/local/src/teller/sql/postgres`](/Users/phil/local/src/teller/sql/postgres) that mirror `TellerObject` subclasses (for example `teller_account.sql`, `teller_identity_*.sql`, `teller_transaction*.sql`, etc.).
 - Treat those as schema artifacts covered by:
   - ORM mapping requirements in [`/Users/phil/local/src/teller/requirements/teller_object-requirements.md`](/Users/phil/local/src/teller/requirements/teller_object-requirements.md), and
-  - deployment/order guarantees in [`/Users/phil/local/src/teller/requirements/05_deploy_database-requirements.md`](/Users/phil/local/src/teller/requirements/05_deploy_database-requirements.md).
+  - deployment/order guarantees in [`/Users/phil/local/src/teller/requirements/06_deploy_database-requirements.md`](/Users/phil/local/src/teller/requirements/06_deploy_database-requirements.md).
 - Keep the known exception handling explicit in docs where applicable (`self` -> `self_link`, `primary` -> `primary_address`, `id` aliasing patterns).
 
 ## Optional boundary decision (if you want stricter SQL-spec ownership)
 - If you want SQL to be self-describing independent of Python, add one aggregate doc for schema primitives like [`/Users/phil/local/src/teller/sql/postgres/create_database.sql`](/Users/phil/local/src/teller/sql/postgres/create_database.sql), [`/Users/phil/local/src/teller/sql/postgres/configure_database.sql`](/Users/phil/local/src/teller/sql/postgres/configure_database.sql), and [`/Users/phil/local/src/teller/sql/postgres/teller_enums.sql`](/Users/phil/local/src/teller/sql/postgres/teller_enums.sql); otherwise keep them under deploy requirements only to avoid duplication.
 
 ## Proposed natural doc set (minimal)
-- Existing: [`/Users/phil/local/src/teller/requirements/05_deploy_database-requirements.md`](/Users/phil/local/src/teller/requirements/05_deploy_database-requirements.md)
+- Existing: [`/Users/phil/local/src/teller/requirements/06_deploy_database-requirements.md`](/Users/phil/local/src/teller/requirements/06_deploy_database-requirements.md)
 - Existing: [`/Users/phil/local/src/teller/requirements/teller_object-requirements.md`](/Users/phil/local/src/teller/requirements/teller_object-requirements.md)
 - New: `requirements/create_triggers-requirements.md`
 - New: `requirements/create_audit-requirements.md`

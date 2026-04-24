@@ -22,6 +22,22 @@ class CategoryOption(BaseModel):
     display_label: str
 
 
+class CategoryMutation(BaseModel):
+    level_1: Optional[str] = None
+    level_1_name: Optional[str] = None
+    level_2: Optional[str] = None
+    level_2_name: Optional[str] = None
+    level_3: Optional[str] = None
+    level_4: Optional[str] = None
+    categorization: Optional[str] = None
+    applicability: Optional[str] = None
+
+
+class CategoryDeleteResponse(BaseModel):
+    nys_snw_category_id: int
+    deleted: Literal[True] = True
+
+
 class TransactionCategory(BaseModel):
     nys_snw_category_id: int
     display_label: str
@@ -87,6 +103,74 @@ def _ensure_exists(session, table: str, column: str, value: object, error: str):
         raise HTTPException(status_code=404, detail=error)
 
 
+def _normalize_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized if normalized else None
+
+
+def _category_params(body: CategoryMutation) -> Dict[str, Optional[str]]:
+    return {
+        "level_1": _normalize_text(body.level_1),
+        "level_1_name": _normalize_text(body.level_1_name),
+        "level_2": _normalize_text(body.level_2),
+        "level_2_name": _normalize_text(body.level_2_name),
+        "level_3": _normalize_text(body.level_3),
+        "level_4": _normalize_text(body.level_4),
+        "categorization": _normalize_text(body.categorization),
+        "applicability": _normalize_text(body.applicability),
+    }
+
+
+def _fetch_category(session, category_id: int) -> Dict[str, object]:
+    row = session.execute(text("""
+        SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name, level_3, level_4,
+               categorization, applicability
+          FROM teller.nys_snw_category
+         WHERE nys_snw_category_id = :nys_snw_category_id
+         LIMIT 1
+    """), {"nys_snw_category_id": category_id}).mappings().fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Unknown nys_snw_category_id: {category_id}")
+    return dict(row)
+
+
+def _write_category(session, body: CategoryMutation, category_id: Optional[int] = None) -> CategoryOption:
+    params = _category_params(body)
+    if category_id is None:
+        created = session.execute(text("""
+            INSERT INTO teller.nys_snw_category (
+                level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability
+            ) VALUES (
+                :level_1, :level_1_name, :level_2, :level_2_name, :level_3, :level_4, :categorization, :applicability
+            )
+            RETURNING nys_snw_category_id
+        """), params).fetchone()
+        session.commit()
+        row = _fetch_category(session, created[0])
+        return CategoryOption(**row, display_label=_display_label(row))
+    _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", category_id,
+                   f"Unknown nys_snw_category_id: {category_id}")
+    params["nys_snw_category_id"] = category_id
+    session.execute(text("""
+        UPDATE teller.nys_snw_category
+           SET level_1 = :level_1,
+               level_1_name = :level_1_name,
+               level_2 = :level_2,
+               level_2_name = :level_2_name,
+               level_3 = :level_3,
+               level_4 = :level_4,
+               categorization = :categorization,
+               applicability = :applicability,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE nys_snw_category_id = :nys_snw_category_id
+    """), params)
+    session.commit()
+    row = _fetch_category(session, category_id)
+    return CategoryOption(**row, display_label=_display_label(row))
+
+
 #R025: Validate and apply transaction classification mutation.
 def _write_one(session, transaction_id: str, nys_snw_category_id: Optional[int]) -> ClassificationWriteResponse:
     posted_row = session.execute(text("""
@@ -141,6 +225,38 @@ def create_app() -> FastAPI:
                  ORDER BY level_1, level_2, level_3, level_4, categorization, nys_snw_category_id
             """)).mappings().all()
         return [CategoryOption(**row, display_label=_display_label(row)) for row in rows]
+
+    @app.post("/v1/categories", response_model=CategoryOption)
+    def create_category(body: CategoryMutation):
+        with get_session() as session:
+            return _write_category(session, body)
+
+    @app.put("/v1/categories/{nys_snw_category_id}", response_model=CategoryOption)
+    def update_category(nys_snw_category_id: int, body: CategoryMutation):
+        with get_session() as session:
+            return _write_category(session, body, category_id=nys_snw_category_id)
+
+    @app.delete("/v1/categories/{nys_snw_category_id}", response_model=CategoryDeleteResponse)
+    def delete_category(nys_snw_category_id: int):
+        with get_session() as session:
+            _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", nys_snw_category_id,
+                           f"Unknown nys_snw_category_id: {nys_snw_category_id}")
+            assignment_count = session.execute(text("""
+                SELECT COUNT(*)::INT
+                  FROM teller.transaction_nys_snw_category
+                 WHERE nys_snw_category_id = :nys_snw_category_id
+            """), {"nys_snw_category_id": nys_snw_category_id}).scalar_one()
+            if assignment_count > 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Cannot delete category {nys_snw_category_id}; {assignment_count} transaction(s) still reference it.",
+                )
+            session.execute(text("""
+                DELETE FROM teller.nys_snw_category
+                 WHERE nys_snw_category_id = :nys_snw_category_id
+            """), {"nys_snw_category_id": nys_snw_category_id})
+            session.commit()
+        return CategoryDeleteResponse(nys_snw_category_id=nys_snw_category_id)
 
     #R015: Aggregate assignment counts including zero-assignment categories.
     @app.get("/v1/categories/counts", response_model=List[CategoryCountsRow])

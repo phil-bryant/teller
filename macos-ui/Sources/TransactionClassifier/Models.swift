@@ -21,6 +21,22 @@ struct CategoryOption: Codable, Hashable, Identifiable {
     var id: Int { nys_snw_category_id }
 }
 
+struct CategoryMutationRequest: Codable, Hashable {
+    let level_1: String?
+    let level_1_name: String?
+    let level_2: String?
+    let level_2_name: String?
+    let level_3: String?
+    let level_4: String?
+    let categorization: String?
+    let applicability: String?
+}
+
+struct CategoryDeleteResponse: Codable, Hashable {
+    let nys_snw_category_id: Int
+    let deleted: Bool
+}
+
 struct TransactionCategory: Codable, Hashable {
     let nys_snw_category_id: Int
     let display_label: String

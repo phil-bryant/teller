@@ -86,8 +86,8 @@ Using the hybrid approach (your `c` response): `bats-core` for shell unit tests 
   - wrapper contract: forwards args and package path to `swift run`.
 
 ### Tier 3: Keep as integration/E2E verifiers (no unit-test investment now)
-- [`05_deploy_database.sh`](05_deploy_database.sh)
-- [`06_verify_deploy_database.sh`](06_verify_deploy_database.sh)
+- [`06_deploy_database.sh`](06_deploy_database.sh)
+- [`07_verify_deploy_database.sh`](07_verify_deploy_database.sh)
 - [`12_verify_reclassification_persistence.sh`](12_verify_reclassification_persistence.sh)
 - [`13_verify_updated_at_trigger_coverage.sh`](13_verify_updated_at_trigger_coverage.sh)
 

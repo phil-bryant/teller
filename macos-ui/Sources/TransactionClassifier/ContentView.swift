@@ -12,68 +12,77 @@ struct ContentView: View {
     }
 
     var body: some View {
-        // #R001: Render split-view transaction browsing with list and detail panes.
-        NavigationSplitView {
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    // #R005: Provide search/filter controls and manual refresh in the list header.
-                    TextField("Search description / transaction id", text: $viewModel.searchText)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($searchFocused)
-                        .onSubmit { Task { await viewModel.loadAll() } }
-                        .accessibilityIdentifier("search-field")
-                    Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
-                        .accessibilityIdentifier("only-unclassified-toggle")
-                    Button("Refresh") { Task { await viewModel.loadAll() } }
-                        .accessibilityIdentifier("refresh-button")
-                }
-                // SwiftUI's ScrollViewReader does not reliably scroll `List` on macOS 14
-                // (Apple Developer Forum #758880), so the transaction list is a
-                // ScrollView + LazyVStack bound to `.scrollPosition(id:anchor:)` which gives
-                // us a reliable programmatic scroll-to-target handle for #R025.
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(viewModel.transactions.enumerated()), id: \.element.transaction_id) { idx, row in
-                            transactionRowView(row: row, alternating: idx % 2 == 1)
-                                .id(row.transaction_id)
+        TabView {
+            // #R001: Render split-view transaction browsing with list and detail panes.
+            NavigationSplitView {
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        // #R005: Provide search/filter controls and manual refresh in the list header.
+                        TextField("Search description / transaction id", text: $viewModel.searchText)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($searchFocused)
+                            .onSubmit { Task { await viewModel.loadAll() } }
+                            .accessibilityIdentifier("search-field")
+                        Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
+                            .accessibilityIdentifier("only-unclassified-toggle")
+                        Button("Refresh") { Task { await viewModel.loadAll() } }
+                            .accessibilityIdentifier("refresh-button")
+                    }
+                    // SwiftUI's ScrollViewReader does not reliably scroll `List` on macOS 14
+                    // (Apple Developer Forum #758880), so the transaction list is a
+                    // ScrollView + LazyVStack bound to `.scrollPosition(id:anchor:)` which gives
+                    // us a reliable programmatic scroll-to-target handle for #R025.
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(viewModel.transactions.enumerated()), id: \.element.transaction_id) { idx, row in
+                                transactionRowView(row: row, alternating: idx % 2 == 1)
+                                    .id(row.transaction_id)
+                            }
+                        }
+                        .scrollTargetLayout()
+                    }
+                    .scrollPosition(id: $scrollTargetId, anchor: .center)
+                    .accessibilityIdentifier("transaction-list")
+                    .overlay(alignment: .topTrailing) {
+                        if viewModel.busy {
+                            ProgressView().controlSize(.small).padding(8)
                         }
                     }
-                    .scrollTargetLayout()
-                }
-                .scrollPosition(id: $scrollTargetId, anchor: .center)
-                .accessibilityIdentifier("transaction-list")
-                .overlay(alignment: .topTrailing) {
-                    if viewModel.busy {
-                        ProgressView().controlSize(.small).padding(8)
+                    // #R025: Scroll the newly-selected row into view when selection changes (e.g., Next Unclassified).
+                    .onChange(of: viewModel.selection) { _, newValue in
+                        guard let target = newValue.first else { return }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            scrollTargetId = target
+                        }
                     }
                 }
-                // #R025: Scroll the newly-selected row into view when selection changes (e.g., Next Unclassified).
-                .onChange(of: viewModel.selection) { _, newValue in
-                    guard let target = newValue.first else { return }
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scrollTargetId = target
-                    }
+                // #R020: Toggling the Unclassified filter in either direction automatically reloads the list.
+                .onChange(of: viewModel.onlyUnclassified) { _, _ in
+                    Task { await viewModel.loadAll() }
                 }
-            }
-            // #R020: Toggling the Unclassified filter in either direction automatically reloads the list.
-            .onChange(of: viewModel.onlyUnclassified) { _, _ in
-                Task { await viewModel.loadAll() }
-            }
-            .padding(12)
-            .frame(minWidth: 360, idealWidth: 420)
-            .navigationSplitViewColumnWidth(min: 340, ideal: 420, max: 560)
-        } detail: {
-            DetailPane(viewModel: viewModel)
                 .padding(12)
-                .overlay(alignment: .top) {
-                    if !viewModel.errorText.isEmpty {
-                        Text(viewModel.errorText)
-                            .foregroundStyle(.red)
-                            .font(.caption)
-                            .padding(.top, 4)
-                            .accessibilityIdentifier("error-banner")
+                .frame(minWidth: 360, idealWidth: 420)
+                .navigationSplitViewColumnWidth(min: 340, ideal: 420, max: 560)
+            } detail: {
+                DetailPane(viewModel: viewModel)
+                    .padding(12)
+                    .overlay(alignment: .top) {
+                        if !viewModel.errorText.isEmpty {
+                            Text(viewModel.errorText)
+                                .foregroundStyle(.red)
+                                .font(.caption)
+                                .padding(.top, 4)
+                                .accessibilityIdentifier("error-banner")
+                        }
                     }
-                }
+            }
+            .tabItem { Label("Classify", systemImage: "slider.horizontal.3") }
+            .accessibilityIdentifier("classify-tab")
+
+            CategoryManagerView(viewModel: viewModel)
+                .padding(12)
+                .tabItem { Label("Manage Categories", systemImage: "square.and.pencil") }
+                .accessibilityIdentifier("manage-categories-tab")
         }
         .navigationTitle("Transaction Classifier")
         .navigationSplitViewStyle(.balanced)
@@ -216,6 +225,101 @@ private struct DetailPane: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-pane")
+    }
+}
+
+private struct CategoryManagerView: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Categories").font(.headline)
+                    Spacer()
+                    Button("Refresh") { Task { await viewModel.reloadCategories() } }
+                        .disabled(viewModel.categoryEditorBusy)
+                    Button("New") { viewModel.beginNewCategoryDraft() }
+                        .disabled(viewModel.categoryEditorBusy)
+                }
+                List(selection: $viewModel.categoryEditorSelectionId) {
+                    ForEach(viewModel.allCategories) { category in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(category.display_label).lineLimit(1)
+                            Text("ID \(category.nys_snw_category_id)").font(.caption).foregroundStyle(.secondary)
+                        }
+                        .tag(Optional(category.nys_snw_category_id))
+                    }
+                }
+                .onChange(of: viewModel.categoryEditorSelectionId) { _, newValue in
+                    viewModel.selectCategoryForEditing(newValue)
+                }
+                .accessibilityIdentifier("category-manager-list")
+            }
+            .frame(minWidth: 360, idealWidth: 420, maxWidth: 460)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(viewModel.categoryEditorSelectionId == nil ? "Create Category" : "Edit Category")
+                    .font(.headline)
+                CategoryDraftForm(draft: $viewModel.categoryEditorDraft)
+                    .disabled(viewModel.categoryEditorBusy)
+                HStack(spacing: 8) {
+                    Button("Save") { Task { await viewModel.saveCategoryDraft() } }
+                        .keyboardShortcut("s", modifiers: .command)
+                        .disabled(viewModel.categoryEditorBusy)
+                        .accessibilityIdentifier("category-save-button")
+                    Button("Delete") { Task { await viewModel.deleteSelectedCategory() } }
+                        .disabled(viewModel.categoryEditorBusy || viewModel.categoryEditorSelectionId == nil)
+                        .accessibilityIdentifier("category-delete-button")
+                }
+                if !viewModel.categoryEditorErrorText.isEmpty {
+                    Text(viewModel.categoryEditorErrorText)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("category-error-banner")
+                } else {
+                    Text(viewModel.categoryEditorStatusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("category-status-text")
+                }
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .task {
+            if viewModel.allCategories.isEmpty {
+                await viewModel.reloadCategories()
+            }
+        }
+    }
+}
+
+private struct CategoryDraftForm: View {
+    @Binding var draft: CategoryDraft
+
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 8) {
+            draftRow("Level 1", text: $draft.level_1, identifier: "category-field-level-1")
+            draftRow("Level 1 Name", text: $draft.level_1_name, identifier: "category-field-level-1-name")
+            draftRow("Level 2", text: $draft.level_2, identifier: "category-field-level-2")
+            draftRow("Level 2 Name", text: $draft.level_2_name, identifier: "category-field-level-2-name")
+            draftRow("Level 3", text: $draft.level_3, identifier: "category-field-level-3")
+            draftRow("Level 4", text: $draft.level_4, identifier: "category-field-level-4")
+            draftRow("Categorization", text: $draft.categorization, identifier: "category-field-categorization")
+            draftRow("Applicability", text: $draft.applicability, identifier: "category-field-applicability")
+        }
+    }
+
+    @ViewBuilder
+    private func draftRow(_ label: String, text: Binding<String>, identifier: String) -> some View {
+        GridRow {
+            Text(label)
+                .frame(width: 120, alignment: .leading)
+            TextField(label, text: text)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier(identifier)
+        }
     }
 }
 

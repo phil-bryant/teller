@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `08_run_teller-connect-ui.sh`.
+Applies to `11_run_teller-connect-ui.sh`.
 
 R050  Statement: Default invocation launches local enrollment manager mode.
 Design: Empty mode and `--connect` run capture server in `manage` mode.
@@ -53,4 +53,4 @@ Tests:
 
 ## Changelog
 
-- 2026-04-19: Initial reverse-engineered requirements for `08_run_teller-connect-ui.sh`.
+- 2026-04-19: Initial reverse-engineered requirements for `11_run_teller-connect-ui.sh`.
