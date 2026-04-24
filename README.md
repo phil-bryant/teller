@@ -7,6 +7,8 @@ Local PostgreSQL schema setup and management scripts for Teller data.
 Run setup scripts in numeric order. The workflow is designed around:
 
 - `01A_install_prerequisites.sh`
+  - Ensures Homebrew, required tooling, `1psa`, and `pg_install` are present.
+  - Ensures Xcode first-launch and license acceptance are completed (using `1psa` for sudo credential input when needed).
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
 - `04_run_unit_tests.sh`
@@ -17,6 +19,7 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `09_fetch_teller_api_data.py`
 - `10_backfill_bank_statements.py`
 - `11_run_transaction_classification_api.py`
+- `15_run_macos_ui_regression_tests.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -77,6 +80,26 @@ Equivalent direct unittest invocation:
 ```bash
 python3 -m unittest discover tests
 ```
+
+Optional macOS UI regression lane:
+
+```bash
+RUN_MACOS_UI_REGRESSION_TESTS=true ./04_run_unit_tests.sh
+```
+
+### 2b) macOS UI Regression Tests
+
+Runs deterministic snapshot tests and macOS XCUITest smoke flows for `macos-ui`.
+
+```bash
+./15_run_macos_ui_regression_tests.sh
+```
+
+Common flags:
+
+- `RUN_SNAPSHOT_TESTS=true|false` (default `true`)
+- `SNAPSHOT_RECORD=true|false` (default `false`)
+- `RUN_XCUITESTS=true|false` (default `true`)
 
 ### 3) Classification Persistence End-to-End Verification
 
@@ -167,6 +190,9 @@ Active secret and credential sources are:
   - Backfills statements data.
 - `11_run_transaction_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
+- `15_run_macos_ui_regression_tests.sh`
+  - Runs `macos-ui` snapshot regression tests and the macOS XCUITest smoke suite.
+  - Supports selective gates with `RUN_SNAPSHOT_TESTS`, `SNAPSHOT_RECORD`, and `RUN_XCUITESTS`.
 - `12_verify_classification_persistence.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.

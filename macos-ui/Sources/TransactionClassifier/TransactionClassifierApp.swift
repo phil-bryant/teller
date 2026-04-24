@@ -3,12 +3,21 @@ import SwiftUI
 
 @main
 struct TransactionClassifierApp: App {
-    @State private var viewModel = ClassificationViewModel()
+    @State private var viewModel: ClassificationViewModel
+
+    init() {
+        _viewModel = State(initialValue: buildDefaultViewModel())
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView(viewModel: viewModel)
                 .frame(minWidth: 1120, minHeight: 720)
-                .onAppear { bringAppToFront() }
+                .onAppear {
+                    if detectAppLaunchMode() == .normal {
+                        bringAppToFront()
+                    }
+                }
         }
     }
 }

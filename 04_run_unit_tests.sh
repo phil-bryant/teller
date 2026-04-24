@@ -9,6 +9,7 @@ cd "$SCRIPT_DIR"
 RUN_SHELL_TESTS="${RUN_SHELL_TESTS:-true}"
 RUN_PYTHON_TESTS="${RUN_PYTHON_TESTS:-true}"
 RUN_SWIFT_TESTS="${RUN_SWIFT_TESTS:-true}"
+RUN_MACOS_UI_REGRESSION_TESTS="${RUN_MACOS_UI_REGRESSION_TESTS:-false}"
 BATS_FILTER="${BATS_FILTER:-}"
 
 #R005: Prefer project venv when available.
@@ -54,4 +55,9 @@ if [[ "$RUN_SWIFT_TESTS" == "true" ]]; then
   else
     echo "ℹ️  Skipping Swift unit tests: ./macos-ui/Tests not found."
   fi
+fi
+
+if [[ "$RUN_MACOS_UI_REGRESSION_TESTS" == "true" ]]; then
+  echo "▶ Running macOS UI regression test lane..."
+  ./15_run_macos_ui_regression_tests.sh
 fi

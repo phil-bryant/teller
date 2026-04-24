@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>FormatVersion</key>
+	<integer>1</integer>
+	<key>Store</key>
+	<dict>
+		<key>TransactionClassifierUITests</key>
+		<dict>
+			<key>TransactionClassifierUITests</key>
+			<dict>
+				<key>testApplyCategoryFromTypeaheadUpdatesSelection</key>
+				<dict>
+					<key>mrnet</key>
+					<real>10.173638939857483</real>
+				</dict>
+				<key>testLoadMoreAppendsRowsAndUpdatesStatusText</key>
+				<dict>
+					<key>mrnet</key>
+					<real>7.3583259582519531</real>
+				</dict>
+				<key>testNextUnclassifiedShortcutUpdatesDetailSelection</key>
+				<dict>
+					<key>mrnet</key>
+					<real>4.9778380393981934</real>
+				</dict>
+				<key>testSearchFilterFindsFixtureRow</key>
+				<dict>
+					<key>mrnet</key>
+					<real>5.5489729642868042</real>
+				</dict>
+				<key>testUndoShortcutRestoresClassification</key>
+				<dict>
+					<key>mrnet</key>
+					<real>19.577821969985962</real>
+				</dict>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

@@ -138,6 +138,42 @@ ensure_pg_install() {
     fi
 }
 
+ensure_xcode_ready() {
+    #R060: Ensure xcodebuild exists and Xcode first-launch setup is complete.
+    #R065: Use 1psa-provided sudo credential for privileged Xcode initialization.
+    echo ""
+    echo "[Xcode] Checking..."
+    if ! command -v xcodebuild >/dev/null 2>&1; then
+        echo "❌ [Xcode] xcodebuild not found."
+        echo "Install Xcode (or Command Line Tools) and run this script again."
+        echo "Tip: xcode-select --install"
+        exit 1
+    fi
+
+    if xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1; then
+        echo "✅ [Xcode] First-launch status already configured"
+        return
+    fi
+
+    echo "⚠️  [Xcode] First-launch setup required; running with sudo..."
+    sudo -k
+    "$ONEPSA_LOCAL_BIN" -f "$PSA_INSTALL_SUDO_ITEM" "$PSA_INSTALL_SUDO_ITEM" | sudo -S xcodebuild -runFirstLaunch
+
+    # Some Xcode installations still require explicit license acceptance.
+    if ! xcodebuild -license check >/dev/null 2>&1; then
+        echo "⚠️  [Xcode] Accepting Xcode license..."
+        sudo -k
+        "$ONEPSA_LOCAL_BIN" -f "$PSA_INSTALL_SUDO_ITEM" "$PSA_INSTALL_SUDO_ITEM" | sudo -S xcodebuild -license accept
+    fi
+
+    if xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1; then
+        echo "✅ [Xcode] First-launch setup completed"
+    else
+        echo "❌ [Xcode] First-launch setup did not complete successfully"
+        exit 1
+    fi
+}
+
 print_final_guidance() {
     #R050: Print final readiness guidance and local source paths.
     echo ""
@@ -160,5 +196,6 @@ ensure_brew_formula "git"
 ensure_brew_formula "bats-core" "bats"
 
 ensure_1psa
+ensure_xcode_ready
 ensure_pg_install
 print_final_guidance

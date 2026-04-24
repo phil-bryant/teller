@@ -1,0 +1,19 @@
+{
+  "" : {
+    "diagnostics" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests-primary.dia",
+    "emit-module-dependencies" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests-primary-emit-module.dia",
+    "pch" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests-primary.swiftdeps"
+  },
+  "/Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift" : {
+    "const-values" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests.swiftconstvalues",
+    "dependencies" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests.d",
+    "diagnostics" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests.dia",
+    "index-unit-output-path" : "/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests.o",
+    "llvm-bc" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests.bc",
+    "object" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests.o",
+    "swift-dependencies" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests.swiftdeps",
+    "swiftmodule" : "/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITests.build/Objects-normal/x86_64/TransactionClassifierUITests~partial.swiftmodule"
+  }
+}
