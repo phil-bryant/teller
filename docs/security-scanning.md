@@ -1,6 +1,6 @@
 # Security Scanning (SAST / DAST)
 
-This project uses a local-first security lane with optional CI execution.
+This project uses local script-based security checks (SAST and DAST).
 
 ## Tooling
 
@@ -11,7 +11,7 @@ This project uses a local-first security lane with optional CI execution.
   - `detect-secrets`
 - DAST:
   - `schemathesis` against FastAPI OpenAPI
-  - `OWASP ZAP Baseline` against local HTTP targets
+  - `OWASP ZAP Baseline` CLI (`zap-baseline.py`) against local HTTP targets
 
 Security tools are installed in an isolated virtualenv (`.security-venv`) by the runner script to avoid conflicts with app/runtime dependencies.
 
@@ -46,6 +46,8 @@ Token capture server is optional and runs when possible:
 - enabled by `RUN_TOKEN_CAPTURE_DAST=true`
 - in `auto` mode, it runs only when `~/.teller/application_id.txt` exists
 
+ZAP baseline uses local CLI (not Docker). Ensure `zap-baseline.py` is available on `PATH`.
+
 ## Gating policy
 
 - Merge-blocking findings:
@@ -70,15 +72,7 @@ For false positives or accepted risks:
    - ZAP: tune `.zap/rules.tsv`
 3. Document expiration/revisit date for the exception.
 
-## CI rollout phases
+## Script entrypoints
 
-Phase 1 (report-only):
-
-- Run workflow `.github/workflows/security.yml` on pull requests.
-- Keep `SECURITY_FAIL_ON_HIGH_CRITICAL=false`.
-- Upload all scanner reports as build artifacts.
-
-Phase 2 (enforced):
-
-- Enable `enforce_high_critical=true` via `workflow_dispatch`, then make it default.
-- Keep fail gate aligned with local behavior (`SECURITY_FAIL_ON_HIGH_CRITICAL=true`).
+- `./17_run_security_checks.sh`: runs SAST and, by default, invokes DAST.
+- `./18_run_dast_checks.sh`: runs DAST only.

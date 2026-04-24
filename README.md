@@ -59,7 +59,7 @@ Run these checks from the project root after activating the project virtual envi
 source ./teller-venv/bin/activate
 ```
 
-Security scanning can run locally via scripts and in CI via `.github/workflows/security.yml`.
+Security scanning currently runs via local scripts (`17_run_security_checks.sh` and `18_run_dast_checks.sh`).
 
 ### 1) Requirements Traceability Verification
 
@@ -166,6 +166,7 @@ Useful flags:
 
 - `RUN_SAST=true|false` (default `true`)
 - `RUN_DAST=true|false` (default `true`)
+- `RUN_ZAP=true|false` (default `true`, requires local `zap-baseline.py`)
 - `SECURITY_FAIL_ON_HIGH_CRITICAL=true|false` (default `true`)
 - `RUN_TOKEN_CAPTURE_DAST=true|false|auto` (default `auto`)
 
