@@ -3,6 +3,10 @@
 __pycache__/
 teller-venv/*
 .DS_Store
+macos-ui/.build/
+macos-ui/.swiftpm/
+macos-ui/.derivedData-ui-tests/
+macos/.build/
 tokens.json
 localhost.key
 localhost.pem
@@ -13,7 +17,3 @@ backups
 archive/backup_extracts
 bin/*
 .cursor/rules/*
-macos-ui/.build/
-macos-ui/.swiftpm/
-macos-ui/.derivedData-ui-tests/
-macos/.build/

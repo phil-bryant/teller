@@ -12,7 +12,7 @@ final class ClassificationViewModel {
     var totalTransactions = 0
     var selection: Set<String> = []
     var searchText = ""
-    var onlyUnclassified = false
+    var onlyUnclassified = true // #R025
     var focusedSearch = false
     var selectedCategoryId: Int?
     var rowState: [String: SaveState] = [:]

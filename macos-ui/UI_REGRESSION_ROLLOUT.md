@@ -5,8 +5,8 @@ Use this rollout to keep feedback fast while increasing coverage.
 ## Gate definitions
 
 - **Gate 1 (`swift test`)**: existing unit tests and model logic.
-- **Gate 2 (snapshot lane)**: `./15_run_macos_ui_regression_tests.sh` with `RUN_XCUITESTS=false`.
-- **Gate 3 (full UI lane)**: `./15_run_macos_ui_regression_tests.sh` with defaults to include XCUITest smoke coverage.
+- **Gate 2 (snapshot lane)**: `./16_run_macos_ui_regression_tests.sh` with `RUN_XCUITESTS=false`.
+- **Gate 3 (full UI lane)**: `./16_run_macos_ui_regression_tests.sh` with defaults to include XCUITest smoke coverage.
 
 ## Suggested adoption order
 
