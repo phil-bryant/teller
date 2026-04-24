@@ -13,27 +13,27 @@
 				<key>testApplyCategoryFromTypeaheadUpdatesSelection</key>
 				<dict>
 					<key>mrnet</key>
-					<real>10.173638939857483</real>
+					<real>11.428032994270325</real>
 				</dict>
 				<key>testLoadMoreAppendsRowsAndUpdatesStatusText</key>
 				<dict>
 					<key>mrnet</key>
-					<real>7.3583259582519531</real>
+					<real>7.3175320625305176</real>
 				</dict>
 				<key>testNextUnclassifiedShortcutUpdatesDetailSelection</key>
 				<dict>
 					<key>mrnet</key>
-					<real>4.9778380393981934</real>
+					<real>5.1744509935379028</real>
 				</dict>
 				<key>testSearchFilterFindsFixtureRow</key>
 				<dict>
 					<key>mrnet</key>
-					<real>5.5489729642868042</real>
+					<real>5.669395923614502</real>
 				</dict>
 				<key>testUndoShortcutRestoresClassification</key>
 				<dict>
 					<key>mrnet</key>
-					<real>19.577821969985962</real>
+					<real>16.110710978507996</real>
 				</dict>
 			</dict>
 		</dict>

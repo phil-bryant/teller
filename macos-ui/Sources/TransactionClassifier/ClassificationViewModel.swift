@@ -119,15 +119,23 @@ final class ClassificationViewModel {
     private func apply(updates: [ClassificationMutation], shouldRecordUndo: Bool = true) async {
         // #R010: Apply optimistic UI state, commit via API, then rollback on errors.
         guard !updates.isEmpty else { return }
-        let previous = Dictionary(uniqueKeysWithValues: updates.compactMap { mutation in
+        // #R010: Drop mutations that match the row's current classification so a redundant
+        // apply (e.g. typeahead auto-apply followed by an explicit "Apply to Selected" click)
+        // does not push an identity entry onto the undo stack and swallow a subsequent undo.
+        let effectiveUpdates = updates.filter { mutation in
+            guard let row = transactions.first(where: { $0.transaction_id == mutation.transaction_id }) else { return false }
+            return row.classification?.nys_snw_category_id != mutation.nys_snw_category_id
+        }
+        guard !effectiveUpdates.isEmpty else { return }
+        let previous = Dictionary(uniqueKeysWithValues: effectiveUpdates.compactMap { mutation in
             transactions.first(where: { $0.transaction_id == mutation.transaction_id }).map { (mutation.transaction_id, $0.classification) }
         })
-        optimisticPatch(updates, state: .saving)
+        optimisticPatch(effectiveUpdates, state: .saving)
         do {
-            _ = try await api.saveClassifications(updates)
-            optimisticPatch(updates, state: .saved(Date()))
+            _ = try await api.saveClassifications(effectiveUpdates)
+            optimisticPatch(effectiveUpdates, state: .saved(Date()))
             if shouldRecordUndo {
-                let next = Dictionary(uniqueKeysWithValues: updates.map { mutation in
+                let next = Dictionary(uniqueKeysWithValues: effectiveUpdates.map { mutation in
                     let cat = mutation.nys_snw_category_id.flatMap { id in
                         categories.first(where: { $0.nys_snw_category_id == id }).map {
                             TransactionCategory(nys_snw_category_id: $0.nys_snw_category_id, display_label: $0.display_label)
@@ -137,12 +145,12 @@ final class ClassificationViewModel {
                 })
                 undoStack.append(UndoAction(prior: previous, next: next))
             }
-            statusText = "Saved \(updates.count) classification(s)"
+            statusText = "Saved \(effectiveUpdates.count) classification(s)"
             errorText = ""
             syncPickerToSelection()
         } catch {
             restore(previous)
-            updates.forEach { rowState[$0.transaction_id] = .failed(error.localizedDescription) }
+            effectiveUpdates.forEach { rowState[$0.transaction_id] = .failed(error.localizedDescription) }
             statusText = "Save failed"
             errorText = error.localizedDescription
         }

@@ -6,10 +6,10 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>03DE03EF-911B-4B2B-9345-9C06F0942FAA</key>
+		<key>0E77A3B9-E605-4C76-8FB7-6113F672C77F</key>
 		<dict>
 			<key>auxiliaryLogUniqueIdentifier</key>
-			<string>93F43CB0-DF76-418B-A02C-101EA46EB226</string>
+			<string>668BDC90-6DAF-44E7-B51D-B961E0A7DE30</string>
 			<key>auxiliaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
@@ -30,7 +30,7 @@
 			<key>domainType</key>
 			<string>com.apple.dt.unit.cocoaUnitTest</string>
 			<key>fileName</key>
-			<string>Test-TransactionClassifierUITestHost-2026.04.23_21-26-52--0400.xcresult</string>
+			<string>Test-TransactionClassifierUITestHost-2026.04.23_23-09-53--0400.xcresult</string>
 			<key>hasAuxiliaryLog</key>
 			<true/>
 			<key>hasPrimaryLog</key>
@@ -38,13 +38,13 @@
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>T</string>
+				<string>W</string>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
 				<integer>0</integer>
 				<key>totalNumberOfTestFailures</key>
-				<integer>1</integer>
+				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
 				<integer>1</integer>
 			</dict>
@@ -57,18 +57,18 @@
 			<key>signature</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>timeStartedRecording</key>
-			<real>798686812.68431199</real>
+			<real>798692993.74963105</real>
 			<key>timeStoppedRecording</key>
-			<real>798686865.97941804</real>
+			<real>798693048.297647</real>
 			<key>title</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
-			<string>03DE03EF-911B-4B2B-9345-9C06F0942FAA</string>
+			<string>0E77A3B9-E605-4C76-8FB7-6113F672C77F</string>
 		</dict>
-		<key>0C3499EF-C5EC-4003-AFA3-9AF2C5690730</key>
+		<key>83EEEFCE-9009-4CED-8931-2D61574612C9</key>
 		<dict>
 			<key>auxiliaryLogUniqueIdentifier</key>
-			<string>2F011F3C-C6CA-436F-B284-2035C88E9AF3</string>
+			<string>86D1CF38-252F-4465-80D7-8E6110F9D733</string>
 			<key>auxiliaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
@@ -89,7 +89,7 @@
 			<key>domainType</key>
 			<string>com.apple.dt.unit.cocoaUnitTest</string>
 			<key>fileName</key>
-			<string>Test-TransactionClassifierUITestHost-2026.04.23_21-27-57--0400.xcresult</string>
+			<string>Test-TransactionClassifierUITestHost-2026.04.23_23-01-04--0400.xcresult</string>
 			<key>hasAuxiliaryLog</key>
 			<true/>
 			<key>hasPrimaryLog</key>
@@ -116,131 +116,13 @@
 			<key>signature</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>timeStartedRecording</key>
-			<real>798686877.20559704</real>
+			<real>798692464.94881594</real>
 			<key>timeStoppedRecording</key>
-			<real>798686928.85173094</real>
+			<real>798692538.96800399</real>
 			<key>title</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
-			<string>0C3499EF-C5EC-4003-AFA3-9AF2C5690730</string>
-		</dict>
-		<key>7868CE2A-DC2F-4C20-98B6-5B1802E03AFC</key>
-		<dict>
-			<key>auxiliaryLogUniqueIdentifier</key>
-			<string>6E358604-EE9B-4D0D-A11E-11FFD29BB382</string>
-			<key>auxiliaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>W</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>2</integer>
-			</dict>
-			<key>className</key>
-			<string>IDESchemeActionsInvocationRecord</string>
-			<key>documentTypeString</key>
-			<string>&lt;nil&gt;</string>
-			<key>domainType</key>
-			<string>com.apple.dt.unit.cocoaUnitTest</string>
-			<key>fileName</key>
-			<string>Test-TransactionClassifierUITestHost-2026.04.23_21-31-04--0400.xcresult</string>
-			<key>hasAuxiliaryLog</key>
-			<true/>
-			<key>hasPrimaryLog</key>
-			<true/>
-			<key>primaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>T</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>1</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>1</integer>
-			</dict>
-			<key>schemeIdentifier-containerName</key>
-			<string>TransactionClassifierUIAutomation project</string>
-			<key>schemeIdentifier-schemeName</key>
-			<string>TransactionClassifierUITestHost</string>
-			<key>schemeIdentifier-sharedScheme</key>
-			<integer>1</integer>
-			<key>signature</key>
-			<string>Test TransactionClassifierUITestHost</string>
-			<key>timeStartedRecording</key>
-			<real>798687064.00994205</real>
-			<key>timeStoppedRecording</key>
-			<real>798687119.20196903</real>
-			<key>title</key>
-			<string>Test TransactionClassifierUITestHost</string>
-			<key>uniqueIdentifier</key>
-			<string>7868CE2A-DC2F-4C20-98B6-5B1802E03AFC</string>
-		</dict>
-		<key>BADFFAE7-C779-4C13-974D-D1AEAF6CC619</key>
-		<dict>
-			<key>auxiliaryLogUniqueIdentifier</key>
-			<string>56162DE1-D4CE-4FB6-9C20-FF4D1BF4F72D</string>
-			<key>auxiliaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>W</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>2</integer>
-			</dict>
-			<key>className</key>
-			<string>IDESchemeActionsInvocationRecord</string>
-			<key>documentTypeString</key>
-			<string>&lt;nil&gt;</string>
-			<key>domainType</key>
-			<string>com.apple.dt.unit.cocoaUnitTest</string>
-			<key>fileName</key>
-			<string>Test-TransactionClassifierUITestHost-2026.04.23_21-22-59--0400.xcresult</string>
-			<key>hasAuxiliaryLog</key>
-			<true/>
-			<key>hasPrimaryLog</key>
-			<true/>
-			<key>primaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>T</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>1</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>1</integer>
-			</dict>
-			<key>schemeIdentifier-containerName</key>
-			<string>TransactionClassifierUIAutomation project</string>
-			<key>schemeIdentifier-schemeName</key>
-			<string>TransactionClassifierUITestHost</string>
-			<key>schemeIdentifier-sharedScheme</key>
-			<integer>1</integer>
-			<key>signature</key>
-			<string>Test TransactionClassifierUITestHost</string>
-			<key>timeStartedRecording</key>
-			<real>798686579.94588399</real>
-			<key>timeStoppedRecording</key>
-			<real>798686632.29209995</real>
-			<key>title</key>
-			<string>Test TransactionClassifierUITestHost</string>
-			<key>uniqueIdentifier</key>
-			<string>BADFFAE7-C779-4C13-974D-D1AEAF6CC619</string>
+			<string>83EEEFCE-9009-4CED-8931-2D61574612C9</string>
 		</dict>
 	</dict>
 </dict>
