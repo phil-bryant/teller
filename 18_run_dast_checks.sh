@@ -15,7 +15,7 @@ RUN_SCHEMATHESIS="${RUN_SCHEMATHESIS:-true}"
 RUN_ZAP="${RUN_ZAP:-true}"
 RUN_TOKEN_CAPTURE_DAST="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
-ZAP_BASELINE_CMD="${ZAP_BASELINE_CMD:-zap-baseline.py}"
+ZAP_CLI_CMD="${ZAP_CLI_CMD:-/Applications/ZAP.app/Contents/MacOS/ZAP.sh}"
 
 TOKEN_CAPTURE_PORT="${TOKEN_CAPTURE_DAST_PORT:-8088}"
 TOKEN_CAPTURE_URL="${TOKEN_CAPTURE_DAST_URL:-http://127.0.0.1:${TOKEN_CAPTURE_PORT}}"
@@ -25,6 +25,8 @@ SCHEMATHESIS_SEED="${SCHEMATHESIS_SEED:-424242}"
 SCHEMATHESIS_MAX_EXAMPLES="${SCHEMATHESIS_MAX_EXAMPLES:-25}"
 
 mkdir -p "$REPORT_DIR"
+REPORT_DIR_ABS="$(cd "$REPORT_DIR" && pwd)"
+ZAP_CLASSIFICATION_TARGET="${ZAP_CLASSIFICATION_TARGET:-${BASE_URL}/health}"
 
 if [[ -d "$SECURITY_VENV_DIR/bin" ]]; then
   export PATH="${SECURITY_VENV_DIR}/bin:${PATH}"
@@ -58,19 +60,16 @@ wait_for_http() {
   done
 }
 
-run_zap_baseline() {
+run_zap_quick_scan() {
   local target_url="$1"
-  local json_report="$2"
-  local html_report="$3"
-  local log_report="$4"
-  echo "▶ Running OWASP ZAP Baseline against ${target_url}"
-  "$ZAP_BASELINE_CMD" \
-    -t "$target_url" \
-    -J "$json_report" \
-    -r "$html_report" \
-    -m 3 \
-    -c ".zap/rules.tsv" \
-    -I | tee "$log_report"
+  local html_report="$2"
+  local log_report="$3"
+  echo "▶ Running OWASP ZAP quick scan (CLI) against ${target_url}"
+  "$ZAP_CLI_CMD" -cmd \
+    -quickurl "$target_url" \
+    -quickout "$html_report" \
+    -quickprogress \
+    -silent | tee "$log_report"
 }
 
 CLASSIFIER_API_PID=""
@@ -88,7 +87,7 @@ trap cleanup EXIT
 
 echo "▶ Starting local classification API for DAST at ${BASE_URL}"
 TELLER_CLASSIFIER_API_HOST="$BASE_HOST" TELLER_CLASSIFIER_API_PORT="$BASE_PORT" \
-  "$DAST_APP_PYTHON" "./14_run_classification_api.py" >"${REPORT_DIR}/classification-api.log" 2>&1 &
+  "$DAST_APP_PYTHON" "./14_run_classification_api.py" >"${REPORT_DIR_ABS}/classification-api.log" 2>&1 &
 CLASSIFIER_API_PID="$!"
 wait_for_http "${BASE_URL}/health" 45
 
@@ -100,17 +99,20 @@ if [[ "$RUN_SCHEMATHESIS" == "true" ]]; then
     --seed "$SCHEMATHESIS_SEED" \
     --max-examples "$SCHEMATHESIS_MAX_EXAMPLES" \
     --report junit \
-    --report-junit-path "${REPORT_DIR}/schemathesis-junit.xml" \
-    | tee "${REPORT_DIR}/schemathesis.log"
+    --report-junit-path "${REPORT_DIR_ABS}/schemathesis-junit.xml" \
+    | tee "${REPORT_DIR_ABS}/schemathesis.log"
 fi
 
 if [[ "$RUN_ZAP" == "true" ]]; then
-  require_command "$ZAP_BASELINE_CMD"
-  run_zap_baseline \
-    "$BASE_URL" \
-    "${REPORT_DIR}/zap-classification.json" \
-    "${REPORT_DIR}/zap-classification.html" \
-    "${REPORT_DIR}/zap-classification.log"
+  if [[ ! -x "$ZAP_CLI_CMD" ]]; then
+    echo "❌ Missing ZAP CLI executable: $ZAP_CLI_CMD"
+    echo "Install prerequisites with ./01_install_prerequisites.sh or set ZAP_CLI_CMD."
+    exit 1
+  fi
+  run_zap_quick_scan \
+    "$ZAP_CLASSIFICATION_TARGET" \
+    "${REPORT_DIR_ABS}/zap-classification.html" \
+    "${REPORT_DIR_ABS}/zap-classification.log"
 fi
 
 if [[ "$RUN_TOKEN_CAPTURE_DAST" == "auto" ]]; then
@@ -124,23 +126,22 @@ fi
 if [[ "$RUN_TOKEN_CAPTURE_DAST" == "true" ]]; then
   echo "▶ Starting token capture server for DAST at ${TOKEN_CAPTURE_URL}"
   "$DAST_APP_PYTHON" "./teller/teller_connect_token_server.py" --no-open --mode manage --port "$TOKEN_CAPTURE_PORT" \
-    >"${REPORT_DIR}/token-capture.log" 2>&1 &
+    >"${REPORT_DIR_ABS}/token-capture.log" 2>&1 &
   TOKEN_CAPTURE_PID="$!"
   wait_for_http "${TOKEN_CAPTURE_URL}/api/status" 45
 
   if [[ "$RUN_ZAP" == "true" ]]; then
-    run_zap_baseline \
+    run_zap_quick_scan \
       "$TOKEN_CAPTURE_URL" \
-      "${REPORT_DIR}/zap-token-capture.json" \
-      "${REPORT_DIR}/zap-token-capture.html" \
-      "${REPORT_DIR}/zap-token-capture.log"
+      "${REPORT_DIR_ABS}/zap-token-capture.html" \
+      "${REPORT_DIR_ABS}/zap-token-capture.log"
   fi
 else
   echo "ℹ️  Token capture DAST skipped (set RUN_TOKEN_CAPTURE_DAST=true and ensure ~/.teller/application_id.txt exists)."
 fi
 
 HIGH_ALERTS=0
-for zap_json in "${REPORT_DIR}/zap-classification.json" "${REPORT_DIR}/zap-token-capture.json"; do
+for zap_json in "${REPORT_DIR_ABS}/zap-classification.json" "${REPORT_DIR_ABS}/zap-token-capture.json"; do
   if [[ -f "$zap_json" ]]; then
     alerts="$(python3 - <<'PY' "$zap_json"
 import json, sys
@@ -163,6 +164,10 @@ PY
     HIGH_ALERTS=$((HIGH_ALERTS + alerts))
   fi
 done
+
+if [[ ! -f "${REPORT_DIR_ABS}/zap-classification.json" ]] && [[ ! -f "${REPORT_DIR_ABS}/zap-token-capture.json" ]]; then
+  echo "ℹ️  ZAP CLI quick scan produced HTML/log output only; JSON alert parsing skipped."
+fi
 
 echo "DAST high/critical alert count: ${HIGH_ALERTS}"
 if [[ "$FAIL_ON_HIGH_CRITICAL" == "true" ]] && (( HIGH_ALERTS > 0 )); then

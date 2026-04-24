@@ -11,7 +11,7 @@ This project uses local script-based security checks (SAST and DAST).
   - `detect-secrets`
 - DAST:
   - `schemathesis` against FastAPI OpenAPI
-  - `OWASP ZAP Baseline` CLI (`zap-baseline.py`) against local HTTP targets
+  - `OWASP ZAP` local CLI quick scan via `ZAP.sh` against local HTTP targets
 
 Security tools are installed in an isolated virtualenv (`.security-venv`) by the runner script to avoid conflicts with app/runtime dependencies.
 
@@ -46,7 +46,7 @@ Token capture server is optional and runs when possible:
 - enabled by `RUN_TOKEN_CAPTURE_DAST=true`
 - in `auto` mode, it runs only when `~/.teller/application_id.txt` exists
 
-ZAP baseline uses local CLI (not Docker). Ensure `zap-baseline.py` is available on `PATH`.
+ZAP uses local CLI (not Docker). By default, the script uses `/Applications/ZAP.app/Contents/MacOS/ZAP.sh`.
 
 ## Gating policy
 

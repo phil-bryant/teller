@@ -242,7 +242,7 @@ Active secret and credential sources are:
   - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets).
   - Optionally runs DAST by calling `18_run_dast_checks.sh`.
 - `18_run_dast_checks.sh`
-  - Starts local API target(s), runs Schemathesis against OpenAPI, and runs OWASP ZAP Baseline.
+  - Starts local API target(s), runs Schemathesis against OpenAPI, and runs OWASP ZAP local CLI quick scan.
   - Supports optional token-capture target scanning when Teller local credentials are present.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
