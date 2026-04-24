@@ -15,6 +15,7 @@ RUN_SCHEMATHESIS="${RUN_SCHEMATHESIS:-true}"
 RUN_ZAP="${RUN_ZAP:-true}"
 RUN_TOKEN_CAPTURE_DAST="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
+ZAP_BASELINE_CMD="${ZAP_BASELINE_CMD:-zap-baseline.py}"
 
 TOKEN_CAPTURE_PORT="${TOKEN_CAPTURE_DAST_PORT:-8088}"
 TOKEN_CAPTURE_URL="${TOKEN_CAPTURE_DAST_URL:-http://127.0.0.1:${TOKEN_CAPTURE_PORT}}"
@@ -57,13 +58,19 @@ wait_for_http() {
   done
 }
 
-to_zap_target() {
-  local url="$1"
-  if [[ "$url" == http://127.0.0.1:* ]] || [[ "$url" == http://localhost:* ]]; then
-    echo "${url/127.0.0.1/host.docker.internal}" | sed 's|localhost|host.docker.internal|'
-  else
-    echo "$url"
-  fi
+run_zap_baseline() {
+  local target_url="$1"
+  local json_report="$2"
+  local html_report="$3"
+  local log_report="$4"
+  echo "▶ Running OWASP ZAP Baseline against ${target_url}"
+  "$ZAP_BASELINE_CMD" \
+    -t "$target_url" \
+    -J "$json_report" \
+    -r "$html_report" \
+    -m 3 \
+    -c ".zap/rules.tsv" \
+    -I | tee "$log_report"
 }
 
 CLASSIFIER_API_PID=""
@@ -98,18 +105,12 @@ if [[ "$RUN_SCHEMATHESIS" == "true" ]]; then
 fi
 
 if [[ "$RUN_ZAP" == "true" ]]; then
-  require_command docker
-  ZAP_TARGET="$(to_zap_target "$BASE_URL")"
-  echo "▶ Running OWASP ZAP Baseline against ${ZAP_TARGET}"
-  docker run --rm \
-    -v "${REPORT_DIR}:/zap/wrk/:rw" \
-    ghcr.io/zaproxy/zaproxy:stable \
-    zap-baseline.py \
-      -t "$ZAP_TARGET" \
-      -J "zap-classification.json" \
-      -r "zap-classification.html" \
-      -m 3 \
-      -I | tee "${REPORT_DIR}/zap-classification.log"
+  require_command "$ZAP_BASELINE_CMD"
+  run_zap_baseline \
+    "$BASE_URL" \
+    "${REPORT_DIR}/zap-classification.json" \
+    "${REPORT_DIR}/zap-classification.html" \
+    "${REPORT_DIR}/zap-classification.log"
 fi
 
 if [[ "$RUN_TOKEN_CAPTURE_DAST" == "auto" ]]; then
@@ -128,17 +129,11 @@ if [[ "$RUN_TOKEN_CAPTURE_DAST" == "true" ]]; then
   wait_for_http "${TOKEN_CAPTURE_URL}/api/status" 45
 
   if [[ "$RUN_ZAP" == "true" ]]; then
-    ZAP_TARGET="$(to_zap_target "$TOKEN_CAPTURE_URL")"
-    echo "▶ Running OWASP ZAP Baseline against ${ZAP_TARGET}"
-    docker run --rm \
-      -v "${REPORT_DIR}:/zap/wrk/:rw" \
-      ghcr.io/zaproxy/zaproxy:stable \
-      zap-baseline.py \
-        -t "$ZAP_TARGET" \
-        -J "zap-token-capture.json" \
-        -r "zap-token-capture.html" \
-        -m 3 \
-        -I | tee "${REPORT_DIR}/zap-token-capture.log"
+    run_zap_baseline \
+      "$TOKEN_CAPTURE_URL" \
+      "${REPORT_DIR}/zap-token-capture.json" \
+      "${REPORT_DIR}/zap-token-capture.html" \
+      "${REPORT_DIR}/zap-token-capture.log"
   fi
 else
   echo "ℹ️  Token capture DAST skipped (set RUN_TOKEN_CAPTURE_DAST=true and ensure ~/.teller/application_id.txt exists)."
