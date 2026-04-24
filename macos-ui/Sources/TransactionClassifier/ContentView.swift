@@ -19,6 +19,7 @@ struct ContentView: View {
                     TextField("Search description / transaction id", text: $viewModel.searchText)
                         .textFieldStyle(.roundedBorder)
                         .focused($searchFocused)
+                        .onSubmit { Task { await viewModel.loadAll() } }
                         .accessibilityIdentifier("search-field")
                     Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
                         .accessibilityIdentifier("only-unclassified-toggle")
@@ -89,7 +90,6 @@ struct ContentView: View {
             guard autoLoadOnAppear else { return }
             await viewModel.loadAll()
         }
-        .onSubmit(of: .text) { Task { await viewModel.loadAll() } }
         .onChange(of: viewModel.selection) { _, _ in viewModel.selectionDidChange() }
         .accessibilityIdentifier("content-root")
     }

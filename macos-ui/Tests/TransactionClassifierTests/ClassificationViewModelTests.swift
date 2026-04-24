@@ -141,6 +141,23 @@ final class ClassificationViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testRedundantSaveSelectionDoesNotPushIdentityUndoEntry() async {
+        let cat = sampleCategory(22, "Dining")
+        let api = MockAPI(categories: [cat], response: .init(total: 1, items: [sampleTransaction("txn_1", classification: nil)]))
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_1"]
+        vm.selectedCategoryId = 22
+        await vm.saveSelection()
+        XCTAssertEqual(vm.undoStack.count, 1)
+        await vm.saveSelection()
+        XCTAssertEqual(vm.undoStack.count, 1, "Re-applying an already-assigned category must not push a duplicate undo entry")
+        await vm.undoLast()
+        XCTAssertNil(vm.transactions.first?.classification, "A single undo should restore the prior unclassified state")
+        XCTAssertTrue(vm.undoStack.isEmpty)
+    }
+
+    @MainActor
     func testSelectedCategoryDidChangeSavesOnlyRowsThatActuallyChange() async {
         let dining = sampleCategory(22, "Dining")
         let current = TransactionCategory(nys_snw_category_id: 22, display_label: "Dining")
