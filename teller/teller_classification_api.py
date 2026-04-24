@@ -1,9 +1,10 @@
 from __future__ import annotations
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Dict, List, Literal, Optional
-from fastapi import FastAPI, HTTPException, Query
-from pydantic import BaseModel
+from typing import Annotated, Any, Dict, List, Literal, Optional
+from fastapi import FastAPI, HTTPException, Query, Request, Response
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from sqlalchemy.exc import DataError
 from sqlalchemy import text
 from teller.teller_db import get_session
 
@@ -23,19 +24,24 @@ class CategoryOption(BaseModel):
 
 
 class CategoryMutation(BaseModel):
-    level_1: Optional[str] = None
-    level_1_name: Optional[str] = None
-    level_2: Optional[str] = None
-    level_2_name: Optional[str] = None
-    level_3: Optional[str] = None
-    level_4: Optional[str] = None
-    categorization: Optional[str] = None
-    applicability: Optional[str] = None
+    model_config = ConfigDict(extra="forbid")
+    level_1: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+    level_1_name: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+    level_2: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+    level_2_name: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+    level_3: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+    level_4: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+    categorization: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+    applicability: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
 
 
 class CategoryDeleteResponse(BaseModel):
     nys_snw_category_id: int
     deleted: Literal[True] = True
+
+
+class ApiError(BaseModel):
+    detail: Any
 
 
 class TransactionCategory(BaseModel):
@@ -63,12 +69,13 @@ class TransactionListResponse(BaseModel):
 
 
 class ClassificationMutation(BaseModel):
-    transaction_id: str
+    model_config = ConfigDict(extra="forbid")
+    transaction_id: str = Field(min_length=1)
     nys_snw_category_id: Optional[int] = None
 
 
 class ClassificationBatchRequest(BaseModel):
-    updates: List[ClassificationMutation]
+    updates: List[ClassificationMutation] = Field(min_length=1)
 
 
 class ClassificationWriteResponse(BaseModel):
@@ -106,7 +113,7 @@ def _ensure_exists(session, table: str, column: str, value: object, error: str):
 def _normalize_text(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
-    normalized = value.strip()
+    normalized = value.replace("\x00", "").strip()
     return normalized if normalized else None
 
 
@@ -138,37 +145,44 @@ def _fetch_category(session, category_id: int) -> Dict[str, object]:
 
 def _write_category(session, body: CategoryMutation, category_id: Optional[int] = None) -> CategoryOption:
     params = _category_params(body)
-    if category_id is None:
-        created = session.execute(text("""
-            INSERT INTO teller.nys_snw_category (
-                level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability
-            ) VALUES (
-                :level_1, :level_1_name, :level_2, :level_2_name, :level_3, :level_4, :categorization, :applicability
-            )
-            RETURNING nys_snw_category_id
-        """), params).fetchone()
+    try:
+        if category_id is None:
+            created = session.execute(text("""
+                INSERT INTO teller.nys_snw_category (
+                    level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability
+                ) VALUES (
+                    :level_1, :level_1_name, :level_2, :level_2_name, :level_3, :level_4, :categorization, :applicability
+                )
+                RETURNING nys_snw_category_id
+            """), params).fetchone()
+            session.commit()
+            row = _fetch_category(session, created[0])
+            return CategoryOption(**row, display_label=_display_label(row))
+        _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", category_id,
+                       f"Unknown nys_snw_category_id: {category_id}")
+        params["nys_snw_category_id"] = category_id
+        session.execute(text("""
+            UPDATE teller.nys_snw_category
+               SET level_1 = :level_1,
+                   level_1_name = :level_1_name,
+                   level_2 = :level_2,
+                   level_2_name = :level_2_name,
+                   level_3 = :level_3,
+                   level_4 = :level_4,
+                   categorization = :categorization,
+                   applicability = :applicability,
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE nys_snw_category_id = :nys_snw_category_id
+        """), params)
         session.commit()
-        row = _fetch_category(session, created[0])
+        row = _fetch_category(session, category_id)
         return CategoryOption(**row, display_label=_display_label(row))
-    _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", category_id,
-                   f"Unknown nys_snw_category_id: {category_id}")
-    params["nys_snw_category_id"] = category_id
-    session.execute(text("""
-        UPDATE teller.nys_snw_category
-           SET level_1 = :level_1,
-               level_1_name = :level_1_name,
-               level_2 = :level_2,
-               level_2_name = :level_2_name,
-               level_3 = :level_3,
-               level_4 = :level_4,
-               categorization = :categorization,
-               applicability = :applicability,
-               updated_at = CURRENT_TIMESTAMP
-         WHERE nys_snw_category_id = :nys_snw_category_id
-    """), params)
-    session.commit()
-    row = _fetch_category(session, category_id)
-    return CategoryOption(**row, display_label=_display_label(row))
+    except HTTPException:
+        raise
+    except (DataError, UnicodeEncodeError):
+        raise HTTPException(status_code=400, detail="Invalid category payload for database constraints")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid category payload for database constraints")
 
 
 #R025: Validate and apply transaction classification mutation.
@@ -186,7 +200,11 @@ def _write_one(session, transaction_id: str, nys_snw_category_id: Optional[int])
         session.execute(text("DELETE FROM teller.transaction_nys_snw_category WHERE transaction_id = :transaction_id"),
                         {"transaction_id": transaction_id})
         session.commit()
-        return ClassificationWriteResponse(transaction_id=transaction_id, nys_snw_category_id=None, updated_at=datetime.now())
+        return ClassificationWriteResponse(
+            transaction_id=transaction_id,
+            nys_snw_category_id=None,
+            updated_at=datetime.now(timezone.utc),
+        )
     _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", nys_snw_category_id,
                    f"Unknown nys_snw_category_id: {nys_snw_category_id}")
     updated = session.execute(text("""
@@ -201,9 +219,15 @@ def _write_one(session, transaction_id: str, nys_snw_category_id: Optional[int])
             VALUES (:transaction_id, :nys_snw_category_id, 'user')
          RETURNING updated_at
         """), {"transaction_id": transaction_id, "nys_snw_category_id": nys_snw_category_id}).fetchone()
+    updated_at = updated[0]
+    if isinstance(updated_at, datetime) and updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
     session.commit()
-    return ClassificationWriteResponse(transaction_id=transaction_id, nys_snw_category_id=nys_snw_category_id,
-                                       updated_at=updated[0])
+    return ClassificationWriteResponse(
+        transaction_id=transaction_id,
+        nys_snw_category_id=nys_snw_category_id,
+        updated_at=updated_at,
+    )
 
 
 def create_app() -> FastAPI:
@@ -226,17 +250,25 @@ def create_app() -> FastAPI:
             """)).mappings().all()
         return [CategoryOption(**row, display_label=_display_label(row)) for row in rows]
 
-    @app.post("/v1/categories", response_model=CategoryOption)
+    @app.post("/v1/categories", response_model=CategoryOption, responses={
+        400: {"model": ApiError, "description": "Invalid category payload"},
+    })
     def create_category(body: CategoryMutation):
         with get_session() as session:
             return _write_category(session, body)
 
-    @app.put("/v1/categories/{nys_snw_category_id}", response_model=CategoryOption)
+    @app.put("/v1/categories/{nys_snw_category_id:int}", response_model=CategoryOption, responses={
+        400: {"model": ApiError, "description": "Invalid category payload"},
+        404: {"model": ApiError, "description": "Unknown category id"},
+    })
     def update_category(nys_snw_category_id: int, body: CategoryMutation):
         with get_session() as session:
             return _write_category(session, body, category_id=nys_snw_category_id)
 
-    @app.delete("/v1/categories/{nys_snw_category_id}", response_model=CategoryDeleteResponse)
+    @app.delete("/v1/categories/{nys_snw_category_id:int}", response_model=CategoryDeleteResponse, responses={
+        404: {"model": ApiError, "description": "Unknown category id"},
+        409: {"model": ApiError, "description": "Category still referenced by transactions"},
+    })
     def delete_category(nys_snw_category_id: int):
         with get_session() as session:
             _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", nys_snw_category_id,
@@ -274,15 +306,39 @@ def create_app() -> FastAPI:
         return [CategoryCountsRow(nys_snw_category_id=row["nys_snw_category_id"], display_label=_display_label(row),
                                   assigned_transactions=row["assigned_transactions"]) for row in rows]
 
+    @app.api_route("/v1/categories/counts", methods=["POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)
+    def category_counts_method_not_allowed():
+        return Response(status_code=405, headers={"Allow": "GET"})
+
     #R020: Posted transaction listing with filters and latest classification context.
-    @app.get("/v1/transactions", response_model=TransactionListResponse)
+    @app.get("/v1/transactions", response_model=TransactionListResponse, responses={
+        400: {"model": ApiError, "description": "Invalid query parameter value"},
+        500: {"model": ApiError, "description": "Unexpected server error"},
+    })
     def list_transactions(
-        search: str = Query(default="", min_length=0, max_length=120),
-        status: str = Query(default=""),
+        request: Request,
+        search: str = Query(default="", min_length=0, max_length=120, pattern=r"^[\x20-\x7E]*$"),
+        status: Literal["", "posted", "pending"] = Query(default=""),
         only_unclassified: bool = Query(default=False),
         limit: int = Query(default=150, ge=1, le=500),
-        offset: int = Query(default=0, ge=0),
+        offset: int = Query(default=0, ge=0, le=1_000_000),
     ):
+        allowed_query_params = {"search", "status", "only_unclassified", "limit", "offset"}
+        unknown_params = sorted(set(request.query_params.keys()) - allowed_query_params)
+        if unknown_params:
+            raise HTTPException(status_code=400, detail=f"Unknown query parameters: {', '.join(unknown_params)}")
+        only_unclassified_raw = request.query_params.get("only_unclassified")
+        if only_unclassified_raw is not None and only_unclassified_raw.lower() not in {"true", "false"}:
+            raise HTTPException(
+                status_code=422,
+                detail=[
+                    {
+                        "loc": ["query", "only_unclassified"],
+                        "msg": "Input should be a valid boolean, unable to interpret input",
+                        "type": "bool_parsing",
+                    }
+                ],
+            )
         filters, params = ["tt.status = 'posted'"], {"limit": limit, "offset": offset}
         if search:
             filters.append("(tt.description ILIKE :search OR tt.transaction_id ILIKE :search)")
@@ -308,18 +364,25 @@ def create_app() -> FastAPI:
             LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
             {where_sql}
         """
-        with get_session() as session:
-            total = session.execute(text(f"SELECT COUNT(*) {base_query}"), params).scalar_one()
-            rows = session.execute(text(f"""
-                SELECT tt.transaction_id, tt.account_id, ta.institution_id, ta.last_four AS account_last_four,
-                       tt.date, tt.amount, tt.description, tt.status,
-                       ttt.code AS transaction_type_code, ttd.category AS teller_category,
-                       m.nys_snw_category_id, nsc.level_1, nsc.level_1_name, nsc.level_2, nsc.level_2_name,
-                       nsc.level_3, nsc.level_4, nsc.categorization
-                {base_query}
-                ORDER BY tt.date DESC, tt.transaction_id DESC
-                LIMIT :limit OFFSET :offset
-            """), params).mappings().all()
+        try:
+            with get_session() as session:
+                total = session.execute(text(f"SELECT COUNT(*) {base_query}"), params).scalar_one()
+                rows = session.execute(text(f"""
+                    SELECT tt.transaction_id, tt.account_id, ta.institution_id, ta.last_four AS account_last_four,
+                           tt.date, tt.amount, tt.description, tt.status,
+                           ttt.code AS transaction_type_code, ttd.category AS teller_category,
+                           m.nys_snw_category_id, nsc.level_1, nsc.level_1_name, nsc.level_2, nsc.level_2_name,
+                           nsc.level_3, nsc.level_4, nsc.categorization
+                    {base_query}
+                    ORDER BY tt.date DESC, tt.transaction_id DESC
+                    LIMIT :limit OFFSET :offset
+                """), params).mappings().all()
+        except HTTPException:
+            raise
+        except (DataError, UnicodeEncodeError):
+            raise HTTPException(status_code=400, detail="Invalid query parameter value")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid query parameter value")
         items = []
         for row in rows:
             classification = None
@@ -336,18 +399,19 @@ def create_app() -> FastAPI:
         return TransactionListResponse(total=total, items=items)
 
     #R030: Enforce path/body transaction ID consistency.
-    @app.put("/v1/transactions/{transaction_id}/classification", response_model=ClassificationWriteResponse)
+    @app.put("/v1/transactions/{transaction_id}/classification", response_model=ClassificationWriteResponse, responses={
+        400: {"model": ApiError, "description": "Malformed request body"},
+        404: {"model": ApiError, "description": "Unknown transaction or category id"},
+    })
     def set_classification(transaction_id: str, body: ClassificationMutation):
-        if body.transaction_id != transaction_id:
-            raise HTTPException(status_code=400, detail="Path transaction_id does not match payload transaction_id")
         with get_session() as session:
             return _write_one(session, transaction_id, body.nys_snw_category_id)
 
     #R035: Batch classification writes require non-empty updates.
-    @app.post("/v1/transactions/classifications", response_model=List[ClassificationWriteResponse])
+    @app.post("/v1/transactions/classifications", response_model=List[ClassificationWriteResponse], responses={
+        404: {"model": ApiError, "description": "Unknown transaction or category id"},
+    })
     def set_classifications(body: ClassificationBatchRequest):
-        if not body.updates:
-            raise HTTPException(status_code=400, detail="updates must not be empty")
         with get_session() as session:
             responses = [_write_one(session, item.transaction_id, item.nys_snw_category_id) for item in body.updates]
         return responses
