@@ -24,6 +24,22 @@ Design: Detail pane provides apply and clear actions bound to selected rows and 
 Tests:
 - Select one or more rows, apply a category, then clear classification and verify row-level status updates.
 
+R020  Statement: Toggling the Unclassified filter in either direction automatically reloads the transaction list.
+Design: `ContentView` observes `viewModel.onlyUnclassified` via `.onChange` and invokes `loadAll()` whenever the switch flips so users do not have to press Refresh.
+Tests:
+- Toggle the Unclassified switch off and on and verify that rows matching the new filter state appear without pressing Refresh.
+
+R025  Statement: Programmatic selection changes scroll the newly-selected row into view.
+Design: The transaction list is wrapped in a `ScrollViewReader` whose proxy calls `scrollTo(firstSelectedId, anchor: .center)` whenever `viewModel.selection` changes, so Next Unclassified (or any model-driven selection update) brings the target row on-screen when it is not already visible.
+Tests:
+- With the Unclassified filter off and all fixture pages loaded, scroll the list so the top row is off-screen, trigger Next Unclassified, and verify the newly-selected row becomes hittable in the viewport.
+
+R030  Statement: Detail pane header includes the selected transaction's identifier.
+Design: The detail pane renders `Text("Transaction \(selected.transaction_id)")` as its primary header instead of a generic "Transaction" label so the active transaction identifier is always visible.
+Tests:
+- Select a fixture row and verify the detail pane header displays `Transaction <transaction_id>` matching the selected row.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ContentView.swift` from macOS classifier implementation.
+- 2026-04-23: Added R020 (auto-refresh on Unclassified toggle), R025 (scroll-to-selection), and R030 (detail header includes transaction id).

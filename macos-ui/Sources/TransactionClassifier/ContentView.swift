@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var viewModel: ClassificationViewModel
     @FocusState private var searchFocused: Bool
+    @State private var scrollTargetId: String?
     let autoLoadOnAppear: Bool
 
     init(viewModel: ClassificationViewModel, autoLoadOnAppear: Bool = true) {
@@ -26,36 +27,37 @@ struct ContentView: View {
                     Button("Refresh") { Task { await viewModel.loadAll() } }
                         .accessibilityIdentifier("refresh-button")
                 }
-                List(viewModel.transactions, selection: $viewModel.selection) { row in
-                    let classificationLabel = row.classification?.display_label ?? "Unclassified"
-                    let classificationColor: Color = row.classification == nil ? .secondary : .blue
-                    let accountContext = [row.institution_id, row.account_last_four]
-                        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-                        .filter { !$0.isEmpty }
-                        .joined(separator: " • ")
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(row.description).lineLimit(1).font(.body.weight(.medium))
-                                .accessibilityIdentifier("transaction-description-\(row.transaction_id)")
-                            Spacer()
-                            Text(row.amount as NSNumber, formatter: amountFormatter).monospacedDigit().foregroundStyle(.primary)
-                                .accessibilityIdentifier("transaction-amount-\(row.transaction_id)")
+                // SwiftUI's ScrollViewReader does not reliably scroll `List` on macOS 14
+                // (Apple Developer Forum #758880), so the transaction list is a
+                // ScrollView + LazyVStack bound to `.scrollPosition(id:anchor:)` which gives
+                // us a reliable programmatic scroll-to-target handle for #R025.
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(viewModel.transactions.enumerated()), id: \.element.transaction_id) { idx, row in
+                            transactionRowView(row: row, alternating: idx % 2 == 1)
+                                .id(row.transaction_id)
                         }
-                        HStack {
-                            Text(row.date).foregroundStyle(.secondary).lineLimit(1)
-                            Text("• \(row.status)\(accountContext.isEmpty ? "" : " • \(accountContext)")")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            SaveStateDot(state: viewModel.rowState[row.transaction_id] ?? .idle)
-                        }.font(.caption)
-                        Text(classificationLabel).font(.caption).lineLimit(1).foregroundStyle(classificationColor)
-                            .accessibilityIdentifier("transaction-classification-\(row.transaction_id)")
-                    }.tag(row.transaction_id)
-                        .accessibilityIdentifier("transaction-row-\(row.transaction_id)")
-                        .padding(.vertical, 3)
+                    }
+                    .scrollTargetLayout()
                 }
+                .scrollPosition(id: $scrollTargetId, anchor: .center)
                 .accessibilityIdentifier("transaction-list")
-                .listStyle(.inset(alternatesRowBackgrounds: true))
+                .overlay(alignment: .topTrailing) {
+                    if viewModel.busy {
+                        ProgressView().controlSize(.small).padding(8)
+                    }
+                }
+                // #R025: Scroll the newly-selected row into view when selection changes (e.g., Next Unclassified).
+                .onChange(of: viewModel.selection) { _, newValue in
+                    guard let target = newValue.first else { return }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        scrollTargetId = target
+                    }
+                }
+            }
+            // #R020: Toggling the Unclassified filter in either direction automatically reloads the list.
+            .onChange(of: viewModel.onlyUnclassified) { _, _ in
+                Task { await viewModel.loadAll() }
             }
             .padding(12)
             .frame(minWidth: 360, idealWidth: 420)
@@ -93,6 +95,65 @@ struct ContentView: View {
         .onChange(of: viewModel.selection) { _, _ in viewModel.selectionDidChange() }
         .accessibilityIdentifier("content-root")
     }
+
+    @ViewBuilder
+    private func transactionRowView(row: TransactionRow, alternating: Bool) -> some View {
+        let classificationLabel = row.classification?.display_label ?? "Unclassified"
+        let classificationColor: Color = row.classification == nil ? .secondary : .blue
+        let accountContext = [row.institution_id, row.account_last_four]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " • ")
+        let isSelected = viewModel.selection.contains(row.transaction_id)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(row.description).lineLimit(1).font(.body.weight(.medium))
+                    .accessibilityIdentifier("transaction-description-\(row.transaction_id)")
+                Spacer()
+                Text(row.amount as NSNumber, formatter: amountFormatter).monospacedDigit().foregroundStyle(.primary)
+                    .accessibilityIdentifier("transaction-amount-\(row.transaction_id)")
+            }
+            HStack {
+                Text(row.date).foregroundStyle(.secondary).lineLimit(1)
+                Text("• \(row.status)\(accountContext.isEmpty ? "" : " • \(accountContext)")")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                SaveStateDot(state: viewModel.rowState[row.transaction_id] ?? .idle)
+            }.font(.caption)
+            Text(classificationLabel).font(.caption).lineLimit(1).foregroundStyle(classificationColor)
+                .accessibilityIdentifier("transaction-classification-\(row.transaction_id)")
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(rowBackground(isSelected: isSelected, alternating: alternating))
+        .contentShape(Rectangle())
+        .accessibilityIdentifier("transaction-row-\(row.transaction_id)")
+        .onTapGesture {
+            // Preserve multi-select semantics via Cmd+click, otherwise replace selection.
+            if NSEvent.modifierFlags.contains(.command) {
+                if viewModel.selection.contains(row.transaction_id) {
+                    viewModel.selection.remove(row.transaction_id)
+                } else {
+                    viewModel.selection.insert(row.transaction_id)
+                }
+            } else {
+                viewModel.selection = [row.transaction_id]
+            }
+        }
+    }
+
+    private func rowBackground(isSelected: Bool, alternating: Bool) -> some View {
+        Group {
+            if isSelected {
+                Color.accentColor.opacity(0.25)
+            } else if alternating {
+                Color.primary.opacity(0.04)
+            } else {
+                Color.clear
+            }
+        }
+    }
 }
 
 private struct DetailPane: View {
@@ -122,7 +183,9 @@ private struct DetailPane: View {
             }
             Divider()
             if let selected = viewModel.selectedRows.first {
-                Text("Transaction").font(.headline)
+                // #R030: Detail pane header includes the selected transaction's identifier.
+                Text("Transaction \(selected.transaction_id)").font(.headline)
+                    .accessibilityIdentifier("selected-transaction-header")
                 Text(selected.description)
                     .accessibilityIdentifier("selected-transaction-description")
                 Text("Teller Category: \(selected.teller_category ?? "n/a")")

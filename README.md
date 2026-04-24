@@ -19,7 +19,7 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `09_fetch_teller_api_data.py`
 - `10_backfill_bank_statements.py`
 - `11_run_transaction_classification_api.py`
-- `15_run_macos_ui_regression_tests.sh`
+- `16_run_macos_ui_regression_tests.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -92,7 +92,7 @@ RUN_MACOS_UI_REGRESSION_TESTS=true ./04_run_unit_tests.sh
 Runs deterministic snapshot tests and macOS XCUITest smoke flows for `macos-ui`.
 
 ```bash
-./15_run_macos_ui_regression_tests.sh
+./16_run_macos_ui_regression_tests.sh
 ```
 
 Common flags:
@@ -190,7 +190,7 @@ Active secret and credential sources are:
   - Backfills statements data.
 - `11_run_transaction_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
-- `15_run_macos_ui_regression_tests.sh`
+- `16_run_macos_ui_regression_tests.sh`
   - Runs `macos-ui` snapshot regression tests and the macOS XCUITest smoke suite.
   - Supports selective gates with `RUN_SNAPSHOT_TESTS`, `SNAPSHOT_RECORD`, and `RUN_XCUITESTS`.
 - `12_verify_classification_persistence.sh`

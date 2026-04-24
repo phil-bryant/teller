@@ -6,10 +6,10 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>0E77A3B9-E605-4C76-8FB7-6113F672C77F</key>
+		<key>086F43BB-1B12-4F3C-B2E8-A27C88A8FE2C</key>
 		<dict>
 			<key>auxiliaryLogUniqueIdentifier</key>
-			<string>668BDC90-6DAF-44E7-B51D-B961E0A7DE30</string>
+			<string>2359B08E-480E-4ECB-9801-9175EC204E30</string>
 			<key>auxiliaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
@@ -30,7 +30,7 @@
 			<key>domainType</key>
 			<string>com.apple.dt.unit.cocoaUnitTest</string>
 			<key>fileName</key>
-			<string>Test-TransactionClassifierUITestHost-2026.04.23_23-09-53--0400.xcresult</string>
+			<string>Test-TransactionClassifierUITestHost-2026.04.24_07-29-20--0400.xcresult</string>
 			<key>hasAuxiliaryLog</key>
 			<true/>
 			<key>hasPrimaryLog</key>
@@ -57,18 +57,18 @@
 			<key>signature</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>timeStartedRecording</key>
-			<real>798692993.74963105</real>
+			<real>798722960.28628302</real>
 			<key>timeStoppedRecording</key>
-			<real>798693048.297647</real>
+			<real>798723065.01108694</real>
 			<key>title</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
-			<string>0E77A3B9-E605-4C76-8FB7-6113F672C77F</string>
+			<string>086F43BB-1B12-4F3C-B2E8-A27C88A8FE2C</string>
 		</dict>
-		<key>83EEEFCE-9009-4CED-8931-2D61574612C9</key>
+		<key>442D1EB1-4F2C-4522-AAEE-665E2AA70703</key>
 		<dict>
 			<key>auxiliaryLogUniqueIdentifier</key>
-			<string>86D1CF38-252F-4465-80D7-8E6110F9D733</string>
+			<string>96A38F9B-6712-49E0-848C-577E2C1BFA50</string>
 			<key>auxiliaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
@@ -89,7 +89,7 @@
 			<key>domainType</key>
 			<string>com.apple.dt.unit.cocoaUnitTest</string>
 			<key>fileName</key>
-			<string>Test-TransactionClassifierUITestHost-2026.04.23_23-01-04--0400.xcresult</string>
+			<string>Test-TransactionClassifierUITestHost-2026.04.24_07-33-38--0400.xcresult</string>
 			<key>hasAuxiliaryLog</key>
 			<true/>
 			<key>hasPrimaryLog</key>
@@ -97,13 +97,13 @@
 			<key>primaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
-				<string>T</string>
+				<string>W</string>
 				<key>totalNumberOfAnalyzerIssues</key>
 				<integer>0</integer>
 				<key>totalNumberOfErrors</key>
 				<integer>0</integer>
 				<key>totalNumberOfTestFailures</key>
-				<integer>1</integer>
+				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
 				<integer>1</integer>
 			</dict>
@@ -116,13 +116,13 @@
 			<key>signature</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>timeStartedRecording</key>
-			<real>798692464.94881594</real>
+			<real>798723218.73912096</real>
 			<key>timeStoppedRecording</key>
-			<real>798692538.96800399</real>
+			<real>798723327.69921899</real>
 			<key>title</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
-			<string>83EEEFCE-9009-4CED-8931-2D61574612C9</string>
+			<string>442D1EB1-4F2C-4522-AAEE-665E2AA70703</string>
 		</dict>
 	</dict>
 </dict>

@@ -29,6 +29,12 @@ Design: `loadMore()` fetches by current offset and `mergeTransactions(...)` appe
 Tests:
 - Load first page then next page and verify combined list preserves unique transaction IDs and updated status metadata.
 
+R025  Statement: Default the Unclassified filter to enabled so the first load shows only unclassified rows.
+Design: `onlyUnclassified` is initialized to `true` so `loadAll()` filters out already-classified transactions on the first fetch.
+Tests:
+- Launch app in UI-testing mode and verify only unclassified fixture rows appear in the list and the Unclassified toggle reads as on.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ClassificationViewModel.swift` to replace prior plan-only coverage.
+- 2026-04-23: Added R025 to default the Unclassified filter to enabled on initial load.
