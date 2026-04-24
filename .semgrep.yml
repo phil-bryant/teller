@@ -1,0 +1,39 @@
+rules:
+  - id: teller.dynamic-sql-fstring-in-text
+    message: Avoid passing f-strings directly into SQL text(); interpolate only trusted constants or switch to bound parameters / allowlisted identifiers.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      technology:
+        - sqlalchemy
+      cwe:
+        - "CWE-89: SQL Injection"
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: text(f"...")
+          - pattern: text("..." + ...)
+
+  - id: teller.subprocess-shell-true
+    message: Avoid subprocess with shell=True. Use an argument list and explicit binary path.
+    severity: ERROR
+    languages:
+      - python
+    metadata:
+      category: security
+      cwe:
+        - "CWE-78: OS Command Injection"
+      confidence: HIGH
+    pattern: subprocess.$FUNC(..., shell=True, ...)
+
+  - id: teller.unsafe-tempfile-path-usage
+    message: mktemp() is unsafe for security-sensitive file creation. Prefer mkstemp() or NamedTemporaryFile(delete=False).
+    severity: WARNING
+    languages:
+      - python
+    metadata:
+      category: security
+      confidence: MEDIUM
+    pattern: tempfile.mktemp(...)
