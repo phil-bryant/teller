@@ -8,6 +8,61 @@ from sqlalchemy.exc import DataError
 from sqlalchemy import text
 from teller.teller_db import get_session
 
+_EXISTENCE_QUERIES = {
+    ("nys_snw_category", "nys_snw_category_id"): text("""
+        SELECT 1
+          FROM teller.nys_snw_category
+         WHERE nys_snw_category_id = :value
+         LIMIT 1
+    """),
+}
+
+_TRANSACTION_COUNT_SQL = text("""
+    SELECT COUNT(*)
+      FROM teller.transaction tt
+      LEFT JOIN teller.account ta USING (account_id)
+      LEFT JOIN teller.transaction_type ttt USING (transaction_type_id)
+      LEFT JOIN teller.transaction_details ttd USING (transaction_details_id)
+      LEFT JOIN LATERAL (
+          SELECT tnsc.nys_snw_category_id
+            FROM teller.transaction_nys_snw_category tnsc
+           WHERE tnsc.transaction_id = tt.transaction_id
+           ORDER BY tnsc.updated_at DESC
+           LIMIT 1
+      ) m ON TRUE
+      LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
+     WHERE tt.status = 'posted'
+       AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
+       AND (:status = '' OR tt.status::text = :status)
+       AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
+""")
+
+_TRANSACTION_LIST_SQL = text("""
+    SELECT tt.transaction_id, tt.account_id, ta.institution_id, ta.last_four AS account_last_four,
+           tt.date, tt.amount, tt.description, tt.status,
+           ttt.code AS transaction_type_code, ttd.category AS teller_category,
+           m.nys_snw_category_id, nsc.level_1, nsc.level_1_name, nsc.level_2, nsc.level_2_name,
+           nsc.level_3, nsc.level_4, nsc.categorization
+      FROM teller.transaction tt
+      LEFT JOIN teller.account ta USING (account_id)
+      LEFT JOIN teller.transaction_type ttt USING (transaction_type_id)
+      LEFT JOIN teller.transaction_details ttd USING (transaction_details_id)
+      LEFT JOIN LATERAL (
+          SELECT tnsc.nys_snw_category_id
+            FROM teller.transaction_nys_snw_category tnsc
+           WHERE tnsc.transaction_id = tt.transaction_id
+           ORDER BY tnsc.updated_at DESC
+           LIMIT 1
+      ) m ON TRUE
+      LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
+     WHERE tt.status = 'posted'
+       AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
+       AND (:status = '' OR tt.status::text = :status)
+       AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
+    ORDER BY tt.date DESC, tt.transaction_id DESC
+    LIMIT :limit OFFSET :offset
+""")
+
 
 #R001: FastAPI app factory and route wiring for classification APIs.
 class CategoryOption(BaseModel):
@@ -105,7 +160,10 @@ def _display_label(row: Dict[str, object]) -> str:
 
 #R025: Validate referenced IDs before writes.
 def _ensure_exists(session, table: str, column: str, value: object, error: str):
-    row = session.execute(text(f"SELECT 1 FROM teller.{table} WHERE {column} = :value LIMIT 1"), {"value": value}).fetchone()
+    query = _EXISTENCE_QUERIES.get((table, column))
+    if query is None:
+        raise HTTPException(status_code=500, detail=f"Unsupported existence check for {table}.{column}")
+    row = session.execute(query, {"value": value}).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail=error)
 
@@ -339,44 +397,18 @@ def create_app() -> FastAPI:
                     }
                 ],
             )
-        filters, params = ["tt.status = 'posted'"], {"limit": limit, "offset": offset}
-        if search:
-            filters.append("(tt.description ILIKE :search OR tt.transaction_id ILIKE :search)")
-            params["search"] = f"%{search}%"
-        if status:
-            filters.append("tt.status = :status")
-            params["status"] = status
-        if only_unclassified:
-            filters.append("m.nys_snw_category_id IS NULL")
-        where_sql = f"WHERE {' AND '.join(filters)}" if filters else ""
-        base_query = f"""
-            FROM teller.transaction tt
-            LEFT JOIN teller.account ta USING (account_id)
-            LEFT JOIN teller.transaction_type ttt USING (transaction_type_id)
-            LEFT JOIN teller.transaction_details ttd USING (transaction_details_id)
-            LEFT JOIN LATERAL (
-                SELECT tnsc.nys_snw_category_id
-                  FROM teller.transaction_nys_snw_category tnsc
-                 WHERE tnsc.transaction_id = tt.transaction_id
-                 ORDER BY tnsc.updated_at DESC
-                 LIMIT 1
-            ) m ON TRUE
-            LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
-            {where_sql}
-        """
+        params = {
+            "search": search,
+            "search_pattern": f"%{search}%" if search else "",
+            "status": status,
+            "only_unclassified": only_unclassified,
+            "limit": limit,
+            "offset": offset,
+        }
         try:
             with get_session() as session:
-                total = session.execute(text(f"SELECT COUNT(*) {base_query}"), params).scalar_one()
-                rows = session.execute(text(f"""
-                    SELECT tt.transaction_id, tt.account_id, ta.institution_id, ta.last_four AS account_last_four,
-                           tt.date, tt.amount, tt.description, tt.status,
-                           ttt.code AS transaction_type_code, ttd.category AS teller_category,
-                           m.nys_snw_category_id, nsc.level_1, nsc.level_1_name, nsc.level_2, nsc.level_2_name,
-                           nsc.level_3, nsc.level_4, nsc.categorization
-                    {base_query}
-                    ORDER BY tt.date DESC, tt.transaction_id DESC
-                    LIMIT :limit OFFSET :offset
-                """), params).mappings().all()
+                total = session.execute(_TRANSACTION_COUNT_SQL, params).scalar_one()
+                rows = session.execute(_TRANSACTION_LIST_SQL, params).mappings().all()
         except HTTPException:
             raise
         except (DataError, UnicodeEncodeError):

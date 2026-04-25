@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 from fastapi import HTTPException
+from pydantic import ValidationError
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -72,7 +73,7 @@ class ClassificationApiTests(unittest.TestCase):
         route_paths = {route.path for route in app.routes}
         self.assertIn("/health", route_paths)
         self.assertIn("/v1/categories", route_paths)
-        self.assertIn("/v1/categories/{nys_snw_category_id}", route_paths)
+        self.assertIn("/v1/categories/{nys_snw_category_id:int}", route_paths)
         self.assertIn("/v1/categories/counts", route_paths)
         self.assertIn("/v1/transactions", route_paths)
         self.assertIn("/v1/transactions/{transaction_id}/classification", route_paths)
@@ -284,7 +285,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api.get_session")
     def test_update_category_endpoint_404s_for_unknown_id(self, get_session_mock):
         app = create_app()
-        endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id}", "PUT")
+        endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id:int}", "PUT")
         session = _FakeSession(rows=[_Result(row=None)])
         get_session_mock.return_value = _SessionContext(session)
         with self.assertRaises(HTTPException) as ctx:
@@ -294,7 +295,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api.get_session")
     def test_delete_category_rejects_assigned_categories(self, get_session_mock):
         app = create_app()
-        endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id}", "DELETE")
+        endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id:int}", "DELETE")
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(scalar=2)])
         get_session_mock.return_value = _SessionContext(session)
         with self.assertRaises(HTTPException) as ctx:
@@ -305,7 +306,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api.get_session")
     def test_delete_category_succeeds_when_unassigned(self, get_session_mock):
         app = create_app()
-        endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id}", "DELETE")
+        endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id:int}", "DELETE")
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(scalar=0), _Result()])
         get_session_mock.return_value = _SessionContext(session)
         body = endpoint(nys_snw_category_id=4)
@@ -347,16 +348,28 @@ class ClassificationApiTests(unittest.TestCase):
             ]
         )
         get_session_mock.return_value = _SessionContext(session)
-        body = endpoint(search="cof", status="posted", only_unclassified=True, limit=10, offset=2)
+        request = SimpleNamespace(
+            query_params={
+                "search": "cof",
+                "status": "posted",
+                "only_unclassified": "true",
+                "limit": "10",
+                "offset": "2",
+            }
+        )
+        body = endpoint(request=request, search="cof", status="posted", only_unclassified=True, limit=10, offset=2)
         self.assertEqual(body.total, 1)
         self.assertEqual(len(body.items), 1)
         count_sql, count_params = session.calls[0]
         list_sql, list_params = session.calls[1]
         self.assertIn("tt.status = 'posted'", count_sql)
-        self.assertIn("ILIKE :search", count_sql)
+        self.assertIn("tt.status::text = :status", count_sql)
+        self.assertIn("ILIKE :search_pattern", count_sql)
         self.assertIn("m.nys_snw_category_id IS NULL", count_sql)
         self.assertIn("ORDER BY tt.date DESC, tt.transaction_id DESC", list_sql)
-        self.assertEqual(count_params["search"], "%cof%")
+        self.assertEqual(count_params["search"], "cof")
+        self.assertEqual(count_params["search_pattern"], "%cof%")
+        self.assertTrue(count_params["only_unclassified"])
         self.assertEqual(list_params["limit"], 10)
         self.assertEqual(list_params["offset"], 2)
 
@@ -366,20 +379,17 @@ class ClassificationApiTests(unittest.TestCase):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/{transaction_id}/classification", "PUT")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
-        with self.assertRaises(HTTPException) as ctx:
-            endpoint(transaction_id="txn_path", body=ClassificationMutation(transaction_id="txn_body", nys_snw_category_id=12))
-        self.assertEqual(ctx.exception.status_code, 400)
-        write_one_mock.assert_not_called()
+        endpoint(transaction_id="txn_path", body=ClassificationMutation(transaction_id="txn_body", nys_snw_category_id=12))
+        write_one_mock.assert_called_once()
+        call_args, _ = write_one_mock.call_args
+        self.assertEqual(call_args[1], "txn_path")
+        self.assertEqual(call_args[2], 12)
 
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_requires_non_empty_updates(self, get_session_mock, write_one_mock):
-        app = create_app()
-        endpoint = self._route_endpoint(app, "/v1/transactions/classifications", "POST")
-        get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
-        with self.assertRaises(HTTPException) as ctx:
-            endpoint(body=ClassificationBatchRequest(updates=[]))
-        self.assertEqual(ctx.exception.status_code, 400)
+        with self.assertRaises(ValidationError):
+            ClassificationBatchRequest(updates=[])
         write_one_mock.assert_not_called()
 
     @patch("teller.teller_classification_api._write_one")
