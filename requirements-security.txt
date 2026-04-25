@@ -1,0 +1,5 @@
+bandit
+detect-secrets
+pip-audit<2.10
+schemathesis
+semgrep

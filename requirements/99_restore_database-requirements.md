@@ -43,9 +43,10 @@ Tests:
 - Verify full restore order is globals first, then database content.
 - Verify table-scoped restore does not run globals replay.
 
-R035  Statement: Print completion output with source backup path.
-Design: Emit final restore-complete message with selected dump file path.
+R035  Statement: Support fail-fast SQL execution against the target database and print completion output.
+Design: Provide a shared `psql -v ON_ERROR_STOP=1` helper bound to the target database for restore-related repair SQL, and emit final restore-complete message with selected dump file path.
 Tests:
+- Verify helper-invoked SQL exits non-zero on SQL errors.
 - Verify successful run prints completion line with backup path.
 
 R040  Statement: Accept optional table-scoped restore selection.
@@ -59,9 +60,32 @@ Design: Allow `--from` and `--table` together so table-scoped restore can target
 Tests:
 - Run with both `--from <path.dump>` and `--table <table_name>` and verify selected dump plus table scope.
 
+R050  Statement: Reapply deploy-time invariants after table-scoped restore for teller schema tables.
+Design: After successful `pg_restore --table`, run scoped repair logic when the resolved table target is in schema `teller`.
+Tests:
+- Run `--table teller.<name>` and verify repair hook executes.
+- Run `--table non_teller.<name>` and verify teller-specific repair hook is skipped.
+
+R055  Statement: Ensure shared `updated_at` trigger function exists during scoped teller restore repair.
+Design: Recreate `teller.update_updated_at()` idempotently before table-level trigger repair.
+Tests:
+- Drop `teller.update_updated_at()` before scoped restore and verify function exists after restore.
+
+R060  Statement: Recreate per-table `updated_at` trigger only when restored teller table has `updated_at`.
+Design: Detect `updated_at` column via `information_schema.columns`; when present, recreate `update_<table>_updated_at` trigger for restored table.
+Tests:
+- Restore a teller table with `updated_at` and verify trigger exists and is enabled.
+- Restore a teller table without `updated_at` and verify no trigger create attempt is required.
+
+R065  Statement: Reapply known table-specific DDL fixups after scoped restore where deploy defines post-creation adjustments.
+Design: For `teller.transaction_nys_snw_category`, recreate the transaction FK with `ON DELETE CASCADE` to match deployment invariant.
+Tests:
+- Scoped restore `transaction_nys_snw_category` and verify FK delete action is `CASCADE`.
+
 ## Changelog
 
 - 2026-04-21: Refined R020/R030 for table mode to skip globals requirements/replay and updated R040 table-name format.
 - 2026-04-21: Refined R025 to allow restore into existing teller schema when `--table` is provided.
 - 2026-04-21: Added R040 and R045 for optional `--table` restore scope and `--from` composition.
+- 2026-04-24: Added R050/R055/R060/R065 for post-scoped-restore invariant repair; refined R035 for fail-fast target SQL helper coverage.
 - 2026-04-19: Initial reverse-engineered requirements for `99_restore_database.sh`.

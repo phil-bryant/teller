@@ -34,6 +34,61 @@ latest_backup_path() {
     echo "$latest"
 }
 
+#R035: Run fail-fast SQL against the target database as postgres.
+run_psql_target() {
+    PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d "$DATABASE_NAME" "$@"
+}
+
+#R050: Reapply deploy-time invariants after scoped table restore.
+repair_scoped_table_restore() {
+    if [ "${TABLE_SCHEMA}" != "teller" ] || [ -z "${TABLE_RELATION}" ]; then
+        return
+    fi
+
+    #R055: Ensure shared updated_at trigger function exists for teller schema tables.
+    run_psql_target <<'SQL'
+CREATE OR REPLACE FUNCTION teller.update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+SQL
+
+    #R060: Recreate updated_at trigger for restored table when that column exists.
+    has_updated_at="$(
+        run_psql_target -tAc "
+            SELECT 1
+            FROM information_schema.columns columns
+            WHERE columns.table_schema = 'teller'
+              AND columns.table_name = '${TABLE_RELATION}'
+              AND columns.column_name = 'updated_at'
+            LIMIT 1;
+        "
+    )"
+    if [ "${has_updated_at}" = "1" ]; then
+        run_psql_target -c \
+"DROP TRIGGER IF EXISTS update_${TABLE_RELATION}_updated_at ON teller.${TABLE_RELATION};
+CREATE TRIGGER update_${TABLE_RELATION}_updated_at
+    BEFORE UPDATE ON teller.${TABLE_RELATION}
+    FOR EACH ROW
+    EXECUTE FUNCTION teller.update_updated_at();"
+    fi
+
+    #R065: Reapply known table-specific DDL adjustments from deploy script.
+    if [ "${TABLE_RELATION}" = "transaction_nys_snw_category" ]; then
+        run_psql_target <<'SQL'
+ALTER TABLE teller.transaction_nys_snw_category
+    DROP CONSTRAINT IF EXISTS transaction_nys_snw_category_transaction_id_fkey,
+    ADD CONSTRAINT transaction_nys_snw_category_transaction_id_fkey
+    FOREIGN KEY (transaction_id)
+    REFERENCES teller.transaction(transaction_id)
+    ON DELETE CASCADE;
+SQL
+    fi
+}
+
 #R005: Parse optional --from backup source argument.
 #R040: Parse optional --table table scope argument.
 while [ "$#" -gt 0 ]; do
@@ -150,6 +205,7 @@ fi
 #R030: In full restore mode, restore globals first, then restore database dump.
 if [ -n "$TABLE_NAME" ]; then
     PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d "$DATABASE_NAME" --clean --if-exists "${RESTORE_TABLE_ARGS[@]}" "$BACKUP_PATH"
+    repair_scoped_table_restore
 else
     PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH"
     PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d postgres --clean --if-exists --create "$BACKUP_PATH"

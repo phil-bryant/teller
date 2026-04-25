@@ -1,0 +1,9 @@
+exclude_dirs:
+  - tests
+  - archive
+  - teller-venv
+  - .security-venv
+  - bank_statements
+  - teller-connect-ui
+skips:
+  - B101
