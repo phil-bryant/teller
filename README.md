@@ -24,7 +24,6 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `15_run_classification_macos-ui.sh`
 - `16_verify_classification_persistence.sh`
 - `17_run_security_checks.sh`
-- `18_run_dast_checks.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -59,7 +58,7 @@ Run these checks from the project root after activating the project virtual envi
 source ./teller-venv/bin/activate
 ```
 
-Security scanning currently runs via local scripts (`17_run_security_checks.sh` and `18_run_dast_checks.sh`).
+Security scanning currently runs via `17_run_security_checks.sh` (SAST and optional DAST).
 
 ### 1) Requirements Traceability Verification
 
@@ -240,9 +239,7 @@ Active secret and credential sources are:
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `17_run_security_checks.sh`
   - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets).
-  - Optionally runs DAST by calling `18_run_dast_checks.sh`.
-- `18_run_dast_checks.sh`
-  - Starts local API target(s), runs Schemathesis against OpenAPI, and runs OWASP ZAP local CLI quick scan.
+  - Optionally runs DAST inline (starts local API target(s), runs Schemathesis against OpenAPI, and runs OWASP ZAP local CLI quick scan).
   - Supports optional token-capture target scanning when Teller local credentials are present.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.

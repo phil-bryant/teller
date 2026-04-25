@@ -41,6 +41,175 @@ ensure_security_venv() {
   fi
 }
 
+wait_for_http() {
+  local url="$1"
+  local timeout_seconds="${2:-30}"
+  local start_ts
+  start_ts="$(date +%s)"
+  while true; do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    if (( "$(date +%s)" - start_ts >= timeout_seconds )); then
+      echo "❌ Timed out waiting for ${url}"
+      return 1
+    fi
+    sleep 1
+  done
+}
+
+run_zap_quick_scan() {
+  local zap_cli_cmd="$1"
+  local target_url="$2"
+  local html_report="$3"
+  local log_report="$4"
+  echo "▶ Running OWASP ZAP quick scan (CLI) against ${target_url}"
+  "$zap_cli_cmd" -cmd \
+    -quickurl "$target_url" \
+    -quickout "$html_report" \
+    -quickprogress \
+    -silent | tee "$log_report"
+}
+
+run_dast_checks() (
+  set -euo pipefail
+
+  local report_dir="$1"
+  local report_dir_abs
+  report_dir_abs="$(cd "$report_dir" && pwd)"
+
+  local base_host="${DAST_BASE_HOST:-127.0.0.1}"
+  local base_port="${DAST_BASE_PORT:-8787}"
+  local base_url="${DAST_BASE_URL:-http://${base_host}:${base_port}}"
+  local openapi_url="${DAST_OPENAPI_URL:-${base_url}/openapi.json}"
+
+  local run_schemathesis="${RUN_SCHEMATHESIS:-true}"
+  local run_zap="${RUN_ZAP:-true}"
+  local run_token_capture_dast="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
+  local fail_on_high_critical="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
+  local zap_cli_cmd="${ZAP_CLI_CMD:-/Applications/ZAP.app/Contents/MacOS/ZAP.sh}"
+
+  local token_capture_port="${TOKEN_CAPTURE_DAST_PORT:-8088}"
+  local token_capture_url="${TOKEN_CAPTURE_DAST_URL:-http://127.0.0.1:${token_capture_port}}"
+  local dast_app_python="${DAST_APP_PYTHON:-./teller-venv/bin/python}"
+
+  local schemathesis_seed="${SCHEMATHESIS_SEED:-424242}"
+  local schemathesis_max_examples="${SCHEMATHESIS_MAX_EXAMPLES:-25}"
+  local zap_classification_target="${ZAP_CLASSIFICATION_TARGET:-${base_url}/health}"
+
+  if [[ ! -x "$dast_app_python" ]]; then
+    dast_app_python="python3"
+  fi
+
+  local classifier_api_pid=""
+  local token_capture_pid=""
+
+  cleanup() {
+    if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then
+      kill "$token_capture_pid" >/dev/null 2>&1 || true
+    fi
+    if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then
+      kill "$classifier_api_pid" >/dev/null 2>&1 || true
+    fi
+  }
+  trap cleanup EXIT
+
+  echo "▶ Starting local classification API for DAST at ${base_url}"
+  TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
+    "$dast_app_python" "./14_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
+  classifier_api_pid="$!"
+  wait_for_http "${base_url}/health" 45
+
+  if [[ "$run_schemathesis" == "true" ]]; then
+    require_command schemathesis
+    echo "▶ Running Schemathesis against ${openapi_url}"
+    schemathesis run "$openapi_url" \
+      --url "$base_url" \
+      --seed "$schemathesis_seed" \
+      --max-examples "$schemathesis_max_examples" \
+      --report junit \
+      --report-junit-path "${report_dir_abs}/schemathesis-junit.xml" \
+      | tee "${report_dir_abs}/schemathesis.log"
+  fi
+
+  if [[ "$run_zap" == "true" ]]; then
+    if [[ ! -x "$zap_cli_cmd" ]]; then
+      echo "❌ Missing ZAP CLI executable: $zap_cli_cmd"
+      echo "Install prerequisites with ./01_install_prerequisites.sh or set ZAP_CLI_CMD."
+      exit 1
+    fi
+    run_zap_quick_scan \
+      "$zap_cli_cmd" \
+      "$zap_classification_target" \
+      "${report_dir_abs}/zap-classification.html" \
+      "${report_dir_abs}/zap-classification.log"
+  fi
+
+  if [[ "$run_token_capture_dast" == "auto" ]]; then
+    if [[ -f "$HOME/.teller/application_id.txt" ]]; then
+      run_token_capture_dast="true"
+    else
+      run_token_capture_dast="false"
+    fi
+  fi
+
+  if [[ "$run_token_capture_dast" == "true" ]]; then
+    echo "▶ Starting token capture server for DAST at ${token_capture_url}"
+    "$dast_app_python" "./teller/teller_connect_token_server.py" --no-open --mode manage --port "$token_capture_port" \
+      >"${report_dir_abs}/token-capture.log" 2>&1 &
+    token_capture_pid="$!"
+    wait_for_http "${token_capture_url}/api/status" 45
+
+    if [[ "$run_zap" == "true" ]]; then
+      run_zap_quick_scan \
+        "$zap_cli_cmd" \
+        "$token_capture_url" \
+        "${report_dir_abs}/zap-token-capture.html" \
+        "${report_dir_abs}/zap-token-capture.log"
+    fi
+  else
+    echo "ℹ️  Token capture DAST skipped (set RUN_TOKEN_CAPTURE_DAST=true and ensure ~/.teller/application_id.txt exists)."
+  fi
+
+  local high_alerts=0
+  local alerts
+  for zap_json in "${report_dir_abs}/zap-classification.json" "${report_dir_abs}/zap-token-capture.json"; do
+    if [[ -f "$zap_json" ]]; then
+      alerts="$(python3 - <<'PY' "$zap_json"
+import json, sys
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as fh:
+    payload = json.load(fh)
+sites = payload.get("site", []) if isinstance(payload, dict) else []
+count = 0
+for site in sites:
+    for alert in site.get("alerts", []):
+        try:
+            risk = int(alert.get("riskcode", "-1"))
+        except ValueError:
+            risk = -1
+        if risk >= 3:
+            count += 1
+print(count)
+PY
+)"
+      high_alerts=$((high_alerts + alerts))
+    fi
+  done
+
+  if [[ ! -f "${report_dir_abs}/zap-classification.json" ]] && [[ ! -f "${report_dir_abs}/zap-token-capture.json" ]]; then
+    echo "ℹ️  ZAP CLI quick scan produced HTML/log output only; JSON alert parsing skipped."
+  fi
+
+  echo "DAST high/critical alert count: ${high_alerts}"
+  if [[ "$fail_on_high_critical" == "true" ]] && (( high_alerts > 0 )); then
+    echo "❌ DAST gate failed: High/Critical ZAP alerts detected."
+    exit 1
+  fi
+
+  echo "✅ DAST checks completed."
+)
+
 ensure_security_venv
 export PATH="${SECURITY_VENV_DIR}/bin:${PATH}"
 
@@ -184,7 +353,7 @@ PY
 fi
 
 if [[ "$RUN_DAST" == "true" ]]; then
-  ./18_run_dast_checks.sh
+  run_dast_checks "$REPORT_DIR"
 fi
 
 echo "✅ Security checks completed. Reports: ${REPORT_DIR}"
