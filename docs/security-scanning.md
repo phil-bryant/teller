@@ -28,14 +28,14 @@ python3 -m venv .security-venv
 Run both SAST and DAST:
 
 ```bash
-./17_run_security_checks.sh
+./14_run_security_checks.sh
 ```
 
 Artifacts are written to `.security-reports/`.
 
 ### Target URLs and startup flow
 
-`17_run_security_checks.sh` starts the classification API automatically when DAST is enabled:
+`14_run_security_checks.sh` starts the classification API automatically when DAST is enabled:
 
 - classification API: `http://127.0.0.1:8787`
 - OpenAPI schema: `http://127.0.0.1:8787/openapi.json`
@@ -74,4 +74,4 @@ For false positives or accepted risks:
 
 ## Script entrypoints
 
-- `./17_run_security_checks.sh`: runs SAST and, by default, invokes DAST.
+- `./14_run_security_checks.sh`: runs SAST and, by default, invokes DAST.
