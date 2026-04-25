@@ -9,8 +9,8 @@ Design: Use `umask 007`, `set -euo pipefail`, and `mktemp` files for set operati
 Tests:
 - Verify script exits when required variables are unset.
 
-R005  Statement: Discover and verify all `requirements/*.md` files by default.
-Design: Enumerate requirement docs from the `requirements/` directory and verify each discovered doc in one run.
+R005  Statement: Discover and verify all `requirements/**/*-requirements.md` files by default.
+Design: Enumerate requirement docs from the `requirements/` directory recursively and verify each discovered `*-requirements.md` doc in one run.
 Tests:
 - Run with no args and verify every `requirements/*.md` file is included.
 
@@ -59,10 +59,34 @@ Tests:
 - Point a numbered requirements file to a differently numbered script and verify explicit mismatch failure.
 - Point it back to matching `NN_` source and verify alignment pass output.
 
+R050  Statement: Discover candidate test files for each requirements document.
+Design: Infer test files from requirements path and scoped source conventions, including `tests/sh`, `tests/py`, and Swift tests in `macos-ui/Tests` and `macos-ui/UITests`, while canonicalizing symlinked test paths.
+Tests:
+- Verify shell-script requirements discover matching `tests/sh/*.bats` candidates.
+- Verify Swift requirements discover model/snapshot and UI test lanes without duplicate symlink entries.
+
+R055  Statement: Detect requirement IDs that require UI-lane test coverage.
+Design: Parse requirement statement lines and classify IDs with UI-testing intent keywords so those IDs must be covered by UI tests.
+Tests:
+- Mark one requirement as UI-testing and verify it is treated as UI-lane-required.
+
+R060  Statement: Parse `#R` tags from discovered test files by lane.
+Design: Reuse `#R###(-###)*` extraction to build deduplicated ID sets for default and UI lanes.
+Tests:
+- Include multiple tags per test file line and verify extraction still captures all IDs.
+
+R065  Statement: Enforce at least one tagged test per requirement ID.
+Design: For each requirements document, fail when any requirement ID lacks tagged coverage from discovered tests; for UI-classified IDs require presence in the UI lane.
+Tests:
+- Remove all tagged tests for one ID and verify explicit missing-ID failure output.
+- Provide only model-lane tags for a UI-classified ID and verify failure until UI-lane tag is present.
+- Provide either model or UI tagged coverage for non-UI IDs and verify pass.
+
 ## Changelog
 
 - 2026-04-24: Added numbered script coverage enforcement for `NN_` script/requirements parity.
 - 2026-04-24: Added `NN_` requirements-to-source prefix alignment enforcement.
+- 2026-04-25: Added requirement-to-test traceability enforcement with contextual Swift UI lane policy.
 - 2026-04-20: Updated verifier requirements to require discovery of all `requirements/*.md` files and all referenced source files.
 - 2026-04-20: Merged `12_verify_prereq_traceability.sh` and `13_verify_traceability_batch.sh` into `verify_requirements_traceability.sh`.
 - 2026-04-19: Initial reverse-engineered requirements for `12_verify_prereq_traceability.sh`.

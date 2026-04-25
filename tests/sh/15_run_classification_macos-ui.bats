@@ -14,6 +14,7 @@ teardown() {
 }
 
 @test "forwards args to swift run with computed package path" {
+  #R001 #R005 #R010
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo "swift \$*" >> "${CALLS_LOG}"

@@ -13,6 +13,7 @@ teardown() {
 }
 
 @test "creates ~/.teller with restrictive permissions and succeeds with env inputs" {
+  #R001 #R005 #R020 #R030 #R040
   cert_src="${TEST_TMPDIR}/cert.pem"
   key_src="${TEST_TMPDIR}/key.pem"
   printf "CERT" > "$cert_src"
@@ -51,6 +52,7 @@ EOF
 }
 
 @test "prefers existing application id file over env override" {
+  #R015 #R025 #R035
   mkdir -p "${HOME}/.teller"
   chmod 700 "${HOME}/.teller"
   printf "app_existing" > "${HOME}/.teller/application_id.txt"
@@ -81,6 +83,7 @@ EOF
 }
 
 @test "fails when examples directory exists but is not a git repo" {
+  #R010
   mkdir -p "${TEST_TMPDIR}/bad_examples"
   run env TELLER_EXAMPLES_DIR="${TEST_TMPDIR}/bad_examples" bash "${FIXTURE_ROOT}/09_configure_teller_io.sh"
   [ "$status" -eq 1 ]
