@@ -31,6 +31,22 @@ Tests:
 - Set `RUN_XCUITESTS=true` and verify `xcodebuild test` invocation path executes.
 - Point `XCUITEST_PROJECT` to a missing path and verify explicit non-zero failure.
 
+R025  Statement: Support a snapshot-only gate for fast pre-merge feedback.
+Design: Allow `RUN_SNAPSHOT_TESTS=true` with `RUN_XCUITESTS=false` so snapshot coverage runs while XCUITest smoke lane is explicitly skipped.
+Tests:
+- Set `RUN_SNAPSHOT_TESTS=true` and `RUN_XCUITESTS=false` and verify snapshot command runs while XCUITest skip message is emitted.
+
+R030  Statement: Default to full UI regression coverage when no overrides are provided.
+Design: Default both `RUN_SNAPSHOT_TESTS` and `RUN_XCUITESTS` to `true` so the baseline invocation runs snapshot and XCUITest smoke lanes.
+Tests:
+- Run with no lane overrides and verify both snapshot and `xcodebuild test` paths execute.
+
+R035  Statement: Expose XCUITest runtime overrides for stable worker execution.
+Design: Support environment overrides for `XCUITEST_PROJECT`, `XCUITEST_SCHEME`, `XCUITEST_DESTINATION`, and `XCUITEST_DERIVED_DATA_PATH`.
+Tests:
+- Set non-default destination and derived data path overrides and verify values are propagated into `xcodebuild test`.
+
 ## Changelog
 
 - 2026-04-24: Initial requirements for `05_run_macos_ui_regression_tests.sh`.
+- 2026-04-24: Folded gate rollout guidance from `macos-ui/UI_REGRESSION_ROLLOUT.md` into script-scoped requirements.

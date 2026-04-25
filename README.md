@@ -169,7 +169,7 @@ Useful flags:
 - `SECURITY_FAIL_ON_HIGH_CRITICAL=true|false` (default `true`)
 - `RUN_TOKEN_CAPTURE_DAST=true|false|auto` (default `auto`)
 
-For policy details, see `docs/security-scanning.md`.
+For policy and behavior details, see `requirements/14_run_security_checks-requirements.md`.
 
 ## API Reference Docs
 

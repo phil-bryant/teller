@@ -7,6 +7,7 @@ cd "$SCRIPT_DIR"
 REPORT_DIR="${SECURITY_REPORT_DIR:-./.security-reports}"
 RUN_SAST="${RUN_SAST:-true}"
 RUN_DAST="${RUN_DAST:-true}"
+#R015: Support configurable execution lanes and report destination.
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
 
@@ -27,6 +28,7 @@ require_command() {
 }
 
 ensure_security_venv() {
+  #R005: Bootstrap isolated security toolchain environment before scanning.
   if [[ ! -d "$SECURITY_VENV_DIR" ]]; then
     echo "▶ Creating isolated security virtualenv at ${SECURITY_VENV_DIR}"
     python3 -m venv "$SECURITY_VENV_DIR"
@@ -114,12 +116,14 @@ run_dast_checks() (
   }
   trap cleanup EXIT
 
+  #R035: Start local classification API automatically for DAST execution.
   echo "▶ Starting local classification API for DAST at ${base_url}"
   TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
     "$dast_app_python" "./13_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
   classifier_api_pid="$!"
   wait_for_http "${base_url}/health" 45
 
+  #R045: Run Schemathesis and ZAP quick scans with configurable targets and gating.
   if [[ "$run_schemathesis" == "true" ]]; then
     require_command schemathesis
     echo "▶ Running Schemathesis against ${openapi_url}"
@@ -145,6 +149,7 @@ run_dast_checks() (
       "${report_dir_abs}/zap-classification.log"
   fi
 
+  #R040: Support optional token-capture DAST coverage with auto-detection.
   if [[ "$run_token_capture_dast" == "auto" ]]; then
     if [[ -f "$HOME/.teller/application_id.txt" ]]; then
       run_token_capture_dast="true"
@@ -213,7 +218,7 @@ PY
 ensure_security_venv
 export PATH="${SECURITY_VENV_DIR}/bin:${PATH}"
 
-#R002: Ensure pip-audit inspects project dependencies, not security toolchain env.
+#R010: Ensure pip-audit inspects project dependencies, not security toolchain env.
 configure_pip_audit_python() {
   local project_python=""
   if [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV}/bin/python3" ]]; then
@@ -234,6 +239,7 @@ configure_pip_audit_python() {
 configure_pip_audit_python
 
 if [[ "$RUN_SAST" == "true" ]]; then
+  #R020: Run SAST scanners and persist machine-readable artifacts.
   require_command semgrep
   require_command bandit
   require_command pip-audit
@@ -249,6 +255,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
     .
 
   echo "▶ Running Bandit"
+  #R025: Distinguish scanner findings from scanner execution failures.
   set +e
   bandit -q -r ./teller -c ./.bandit -f json -o "${REPORT_DIR}/bandit.json"
   BANDIT_EXIT=$?
@@ -273,6 +280,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
     --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/)' \
     > "${REPORT_DIR}/detect-secrets.json"
 
+  #R030: Produce consolidated SAST gate summary and enforce blocking policy.
   python3 - <<'PY' "${REPORT_DIR}" "${FAIL_ON_HIGH_CRITICAL}"
 import json
 import os
@@ -356,4 +364,5 @@ if [[ "$RUN_DAST" == "true" ]]; then
   run_dast_checks "$REPORT_DIR"
 fi
 
+#R050: Emit explicit completion status and artifact location for operators.
 echo "✅ Security checks completed. Reports: ${REPORT_DIR}"
