@@ -33,6 +33,7 @@ class _Session:
 
 class TellerPersistTests(unittest.TestCase):
     def test_exec_executes_parameterized_sql(self):
+        #R001
         session = _Session(_Result())
         teller_persist._exec(session, "SELECT :value", {"value": 7})
         sql, params = session.calls[0]
@@ -40,6 +41,7 @@ class TellerPersistTests(unittest.TestCase):
         self.assertEqual(params, {"value": 7})
 
     def test_exec_returning_returns_single_row(self):
+        #R001
         session = _Session(_Result(one=(123,)))
         row = teller_persist._exec_returning(session, "SELECT 1")
         self.assertEqual(row, (123,))
@@ -48,6 +50,7 @@ class TellerPersistTests(unittest.TestCase):
     @patch("teller.teller_persist._upsert_account_links")
     @patch("teller.teller_persist._upsert_institution")
     def test_upsert_account_reuses_existing_account_links_id(self, upsert_institution, upsert_links, exec_mock):
+        #R005
         account_payload = {
             "id": "acc_1",
             "currency": "USD",
@@ -74,6 +77,7 @@ class TellerPersistTests(unittest.TestCase):
     @patch("teller.teller_persist._exec")
     @patch("teller.teller_persist._exec_returning")
     def test_upsert_identity_reuses_existing_identity_by_email(self, exec_returning_mock, exec_mock):
+        #R010
         owner_payload = {
             "type": "person",
             "names": [{"type": "legal", "data": "Pat Doe"}],
@@ -99,6 +103,7 @@ class TellerPersistTests(unittest.TestCase):
 
     @patch("teller.teller_persist._exec")
     def test_upsert_account_identity_is_conflict_safe(self, exec_mock):
+        #R010
         session = MagicMock()
         teller_persist._upsert_account_identity(session, "acc_1", 5)
         sql = str(exec_mock.call_args.args[1])
@@ -109,6 +114,7 @@ class TellerPersistTests(unittest.TestCase):
     @patch("teller.teller_persist._upsert_transaction_links", return_value=10)
     @patch("teller.teller_persist._exec")
     def test_upsert_transaction_casts_numeric_fields_and_writes_row(self, exec_mock, upsert_links, upsert_details, upsert_type):
+        #R015
         txn_payload = {
             "id": "txn_1",
             "account_id": "acc_1",
@@ -140,6 +146,7 @@ class TellerPersistTests(unittest.TestCase):
     @patch("teller.teller_persist._upsert_transaction_links", return_value=10)
     @patch("teller.teller_persist._exec")
     def test_upsert_transaction_passes_existing_relation_ids_to_upserts(self, exec_mock, upsert_links, upsert_details, _upsert_type):
+        #R015
         exec_mock.return_value = _Result(one=(501, 601))
         txn_payload = {
             "id": "txn_2",
@@ -160,6 +167,7 @@ class TellerPersistTests(unittest.TestCase):
         upsert_links.assert_called_once_with(session, txn_payload["links"], 601)
 
     def test_canonicalize_transactions_prefers_posted_variant(self):
+        #R020
         txns = [
             {"id": "txn_1", "status": "pending", "description": "old"},
             {"id": "txn_1", "status": "posted", "description": "new"},
@@ -172,6 +180,7 @@ class TellerPersistTests(unittest.TestCase):
 
     @patch("teller.teller_persist._exec")
     def test_reconcile_missing_pending_transactions_deletes_only_missing_ids(self, exec_mock):
+        #R025
         exec_mock.return_value = _Result(many=[("txn_old",), ("txn_older",)])
         deleted = teller_persist._reconcile_missing_pending_transactions(MagicMock(), "acc_1", ["txn_keep"])
         sql = str(exec_mock.call_args.args[1])
@@ -180,6 +189,7 @@ class TellerPersistTests(unittest.TestCase):
 
     @patch("teller.teller_persist._exec")
     def test_reconcile_with_empty_fetched_ids_removes_all_pending(self, exec_mock):
+        #R025
         exec_mock.return_value = _Result(many=[("txn_1",)])
         deleted = teller_persist._reconcile_missing_pending_transactions(MagicMock(), "acc_1", [])
         sql = str(exec_mock.call_args.args[1])
@@ -188,6 +198,7 @@ class TellerPersistTests(unittest.TestCase):
 
     @patch("teller.teller_persist._exec")
     def test_prune_unreferenced_transaction_relations_reports_counts(self, exec_mock):
+        #R030
         exec_mock.side_effect = [
             _Result(many=[(1,), (2,)]),
             _Result(many=[(3,)]),
@@ -206,6 +217,7 @@ class TellerPersistTests(unittest.TestCase):
     @patch("teller.teller_persist._upsert_account_balances_links", return_value=200)
     @patch("teller.teller_persist._exec")
     def test_upsert_account_balances_insert_path_casts_decimals(self, exec_mock, upsert_links):
+        #R035
         exec_mock.return_value = _Result(one=None)
         bal_payload = {
             "account_id": "acc_1",
@@ -225,6 +237,7 @@ class TellerPersistTests(unittest.TestCase):
     @patch("teller.teller_persist._upsert_account_balances_links", return_value=200)
     @patch("teller.teller_persist._exec")
     def test_upsert_account_balances_update_path_refreshes_timestamp(self, exec_mock, _upsert_links):
+        #R035
         exec_mock.return_value = _Result(one=(99, 77))
         bal_payload = {"account_id": "acc_1", "ledger": "5", "available": "2", "links": {"self": "s", "account": "a"}}
         teller_persist._upsert_account_balances(MagicMock(), bal_payload)
@@ -252,6 +265,7 @@ class TellerPersistTests(unittest.TestCase):
         _prune,
         _log,
     ):
+        #R040
         canonicalize.return_value = [{"id": "txn_1"}]
         session = _Session(_Result())
         raw_identities = [{"account": {"id": "acc_1"}, "owners": [{"type": "person"}]}]
@@ -288,6 +302,7 @@ class TellerPersistTests(unittest.TestCase):
         _reconcile,
         _prune,
     ):
+        #R040
         session = _Session(_Result())
         teller_persist.persist_all(
             session,

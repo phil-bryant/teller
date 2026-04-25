@@ -10,6 +10,7 @@ final class ContentViewSnapshotTests: XCTestCase {
 
     @MainActor
     func testEmptyStateSnapshot() async {
+        // #R001
         await assertContentSnapshot(named: "empty-state") { viewModel in
             viewModel.transactions = []
             viewModel.totalTransactions = 0

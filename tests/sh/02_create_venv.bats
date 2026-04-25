@@ -14,12 +14,14 @@ teardown() {
 }
 
 @test "fails when sibling prerequisites script is missing" {
+  #R001 #R005
   run bash -c "cd '${FIXTURE_ROOT}' && ./02_create_venv.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Prerequisites script not found"* ]]
 }
 
 @test "prefers python3.12 when both interpreters exist" {
+  #R010 #R035
   touch "${FIXTURE_ROOT}/01A_install_prerequisites.sh"
   cat > "${STUB_BIN}/python3.12" <<'EOF'
 #!/usr/bin/env bash
@@ -39,6 +41,7 @@ EOF
 }
 
 @test "refuses to run while another virtualenv is active" {
+  #R015 #R025
   touch "${FIXTURE_ROOT}/01A_install_prerequisites.sh"
   stub_cmd python3 "exit 0"
 
@@ -48,6 +51,7 @@ EOF
 }
 
 @test "returns success without recreating existing venv directory" {
+  #R020 #R030 #R040
   touch "${FIXTURE_ROOT}/01A_install_prerequisites.sh"
   mkdir -p "${FIXTURE_ROOT}/fixture-venv/bin"
   touch "${FIXTURE_ROOT}/fixture-venv/bin/activate"

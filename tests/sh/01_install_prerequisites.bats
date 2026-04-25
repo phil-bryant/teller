@@ -13,12 +13,14 @@ teardown() {
 }
 
 @test "fails clearly when brew is missing" {
+  #R001 #R005 #R012
   run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"[Homebrew] Not installed."* ]]
 }
 
 @test "idempotent path skips installs when dependencies already exist" {
+  #R010 #R035 #R040 #R050
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
@@ -33,6 +35,7 @@ teardown() {
 }
 
 @test "clones pg_install when missing" {
+  #R025 #R030
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd bats "exit 0"
@@ -53,6 +56,7 @@ EOF
 }
 
 @test "uses PSA_INSTALL_SUDO_ITEM during install flow" {
+  #R015 #R020 #R045 #R065
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd bats "exit 0"
@@ -102,6 +106,7 @@ EOF
 }
 
 @test "installs bats-core when bats is missing" {
+  #R055 #R060 #R070 #R075
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"

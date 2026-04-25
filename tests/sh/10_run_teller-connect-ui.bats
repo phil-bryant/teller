@@ -20,6 +20,7 @@ teardown() {
 }
 
 @test "default mode launches capture server in manage mode" {
+  #R050 #R080
   run bash "${FIXTURE_ROOT}/10_run_teller-connect-ui.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
@@ -27,6 +28,7 @@ teardown() {
 }
 
 @test "list mode prints discovered contexts" {
+  #R055
   mkdir -p "${HOME}/.teller"
   printf '{"current":"token_a"}\n' > "${HOME}/.teller/auth_token.json"
   printf 'enr_default\n' > "${HOME}/.teller/enrollment_id.txt"
@@ -41,6 +43,7 @@ teardown() {
 }
 
 @test "delete mode removes only selected context using --yes" {
+  #R060 #R065
   mkdir -p "${HOME}/.teller"
   printf '{"current":"token_a"}\n' > "${HOME}/.teller/auth_token_bank_a.json"
   printf 'enr_bank_a\n' > "${HOME}/.teller/enrollment_id_bank_a.txt"
@@ -54,6 +57,7 @@ teardown() {
 }
 
 @test "positional token writes auth_token.json with restrictive mode" {
+  #R070 #R075 #R090
   run bash "${FIXTURE_ROOT}/10_run_teller-connect-ui.sh" token_direct_value
   [ "$status" -eq 0 ]
   [ -f "${HOME}/.teller/auth_token.json" ]
@@ -62,6 +66,7 @@ teardown() {
 }
 
 @test "selector operations fail clearly when selector is ambiguous" {
+  #R085
   mkdir -p "${HOME}/.teller"
   printf '{"current":"token_a"}\n' > "${HOME}/.teller/auth_token.json"
   printf 'enr_shared\n' > "${HOME}/.teller/enrollment_id.txt"
