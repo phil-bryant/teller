@@ -17,3 +17,5 @@ backups
 archive/backup_extracts
 bin/*
 .cursor/rules/*
+.security-reports/
+.security-venv/

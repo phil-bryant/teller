@@ -102,10 +102,26 @@ Tests:
 - Verify first-launch setup command uses piped credential input.
 - Verify license-accept path also uses piped credential input when needed.
 
+R070  Statement: Ensure OWASP ZAP local CLI tooling is installed.
+Design: Install Homebrew cask `zap` when ZAP CLI wrapper is missing.
+Constraints:
+- Prefer existing install when `ZAP.app` CLI wrapper is already present.
+- Use Homebrew cask install path compatible with macOS applications (`/Applications/ZAP.app`).
+Tests:
+- Run on machine without ZAP and verify installer runs `brew install --cask zap`.
+- Rerun with ZAP already present and verify install phase is skipped.
+
+R075  Statement: Verify ZAP CLI executable path after installation.
+Design: Require executable wrapper at `/Applications/ZAP.app/Contents/MacOS/ZAP.sh` (or equivalent configured path) and fail with guidance if missing.
+Tests:
+- After successful install, verify executable path check passes.
+- Simulate missing wrapper after install and verify clear failure message.
+
 ## Changelog
 
 - 2026-04-23: Added R055 to require `bats-core` installation for shell unit-test support.
 - 2026-04-24: Added R060 and R065 to cover Xcode first-launch readiness and credentialed sudo flow.
+- 2026-04-24: Added R070 and R075 to require local OWASP ZAP cask installation and CLI path verification.
 - 2026-04-07: Added R012 for Go/Git bootstrap prerequisites used by `1psa` install flow.
 - 2026-04-06: Restored full standalone installer requirements (not split-index form).
 - 2026-04-11: Replaced SQL/Azure CLI requirements with `pg_install` prerequisite and updated readiness guidance.

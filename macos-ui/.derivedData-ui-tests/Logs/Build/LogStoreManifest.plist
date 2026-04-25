@@ -6,6 +6,48 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
+		<key>1B88CD2C-BA42-4862-8811-02673E6EFB43</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>1B88CD2C-BA42-4862-8811-02673E6EFB43.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>2</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>TransactionClassifierUIAutomation project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>TransactionClassifierUITestHost</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
+			<key>timeStartedRecording</key>
+			<real>798772602.28021204</real>
+			<key>timeStoppedRecording</key>
+			<real>798772614.57255006</real>
+			<key>title</key>
+			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
+			<key>uniqueIdentifier</key>
+			<string>1B88CD2C-BA42-4862-8811-02673E6EFB43</string>
+		</dict>
 		<key>C13E5D0D-7AB9-47BB-85A2-2E7655D87BD9</key>
 		<dict>
 			<key>className</key>
@@ -47,48 +89,6 @@
 			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
 			<string>C13E5D0D-7AB9-47BB-85A2-2E7655D87BD9</string>
-		</dict>
-		<key>C86ED17D-88C7-45FD-9EF1-F20EFFA668BC</key>
-		<dict>
-			<key>className</key>
-			<string>IDECommandLineBuildLog</string>
-			<key>documentTypeString</key>
-			<string>&lt;nil&gt;</string>
-			<key>domainType</key>
-			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
-			<key>fileName</key>
-			<string>C86ED17D-88C7-45FD-9EF1-F20EFFA668BC.xcactivitylog</string>
-			<key>hasPrimaryLog</key>
-			<true/>
-			<key>primaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>W</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>2</integer>
-			</dict>
-			<key>schemeIdentifier-containerName</key>
-			<string>TransactionClassifierUIAutomation project</string>
-			<key>schemeIdentifier-schemeName</key>
-			<string>TransactionClassifierUITestHost</string>
-			<key>schemeIdentifier-sharedScheme</key>
-			<integer>1</integer>
-			<key>signature</key>
-			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
-			<key>timeStartedRecording</key>
-			<real>798751815.87981105</real>
-			<key>timeStoppedRecording</key>
-			<real>798751816.66888297</real>
-			<key>title</key>
-			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
-			<key>uniqueIdentifier</key>
-			<string>C86ED17D-88C7-45FD-9EF1-F20EFFA668BC</string>
 		</dict>
 	</dict>
 </dict>

@@ -6,65 +6,6 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>190D3CE0-483F-4523-8B8C-ED5819837551</key>
-		<dict>
-			<key>auxiliaryLogUniqueIdentifier</key>
-			<string>C86ED17D-88C7-45FD-9EF1-F20EFFA668BC</string>
-			<key>auxiliaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>W</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>2</integer>
-			</dict>
-			<key>className</key>
-			<string>IDESchemeActionsInvocationRecord</string>
-			<key>documentTypeString</key>
-			<string>&lt;nil&gt;</string>
-			<key>domainType</key>
-			<string>com.apple.dt.unit.cocoaUnitTest</string>
-			<key>fileName</key>
-			<string>Test-TransactionClassifierUITestHost-2026.04.24_15-30-15--0400.xcresult</string>
-			<key>hasAuxiliaryLog</key>
-			<true/>
-			<key>hasPrimaryLog</key>
-			<true/>
-			<key>primaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>W</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>1</integer>
-			</dict>
-			<key>schemeIdentifier-containerName</key>
-			<string>TransactionClassifierUIAutomation project</string>
-			<key>schemeIdentifier-schemeName</key>
-			<string>TransactionClassifierUITestHost</string>
-			<key>schemeIdentifier-sharedScheme</key>
-			<integer>1</integer>
-			<key>signature</key>
-			<string>Test TransactionClassifierUITestHost</string>
-			<key>timeStartedRecording</key>
-			<real>798751815.88024199</real>
-			<key>timeStoppedRecording</key>
-			<real>798751921.90164602</real>
-			<key>title</key>
-			<string>Test TransactionClassifierUITestHost</string>
-			<key>uniqueIdentifier</key>
-			<string>190D3CE0-483F-4523-8B8C-ED5819837551</string>
-		</dict>
 		<key>8C727DB5-1E58-487D-B69D-61AD0C3404B9</key>
 		<dict>
 			<key>auxiliaryLogUniqueIdentifier</key>
@@ -123,6 +64,65 @@
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
 			<string>8C727DB5-1E58-487D-B69D-61AD0C3404B9</string>
+		</dict>
+		<key>8DFEA6CB-511B-4789-84BE-A5E68BCE81F0</key>
+		<dict>
+			<key>auxiliaryLogUniqueIdentifier</key>
+			<string>1B88CD2C-BA42-4862-8811-02673E6EFB43</string>
+			<key>auxiliaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>2</integer>
+			</dict>
+			<key>className</key>
+			<string>IDESchemeActionsInvocationRecord</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>com.apple.dt.unit.cocoaUnitTest</string>
+			<key>fileName</key>
+			<string>Test-TransactionClassifierUITestHost-2026.04.24_21-16-42--0400.xcresult</string>
+			<key>hasAuxiliaryLog</key>
+			<true/>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>1</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>TransactionClassifierUIAutomation project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>TransactionClassifierUITestHost</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Test TransactionClassifierUITestHost</string>
+			<key>timeStartedRecording</key>
+			<real>798772602.28074896</real>
+			<key>timeStoppedRecording</key>
+			<real>798772727.81487405</real>
+			<key>title</key>
+			<string>Test TransactionClassifierUITestHost</string>
+			<key>uniqueIdentifier</key>
+			<string>8DFEA6CB-511B-4789-84BE-A5E68BCE81F0</string>
 		</dict>
 	</dict>
 </dict>
