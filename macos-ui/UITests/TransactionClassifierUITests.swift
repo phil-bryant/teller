@@ -13,6 +13,7 @@ final class TransactionClassifierUITests: XCTestCase {
         app.launchArguments += ["--ui-testing"]
         app.launchEnvironment["TELLER_UI_TEST_MODE"] = "1"
         app.launchEnvironment["TELLER_UI_TEST_PAGE_SIZE"] = "2"
+        // #R035
         app.launch()
     }
 

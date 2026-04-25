@@ -188,11 +188,17 @@ for source_file in source_files:
             add_path(f"tests/py/test_{stem}.py", "default")
         elif source_norm.startswith(tuple(f"{n:02d}_" for n in range(100))):
             add_path(f"tests/sh/{stem}.bats", "default")
+    if ext == ".sql":
+        add_path(f"tests/sh/{stem}.bats", "default")
     if ext == ".swift" and source_norm.startswith("macos-ui/Sources/"):
         collect_swift_lane("macos-ui/Tests", "default", stem=stem)
         collect_swift_lane("macos-ui/UITests", "ui", stem=stem)
 
 if requirements_file.startswith("requirements/macos-ui/"):
+    collect_swift_lane("macos-ui/UITests", "ui")
+
+# R020/R035 in 05 are marked as UI (XCUITest) in the requirements text; include UI lane.
+if os.path.basename(requirements_file) == "05_run_macos_ui_regression_tests-requirements.md":
     collect_swift_lane("macos-ui/UITests", "ui")
 
 if requirements_file.startswith("requirements/") and os.path.basename(requirements_file)[:2].isdigit():
