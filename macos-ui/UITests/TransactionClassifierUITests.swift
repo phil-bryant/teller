@@ -13,10 +13,12 @@ final class TransactionClassifierUITests: XCTestCase {
         app.launchArguments += ["--ui-testing"]
         app.launchEnvironment["TELLER_UI_TEST_MODE"] = "1"
         app.launchEnvironment["TELLER_UI_TEST_PAGE_SIZE"] = "2"
+        // #R035
         app.launch()
     }
 
     func testSearchFilterFindsFixtureRow() {
+        // #R005
         let searchField = uiElement("search-field")
         XCTAssertTrue(searchField.waitForExistence(timeout: 5))
         searchField.click()
@@ -26,6 +28,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     func testNextUnclassifiedShortcutUpdatesDetailSelection() {
+        // #R010
         disableUnclassifiedFilter()
 
         let utilityRow = app.staticTexts["Electric Utility Co"]
@@ -39,11 +42,13 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     func testApplyCategoryFromTypeaheadUpdatesSelection() {
+        // #R015
         applyDiningToCoffeeRow()
         XCTAssertTrue(app.staticTexts["Assigned: Dining"].waitForExistence(timeout: 5))
     }
 
     func testUndoShortcutRestoresClassification() {
+        // #R015
         applyDiningToCoffeeRow()
         XCTAssertTrue(app.staticTexts["Assigned: Dining"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Saved 1 classification(s)"].waitForExistence(timeout: 5))
@@ -55,6 +60,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     func testUndoRestoresPriorCategoryOnAlreadyClassifiedRow() {
+        // #R015
         disableUnclassifiedFilter()
 
         let utilityRow = app.staticTexts["Electric Utility Co"]
@@ -93,6 +99,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     func testLoadMoreAppendsRowsAndUpdatesStatusText() {
+        // #R020
         disableUnclassifiedFilter()
 
         let loadMoreButton = uiElement("load-more-button")
@@ -109,6 +116,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     func testInitialUnclassifiedToggleIsOnByDefault() {
+        // #R025
         // With the default Unclassified filter on, the first page shows only unclassified fixture rows.
         // Coffee Roasters (unclassified) must load while Electric Utility Co (classified, txn_002) must
         // be filtered out of the initial page since it is at offset 1 with pageSize=2.
@@ -126,6 +134,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     func testTogglingUnclassifiedAutomaticallyRefreshesList() {
+        // #R020
         XCTAssertTrue(app.staticTexts["Coffee Roasters"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Electric Utility Co"].exists)
 
@@ -144,6 +153,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     func testNextUnclassifiedScrollsTargetIntoView() {
+        // #R025
         // Relaunch with a large page size so `loadAll` returns all 18 fixture rows at once,
         // making the left-hand list tall enough to be scrollable and have rows off-screen.
         app.terminate()
@@ -214,6 +224,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     func testDetailHeaderShowsTransactionIdentifier() {
+        // #R030
         let rowLabel = app.staticTexts["Coffee Roasters"]
         XCTAssertTrue(rowLabel.waitForExistence(timeout: 5))
         rowLabel.click()

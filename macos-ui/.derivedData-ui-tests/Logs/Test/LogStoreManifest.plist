@@ -6,10 +6,10 @@
 	<integer>12</integer>
 	<key>logs</key>
 	<dict>
-		<key>8C727DB5-1E58-487D-B69D-61AD0C3404B9</key>
+		<key>57E823D8-68CC-4418-AEC1-C6BE5348786A</key>
 		<dict>
 			<key>auxiliaryLogUniqueIdentifier</key>
-			<string>C13E5D0D-7AB9-47BB-85A2-2E7655D87BD9</string>
+			<string>B2D36850-7349-49AC-A80E-A042D5ACB957</string>
 			<key>auxiliaryObservable</key>
 			<dict>
 				<key>highLevelStatus</key>
@@ -30,7 +30,7 @@
 			<key>domainType</key>
 			<string>com.apple.dt.unit.cocoaUnitTest</string>
 			<key>fileName</key>
-			<string>Test-TransactionClassifierUITestHost-2026.04.24_15-42-06--0400.xcresult</string>
+			<string>Test-TransactionClassifierUITestHost-2026.04.25_15-01-24--0400.xcresult</string>
 			<key>hasAuxiliaryLog</key>
 			<true/>
 			<key>hasPrimaryLog</key>
@@ -57,13 +57,13 @@
 			<key>signature</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>timeStartedRecording</key>
-			<real>798752526.21108198</real>
+			<real>798836484.98511398</real>
 			<key>timeStoppedRecording</key>
-			<real>798752629.41137099</real>
+			<real>798836612.44378603</real>
 			<key>title</key>
 			<string>Test TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
-			<string>8C727DB5-1E58-487D-B69D-61AD0C3404B9</string>
+			<string>57E823D8-68CC-4418-AEC1-C6BE5348786A</string>
 		</dict>
 		<key>8DFEA6CB-511B-4789-84BE-A5E68BCE81F0</key>
 		<dict>

@@ -48,7 +48,7 @@
 			<key>uniqueIdentifier</key>
 			<string>1B88CD2C-BA42-4862-8811-02673E6EFB43</string>
 		</dict>
-		<key>C13E5D0D-7AB9-47BB-85A2-2E7655D87BD9</key>
+		<key>B2D36850-7349-49AC-A80E-A042D5ACB957</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -57,7 +57,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>C13E5D0D-7AB9-47BB-85A2-2E7655D87BD9.xcactivitylog</string>
+			<string>B2D36850-7349-49AC-A80E-A042D5ACB957.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -82,13 +82,13 @@
 			<key>signature</key>
 			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
 			<key>timeStartedRecording</key>
-			<real>798752526.21065998</real>
+			<real>798836484.98454905</real>
 			<key>timeStoppedRecording</key>
-			<real>798752527.26915097</real>
+			<real>798836491.96635103</real>
 			<key>title</key>
 			<string>Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost</string>
 			<key>uniqueIdentifier</key>
-			<string>C13E5D0D-7AB9-47BB-85A2-2E7655D87BD9</string>
+			<string>B2D36850-7349-49AC-A80E-A042D5ACB957</string>
 		</dict>
 	</dict>
 </dict>

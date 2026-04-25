@@ -13,6 +13,7 @@ teardown() {
 }
 
 @test "fails when pg_dump is missing" {
+  #R001 #R005 #R010 #R015
   stub_cmd 1psa "echo pass"
   stub_cmd pg_dumpall "exit 0"
 
@@ -22,6 +23,7 @@ teardown() {
 }
 
 @test "creates dump and globals artifacts with printed paths" {
+  #R020 #R025 #R030 #R035
   stub_cmd 1psa "echo pass"
   cat > "${STUB_BIN}/pg_dump" <<'EOF'
 #!/usr/bin/env bash
