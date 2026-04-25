@@ -13,6 +13,7 @@ teardown() {
 }
 
 @test "runs from repository root regardless of caller cwd" {
+  #R001 #R005 #R010
   cat > "${STUB_BIN}/python3" <<EOF
 #!/usr/bin/env bash
 echo "python3 cwd=\$(pwd) args=\$*" >> "${CALLS_LOG}"
@@ -31,6 +32,7 @@ EOF
 }
 
 @test "fails with actionable message when shell tests are enabled but bats is missing" {
+  #R015
   stub_cmd python3 "exit 0"
   stub_cmd swift "exit 0"
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
@@ -58,6 +60,7 @@ EOF
 }
 
 @test "runs swift suite by default when macos tests exist" {
+  #R020
   stub_cmd bats "exit 0"
   stub_cmd python3 "exit 0"
   cat > "${STUB_BIN}/swift" <<EOF

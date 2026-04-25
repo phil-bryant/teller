@@ -14,6 +14,7 @@ teardown() {
 }
 
 @test "fails when pg_restore is missing" {
+  #R001 #R010 #R015
   stub_cmd 1psa "echo pass"
   stub_cmd psql "exit 0"
 
@@ -23,6 +24,7 @@ teardown() {
 }
 
 @test "defaults to latest dump and reports completion path" {
+  #R005 #R020 #R030 #R035
   old="${FIXTURE_ROOT}/backups/prod_20250101_000000.dump"
   new="${FIXTURE_ROOT}/backups/prod_20250102_000000.dump"
   touch "$old" "$new" "${FIXTURE_ROOT}/backups/prod_20250102_000000_globals.sql"
@@ -47,6 +49,7 @@ EOF
 }
 
 @test "table-scoped restore skips globals file requirement" {
+  #R040 #R045 #R050 #R055 #R060 #R065
   dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
   touch "$dump_path"
   stub_cmd 1psa "echo pass"
@@ -69,6 +72,7 @@ EOF
 }
 
 @test "refuses full restore when teller schema already exists" {
+  #R025
   dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
   globals_path="${FIXTURE_ROOT}/backups/snapshot_globals.sql"
   touch "$dump_path" "$globals_path"

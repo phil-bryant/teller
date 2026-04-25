@@ -13,12 +13,14 @@ teardown() {
 }
 
 @test "fails clearly when 1psa is missing" {
+  #R001 #R005
   run bash "${FIXTURE_ROOT}/98_destroy_database.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"1psa is required"* ]]
 }
 
 @test "wrong confirmation cancels before teardown commands" {
+  #R010
   stub_cmd 1psa "echo pass"
   cat > "${STUB_BIN}/psql" <<EOF
 #!/usr/bin/env bash
@@ -35,6 +37,7 @@ EOF
 }
 
 @test "successful confirmation runs cleanup and prints completion" {
+  #R015 #R020 #R025
   stub_cmd 1psa "echo pass"
   cat > "${STUB_BIN}/psql" <<EOF
 #!/usr/bin/env bash

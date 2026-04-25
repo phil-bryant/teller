@@ -69,6 +69,7 @@ class ClassificationApiTests(unittest.TestCase):
         raise AssertionError(f"route not found: {method} {path}")
 
     def test_create_app_registers_required_routes(self):
+        #R001
         app = create_app()
         route_paths = {route.path for route in app.routes}
         self.assertIn("/health", route_paths)
@@ -80,6 +81,7 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertIn("/v1/transactions/classifications", route_paths)
 
     def test_display_label_joins_hierarchy(self):
+        #R005
         row = {"level_1_name": "EXPENSES", "level_2_name": "Food", "level_3": "1.", "level_4": None, "categorization": "Groceries"}
         self.assertEqual(_display_label(row), "EXPENSES > Food > 1. > Groceries")
 
@@ -178,12 +180,14 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(session.commits, 1)
 
     def test_write_one_raises_on_unknown_transaction(self):
+        #R025
         session = _FakeSession(rows=[_Result(row=None)])
         with self.assertRaises(HTTPException) as ctx:
             _write_one(session, "txn_missing", 12)
         self.assertEqual(ctx.exception.status_code, 404)
 
     def test_write_one_raises_on_unknown_category(self):
+        #R025
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(row=None)])
         with self.assertRaises(HTTPException) as ctx:
             _write_one(session, "txn_1", 999)
@@ -192,6 +196,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_categories_endpoint_returns_display_labels(self, get_session_mock):
+        #R010
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories", "GET")
         session = _FakeSession(
@@ -219,6 +224,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_category_counts_includes_zero_assignment_categories(self, get_session_mock):
+        #R015
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories/counts", "GET")
         session = _FakeSession(
@@ -316,6 +322,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_transactions_endpoint_applies_filters_and_returns_total(self, get_session_mock):
+        #R020
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
         session = _FakeSession(
@@ -376,6 +383,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
     def test_single_classification_rejects_path_payload_mismatch(self, get_session_mock, write_one_mock):
+        #R030
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/{transaction_id}/classification", "PUT")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
@@ -388,6 +396,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_requires_non_empty_updates(self, get_session_mock, write_one_mock):
+        #R035
         with self.assertRaises(ValidationError):
             ClassificationBatchRequest(updates=[])
         write_one_mock.assert_not_called()
@@ -395,6 +404,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_returns_one_row_per_input(self, get_session_mock, write_one_mock):
+        #R035
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/classifications", "POST")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))

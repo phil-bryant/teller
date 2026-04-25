@@ -39,6 +39,7 @@ private func sampleTransaction(_ id: String, date: String = "2026-04-18", classi
 
 final class ClassificationViewModelTests: XCTestCase {
     func testTransactionListDecodesDecimalAmountString() throws {
+        // #R001
         let data = """
         {"total":1,"items":[{"transaction_id":"txn_1","account_id":"acc_1","date":"2026-04-18","amount":"33.21",
         "description":"DoorDash","status":"pending","transaction_type_code":"card_payment","teller_category":null,
@@ -50,6 +51,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testLoadAllPopulatesViewModel() async {
+        // #R001
         let cat = sampleCategory(11, "Utilities")
         let rows = [
             sampleTransaction("txn_1", date: "2026-04-17", classification: nil),
@@ -75,6 +77,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testSaveSelectionUpdatesClassificationOptimistically() async {
+        // #R010
         let cat = sampleCategory(22, "Dining")
         let api = MockAPI(categories: [cat], response: .init(total: 1, items: [sampleTransaction("txn_2", classification: nil)]))
         let vm = ClassificationViewModel(api: api)
@@ -88,6 +91,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testNextUnclassifiedMovesSelection() async {
+        // #R015
         let cat = sampleCategory(77, "Housing")
         let items = [
             sampleTransaction("txn_a", classification: .init(nys_snw_category_id: 77, display_label: "Housing")),
@@ -120,6 +124,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testLoadMoreAppendsAdditionalTransactions() async {
+        // #R020
         let cat = sampleCategory(11, "Utilities")
         let firstPage = TransactionListResponse(total: 4, items: [
             sampleTransaction("txn_1", date: "2026-04-20", classification: nil),
@@ -142,6 +147,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testRedundantSaveSelectionDoesNotPushIdentityUndoEntry() async {
+        // #R005
         let cat = sampleCategory(22, "Dining")
         let api = MockAPI(categories: [cat], response: .init(total: 1, items: [sampleTransaction("txn_1", classification: nil)]))
         let vm = ClassificationViewModel(api: api)
@@ -159,6 +165,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testSelectedCategoryDidChangeSavesOnlyRowsThatActuallyChange() async {
+        // #R005
         let dining = sampleCategory(22, "Dining")
         let current = TransactionCategory(nys_snw_category_id: 22, display_label: "Dining")
         let rows = [sampleTransaction("txn_1", classification: current), sampleTransaction("txn_2", classification: nil)]
