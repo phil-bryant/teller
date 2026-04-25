@@ -14,6 +14,21 @@ Design: Check `1psa` on PATH before password retrieval.
 Tests:
 - Run without `1psa` and verify clear failure message.
 
+R006  Statement: Ensure `psql` exits immediately when SQL execution hits an error.
+Design: Define shared `psql` options with `-v ON_ERROR_STOP=1` and apply them on every SQL invocation path.
+Tests:
+- Introduce a SQL syntax error during deploy and verify execution stops at the failing statement.
+
+R007  Statement: Execute postgres-admin SQL through a reusable fail-fast wrapper.
+Design: Provide a dedicated postgres helper that injects admin credentials plus shared fail-fast options.
+Tests:
+- Run bootstrap SQL through helper and verify command includes fail-fast behavior and postgres role.
+
+R008  Statement: Execute teller-user SQL through a reusable fail-fast wrapper.
+Design: Provide a dedicated teller helper that injects teller credentials, target database, and shared fail-fast options.
+Tests:
+- Run schema SQL through helper and verify command includes fail-fast behavior, teller role, and `prod` database target.
+
 R010  Statement: Resolve postgres admin password from configurable 1psa source.
 Design: Use default item/field with override support via environment variables.
 Tests:
@@ -57,6 +72,7 @@ Tests:
 
 ## Changelog
 
+- 2026-04-24: Added R006-R008 for fail-fast `psql` options and wrapper function coverage.
 - 2026-04-21: Added R040 trigger-order requirement to ensure full updated_at coverage.
 - 2026-04-22: Added R045 to enforce cascading delete behavior for transaction classifications.
 - 2026-04-19: Initial reverse-engineered requirements for `06_deploy_database.sh`.
