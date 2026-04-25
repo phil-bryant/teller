@@ -193,15 +193,7 @@ for source_file in source_files:
         collect_swift_lane("macos-ui/UITests", "ui", stem=stem)
 
 if requirements_file.startswith("requirements/macos-ui/"):
-    collect_swift_lane("macos-ui/Tests", "default")
     collect_swift_lane("macos-ui/UITests", "ui")
-
-if requirements_file.startswith("requirements/teller/"):
-    tests_py_root = os.path.join(repo_root, "tests/py")
-    if os.path.isdir(tests_py_root):
-        for filename in sorted(os.listdir(tests_py_root)):
-            if filename.startswith("test_") and filename.endswith(".py"):
-                add_path(os.path.join("tests/py", filename), "default")
 
 if requirements_file.startswith("requirements/") and os.path.basename(requirements_file)[:2].isdigit():
     tests_sh_root = os.path.join(repo_root, "tests/sh")
@@ -503,6 +495,7 @@ verify_all_requirements() {
             fail=$((fail + 1))
         fi
     done
+    echo ""
     #R040: Enforce numbered-script-to-numbered-requirements coverage completeness.
     verify_numbered_script_requirements_coverage || fail=$((fail + 1))
     #R045: Enforce numbered requirements docs map to same-numbered numbered scripts.

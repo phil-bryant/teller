@@ -157,3 +157,29 @@ EOF
   [[ "$output" == *"FAIL (test-traceability)"* ]]
   [[ "$output" == *"R001"* ]]
 }
+
+@test "teller module requirements map only to matching python test file" {
+  #R050 #R065
+  mkdir -p "${FIXTURE_ROOT}/requirements/teller" "${FIXTURE_ROOT}/teller" "${FIXTURE_ROOT}/tests/py"
+  cat > "${FIXTURE_ROOT}/requirements/teller/teller_object-requirements.md" <<'EOF'
+## Scope
+Applies to `teller/teller_object.py`.
+
+R001 Statement: One.
+EOF
+  cat > "${FIXTURE_ROOT}/teller/teller_object.py" <<'EOF'
+#R001
+EOF
+  cat > "${FIXTURE_ROOT}/tests/py/test_teller_object.py" <<'EOF'
+# no matching tags here on purpose
+EOF
+  cat > "${FIXTURE_ROOT}/tests/py/test_teller_classification_api.py" <<'EOF'
+#R001
+EOF
+
+  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh requirements/teller/teller_object-requirements.md teller/teller_object.py"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"- tests: ${FIXTURE_ROOT}/tests/py/test_teller_object.py"* ]]
+  [[ "$output" != *"test_teller_classification_api.py"* ]]
+  [[ "$output" == *"R001"* ]]
+}
