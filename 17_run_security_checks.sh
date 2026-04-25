@@ -44,6 +44,26 @@ ensure_security_venv() {
 ensure_security_venv
 export PATH="${SECURITY_VENV_DIR}/bin:${PATH}"
 
+#R002: Ensure pip-audit inspects project dependencies, not security toolchain env.
+configure_pip_audit_python() {
+  local project_python=""
+  if [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV}/bin/python3" ]]; then
+    project_python="${VIRTUAL_ENV}/bin/python3"
+  elif [[ -x "./teller-venv/bin/python3" ]]; then
+    project_python="./teller-venv/bin/python3"
+  fi
+
+  if [[ -n "$project_python" ]]; then
+    export PIPAPI_PYTHON_LOCATION="$project_python"
+    echo "▶ pip-audit target interpreter: ${PIPAPI_PYTHON_LOCATION}"
+  else
+    unset PIPAPI_PYTHON_LOCATION || true
+    echo "ℹ️  pip-audit target interpreter: default environment"
+  fi
+}
+
+configure_pip_audit_python
+
 if [[ "$RUN_SAST" == "true" ]]; then
   require_command semgrep
   require_command bandit
@@ -119,6 +139,12 @@ with pip_audit_path.open("r", encoding="utf-8") as fh:
     pip_audit = json.load(fh)
 if isinstance(pip_audit, list):
     dep_vulns = sum(len(item.get("vulns", [])) for item in pip_audit)
+elif isinstance(pip_audit, dict) and isinstance(pip_audit.get("dependencies"), list):
+    dep_vulns = sum(
+        len(dep.get("vulns", []))
+        for dep in pip_audit.get("dependencies", [])
+        if isinstance(dep, dict)
+    )
 else:
     dep_vulns = len(pip_audit.get("vulns", [])) if isinstance(pip_audit, dict) else 0
 
