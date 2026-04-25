@@ -221,6 +221,34 @@ with open(ui_tests_file, "w", encoding="utf-8") as handle:
 PY
 }
 
+tests_inline_from_list() {
+    local test_list_file="$1"
+    python3 - "$test_list_file" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+if not path.exists():
+    print("(none discovered)")
+    raise SystemExit(0)
+
+items = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+if not items:
+    print("(none discovered)")
+else:
+    print(", ".join(items))
+PY
+}
+
+discover_combined_tests_for_requirements() {
+    local requirements_file="$1" source_list_file="$2" combined_tests_file="$3"
+    local default_tests_file ui_tests_file
+    default_tests_file="$(mktemp)"
+    ui_tests_file="$(mktemp)"
+    discover_test_files_for_requirements "$requirements_file" "$source_list_file" "$default_tests_file" "$ui_tests_file"
+    cat "$default_tests_file" "$ui_tests_file" | sort -u > "$combined_tests_file"
+}
+
 collect_ids_from_test_list() {
     local test_list_file="$1" out_file="$2"
     local test_file tmp_ids
@@ -243,7 +271,7 @@ collect_ids_from_test_list() {
 
 verify_requirements_test_traceability() {
     local requirements_file="$1" source_list_file="$2"
-    local req_ids_file ui_req_ids_file default_tests_file ui_tests_file
+    local req_ids_file ui_req_ids_file default_tests_file ui_tests_file combined_tests_file tests_inline
     local default_test_ids_file ui_test_ids_file missing_test_ids_file
     req_ids_file="$(mktemp)"
     ui_req_ids_file="$(mktemp)"
@@ -252,8 +280,11 @@ verify_requirements_test_traceability() {
     default_test_ids_file="$(mktemp)"
     ui_test_ids_file="$(mktemp)"
     missing_test_ids_file="$(mktemp)"
+    combined_tests_file="$(mktemp)"
     #R050: Discover test files by requirements/source conventions and test lanes.
     discover_test_files_for_requirements "$requirements_file" "$source_list_file" "$default_tests_file" "$ui_tests_file"
+    cat "$default_tests_file" "$ui_tests_file" | sort -u > "$combined_tests_file"
+    tests_inline="$(tests_inline_from_list "$combined_tests_file")"
     #R055: Parse requirement IDs that must be covered by UI tests.
     extract_requirement_ids "$requirements_file" "$req_ids_file"
     extract_ui_required_ids "$requirements_file" "$ui_req_ids_file"
@@ -280,14 +311,11 @@ verify_requirements_test_traceability() {
     sort -u "$missing_test_ids_file" -o "$missing_test_ids_file"
     #R065: Fail when any requirement ID lacks at least one tagged test.
     if [ ! -s "$missing_test_ids_file" ]; then
-        echo "✅ PASS (test-traceability): ${requirements_file}"
+        echo "✅ PASS (test-traceability): ${requirements_file} -> ${tests_inline}"
         return 0
     fi
     echo "❌ FAIL (test-traceability): missing tagged tests for requirement IDs in ${requirements_file}:"
     sed 's/^/  - /' "$missing_test_ids_file"
-    if [ ! -s "$default_tests_file" ] && [ ! -s "$ui_tests_file" ]; then
-        echo "  (no discoverable tests found for this requirements document)"
-    fi
     return 1
 }
 
@@ -357,9 +385,13 @@ verify_strict_pair() {
 verify_single_pair() {
     local requirements_file="$1"
     local source_file="$2"
-    echo "Traceability check"
-    echo "- requirements: $requirements_file"
-    echo "- source: $source_file"
+    local print_banner="${3:-1}"
+    if [ "$print_banner" -eq 1 ]; then
+        echo ""
+        echo "Traceability check"
+        echo "- requirements: $requirements_file"
+        echo "- source: $source_file"
+    fi
     #R015: Fail clearly when requirements file is missing.
     if [ ! -f "$requirements_file" ]; then
         echo "❌ Requirements file not found: $requirements_file"
@@ -379,10 +411,18 @@ verify_single_pair() {
 
 verify_single_pair_with_tests() {
     local requirements_file="$1" source_file="$2"
-    local source_list_file status=0
+    local source_list_file combined_tests_file tests_inline status=0
     source_list_file="$(mktemp)"
+    combined_tests_file="$(mktemp)"
     printf "%s\n" "$source_file" > "$source_list_file"
-    if ! verify_single_pair "$requirements_file" "$source_file"; then
+    discover_combined_tests_for_requirements "$requirements_file" "$source_list_file" "$combined_tests_file"
+    tests_inline="$(tests_inline_from_list "$combined_tests_file")"
+    echo ""
+    echo "Traceability check"
+    echo "- requirements: $requirements_file"
+    echo "- source: $source_file"
+    echo "- tests: $tests_inline"
+    if ! verify_single_pair "$requirements_file" "$source_file" 0; then
         status=1
     fi
     if ! verify_requirements_test_traceability "$requirements_file" "$source_list_file"; then
@@ -415,12 +455,21 @@ verify_requirements_file_sources() {
             file_fail=1
             continue
         fi
-        if verify_single_pair "$requirements_file" "$source_file"; then
+        local one_source_file one_source_tests_file one_source_tests_inline
+        one_source_file="$(mktemp)"
+        one_source_tests_file="$(mktemp)"
+        printf "%s\n" "$source_file" > "$one_source_file"
+        discover_combined_tests_for_requirements "$requirements_file" "$one_source_file" "$one_source_tests_file"
+        one_source_tests_inline="$(tests_inline_from_list "$one_source_tests_file")"
+        echo ""
+        echo "Traceability check"
+        echo "- requirements: $requirements_file"
+        echo "- source: $source_file"
+        echo "- tests: $one_source_tests_inline"
+        if verify_single_pair "$requirements_file" "$source_file" 0; then
             echo "✅ PASS: ${requirements_file} -> ${source_file}"
-            echo ""
         else
             echo "❌ FAIL: ${requirements_file} -> ${source_file}"
-            echo ""
             file_fail=1
         fi
     done < "$source_list_file"
