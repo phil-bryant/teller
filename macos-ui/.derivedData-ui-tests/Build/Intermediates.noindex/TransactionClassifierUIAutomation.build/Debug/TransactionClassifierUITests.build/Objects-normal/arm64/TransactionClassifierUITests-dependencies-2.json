@@ -191,441 +191,441 @@
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Accessibility.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Accessibility-6YGMUKKWU3TCILR97BMM7ZLNZ.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Accessibility-4FW5CVLIWI797RRAZH01LIA8W.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Accessibility"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/AppKit.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/AppKit-ADEFZIXSELQVRZ96YC0H5JR8W.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/AppKit-71Z774KWK0Y3F5XDELRGW2T8W.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "AppKit"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/ApplicationServices.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ApplicationServices-AFC3Y5YIL9W1LI9AX7S0KKTL9.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ApplicationServices-F2RSNB8DRES6M5IHLIBQQ3J7W.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ApplicationServices"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CFNetwork.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CFNetwork-1KCSJ4SRX5WLWHJIDKFN7FCNF.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CFNetwork-1UX1N4SW1M9UF6HAH2CXAIISF.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CFNetwork"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/cups.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CUPS-6JSNH3W5BT14CNGLAT8OTFY2X.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CUPS-5TI8I9OP5KDC66SWU5SA7BVYU.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CUPS"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/ColorSync.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ColorSync-24RO6QOTJ0P0F8N7JSYHXMJJ8.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ColorSync-BP7TB4VP1SHVT7ISTTOSCVMD.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ColorSync"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreData.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreData-5N2QPFMYMZ539YL6RTT14G0PP.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreData-C5CFCL8TBDZCHSXAEVQO0OI3Y.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreData"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreFoundation.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreFoundation-9I7U5UQ1LMB0UQZJT9N62EJMM.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreFoundation-3OTH58BNYEEWN9COCDX3KA1K3.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreFoundation"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreGraphics.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreGraphics-6EFGPL48M74ZB71WCYB0PTPCF.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreGraphics-G3OG94KYDL7TJLD7656WN3FX.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreGraphics"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreImage.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreImage-EDPNRF4Z5FE6ILH5BPSFTVGJP.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreImage-8TC3C5X70KPC9ET5RH0PLZQNM.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreImage"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreServices.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreServices-5CVFP9SZ7R8I6Q1JZ08IEX9NY.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreServices-6KO2N695PD7IWZZ96HXUZIRB2.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreServices"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreText.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreText-7XAMN1RQ9K702V53WTUYN8LY7.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreText-BXN1GSNDY28ZE2MZ5YP07SDSL.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreText"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreTransferable.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreTransferable-75GSM6HB6QQXB5V78DS8HT668.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreTransferable-3EAG8JHTHAB7TYO16NYCAO9JO.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreTransferable"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/CoreVideo.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreVideo-88KBMX9E3K2ZKIPESG5G8CALZ.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/CoreVideo-CBQTBKTHPILTO3KZSQSGLKRX8.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "CoreVideo"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/Darwin.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Darwin-ECIGJ2V5GCBUG84OKZAFQOW3N.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Darwin-BIRQCG0TWQ4ZDVICAUT753BXK.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Darwin"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/DataDetection.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/DataDetection-BXB1AE2MUKAFD96X0W24IXTX1.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/DataDetection-4GOJRZRWS20ROO71PF7TP6JT7.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "DataDetection"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/DeveloperToolsSupport.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/DeveloperToolsSupport-7CL84T7I1KRO8DZ8FB9BOWHP8.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/DeveloperToolsSupport-9MNNL3X6SJGBRFU7ITYOQYJ86.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "DeveloperToolsSupport"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/DiskArbitration.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/DiskArbitration-EESK2P13BXWYO91Q5V54320WY.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/DiskArbitration-6EUB7EZX75MFN7X6875ND8T9N.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "DiskArbitration"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/dispatch.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Dispatch-3QG8DX782BZ1Y2L17RZYSIZC8.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Dispatch-329WEH9CPQ6ADN9XW323KL40A.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Dispatch"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Foundation.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Foundation-7JMTGZDS6617F3CZ0NVEDOLME.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Foundation-A1C2TH3YTJACF00B9M1S7MQW7.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Foundation"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/IOKit.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/IOKit-6FQWZRUGLJHEX1H2T72O3JPFF.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/IOKit-1GPXMDZXRROX7AW48SLOB6901.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "IOKit"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/IOSurface.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/IOSurface-3OGXJKYIQ8PP9U9939DHWDQ5X.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/IOSurface-6HMSQTSKJFEOHSOAX774KTNE9.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "IOSurface"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/ImageIO.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ImageIO-EUBEFMFMQAERHF9CRDNFIGD8Y.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ImageIO-AURSAGXDJ21YL5FZR0YBQP8I2.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ImageIO"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinBasic.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/MachO-EPCDIIMDS3P6DZY5OE8SB726N.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/MachO-D0RRGJ5434ETG0B7MPMV6UM78.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "MachO"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Metal.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Metal-6KB1LDJNSJLC07BFNL5F0YKL.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Metal-24Z6J8ND6M3TUW27W8JYBMIQE.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Metal"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/OSLog.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/OSLog-2E3JV07YYEJY2WO828KK39OJC.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/OSLog-1ZVVVOUQEFMYLX4OKF7RFW4S6.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "OSLog"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/ObjectiveC.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ObjectiveC-D4X6K3AK5J3MVFUBF9OWJ7F6N.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ObjectiveC-DDVHF8MN07UG7XOJO68LJV0OU.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ObjectiveC"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/OpenGL.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/OpenGL-BDYDUHEMABBQ5N8X3X15MUEA0.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/OpenGL-C50WUH4L8IKEVFOJCTRNNMGLT.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "OpenGL"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/QuartzCore.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/QuartzCore-2QYIARH7TNW2E67EAGVV43UPD.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/QuartzCore-304F5TV6GIYSTNOCRE2T2WTVR.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "QuartzCore"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Security.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Security-DHFGF8VWAJFO4S9AYS52WFQ5V.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Security-BCNO1HP1HCWEEZK8HAOGOOYIB.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Security"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/Spatial\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Spatial-2T00NCVQELH31J053CS2EXX9E.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Spatial-C1TPLEXVBR1MV0YUXX44LX821.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Spatial"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/lib\/swift\/shims\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/SwiftShims-4VK11934XU6XP8F5PQV1D3NXA.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/SwiftShims-CYPZZ4B5LJYVHB1K9UXMU47VF.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "SwiftShims"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/SwiftUICore.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/SwiftUICore-94GR0NEUBW4L1UBYLPS8VVCV2.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/SwiftUICore-6M4NAAL9O3QLQ7A6LV5878M5O.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "SwiftUICore"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/Symbols.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Symbols-51TF7SDMHTAR6PPJ4W00L0SYJ.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/Symbols-C21LBX8BZGG8LRON239EP0JVH.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "Symbols"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/System\/Library\/Frameworks\/UniformTypeIdentifiers.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/UniformTypeIdentifiers-EF7LOLNWOQJ6QHVIHG91MRNKG.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/UniformTypeIdentifiers-AHW5C32F5M89EW50U6XANDYDT.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "UniformTypeIdentifiers"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/Library\/Frameworks\/XCTest.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/Build\/Intermediates.noindex\/SwiftExplicitPrecompiledModules\/XCTest-3F8DLEDYZC0E12XO6IAE42XIM.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/Build\/Intermediates.noindex\/SwiftExplicitPrecompiledModules\/XCTest-DGB337A0TEL1WNJHN9RCE6TSO.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "XCTest"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/Library\/Frameworks\/XCUIAutomation.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/Build\/Intermediates.noindex\/SwiftExplicitPrecompiledModules\/XCUIAutomation-ETW6PV2CBZ0H0AB93JX2GHU6H.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/Build\/Intermediates.noindex\/SwiftExplicitPrecompiledModules\/XCUIAutomation-87DE92QNYQQLBBVVO5Y75A3I.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "XCUIAutomation"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/xpc.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/XPC-63JHLUJPA55MGAZYDL67UEQRQ.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/XPC-EI5XMEO2CID5DIE2AUJ8E4GBA.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "XPC"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation1.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_AvailabilityInternal-EEUNV1P6CPOK1FAO7WK75904B.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_AvailabilityInternal-DYW6UY0ILHPLCXGUKCX5EZ32O.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_AvailabilityInternal"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_float-95YBNLAZGZWB96QF8HNWZHTBH.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_float-DPY3VPIM0OO6VQBPWCM73VS1Q.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_float"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_intrinsics-16TD074VGLQOYALQRIXHNLKGQ.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_intrinsics-4NFOJ7UC6AQ9Y8N8QAZNWLBRB.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_intrinsics"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_inttypes-A3WV8KKMZ5X3WUY1DCCZM8ABK.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_inttypes-50SDDP5KUSWBJM7TP21VEC6X5.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_inttypes"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_limits-5ZPISYUWXWLEO71FP426NRKUX.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_limits-ALD4HQ28CM88FMNAOOKXII12P.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_limits"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stdarg-CP4QV1B7E84LTBZ0X4U3EJGS5.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stdarg-2651XGKFYU9WMJ3BVM2BG4CMP.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stdarg"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stdatomic-35QBD5YBG0A67A1X0GDXJ702X.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stdatomic-5S5FD2T4SUOEBDB540C2L0OLS.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stdatomic"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stdbool-AMEDGI0XGH72W6J5MSL61N2YS.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stdbool-6WTMVBCWBXOPIZ51ESK29M4C2.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stdbool"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stddef-CDYV6MNMBF6QPC7FAHKRV1OA9.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stddef-2ROY21ABXSB9951XWA5GUPVU3.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stddef"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stdint-6VU8QTYT2MZPNQK3VRIN9XY3W.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_stdint-228AIDZKX3RAYMP86CMMA8QYP.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_stdint"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_tgmath-2UGDQIBKX6XNYGDMZCKRPLT81.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_Builtin_tgmath-9G9W7RFDIFYG7NXCN9PFCTD2K.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_Builtin_tgmath"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation1.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_DarwinFoundation1-7P2FMS8RED4M317N5KOHGCVO2.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_DarwinFoundation1-5937FPKQFJUCZKEPMV81JZHY1.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_DarwinFoundation1"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation2.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_DarwinFoundation2-BE6IIB9X6PIPJJMRR13J27ZOD.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_DarwinFoundation2-4SPT3YRYMT7AURSYAXYKJLAUK.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_DarwinFoundation2"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation3.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_DarwinFoundation3-9X6KTATKXPGCVFWXYP9FK43MM.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_DarwinFoundation3-9A0VUAOVPKQ32ZYJJFTYL2KR3.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_DarwinFoundation3"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/lib\/swift\/shims\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_SwiftConcurrencyShims-4YO0INXCAAE1SSA0YLJ190VS7.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/_SwiftConcurrencyShims-ER1919Q3WX6QB3VK2DGMQABC5.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "_SwiftConcurrencyShims"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/launch.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/launch-2WBMZ3V3119O241PZNU6SNJVR.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/launch-ACHKCCV7AUW5TQ6GZWPPC4LAC.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "launch"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/libDER\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/libDER-9757EMNXNHC1GNAH5SW7F0HXD.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/libDER-AI4QSIFAKO9L9O74LEQUFSHZX.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "libDER"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/libkern.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/libkern-DW4M1IFJKAJH2C5IM4AI1BWP9.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/libkern-5IB91LGICAGEOHKEN8MDZ68X4.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "libkern"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/os.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/os-8C61YC73TKG63KXUMQQQE8BH1.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/os-6TLY5KW34J48AY3VP1SHGZAR5.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "os"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/os.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/os_object-2VQ5C9EA50TQADYXGGAQJIQK4.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/os_object-69DQRBOKXVJRGKKDSWO6G7ZTW.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "os_object"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/os.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/os_workgroup-7TOJPQ7ZG8L3AABNUHJ9H4FIR.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/os_workgroup-66GU2O7H0GR3JHRC7XYFNFC9E.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "os_workgroup"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ptrauth-5L69OWZBLS4DGKD7BK78Z2TRH.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ptrauth-4OSEHY9I5R6NQ2TBAC6NF5HS0.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ptrauth"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/clang\/21\/include\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ptrcheck-81E29SE55K6OB9DPWINV6HO70.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/ptrcheck-RXUQ6XIS1R2VHGWHOXAUJP4X.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "ptrcheck"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/simd\/module.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/simd-DBK6P7TQC8RG902XOW5YCZ2XB.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/simd-7YJNSM27E33FTA4YBC7OBUYXS.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "simd"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/MacOSX.platform\/Developer\/SDKs\/MacOSX.sdk\/usr\/include\/DarwinFoundation2.modulemap",
-    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/sys_types-8KZHWUWBGAO9TYXMIA9F51ZEI.pcm",
+    "clangModulePath" : "\/Users\/phil\/local\/src\/teller\/macos-ui\/.derivedData-ui-tests\/ModuleCache.noindex\/sys_types-BZF6F8ZJV3YYO3SR6QDAZBCXH.pcm",
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "sys_types"
