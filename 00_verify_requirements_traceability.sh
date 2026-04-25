@@ -3,6 +3,20 @@
 umask 007
 set -euo pipefail
 
+list_requirements_files() {
+    python3 - <<'PY'
+import os
+base = "requirements"
+paths = []
+for root, _dirs, files in os.walk(base):
+    for name in files:
+        if name.endswith("-requirements.md"):
+            paths.append(os.path.join(root, name))
+for path in sorted(set(paths)):
+    print(path)
+PY
+}
+
 extract_requirement_ids() {
     local requirements_file="$1" out_file="$2"
     awk 'match($0, /^R[0-9]{3}(-[0-9]{3})*/) { print substr($0, RSTART, RLENGTH) }' "$requirements_file" | sort -u > "$out_file"
@@ -38,6 +52,45 @@ extract_source_files_from_requirements() {
             }
         }
     ' "$requirements_file" | sort -u > "$out_file"
+}
+
+extract_source_files_from_analogous_tree() {
+    local requirements_file="$1" out_file="$2"
+    local rel_path req_dir req_base source_stem search_root
+    rel_path="${requirements_file#requirements/}"
+    req_base="$(basename "$rel_path")"
+    source_stem="${req_base%-requirements.md}"
+    if [ "$source_stem" = "$req_base" ]; then
+        : > "$out_file"
+        return 0
+    fi
+    req_dir="$(dirname "$rel_path")"
+    if [ "$req_dir" = "." ]; then
+        search_root="."
+    else
+        search_root="$req_dir"
+    fi
+    python3 - "$search_root" "$source_stem" > "$out_file" <<'PY'
+import os
+import sys
+
+search_root = sys.argv[1]
+stem = sys.argv[2]
+allowed_exts = {"sh", "py", "swift", "sql"}
+matches = []
+
+if os.path.isdir(search_root):
+    for root, _dirs, files in os.walk(search_root):
+        for name in files:
+            base, dot, ext = name.rpartition(".")
+            if not dot:
+                continue
+            if base == stem and ext in allowed_exts:
+                matches.append(os.path.join(root, name))
+
+for path in sorted(set(matches)):
+    print(path)
+PY
 }
 
 is_locked_source_file() {
@@ -133,6 +186,10 @@ verify_requirements_file_sources() {
     #R010: Resolve source files referenced by each requirements document.
     extract_source_files_from_requirements "$requirements_file" "$source_list_file"
     if [ ! -s "$source_list_file" ]; then
+        #R010: Fallback to analogous subdirectory-tree mapping by requirements file name.
+        extract_source_files_from_analogous_tree "$requirements_file" "$source_list_file"
+    fi
+    if [ ! -s "$source_list_file" ]; then
         #R015: Fail clearly when no source mappings are discoverable.
         echo "❌ FAIL: ${requirements_file} has no discoverable source file references."
         return 1
@@ -164,13 +221,16 @@ verify_requirements_file_sources() {
 
 verify_all_requirements() {
     local total=0 pass=0 fail=0 requirements_file
-    local requirements_files=(requirements/*.md)
-    #R005: Discover and verify all requirements/*.md by default.
-    if [ "${requirements_files[0]}" = "requirements/*.md" ]; then
-        echo "❌ FAIL: no requirements files found under requirements/*.md"
+    local requirements_files=()
+    while IFS= read -r requirements_file; do
+        requirements_files+=("$requirements_file")
+    done < <(list_requirements_files)
+    #R005: Discover and verify all requirements/**/*-requirements.md by default.
+    if [ "${#requirements_files[@]}" -eq 0 ]; then
+        echo "❌ FAIL: no requirements files found under requirements/**/*-requirements.md"
         return 1
     fi
-    echo "Traceability check for all requirements/*.md"
+    echo "Traceability check for all requirements/**/*-requirements.md"
     for requirements_file in "${requirements_files[@]}"; do
         total=$((total + 1))
         if verify_requirements_file_sources "$requirements_file"; then
