@@ -70,4 +70,4 @@ Snapshot tests live in `Tests/TransactionClassifierSnapshotTests` and validate k
 
 XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` and cover keyboard-first critical paths (`Cmd+]`, `Cmd+Z`), category apply flows, search filtering, and load-more behavior in deterministic fixture mode.
 
-Rollout guidance and gating order are documented in `UI_REGRESSION_ROLLOUT.md`.
+Rollout guidance and gating behavior are captured in `../requirements/05_run_macos_ui_regression_tests-requirements.md`.

@@ -8,7 +8,9 @@ cd "$SCRIPT_DIR"
 
 RUN_SNAPSHOT_TESTS="${RUN_SNAPSHOT_TESTS:-true}"
 RUN_XCUITESTS="${RUN_XCUITESTS:-true}"
+#R030: Default to full UI regression coverage when no overrides are provided.
 SNAPSHOT_RECORD="${SNAPSHOT_RECORD:-false}"
+#R035: Expose XCUITest runtime overrides for worker-specific configuration.
 XCUITEST_PROJECT="${XCUITEST_PROJECT:-./macos-ui/TransactionClassifierUIAutomation.xcodeproj}"
 XCUITEST_SCHEME="${XCUITEST_SCHEME:-TransactionClassifierUITestHost}"
 XCUITEST_DESTINATION="${XCUITEST_DESTINATION:-platform=macOS}"
@@ -48,5 +50,6 @@ if [[ "$RUN_XCUITESTS" == "true" ]]; then
     -derivedDataPath "$XCUITEST_DERIVED_DATA_PATH" \
     -only-testing:TransactionClassifierUITests
 else
+  #R025: Support snapshot-only gate by explicitly skipping XCUITest lane.
   echo "ℹ️  Skipping XCUITest smoke suite (RUN_XCUITESTS=false)."
 fi
