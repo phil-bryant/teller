@@ -15,7 +15,9 @@ mkdir -p "$REPORT_DIR"
 
 PROJECT_PYTHON="${DEPENDENCY_CHECK_PYTHON:-}"
 if [[ -z "$PROJECT_PYTHON" ]]; then
-  if [[ -x "./teller-venv/bin/python" ]]; then
+  if [[ -n "${VIRTUAL_ENV:-}" ]] && [[ -x "${VIRTUAL_ENV}/bin/python" ]]; then
+    PROJECT_PYTHON="${VIRTUAL_ENV}/bin/python"
+  elif [[ -x "./teller-venv/bin/python" ]]; then
     PROJECT_PYTHON="./teller-venv/bin/python"
   else
     PROJECT_PYTHON="python3"
@@ -25,6 +27,12 @@ fi
 if [[ ! -x "$PROJECT_PYTHON" ]] && [[ "$PROJECT_PYTHON" != "python3" ]]; then
   echo "❌ Project python not executable: $PROJECT_PYTHON"
   exit 1
+fi
+
+if [[ "$PROJECT_PYTHON" == /* ]]; then
+  PROJECT_PYTHON_ABS="$PROJECT_PYTHON"
+else
+  PROJECT_PYTHON_ABS="${PWD}/${PROJECT_PYTHON#./}"
 fi
 
 ensure_security_venv() {
@@ -54,7 +62,7 @@ fi
 
 if [[ "$RUN_PIP_AUDIT" == "true" ]]; then
   ensure_security_venv
-  export PIPAPI_PYTHON_LOCATION="$PROJECT_PYTHON"
+  export PIPAPI_PYTHON_LOCATION="$PROJECT_PYTHON_ABS"
   echo "▶ Running pip-audit against ${PIPAPI_PYTHON_LOCATION}"
   set +e
   "${SECURITY_VENV_DIR}/bin/pip-audit" --format json --output "${REPORT_DIR}/pip-audit.json"
