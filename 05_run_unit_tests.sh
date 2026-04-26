@@ -13,7 +13,12 @@ RUN_SWIFT_TESTS="${RUN_SWIFT_TESTS:-true}"
 RUN_MACOS_UI_REGRESSION_TESTS="${RUN_MACOS_UI_REGRESSION_TESTS:-false}"
 BATS_FILTER="${BATS_FILTER:-}"
 SQL_TESTS_DIR="${SQL_TESTS_DIR:-./tests/sql}"
-SQL_TEST_DATABASE="${SQL_TEST_DATABASE:-${DB_NAME:-prod}}"
+SQL_TEST_DATABASE="${SQL_TEST_DATABASE:-${TELLER_DB_NAME:-${DB_NAME:-prod}}}"
+PG_PROVE_BIN="${PG_PROVE_BIN:-}"
+DB_HOST="${TELLER_DB_HOST:-localhost}"
+DB_PORT="${TELLER_DB_PORT:-5432}"
+DB_USER="${TELLER_DB_USER:-teller}"
+DB_PASSWORD="${TELLER_DB_PASSWORD:-${DB_PASSWORD:-}}"
 
 #R005: Prefer project venv when available.
 if [[ -d "./teller-venv" ]]; then
@@ -47,8 +52,27 @@ fi
 #R025 #R015: Run pgTAP SQL unit tests and stop on first failure.
 if [[ "$RUN_SQL_TESTS" == "true" ]]; then
   if [[ -d "$SQL_TESTS_DIR" ]]; then
-    if ! command -v pg_prove >/dev/null 2>&1; then
+    echo "▶ Preparing SQL unit tests (pgTAP)..."
+    if [[ -z "$PG_PROVE_BIN" ]]; then
+      if command -v pg_prove >/dev/null 2>&1; then
+        PG_PROVE_BIN="$(command -v pg_prove)"
+      elif [[ -x "${HOME}/perl5/bin/pg_prove" ]]; then
+        PG_PROVE_BIN="${HOME}/perl5/bin/pg_prove"
+      fi
+    fi
+    if [[ -z "$PG_PROVE_BIN" ]]; then
       echo "❌ pg_prove is required for pgTAP SQL unit tests. Install pgTAP tools and rerun."
+      exit 1
+    fi
+    if [[ -z "$DB_PASSWORD" ]]; then
+      if ! command -v 1psa >/dev/null 2>&1; then
+        echo "❌ TELLER_DB_PASSWORD is unset and 1psa is unavailable for fallback lookup."
+        exit 1
+      fi
+      DB_PASSWORD="$(1psa -p "${TELLER_PSA_ITEM:-localhost_postgres_teller}")"
+    fi
+    if [[ -z "$DB_PASSWORD" ]]; then
+      echo "❌ failed to resolve teller DB password for SQL unit tests."
       exit 1
     fi
     if ! command -v psql >/dev/null 2>&1; then
@@ -56,16 +80,13 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
       exit 1
     fi
 
-    if [[ -n "${DB_PASSWORD:-}" ]]; then
-      pgtap_installed="$(
-        PGPASSWORD="${DB_PASSWORD}" psql -v ON_ERROR_STOP=1 -d "$SQL_TEST_DATABASE" -Atqc \
-          "SELECT 1 FROM pg_extension WHERE extname = 'pgtap' LIMIT 1;" 2>/dev/null || true
-      )"
-    else
-      pgtap_installed="$(
-        psql -v ON_ERROR_STOP=1 -d "$SQL_TEST_DATABASE" -Atqc \
-          "SELECT 1 FROM pg_extension WHERE extname = 'pgtap' LIMIT 1;" 2>/dev/null || true
-      )"
+    if ! pgtap_installed="$(
+      PGPASSWORD="${DB_PASSWORD}" psql -w -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -v ON_ERROR_STOP=1 -d "$SQL_TEST_DATABASE" -Atqc \
+        "SELECT 1 FROM pg_extension WHERE extname = 'pgtap' LIMIT 1;" 2>&1
+    )"; then
+      echo "❌ failed to query '${SQL_TEST_DATABASE}' for pgtap extension availability."
+      echo "$pgtap_installed"
+      exit 1
     fi
 
     if [[ "$pgtap_installed" != "1" ]]; then
@@ -82,10 +103,20 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
     else
       echo "▶ Running SQL unit tests (pgTAP via pg_prove)..."
       for sql_test_file in "${sql_test_files[@]}"; do
-        if [[ -n "${DB_PASSWORD:-}" ]]; then
-          PGPASSWORD="${DB_PASSWORD}" pg_prove --dbname "$SQL_TEST_DATABASE" "$sql_test_file"
-        else
-          pg_prove --dbname "$SQL_TEST_DATABASE" "$sql_test_file"
+        if ! PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_USER" PGPASSWORD="$DB_PASSWORD" \
+          PGOPTIONS="-c search_path=teller,public" \
+          "$PG_PROVE_BIN" --dbname "$SQL_TEST_DATABASE" "$sql_test_file"; then
+          if [[ "$PG_PROVE_BIN" == "${HOME}/perl5/bin/pg_prove" ]]; then
+            brew_perl_prefix="$(brew --prefix perl 2>/dev/null || true)"
+            if [[ -x "${brew_perl_prefix}/bin/perl" ]]; then
+              echo "ℹ️  Retrying user-local pg_prove with Homebrew perl..."
+              PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_USER" PGPASSWORD="$DB_PASSWORD" \
+                PGOPTIONS="-c search_path=teller,public" \
+                "${brew_perl_prefix}/bin/perl" "$PG_PROVE_BIN" --dbname "$SQL_TEST_DATABASE" "$sql_test_file"
+              continue
+            fi
+          fi
+          exit 1
         fi
       done
     fi

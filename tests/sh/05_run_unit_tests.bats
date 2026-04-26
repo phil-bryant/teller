@@ -60,6 +60,7 @@ EOF
 }
 
 @test "runs sql suite by default when sql tests are present" {
+  #R025
   stub_cmd bats "exit 0"
   stub_cmd python3 "exit 0"
   stub_cmd swift "exit 0"
@@ -83,14 +84,16 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw ./05_run_unit_tests.sh"
   [ "$status" -eq 0 ]
+  [[ "$output" == *"Preparing SQL unit tests (pgTAP)"* ]]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"psql -v ON_ERROR_STOP=1 -d prod -Atqc SELECT 1 FROM pg_extension WHERE extname = 'pgtap' LIMIT 1;"* ]]
+  [[ "$calls" == *"psql -w -h localhost -p 5432 -U teller -v ON_ERROR_STOP=1 -d prod -Atqc SELECT 1 FROM pg_extension WHERE extname = 'pgtap' LIMIT 1;"* ]]
   [[ "$calls" == *"pg_prove --dbname prod ./tests/sql/smoke.sql"* ]]
 }
 
 @test "fails with actionable message when sql tests are enabled but pg_prove is missing" {
+  #R025
   stub_cmd bats "exit 0"
   stub_cmd python3 "exit 0"
   stub_cmd swift "exit 0"
@@ -106,12 +109,68 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pg_prove is required for pgTAP SQL unit tests"* ]]
 }
 
+@test "uses user-local pg_prove from ~/perl5/bin when PATH lacks pg_prove" {
+  #R025
+  stub_cmd bats "exit 0"
+  stub_cmd python3 "exit 0"
+  stub_cmd swift "exit 0"
+  cat > "${STUB_BIN}/psql" <<EOF
+#!/usr/bin/env bash
+echo "psql \$*" >> "${CALLS_LOG}"
+echo "1"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/psql"
+  mkdir -p "${HOME}/perl5/bin"
+  cat > "${HOME}/perl5/bin/pg_prove" <<EOF
+#!/usr/bin/env bash
+echo "pg_prove_home \$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${HOME}/perl5/bin/pg_prove"
+  mkdir -p "${FIXTURE_ROOT}/tests/sh"
+  mkdir -p "${FIXTURE_ROOT}/tests/sql"
+  cat > "${FIXTURE_ROOT}/tests/sql/smoke.sql" <<'EOF'
+SELECT 1;
+EOF
+
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"pg_prove_home --dbname prod ./tests/sql/smoke.sql"* ]]
+}
+
+@test "fails clearly when sql preflight cannot query database" {
+  #R025
+  stub_cmd bats "exit 0"
+  stub_cmd python3 "exit 0"
+  stub_cmd swift "exit 0"
+  cat > "${STUB_BIN}/psql" <<EOF
+#!/usr/bin/env bash
+echo "psql: error: connection failed" >&2
+exit 2
+EOF
+  chmod +x "${STUB_BIN}/psql"
+  stub_cmd pg_prove "exit 0"
+  mkdir -p "${FIXTURE_ROOT}/tests/sh"
+  mkdir -p "${FIXTURE_ROOT}/tests/sql"
+  cat > "${FIXTURE_ROOT}/tests/sql/smoke.sql" <<'EOF'
+SELECT 1;
+EOF
+
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"failed to query 'prod' for pgtap extension availability"* ]]
+  [[ "$output" == *"connection failed"* ]]
+}
+
 @test "fails with actionable message when pgtap extension is missing" {
+  #R025
   stub_cmd bats "exit 0"
   stub_cmd python3 "exit 0"
   stub_cmd swift "exit 0"
@@ -128,12 +187,45 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pgtap extension is required in database"* ]]
 }
 
+@test "uses 1psa fallback when teller db password env is unset" {
+  #R025
+  stub_cmd bats "exit 0"
+  stub_cmd python3 "exit 0"
+  stub_cmd swift "exit 0"
+  cat > "${STUB_BIN}/1psa" <<EOF
+#!/usr/bin/env bash
+echo "1psa \$*" >> "${CALLS_LOG}"
+echo "pw"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/1psa"
+  cat > "${STUB_BIN}/psql" <<EOF
+#!/usr/bin/env bash
+echo "psql \$*" >> "${CALLS_LOG}"
+echo "1"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/psql"
+  stub_cmd pg_prove "exit 0"
+  mkdir -p "${FIXTURE_ROOT}/tests/sh"
+  mkdir -p "${FIXTURE_ROOT}/tests/sql"
+  cat > "${FIXTURE_ROOT}/tests/sql/smoke.sql" <<'EOF'
+SELECT 1;
+EOF
+
+  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"1psa -p localhost_postgres_teller"* ]]
+}
+
 @test "can disable sql suite via RUN_SQL_TESTS=false" {
+  #R025
   stub_cmd bats "exit 0"
   stub_cmd python3 "exit 0"
   stub_cmd swift "exit 0"
