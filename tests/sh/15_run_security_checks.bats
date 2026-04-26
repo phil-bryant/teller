@@ -35,6 +35,16 @@ PY
   chmod +x "${root}/14_run_classification_api.py"
 }
 
+write_macos_ui_regression_stub() {
+  local root="$1"
+  cat > "${root}/06_run_macos_ui_regression_tests.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "macos-ui-regression-stub RUN_SNAPSHOT_TESTS=${RUN_SNAPSHOT_TESTS:-unset} RUN_XCUITESTS=${RUN_XCUITESTS:-unset} TELLER_CLASSIFIER_API_URL=${TELLER_CLASSIFIER_API_URL:-unset} TELLER_CLASSIFIER_HTTP_PROXY=${TELLER_CLASSIFIER_HTTP_PROXY:-unset}"
+SH
+  chmod +x "${root}/06_run_macos_ui_regression_tests.sh"
+}
+
 # Delegates to system Python3 except for a fake "python3 -m venv" (R005).
 write_python3_venv_stub() {
   cat > "${STUB_BIN}/python3" <<'EOS'
@@ -69,6 +79,7 @@ copy_security_project_files() {
   mkdir -p "${FIXTURE_ROOT}/teller"
   echo 'x = 1' > "${FIXTURE_ROOT}/teller/safe_test.py"
   write_dast_13_stub "${FIXTURE_ROOT}"
+  write_macos_ui_regression_stub "${FIXTURE_ROOT}"
 }
 
 install_passing_sast_stubs_in_venv() {
@@ -168,6 +179,27 @@ EOF
 stub_curl_success() {
   cat > "${STUB_BIN}/curl" <<'EOF'
 #!/usr/bin/env bash
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/curl"
+}
+
+stub_curl_health_and_zap_alerts() {
+  cat > "${STUB_BIN}/curl" <<'EOF'
+#!/usr/bin/env bash
+url="${*: -1}"
+if [[ "$url" == *"/JSON/core/view/alerts/"* ]]; then
+  printf '%s' '{"alerts":[{"risk":"Low"}]}'
+  exit 0
+fi
+if [[ "$url" == *"/OTHER/core/other/htmlreport/"* ]]; then
+  printf '%s' '<html><body>zap report</body></html>'
+  exit 0
+fi
+if [[ "$url" == *"/health"* ]] || [[ "$url" == *"/JSON/core/view/version/"* ]]; then
+  printf '%s' '{"ok":true}'
+  exit 0
+fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/curl"
@@ -425,7 +457,7 @@ EOF
   touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
-  run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false \
+  run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
     TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
@@ -443,7 +475,7 @@ EOF
   touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
-  run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false \
+  run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
     RUN_TOKEN_CAPTURE_DAST=auto \
     TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
@@ -469,6 +501,22 @@ EOF
   [[ "$output" == *"Missing ZAP CLI executable:"* ]]
 }
 
+@test "macOS UI DAST requires RUN_ZAP=true" {
+  #R060
+  setup_shell_test
+  copy_security_project_files
+  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
+  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  stub_curl_success
+  run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=true \
+    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"macOS UI Dynamic Application Security Testing (DAST) requires RUN_ZAP=true."* ]]
+}
+
 @test "DAST with ZAP stub writes zap log and completes" {
   #R045
   setup_shell_test
@@ -480,7 +528,7 @@ EOF
   stub_schemathesis_ok
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
   stub_zap_cli_ok "$zap_path"
-  run env RUN_SAST=false \
+  run env RUN_SAST=false RUN_MACOS_UI_DAST=false \
     ZAP_CLI_CMD="$zap_path" \
     TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
@@ -491,6 +539,31 @@ EOF
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
 }
 
+@test "macOS UI DAST runs regression through proxy and writes artifacts" {
+  #R060
+  setup_shell_test
+  copy_security_project_files
+  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
+  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  stub_curl_health_and_zap_alerts
+  stub_schemathesis_ok
+  local zap_path="${TEST_TMPDIR}/ZAP.sh"
+  stub_zap_cli_ok "$zap_path"
+  run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=true RUN_MACOS_UI_DAST=true \
+    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    ZAP_CLI_CMD="$zap_path" \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 0 ]
+  [ -f "${FIXTURE_ROOT}/.security-reports/zap-macos-ui.json" ]
+  [ -f "${FIXTURE_ROOT}/.security-reports/zap-macos-ui.html" ]
+  [ -f "${FIXTURE_ROOT}/.security-reports/macos-ui-dast-xcuitest.log" ]
+  [[ "$output" == *"Running macOS UI XCUITest smoke suite through ZAP proxy"* ]]
+  [[ "$output" == *"RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true"* ]]
+  [[ "$output" == *"TELLER_CLASSIFIER_HTTP_PROXY=http://127.0.0.1:8090"* ]]
+}
+
 @test "Schemathesis findings do not abort DAST lane" {
   setup_shell_test
   copy_security_project_files
@@ -499,7 +572,7 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   stub_schemathesis_findings
-  run env RUN_SAST=false RUN_ZAP=false \
+  run env RUN_SAST=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
     TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     DAST_OPENAPI_URL="http://127.0.0.1:8787/openapi.json" \

@@ -13,6 +13,8 @@ final class TransactionClassifierUITests: XCTestCase {
         app.launchArguments += ["--ui-testing"]
         app.launchEnvironment["TELLER_UI_TEST_MODE"] = "1"
         app.launchEnvironment["TELLER_UI_TEST_PAGE_SIZE"] = "2"
+        applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_API_URL")
+        applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_HTTP_PROXY")
         // #R035
         app.launch()
     }
@@ -263,5 +265,11 @@ final class TransactionClassifierUITests: XCTestCase {
         let enabledExpectation = expectation(for: enabledPredicate, evaluatedWith: applyButton)
         wait(for: [enabledExpectation], timeout: 5)
         applyButton.click()
+    }
+
+    private func applyOptionalLaunchEnvironment(_ key: String) {
+        if let value = ProcessInfo.processInfo.environment[key], !value.isEmpty {
+            app.launchEnvironment[key] = value
+        }
     }
 }
