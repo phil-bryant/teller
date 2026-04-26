@@ -50,13 +50,13 @@ Tests:
 - Run with `RUN_TOKEN_CAPTURE_DAST=auto` and no application ID file and verify token-capture DAST is skipped.
 
 R045  Statement: Run Schemathesis and ZAP quick scans with configurable targets and high/critical gating.
-Design: Run Schemathesis against resolved OpenAPI URL, run ZAP CLI quick scans against classification and optional token-capture targets, parse any generated ZAP JSON alerts, and fail when high/critical alerts exist and fail-on-high is enabled.
+Design: Run Schemathesis against resolved OpenAPI URL (using positive-mode generation and runtime fixture examples for live IDs). Before Schemathesis, execute a deterministic contract check that creates and deletes a category (including second-delete 404 semantics) and persist its JSON/log artifacts. Exclude `/v1/categories/{nys_snw_category_id}` from Schemathesis fuzz/stateful generation to avoid non-deterministic resource-lifecycle skew now covered by the deterministic check. Run ZAP CLI quick scans against classification and optional token-capture targets, parse any generated ZAP JSON alerts, and fail when high/critical alerts exist and fail-on-high is enabled.
 Tests:
 - Configure `RUN_ZAP=true` with missing `ZAP_CLI_CMD` and verify explicit prerequisite failure.
 - Configure DAST with valid tooling and verify zap/schemathesis logs are written in the report directory.
 
 R050  Statement: Emit explicit completion status and artifact location for operators.
-Design: Print SAST/DAST progress markers, gate outcomes, and final success output including resolved report directory path.
+Design: Print SAST/DAST progress markers, gate outcomes, and explicit lane completion lines (`Static Application Security Testing (SAST) checks completed.` and `Dynamic Application Security Testing (DAST) checks completed.`) plus final success output including resolved report directory path.
 Tests:
 - Run a passing lane and verify final completion output includes the reports path.
 
