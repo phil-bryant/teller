@@ -12,6 +12,8 @@ ONEPSA_DIR="${PARENT_DIR}/1psa"
 ONEPSA_LOCAL_BIN="${ONEPSA_DIR}/bin/1psa"
 PG_INSTALL_REPO_URL="https://github.com/phil-bryant/pg_install"
 PG_INSTALL_DIR="${PARENT_DIR}/pg_install"
+PGTAP_REPO_URL="https://github.com/theory/pgtap.git"
+PGTAP_DIR="${PARENT_DIR}/pgtap"
 ZAP_APP_PATH="${ZAP_APP_PATH:-/Applications/ZAP.app}"
 ZAP_CLI_PATH="${ZAP_CLI_PATH:-${ZAP_APP_PATH}/Contents/MacOS/ZAP.sh}"
 #R020: Default sudo credential item/field, overridable via environment.
@@ -42,7 +44,7 @@ ensure_homebrew() {
 }
 
 ensure_brew_formula() {
-    #R012 #R030: Ensure required brew formulas (go/git) are available.
+    #R012 #R030 #R080: Ensure required brew formulas (go/git/pgTAP tools) are available.
     #R035 #R040: Print status and skip install when already available.
     FORMULA="$1"
     COMMAND_NAME="${2:-$FORMULA}"
@@ -60,6 +62,71 @@ ensure_brew_formula() {
         echo "✅ [$FORMULA] Installed and available"
     else
         echo "❌ [$FORMULA] Install completed but command still unavailable"
+        exit 1
+    fi
+}
+
+ensure_pgtap_source_install() {
+    #R085: Ensure pgTAP source is present and installed when pg_prove is missing.
+    #R035 #R040: Emit status lines and keep phase idempotent.
+    echo ""
+    echo "[pgTAP] Checking..."
+    if { command -v pg_prove >/dev/null 2>&1 && pg_prove --version >/dev/null 2>&1; } || [ -x "${HOME}/perl5/bin/pg_prove" ]; then
+        echo "✅ [pgTAP] pg_prove available (PATH or ~/perl5/bin)"
+        return
+    fi
+
+    echo "⚠️  [pgTAP] pg_prove missing on PATH"
+    if [ -d "$PGTAP_DIR/.git" ]; then
+        echo "✅ [pgTAP] Source repository present at ${PGTAP_DIR}"
+    elif [ -e "$PGTAP_DIR" ]; then
+        echo "❌ [pgTAP] ${PGTAP_DIR} exists but is not a git repository"
+        echo "Please remove or rename it, then run this script again."
+        exit 1
+    else
+        #R030: Ensure git exists before clone operations.
+        ensure_brew_formula "git"
+        echo "[pgTAP] Cloning source into ${PARENT_DIR}..."
+        git clone "$PGTAP_REPO_URL" "$PGTAP_DIR"
+    fi
+    if [ ! -f "${PGTAP_DIR}/Makefile" ]; then
+        echo "❌ [pgTAP] Missing Makefile in ${PGTAP_DIR}"
+        exit 1
+    fi
+    echo "[pgTAP] Building from source..."
+    make -C "$PGTAP_DIR"
+    echo "[pgTAP] Installing from source..."
+    make -C "$PGTAP_DIR" install
+    echo "✅ [pgTAP] Source install completed"
+}
+
+ensure_pgtap_sourcehandler() {
+    #R090: Ensure TAP::Parser::SourceHandler::pgTAP installs with user-local cpanm and exposes pg_prove in ~/perl5/bin.
+    #R080: Use cpanminus for module installation.
+    echo ""
+    echo "[pgTAP Perl] Checking..."
+    if { command -v pg_prove >/dev/null 2>&1 && pg_prove --version >/dev/null 2>&1; } || [ -x "${HOME}/perl5/bin/pg_prove" ]; then
+        echo "✅ [pgTAP Perl] TAP::Parser::SourceHandler::pgTAP and pg_prove available"
+        return
+    fi
+    if ! command -v cpanm >/dev/null 2>&1; then
+        echo "❌ [pgTAP Perl] cpanm is required but not available on PATH"
+        exit 1
+    fi
+    # Prefer Homebrew Perl when installed so user-local cpanm tooling avoids system-Perl permission pitfalls.
+    brew_perl_prefix="$(brew --prefix perl 2>/dev/null || true)"
+    if [[ -n "$brew_perl_prefix" && -x "${brew_perl_prefix}/bin/perl" ]]; then
+        export PATH="${brew_perl_prefix}/bin:${PATH}"
+    fi
+    echo "[pgTAP Perl] Installing TAP::Parser::SourceHandler::pgTAP via user-local cpanm..."
+    cpanm --local-lib="${HOME}/perl5" --reinstall TAP::Parser::SourceHandler::pgTAP
+    if [ -x "${HOME}/perl5/bin/pg_prove" ] || command -v pg_prove >/dev/null 2>&1; then
+        echo "✅ [pgTAP Perl] TAP::Parser::SourceHandler::pgTAP installed"
+        if [ ! -x "$(command -v pg_prove 2>/dev/null || true)" ]; then
+            echo "ℹ️  [pgTAP Perl] pg_prove installed to ${HOME}/perl5/bin/pg_prove (not on PATH)"
+        fi
+    else
+        echo "❌ [pgTAP Perl] Install completed but pg_prove/module are still unavailable"
         exit 1
     fi
 }
@@ -222,9 +289,15 @@ ensure_brew_formula "git"
 ensure_brew_formula "swiftlint"
 #R055: Ensure bats shell test runner dependency is installed via Homebrew.
 ensure_brew_formula "bats-core" "bats"
+#R079: Ensure Perl runtime is available for cpanminus-managed pgTAP tooling.
+ensure_brew_formula "perl"
+#R080: Ensure cpanminus is available for Perl module installation.
+ensure_brew_formula "cpanminus" "cpanm"
 ensure_zap_cli
 
 ensure_1psa
 ensure_xcode_ready
 ensure_pg_install
+ensure_pgtap_source_install
+ensure_pgtap_sourcehandler
 print_final_guidance

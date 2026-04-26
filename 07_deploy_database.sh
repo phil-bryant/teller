@@ -59,6 +59,8 @@ fi
 #R025: Run admin bootstrap SQL in required order.
 run_psql_postgres -f "${SQL_DIR}/create_database.sql"
 run_psql_postgres -d prod -v teller_password="$TELLER_PASSWORD" -f "${SQL_DIR}/configure_database.sql"
+#R050: Ensure pgTAP extension exists in prod for SQL unit test execution.
+run_psql_postgres -d prod -c "CREATE EXTENSION IF NOT EXISTS pgtap;"
 
 #R030: Build teller schema objects in declared dependency order.
 run_psql_teller -f "${SQL_DIR}/teller_enums.sql"
