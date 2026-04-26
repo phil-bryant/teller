@@ -37,7 +37,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${TEST_TMPDIR}' && RUN_TELLER_CANARY=false '${FIXTURE_ROOT}/04_run_dependency_freshness_checks.sh'"
+  run bash -c "cd '${TEST_TMPDIR}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_TELLER_CANARY=false '${FIXTURE_ROOT}/04_run_dependency_freshness_checks.sh'"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/dependency-freshness.json" ]
   [ -f "${FIXTURE_ROOT}/.security-reports/dependency-freshness.txt" ]
@@ -79,7 +79,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && RUN_TELLER_CANARY=true ./04_run_dependency_freshness_checks.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_TELLER_CANARY=true ./04_run_dependency_freshness_checks.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/teller-api-drift.json" ]
   [ -f "${FIXTURE_ROOT}/.security-reports/teller-api-drift.txt" ]
