@@ -22,7 +22,7 @@ teardown() {
 
 @test "prefers python3.12 when both interpreters exist" {
   #R010 #R035
-  touch "${FIXTURE_ROOT}/01A_install_prerequisites.sh"
+  touch "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   cat > "${STUB_BIN}/python3.12" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$1" == "-m" && "$2" == "venv" ]]; then
@@ -42,7 +42,7 @@ EOF
 
 @test "refuses to run while another virtualenv is active" {
   #R015 #R025
-  touch "${FIXTURE_ROOT}/01A_install_prerequisites.sh"
+  touch "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   stub_cmd python3 "exit 0"
 
   run env VIRTUAL_ENV="/tmp/other-venv" bash -c "cd '${FIXTURE_ROOT}' && ./02_create_venv.sh"
@@ -52,7 +52,7 @@ EOF
 
 @test "returns success without recreating existing venv directory" {
   #R020 #R030 #R040
-  touch "${FIXTURE_ROOT}/01A_install_prerequisites.sh"
+  touch "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   mkdir -p "${FIXTURE_ROOT}/fixture-venv/bin"
   touch "${FIXTURE_ROOT}/fixture-venv/bin/activate"
   stub_cmd python3 "echo unexpected-python-call; exit 1"
