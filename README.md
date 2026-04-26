@@ -59,6 +59,7 @@ source ./teller-venv/bin/activate
 ```
 
 Security scanning currently runs via `14_run_security_checks.sh` (SAST and optional DAST).
+Dependency freshness automation runs via `17_run_dependency_freshness_checks.sh` locally and `.github/workflows/dependency-freshness.yml` in CI.
 
 ### 1) Requirements Traceability Verification
 
@@ -170,6 +171,49 @@ Useful flags:
 - `RUN_TOKEN_CAPTURE_DAST=true|false|auto` (default `auto`)
 
 For policy and behavior details, see `requirements/14_run_security_checks-requirements.md`.
+
+### 6) Dependency Freshness + Teller API Drift
+
+This lane provides automated dependency update visibility and a Teller compatibility canary.
+
+Run locally:
+
+```bash
+./17_run_dependency_freshness_checks.sh
+```
+
+Artifacts are written to `./.security-reports/`:
+
+- `dependency-freshness.json` and `dependency-freshness.txt` (outdated package summary with major/minor/patch classification)
+- `pip-audit.json` (known CVEs from current environment)
+- `teller-api-drift.json` and `teller-api-drift.txt` (live canary or fallback compatibility checks)
+
+Useful flags:
+
+- `DEPENDENCY_FAIL_ON_MAJOR=true|false` (default `false`) to fail when major dependency updates are available
+- `RUN_PIP_AUDIT=true|false` (default `true`)
+- `RUN_TELLER_CANARY=true|false` (default `true`)
+- `DEPENDENCY_REPORT_DIR=/path` (default `./.security-reports`)
+- `DEPENDENCY_CHECK_PYTHON=/path/to/python` (default `./teller-venv/bin/python` when available)
+
+CI automation:
+
+- `.github/dependabot.yml` opens weekly dependency PRs for patch/minor updates and ignores major-version bumps.
+- `.github/workflows/dependency-freshness.yml` runs weekly (and on manual dispatch), uploads freshness/audit/drift artifacts, and prints summaries.
+
+Optional CI secrets for live Teller canary:
+
+- `TELLER_CERTIFICATE_PEM`
+- `TELLER_PRIVATE_KEY_PEM`
+- `TELLER_ACCESS_TOKEN`
+
+If cert/key secrets are not configured, CI automatically runs fallback checks against local source/docs compatibility markers instead of live Teller API probes.
+
+Triage expectations:
+
+- Patch/minor Dependabot PRs: review CI output, run `./04_run_unit_tests.sh`, then merge when green.
+- Major updates: addressed manually after compatibility validation; these are notify-only and not auto-opened by Dependabot config.
+- Teller drift failures: fix credentials or investigate endpoint/schema behavior changes before release.
 
 ## API Reference Docs
 
