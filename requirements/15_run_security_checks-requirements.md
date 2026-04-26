@@ -25,17 +25,17 @@ Tests:
 - Set `RUN_SAST=false` and `RUN_DAST=false` and verify script exits cleanly after setup.
 
 R020  Statement: Run SAST scanners and persist machine-readable artifacts.
-Design: Require `semgrep`, `bandit`, `pip-audit`, and `detect-secrets`; execute scans with project configs and write JSON outputs under the report directory.
+Design: Require `semgrep`, `bandit`, `pip-audit`, and `detect-secrets`; execute scans with project configs and write JSON outputs under the report directory. When Swift sources are present under `./macos-ui` and `RUN_SWIFT_SAST=true`, run `swiftlint lint --reporter json` with focused security rules (`force_cast`, `force_try`, `force_unwrapping`) against first-party `Sources`/`Tests`/`UITests`, and persist `swiftlint.json` in the report directory.
 Tests:
-- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, and `detect-secrets.json` are produced.
+- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, `detect-secrets.json`, and `swiftlint.json` are produced.
 
 R025  Statement: Distinguish scanner findings from scanner execution failures.
-Design: Treat `bandit`/`pip-audit` exit codes greater than `1` as hard execution failures; allow exit code `1` as "findings detected" so gating is centralized in summary processing.
+Design: Treat `bandit`/`pip-audit`/`schemathesis` exit codes greater than `1` as hard execution failures; allow exit code `1` as "findings detected" so gating remains centralized (`sast-summary.json` for SAST and ZAP high/critical parsing for DAST).
 Tests:
 - Stub `bandit` to return `2` and verify script exits with explicit execution failure.
 
 R030  Statement: Produce a consolidated SAST gate summary and enforce blocking policy.
-Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, and all detect-secrets findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
+Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, SwiftLint `error`, and all detect-secrets findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
 Tests:
 - Seed report fixtures with one high-severity finding and verify gate failure when fail-on-high is enabled.
 
@@ -60,6 +60,12 @@ Design: Print SAST/DAST progress markers, gate outcomes, and final success outpu
 Tests:
 - Run a passing lane and verify final completion output includes the reports path.
 
+R055  Statement: Delimit every security tool run with a bounded header that includes purpose and official URL.
+Design: Before each scanner invocation (Semgrep, Bandit, pip-audit, detect-secrets, SwiftLint, Schemathesis, OWASP ZAP), print an ASCII box header containing the tool name, no more than two explainer lines describing what the test does, and a line with the tool's official URL.
+Tests:
+- Run a passing SAST lane and verify output includes boxed header lines, at least one two-line explainer, and URL lines for SAST tools.
+
 ## Changelog
 
 - 2026-04-24: Consolidated security scanning policy and runtime behavior from `docs/security-scanning.md` into script-scoped requirements for `15_run_security_checks.sh`.
+- 2026-04-26: Added boxed per-tool headers with brief explainers and official URLs for all security scanners.

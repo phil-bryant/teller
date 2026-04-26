@@ -8,6 +8,7 @@ cd "$SCRIPT_DIR"
 REPORT_DIR="${SECURITY_REPORT_DIR:-./.security-reports}"
 RUN_SAST="${RUN_SAST:-true}"
 RUN_DAST="${RUN_DAST:-true}"
+RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 #R015: Support configurable execution lanes and report destination.
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
@@ -26,6 +27,21 @@ require_command() {
     echo "Install security tooling with: pip install -r requirements-security.txt"
     exit 1
   fi
+}
+
+print_tool_header() {
+  #R055: Delimit each security tool execution with a boxed descriptor header.
+  local tool_name="$1"
+  local explainer_line_1="$2"
+  local explainer_line_2="$3"
+  local tool_url="$4"
+  local border="+==============================================================================+"
+  printf '%s\n' "$border"
+  printf '| %-76s |\n' "Tool: ${tool_name}"
+  printf '| %-76s |\n' "${explainer_line_1}"
+  printf '| %-76s |\n' "${explainer_line_2}"
+  printf '| %-76s |\n' "URL: ${tool_url}"
+  printf '%s\n' "$border"
 }
 
 ensure_security_venv() {
@@ -66,12 +82,73 @@ run_zap_quick_scan() {
   local target_url="$2"
   local html_report="$3"
   local log_report="$4"
+  print_tool_header \
+    "OWASP ZAP" \
+    "Dynamic scan of live HTTP endpoints for common web vulnerabilities." \
+    "Uses quick scan mode to spider and actively probe reachable routes." \
+    "https://www.zaproxy.org/"
   echo "▶ Running OWASP ZAP quick scan (CLI) against ${target_url}"
   "$zap_cli_cmd" -cmd \
     -quickurl "$target_url" \
     -quickout "$html_report" \
     -quickprogress \
     -silent | tee "$log_report"
+}
+
+run_swift_sast() {
+  local swift_report="$1"
+  local swift_ui_dir="${SWIFT_UI_DIR:-./macos-ui}"
+  local swift_targets=()
+
+  if [[ "$RUN_SWIFT_SAST" != "true" ]]; then
+    echo "ℹ️  Swift SAST skipped (set RUN_SWIFT_SAST=true to enable)."
+    printf '[]\n' > "$swift_report"
+    return 0
+  fi
+
+  if [[ ! -d "$swift_ui_dir" ]]; then
+    echo "ℹ️  Swift SAST skipped (directory not found: ${swift_ui_dir})."
+    printf '[]\n' > "$swift_report"
+    return 0
+  fi
+
+  for candidate in "${swift_ui_dir}/Sources" "${swift_ui_dir}/Tests" "${swift_ui_dir}/UITests"; do
+    if [[ -d "$candidate" ]]; then
+      swift_targets+=("$candidate")
+    fi
+  done
+
+  if [[ "${#swift_targets[@]}" -eq 0 ]]; then
+    echo "ℹ️  Swift SAST skipped (no Swift source/test directories under ${swift_ui_dir})."
+    printf '[]\n' > "$swift_report"
+    return 0
+  fi
+
+  require_command swiftlint
+  print_tool_header \
+    "SwiftLint" \
+    "Static linting for Swift code quality and risky language usage." \
+    "Security lane checks force-cast, force-try, and force-unwrapping patterns." \
+    "https://realm.github.io/SwiftLint/"
+  echo "▶ Running SwiftLint (security-focused rules) in ${swift_ui_dir}"
+  set +e
+  swiftlint lint \
+    --quiet \
+    --reporter json \
+    --force-exclude \
+    --only-rule force_cast \
+    --only-rule force_try \
+    --only-rule force_unwrapping \
+    "${swift_targets[@]}" > "$swift_report"
+  SWIFTLINT_EXIT=$?
+  set -e
+  if [[ "$SWIFTLINT_EXIT" -ne 0 ]] && [[ ! -s "$swift_report" ]]; then
+    echo "❌ SwiftLint failed to execute."
+    exit 1
+  fi
+  if [[ "$SWIFTLINT_EXIT" -ne 0 ]]; then
+    echo "⚠️  SwiftLint returned non-zero status; continuing with generated report."
+  fi
 }
 
 run_dast_checks() (
@@ -127,7 +204,13 @@ run_dast_checks() (
   #R045: Run Schemathesis and ZAP quick scans with configurable targets and gating.
   if [[ "$run_schemathesis" == "true" ]]; then
     require_command schemathesis
+    print_tool_header \
+      "Schemathesis" \
+      "Property-based API testing driven by the OpenAPI specification." \
+      "Finds contract mismatches by generating and exercising request scenarios." \
+      "https://schemathesis.readthedocs.io/"
     echo "▶ Running Schemathesis against ${openapi_url}"
+    set +e
     schemathesis run "$openapi_url" \
       --url "$base_url" \
       --seed "$schemathesis_seed" \
@@ -135,6 +218,15 @@ run_dast_checks() (
       --report junit \
       --report-junit-path "${report_dir_abs}/schemathesis-junit.xml" \
       | tee "${report_dir_abs}/schemathesis.log"
+    SCHEMATHESIS_EXIT=${PIPESTATUS[0]}
+    set -e
+    if [[ "$SCHEMATHESIS_EXIT" -gt 1 ]]; then
+      echo "❌ Schemathesis failed to execute."
+      exit 1
+    fi
+    if [[ "$SCHEMATHESIS_EXIT" -eq 1 ]]; then
+      echo "⚠️  Schemathesis found API contract issues; continuing to ZAP and DAST gating."
+    fi
   fi
 
   if [[ "$run_zap" == "true" ]]; then
@@ -246,6 +338,11 @@ if [[ "$RUN_SAST" == "true" ]]; then
   require_command pip-audit
   require_command detect-secrets
 
+  print_tool_header \
+    "Semgrep" \
+    "Static pattern-based scanning for security and correctness issues." \
+    "Combines community and repo custom rules across tracked source files." \
+    "https://semgrep.dev/docs/"
   echo "▶ Running Semgrep"
   semgrep scan \
     --config "p/security-audit" \
@@ -255,6 +352,11 @@ if [[ "$RUN_SAST" == "true" ]]; then
     --output "${REPORT_DIR}/semgrep.json" \
     .
 
+  print_tool_header \
+    "Bandit" \
+    "Static security analyzer for Python source code." \
+    "Flags known insecure coding patterns and risky API usage." \
+    "https://bandit.readthedocs.io/"
   echo "▶ Running Bandit"
   #R025: Distinguish scanner findings from scanner execution failures.
   set +e
@@ -266,6 +368,11 @@ if [[ "$RUN_SAST" == "true" ]]; then
     exit 1
   fi
 
+  print_tool_header \
+    "pip-audit" \
+    "Dependency vulnerability scanner for installed Python packages." \
+    "Maps local dependencies to public vulnerability advisories." \
+    "https://github.com/pypa/pip-audit"
   echo "▶ Running pip-audit"
   set +e
   pip-audit --format json --output "${REPORT_DIR}/pip-audit.json"
@@ -276,10 +383,17 @@ if [[ "$RUN_SAST" == "true" ]]; then
     exit 1
   fi
 
+  print_tool_header \
+    "detect-secrets" \
+    "Scans repository files for high-entropy and known secret formats." \
+    "Helps catch accidentally committed credentials before release." \
+    "https://github.com/Yelp/detect-secrets"
   echo "▶ Running detect-secrets"
   detect-secrets scan --all-files --force-use-all-plugins \
     --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/)' \
     > "${REPORT_DIR}/detect-secrets.json"
+
+  run_swift_sast "${REPORT_DIR}/swiftlint.json"
 
   #R030: Produce consolidated SAST gate summary and enforce blocking policy.
   python3 - <<'PY' "${REPORT_DIR}" "${FAIL_ON_HIGH_CRITICAL}"
@@ -295,8 +409,9 @@ semgrep_path = report_dir / "semgrep.json"
 bandit_path = report_dir / "bandit.json"
 pip_audit_path = report_dir / "pip-audit.json"
 secrets_path = report_dir / "detect-secrets.json"
+swiftlint_path = report_dir / "swiftlint.json"
 
-for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path]:
+for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, swiftlint_path]:
     if not required.exists():
         print(f"Missing report file: {required}")
         sys.exit(1)
@@ -334,7 +449,13 @@ for findings in secret_results.values():
     if isinstance(findings, list):
         secret_findings += len(findings)
 
-high_critical_total = semgrep_high + bandit_high + secret_findings
+with swiftlint_path.open("r", encoding="utf-8") as fh:
+    swiftlint = json.load(fh)
+swiftlint_results = swiftlint if isinstance(swiftlint, list) else []
+swiftlint_high = sum(1 for item in swiftlint_results if str(item.get("severity", "")).lower() == "error")
+swiftlint_total = len(swiftlint_results)
+
+high_critical_total = semgrep_high + bandit_high + secret_findings + swiftlint_high
 
 summary = {
     "semgrep_total": semgrep_total,
@@ -343,6 +464,8 @@ summary = {
     "bandit_high_critical": bandit_high,
     "pip_audit_vulnerabilities": dep_vulns,
     "detect_secrets_findings": secret_findings,
+    "swiftlint_total": swiftlint_total,
+    "swiftlint_high_critical": swiftlint_high,
     "high_critical_total": high_critical_total,
     "gate_failed": fail_on_high and high_critical_total > 0,
 }

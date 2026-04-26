@@ -183,6 +183,15 @@ EOF
   chmod +x "${STUB_BIN}/schemathesis"
 }
 
+stub_schemathesis_findings() {
+  cat > "${STUB_BIN}/schemathesis" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "contract-findings"
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/schemathesis"
+}
+
 stub_zap_cli_ok() {
   local path="$1"
   cat > "$path" <<'EOF'
@@ -191,6 +200,25 @@ echo "zap-stub"
 exit 0
 EOF
   chmod +x "$path"
+}
+
+stub_swiftlint_ok() {
+  cat > "${STUB_BIN}/swiftlint" <<'EOF'
+#!/usr/bin/env bash
+echo "swiftlint $*" >> "${CALLS_LOG}"
+printf '%s' '[]'
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swiftlint"
+}
+
+stub_swiftlint_exit_2() {
+  cat > "${STUB_BIN}/swiftlint" <<'EOF'
+#!/usr/bin/env bash
+echo "swiftlint $*" >> "${CALLS_LOG}"
+exit 2
+EOF
+  chmod +x "${STUB_BIN}/swiftlint"
 }
 
 teardown() {
@@ -293,10 +321,63 @@ EOS
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
-  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" sast-summary.json; do
+  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" swiftlint.json sast-summary.json; do
     [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
   done
   [[ "$output" == *"SAST summary"* ]]
+}
+
+@test "SAST prints boxed tool headers with explainers and official URLs" {
+  #R055
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"+==============================================================================+"* ]]
+  [[ "$output" == *"Tool: Semgrep"* ]]
+  [[ "$output" == *"Static pattern-based scanning for security and correctness issues."* ]]
+  [[ "$output" == *"URL: https://semgrep.dev/docs/"* ]]
+  [[ "$output" == *"Tool: Bandit"* ]]
+  [[ "$output" == *"URL: https://bandit.readthedocs.io/"* ]]
+  [[ "$output" == *"Tool: pip-audit"* ]]
+  [[ "$output" == *"URL: https://github.com/pypa/pip-audit"* ]]
+  [[ "$output" == *"Tool: detect-secrets"* ]]
+  [[ "$output" == *"URL: https://github.com/Yelp/detect-secrets"* ]]
+}
+
+@test "Swift SAST runs SwiftLint when Swift sources are present" {
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
+  cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
+import Foundation
+EOF
+  stub_swiftlint_ok
+  run env RUN_DAST=false RUN_SWIFT_SAST=true \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 0 ]
+  [ -f "${FIXTURE_ROOT}/.security-reports/swiftlint.json" ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"swiftlint lint --quiet --reporter json --force-exclude --only-rule force_cast --only-rule force_try --only-rule force_unwrapping"* ]]
+  [[ "$calls" == *"./macos-ui/Sources"* ]]
+}
+
+@test "SwiftLint exit code 2 is an execution failure" {
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
+  cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
+import Foundation
+EOF
+  stub_swiftlint_exit_2
+  run env RUN_DAST=false RUN_SWIFT_SAST=true \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"SwiftLint failed to execute."* ]]
 }
 
 @test "bandit exit code 2 is an execution failure" {
@@ -406,6 +487,24 @@ EOS
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-classification.log" ]
+  [[ "$output" == *"DAST checks completed."* ]]
+}
+
+@test "Schemathesis findings do not abort DAST lane" {
+  setup_shell_test
+  copy_security_project_files
+  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
+  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  stub_curl_success
+  stub_schemathesis_findings
+  run env RUN_SAST=false RUN_ZAP=false \
+    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    DAST_OPENAPI_URL="http://127.0.0.1:8787/openapi.json" \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Schemathesis found API contract issues; continuing to ZAP and DAST gating."* ]]
   [[ "$output" == *"DAST checks completed."* ]]
 }
 
