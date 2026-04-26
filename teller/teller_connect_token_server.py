@@ -4,13 +4,12 @@ import base64
 import html
 import json
 import os
-import ssl
 import threading
 import time
 import tempfile
-import urllib.error
-import urllib.request
 import webbrowser
+
+import requests
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -63,16 +62,18 @@ def infer_institution_id(token: str) -> str:
     if not token or not CERT_FILE.is_file() or not KEY_FILE.is_file():
         return ""
     try:
-        request = urllib.request.Request("https://api.teller.io/identity")
         auth = base64.b64encode(f"{token}:".encode("utf-8")).decode("utf-8")
-        request.add_header("Authorization", f"Basic {auth}")
-        context = ssl.create_default_context()
-        context.load_cert_chain(certfile=str(CERT_FILE), keyfile=str(KEY_FILE))
-        with urllib.request.urlopen(request, timeout=8, context=context) as response:
-            body = json.loads(response.read().decode("utf-8"))
+        response = requests.get(
+            "https://api.teller.io/identity",
+            headers={"Authorization": f"Basic {auth}"},
+            cert=(str(CERT_FILE), str(KEY_FILE)),
+            timeout=8,
+        )
+        response.raise_for_status()
+        body = response.json()
         if isinstance(body, list) and body and isinstance(body[0], dict):
             return body[0].get("account", {}).get("institution", {}).get("id", "")
-    except (urllib.error.URLError, OSError, ValueError, ssl.SSLError):
+    except (requests.RequestException, OSError, ValueError):
         return ""
     return ""
 
@@ -416,6 +417,9 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             TELLER_DIR.mkdir(parents=True, exist_ok=True)
+            # Owner only on the directory; no group/other read, write, or search (contrast: 0o644 / world-readable).
+            # Token/enrollment files below use 0o400: owner read/write only, not group/other readable or executable.
+            # nosemgrep: python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
             os.chmod(TELLER_DIR, 0o700)
             auth_token_file = self.server.capture_state.auth_token_file
             enrollment_id_file = self.server.capture_state.enrollment_id_file
