@@ -32,11 +32,16 @@ Tests:
 - Disable Swift tests and verify runner skips Swift invocation.
 
 R025  Statement: Execute SQL unit tests from `tests/sql`.
-Design: When SQL tests are enabled, first verify `pgtap` is installed in the target database using `psql`, then run each `*.sql` pgTAP test file in `tests/sql` using `pg_prove --dbname <db>` and fail fast on the first failure.
+Design: When SQL tests are enabled, print a SQL-lane prep status line, resolve DB connection settings from `TELLER_DB_*` defaults and `1psa` fallback password lookup, verify `pgtap` is installed in the target database using non-interactive `psql`, then run each `*.sql` pgTAP test file in `tests/sql` with `pg_prove --dbname <db>` and fail fast on the first failure. Resolve `pg_prove` from `PATH` first and fall back to `~/perl5/bin/pg_prove`; if direct execution of user-local `pg_prove` fails, retry through Homebrew Perl.
 Tests:
 - With SQL tests enabled and `pgtap` extension missing, verify runner exits non-zero with actionable extension-install guidance.
 - With SQL tests enabled and `tests/sql` populated, verify `pg_prove --dbname prod <test-file>` is invoked.
 - With SQL tests enabled and `pg_prove` missing, verify runner exits non-zero with actionable install guidance.
+- With SQL tests enabled and `~/perl5/bin/pg_prove` present but not on `PATH`, verify runner uses the user-local `pg_prove` binary.
+- With SQL tests enabled and direct user-local `pg_prove` execution failing, verify runner retries with Homebrew Perl.
+- With SQL tests enabled, verify runner prints a SQL prep status line before preflight checks.
+- With SQL tests enabled and preflight DB query failing, verify runner exits non-zero with explicit database-query failure context.
+- With SQL tests enabled and `TELLER_DB_PASSWORD` unset, verify runner falls back to `1psa` lookup for teller DB password.
 - Disable SQL tests and verify runner skips SQL invocation.
 
 ## Changelog

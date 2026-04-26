@@ -70,9 +70,15 @@ Tests:
 - Delete a row from `teller.transaction` with a linked `transaction_nys_snw_category` row and verify child row is removed automatically.
 - Re-run deploy and verify FK remains present with cascade behavior.
 
+R050  Statement: Ensure pgTAP extension is installed in `prod` during deploy.
+Design: Run `CREATE EXTENSION IF NOT EXISTS pgtap;` as postgres against `prod` after database configuration.
+Tests:
+- Verify deploy invokes SQL that creates `pgtap` extension in `prod`.
+
 ## Changelog
 
 - 2026-04-24: Added R006-R008 for fail-fast `psql` options and wrapper function coverage.
+- 2026-04-26: Added R050 to create `pgtap` extension in `prod` during deploy bootstrap.
 - 2026-04-21: Added R040 trigger-order requirement to ensure full updated_at coverage.
 - 2026-04-22: Added R045 to enforce cascading delete behavior for transaction classifications.
 - 2026-04-19: Initial reverse-engineered requirements for `07_deploy_database.sh`.
