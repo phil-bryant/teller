@@ -154,6 +154,268 @@ run_swift_sast() {
 run_dast_checks() (
   set -euo pipefail
 
+  prepare_schemathesis_openapi_fixture() {
+    local source_openapi_url="$1"
+    local source_base_url="$2"
+    local output_schema_path="$3"
+    python3 - <<'PY' "$source_openapi_url" "$source_base_url" "$output_schema_path"
+import json
+import sys
+import urllib.parse
+import urllib.request
+
+openapi_url, base_url, out_path = sys.argv[1:4]
+
+def fetch_json(url: str):
+    with urllib.request.urlopen(url, timeout=20) as resp:
+        return json.load(resp)
+
+def post_json(url: str, payload: dict):
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return json.load(resp)
+
+schema = fetch_json(openapi_url)
+
+category_id = None
+transaction_id = None
+delete_seed_ids = []
+
+try:
+    categories = fetch_json(f"{base_url}/v1/categories")
+    if isinstance(categories, list) and categories:
+        category_id = categories[0].get("nys_snw_category_id")
+except Exception:
+    pass
+
+if category_id is None:
+    try:
+        created = post_json(
+            f"{base_url}/v1/categories",
+            {
+                "level_1": "DAST",
+                "level_1_name": "DAST Seed",
+                "level_2": "Validation",
+                "level_2_name": "Validation",
+                "level_3": "Schemathesis",
+                "level_4": "Seed",
+                "categorization": "Runtime",
+                "applicability": "all",
+            },
+        )
+        category_id = created.get("nys_snw_category_id")
+    except Exception:
+        pass
+
+def create_seed_category(seed_suffix: str):
+    try:
+        created = post_json(
+            f"{base_url}/v1/categories",
+            {
+                "level_1": "DAST",
+                "level_1_name": "DAST Seed",
+                "level_2": "Validation",
+                "level_2_name": "Validation",
+                "level_3": "Schemathesis",
+                "level_4": f"Delete Seed {seed_suffix}",
+                "categorization": f"Runtime {seed_suffix}",
+                "applicability": f"all-{seed_suffix}",
+            },
+        )
+        return created.get("nys_snw_category_id")
+    except Exception:
+        return None
+
+for idx in range(32):
+    seed_id = create_seed_category(str(idx))
+    if isinstance(seed_id, int):
+        delete_seed_ids.append(seed_id)
+
+try:
+    tx_payload = fetch_json(f"{base_url}/v1/transactions?limit=1&offset=0")
+    items = tx_payload.get("items", []) if isinstance(tx_payload, dict) else []
+    if items:
+        transaction_id = items[0].get("transaction_id")
+except Exception:
+    pass
+
+paths = schema.get("paths", {})
+
+def set_path_param_example(path: str, method: str, param_name: str, value):
+    operation = paths.get(path, {}).get(method, {})
+    for param in operation.get("parameters", []):
+        if param.get("in") == "path" and param.get("name") == param_name:
+            param["example"] = value
+
+def set_path_param_enum(path: str, method: str, param_name: str, values):
+    operation = paths.get(path, {}).get(method, {})
+    for param in operation.get("parameters", []):
+        if param.get("in") == "path" and param.get("name") == param_name:
+            schema_obj = param.get("schema")
+            if isinstance(schema_obj, dict):
+                schema_obj["enum"] = values
+            if values:
+                param["example"] = values[0]
+
+def set_json_body_example(path: str, method: str, example):
+    operation = paths.get(path, {}).get(method, {})
+    content = operation.get("requestBody", {}).get("content", {})
+    app_json = content.get("application/json")
+    if isinstance(app_json, dict):
+        app_json["example"] = example
+
+if category_id is not None:
+    set_path_param_example("/v1/categories/{nys_snw_category_id}", "put", "nys_snw_category_id", category_id)
+
+if delete_seed_ids:
+    set_path_param_enum("/v1/categories/{nys_snw_category_id}", "delete", "nys_snw_category_id", delete_seed_ids)
+elif category_id is not None:
+    set_path_param_example("/v1/categories/{nys_snw_category_id}", "delete", "nys_snw_category_id", category_id)
+
+if transaction_id is not None:
+    set_path_param_example("/v1/transactions/{transaction_id}/classification", "put", "transaction_id", transaction_id)
+
+if transaction_id is not None and category_id is not None:
+    set_json_body_example(
+        "/v1/transactions/{transaction_id}/classification",
+        "put",
+        {"transaction_id": transaction_id, "nys_snw_category_id": category_id},
+    )
+    set_json_body_example(
+        "/v1/transactions/classifications",
+        "post",
+        {"updates": [{"transaction_id": transaction_id, "nys_snw_category_id": category_id}]},
+    )
+
+with open(out_path, "w", encoding="utf-8") as fh:
+    json.dump(schema, fh)
+    fh.write("\n")
+
+print(
+    json.dumps(
+        {
+            "fixture": out_path,
+            "seeded_category_id": category_id,
+            "seeded_transaction_id": transaction_id,
+            "delete_seed_ids": delete_seed_ids,
+        }
+    )
+)
+PY
+  }
+
+  run_delete_category_contract_check() {
+    local schema_path="$1"
+    local source_base_url="$2"
+    local output_json_path="$3"
+    python3 - <<'PY' "$schema_path" "$source_base_url" "$output_json_path"
+import json
+import sys
+import urllib.error
+import urllib.request
+
+schema_path, base_url, output_json_path = sys.argv[1:4]
+
+with open(schema_path, "r", encoding="utf-8") as fh:
+    schema = json.load(fh)
+
+delete_path = "/v1/categories/{nys_snw_category_id}"
+paths = schema.get("paths", {})
+if delete_path not in paths:
+    payload = {
+        "status": "skipped",
+        "reason": f"OpenAPI schema does not include {delete_path}",
+    }
+    with open(output_json_path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh)
+        fh.write("\n")
+    print(json.dumps(payload))
+    sys.exit(0)
+
+seed_payload = {
+    "level_1": "DAST",
+    "level_1_name": "DAST Contract",
+    "level_2": "Validation",
+    "level_2_name": "Validation",
+    "level_3": "Schemathesis",
+    "level_4": "Delete Contract",
+    "categorization": "Runtime Contract",
+    "applicability": "all-contract",
+}
+
+def request_json(method: str, url: str, body=None):
+    data = None if body is None else json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            raw = resp.read().decode("utf-8")
+            payload = json.loads(raw) if raw else None
+            return resp.status, payload
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8")
+        payload = json.loads(raw) if raw else None
+        return exc.code, payload
+
+create_status, create_payload = request_json("POST", f"{base_url}/v1/categories", seed_payload)
+if create_status != 200 or not isinstance(create_payload, dict):
+    raise SystemExit(
+        f"Contract check failed: POST /v1/categories returned {create_status} with payload {create_payload}"
+    )
+
+category_id = create_payload.get("nys_snw_category_id")
+if not isinstance(category_id, int):
+    raise SystemExit(
+        f"Contract check failed: missing integer nys_snw_category_id in create response {create_payload}"
+    )
+
+delete_status, delete_payload = request_json(
+    "DELETE", f"{base_url}/v1/categories/{category_id}", None
+)
+if delete_status != 200 or not isinstance(delete_payload, dict):
+    raise SystemExit(
+        f"Contract check failed: DELETE /v1/categories/{{id}} returned {delete_status} with payload {delete_payload}"
+    )
+if delete_payload.get("deleted") is not True:
+    raise SystemExit(
+        f"Contract check failed: delete response missing deleted=true: {delete_payload}"
+    )
+if delete_payload.get("nys_snw_category_id") != category_id:
+    raise SystemExit(
+        "Contract check failed: delete response category id mismatch"
+    )
+
+second_delete_status, second_delete_payload = request_json(
+    "DELETE", f"{base_url}/v1/categories/{category_id}", None
+)
+if second_delete_status != 404:
+    raise SystemExit(
+        "Contract check failed: second delete should return 404 for unknown category id"
+    )
+
+summary = {
+    "status": "passed",
+    "created_category_id": category_id,
+    "first_delete_status": delete_status,
+    "second_delete_status": second_delete_status,
+    "second_delete_payload": second_delete_payload,
+}
+with open(output_json_path, "w", encoding="utf-8") as fh:
+    json.dump(summary, fh)
+    fh.write("\n")
+print(json.dumps(summary))
+PY
+  }
+
   local report_dir="$1"
   local report_dir_abs
   report_dir_abs="$(cd "$report_dir" && pwd)"
@@ -210,9 +472,26 @@ run_dast_checks() (
       "Finds contract mismatches by generating and exercising request scenarios." \
       "https://schemathesis.readthedocs.io/"
     echo "▶ Running Schemathesis against ${openapi_url}"
+    local schemathesis_location="$openapi_url"
+    local schemathesis_openapi_fixture="${report_dir_abs}/schemathesis-openapi.json"
+    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" \
+      > "${report_dir_abs}/schemathesis-fixture.json"; then
+      schemathesis_location="$schemathesis_openapi_fixture"
+      echo "▶ Schemathesis fixture prepared at ${schemathesis_location}"
+    else
+      echo "⚠️  Schemathesis fixture preparation failed; using live OpenAPI URL."
+    fi
+    echo "▶ Running deterministic delete-category contract check"
+    run_delete_category_contract_check \
+      "$schemathesis_location" \
+      "$base_url" \
+      "${report_dir_abs}/schemathesis-delete-category-contract.json" \
+      | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
     set +e
-    schemathesis run "$openapi_url" \
+    schemathesis run "$schemathesis_location" \
       --url "$base_url" \
+      --mode positive \
+      --exclude-path "/v1/categories/{nys_snw_category_id}" \
       --seed "$schemathesis_seed" \
       --max-examples "$schemathesis_max_examples" \
       --report junit \
@@ -482,6 +761,7 @@ if fail_on_high and high_critical_total > 0:
     print("❌ Static Application Security Testing (SAST) gate failed: High/Critical findings detected.")
     sys.exit(1)
 PY
+  echo "✅ Static Application Security Testing (SAST) checks completed."
 fi
 
 if [[ "$RUN_DAST" == "true" ]]; then

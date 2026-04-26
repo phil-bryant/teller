@@ -325,6 +325,7 @@ EOS
     [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
   done
   [[ "$output" == *"Static Application Security Testing (SAST) summary"* ]]
+  [[ "$output" == *"Static Application Security Testing (SAST) checks completed."* ]]
 }
 
 @test "SAST prints boxed tool headers with explainers and official URLs" {
