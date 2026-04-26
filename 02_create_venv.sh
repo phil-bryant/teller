@@ -6,12 +6,12 @@ set -e
 
 # Read Python version from prerequisites script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PREREQ_SCRIPT="${SCRIPT_DIR}/01A_install_prerequisites.sh"
+PREREQ_SCRIPT="${SCRIPT_DIR}/01_install_prerequisites.sh"
 
 #R005: Require sibling prerequisites script.
 if [ ! -f "$PREREQ_SCRIPT" ]; then
     echo "❌ ERROR: Prerequisites script not found: $PREREQ_SCRIPT"
-    echo "Please ensure 01A_install_prerequisites.sh is in the same directory."
+    echo "Please ensure 01_install_prerequisites.sh is in the same directory."
     exit 1
 fi
 
