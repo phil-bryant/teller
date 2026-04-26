@@ -7,7 +7,7 @@ Native macOS UI for reclassifying `teller.transaction` records into `teller.nys_
 From repo root:
 
 ```zsh
-./13_run_classification_api.py
+./14_run_classification_api.py
 ```
 
 Defaults to `http://127.0.0.1:8787`. Override with:
@@ -36,17 +36,17 @@ Or open `macos-ui/` directly in Xcode and run the executable target.
 
 From repo root:
 
-- `./04_run_unit_tests.sh` (API/unit tests)
-- `./05_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
-- `./16_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./16_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
+- `./05_run_unit_tests.sh` (API/unit tests)
+- `./06_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
+- `./17_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./17_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
 
 ## 5) Automated UI regression testing
 
 Run from repo root:
 
 ```zsh
-./05_run_macos_ui_regression_tests.sh
+./06_run_macos_ui_regression_tests.sh
 ```
 
 Available gates/flags:
@@ -70,4 +70,4 @@ Snapshot tests live in `Tests/TransactionClassifierSnapshotTests` and validate k
 
 XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` and cover keyboard-first critical paths (`Cmd+]`, `Cmd+Z`), category apply flows, search filtering, and load-more behavior in deterministic fixture mode.
 
-Rollout guidance and gating behavior are captured in `../requirements/05_run_macos_ui_regression_tests-requirements.md`.
+Rollout guidance and gating behavior are captured in `../requirements/06_run_macos_ui_regression_tests-requirements.md`.
