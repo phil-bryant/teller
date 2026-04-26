@@ -621,7 +621,7 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
@@ -640,7 +640,7 @@ EOF
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
     RUN_TOKEN_CAPTURE_DAST=auto \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18788 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
@@ -657,7 +657,7 @@ EOF
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false \
     ZAP_CLI_CMD="/no/such/zap" \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18789 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 1 ]
@@ -673,7 +673,7 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=true \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18790 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 1 ]
@@ -693,9 +693,9 @@ EOF
   stub_zap_cli_ok "$zap_path"
   run env RUN_SAST=false RUN_MACOS_UI_DAST=false \
     ZAP_CLI_CMD="$zap_path" \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18791 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    DAST_OPENAPI_URL="http://127.0.0.1:8787/openapi.json" \
+    DAST_OPENAPI_URL="http://127.0.0.1:18791/openapi.json" \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-classification.log" ]
@@ -714,7 +714,7 @@ EOF
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
   stub_zap_cli_ok "$zap_path"
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=true RUN_MACOS_UI_DAST=true \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18792 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     ZAP_CLI_CMD="$zap_path" \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
@@ -736,9 +736,9 @@ EOF
   stub_curl_success
   stub_schemathesis_findings
   run env RUN_SAST=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18793 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    DAST_OPENAPI_URL="http://127.0.0.1:8787/openapi.json" \
+    DAST_OPENAPI_URL="http://127.0.0.1:18793/openapi.json" \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."* ]]
