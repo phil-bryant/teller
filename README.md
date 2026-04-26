@@ -7,7 +7,7 @@ Local PostgreSQL schema setup and management scripts for Teller data.
 Run setup scripts in numeric order. The workflow is designed around:
 
 - `01_install_prerequisites.sh`
-  - Ensures Homebrew, required tooling, `1psa`, and `pg_install` are present.
+  - Ensures Homebrew, required tooling (including `clamscan` from ClamAV), `1psa`, and `pg_install` are present.
   - Ensures Xcode first-launch and license acceptance are completed (using `1psa` for sudo credential input when needed).
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
@@ -169,6 +169,10 @@ Useful flags:
 - `RUN_SAST=true|false` (default `true`)
 - `RUN_DAST=true|false` (default `true`)
 - `RUN_SWIFT_SAST=true|false` (default `true`; runs security-focused SwiftLint rules on first-party `./macos-ui` Swift code)
+- `RUN_CLAMAV=true|false` (default `true`; runs recursive ClamAV malware scan on repository files)
+- `CLAMAV_SCAN_TARGET=/path` (default `.`; scan root for ClamAV repository scan)
+- `CLAMAV_HEARTBEAT_SECONDS=15` (default `15`; emits periodic "still scanning" status lines during ClamAV scans)
+- `CLAMAV_SIGNATURE_MAX_AGE_HOURS=48` (default `48`; freshness threshold for signature age warning output)
 - `RUN_ZAP=true|false` (default `true`, requires local ZAP CLI executable, e.g. `ZAP.sh`)
 - `RUN_MACOS_UI_DAST=true|false` (default `true`; runs macOS XCUITest smoke flows through a local ZAP proxy)
 - `MACOS_UI_DAST_ZAP_PROXY_HOST` / `MACOS_UI_DAST_ZAP_PROXY_PORT` (defaults `127.0.0.1` / `8090`)
@@ -181,6 +185,12 @@ Example local macOS UI DAST run:
 ```bash
 RUN_SAST=false RUN_MACOS_UI_DAST=true ./15_run_security_checks.sh
 ```
+
+ClamAV notes:
+- The security script prints the resolved scan target path before scanning.
+- It prints signature freshness metadata (latest DB file + age).
+- During long scans, it emits periodic heartbeat lines so the run is not silent.
+- On first run, if malware signature databases are missing, the script automatically attempts a one-time `freshclam --stdout` update and retries the scan.
 
 For policy and behavior details, see `requirements/15_run_security_checks-requirements.md`.
 
@@ -238,7 +248,7 @@ Active secret and credential sources are:
 
 - `01_install_prerequisites.sh`
   - Ensures Homebrew is installed.
-  - Ensures `go` and `git` are available.
+  - Ensures `go`, `git`, `bats`, `swiftlint`, and `clamscan` are available.
   - Installs `1psa` (from `../1psa`) and clones `pg_install` into `../pg_install`.
 - `02_create_venv.sh`
   - Creates a Python virtual environment named `<repo>-venv`.
@@ -279,7 +289,7 @@ Active secret and credential sources are:
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `15_run_security_checks.sh`
-  - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets, and SwiftLint for `macos-ui`).
+  - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets, ClamAV, and SwiftLint for `macos-ui`).
   - Optionally runs DAST inline (starts local API target(s), runs Schemathesis against OpenAPI, and runs OWASP ZAP local CLI quick scan).
   - Supports optional token-capture target scanning when Teller local credentials are present.
 - `97_backup_database.sh`

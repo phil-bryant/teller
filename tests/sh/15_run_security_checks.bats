@@ -253,6 +253,102 @@ EOF
   chmod +x "${STUB_BIN}/swiftlint"
 }
 
+stub_clamscan_clean() {
+  cat > "${STUB_BIN}/clamscan" <<'EOF'
+#!/usr/bin/env bash
+cat <<'OUT'
+----------- SCAN SUMMARY -----------
+Known viruses: 12345
+Engine version: 1.0
+Scanned files: 10
+Infected files: 0
+OUT
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/clamscan"
+}
+
+stub_clamscan_infected() {
+  cat > "${STUB_BIN}/clamscan" <<'EOF'
+#!/usr/bin/env bash
+cat <<'OUT'
+./bad.bin: Eicar-Test-Signature FOUND
+----------- SCAN SUMMARY -----------
+Known viruses: 12345
+Engine version: 1.0
+Scanned files: 10
+Infected files: 1
+OUT
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/clamscan"
+}
+
+stub_clamscan_exit_2() {
+  cat > "${STUB_BIN}/clamscan" <<'EOF'
+#!/usr/bin/env bash
+exit 2
+EOF
+  chmod +x "${STUB_BIN}/clamscan"
+}
+
+stub_clamscan_slow_clean() {
+  cat > "${STUB_BIN}/clamscan" <<'EOF'
+#!/usr/bin/env bash
+sleep 2
+cat <<'OUT'
+----------- SCAN SUMMARY -----------
+Known viruses: 12345
+Engine version: 1.0
+Scanned files: 10
+Infected files: 0
+OUT
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/clamscan"
+}
+
+stub_clamscan_missing_db_then_clean() {
+  cat > "${STUB_BIN}/clamscan" <<'EOF'
+#!/usr/bin/env bash
+echo "clamscan $*" >> "${CALLS_LOG}"
+state="${TEST_TMPDIR}/clamscan-state"
+if [[ ! -f "$state" ]]; then
+  cat <<'OUT'
+LibClamAV Error: cli_loaddbdir: No supported database files found in /opt/homebrew/var/lib/clamav
+ERROR: Can't open file or directory
+
+----------- SCAN SUMMARY -----------
+Known viruses: 0
+Engine version: 1.0
+Scanned files: 0
+Infected files: 0
+OUT
+  : > "$state"
+  exit 2
+fi
+cat <<'OUT'
+----------- SCAN SUMMARY -----------
+Known viruses: 12345
+Engine version: 1.0
+Scanned files: 10
+Infected files: 0
+OUT
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/clamscan"
+}
+
+stub_freshclam_ok() {
+  cat > "${STUB_BIN}/freshclam" <<'EOF'
+#!/usr/bin/env bash
+echo "freshclam $*" >> "${CALLS_LOG}"
+echo "Database updated"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/freshclam"
+}
+
 teardown() {
   teardown_shell_test
 }
@@ -326,6 +422,7 @@ EOS
   copy_security_project_files
   /usr/bin/python3 -m venv "${FIXTURE_ROOT}/teller-venv"
   install_passing_sast_stubs_in_venv
+  stub_clamscan_clean
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
@@ -346,25 +443,29 @@ EOS
 }
 
 @test "SAST produces JSON reports and sast summary" {
-  #R020
+  #R020 #R065
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
+  stub_clamscan_clean
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
-  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" swiftlint.json sast-summary.json; do
+  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" swiftlint.json clamav.log "clamav-summary.json" sast-summary.json; do
     [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
   done
+  infected_count="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("clamav_infected_files",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
+  [ "$infected_count" = "0" ]
   [[ "$output" == *"Static Application Security Testing (SAST) summary"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) checks completed."* ]]
 }
 
 @test "SAST prints boxed tool headers with explainers and official URLs" {
-  #R055
+  #R055 #R065
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
+  stub_clamscan_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
@@ -378,12 +479,15 @@ EOS
   [[ "$output" == *"URL: https://github.com/pypa/pip-audit"* ]]
   [[ "$output" == *"Security Tool: detect-secrets"* ]]
   [[ "$output" == *"URL: https://github.com/Yelp/detect-secrets"* ]]
+  [[ "$output" == *"Security Tool: ClamAV"* ]]
+  [[ "$output" == *"URL: https://www.clamav.net/"* ]]
 }
 
 @test "Swift SAST runs SwiftLint when Swift sources are present" {
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
+  stub_clamscan_clean
   mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
   cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
 import Foundation
@@ -402,6 +506,7 @@ EOF
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
+  stub_clamscan_clean
   mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
   cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
 import Foundation
@@ -418,6 +523,7 @@ EOF
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
+  stub_clamscan_clean
   install_bandit_exit_2
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
@@ -430,6 +536,7 @@ EOF
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
+  stub_clamscan_clean
   install_pip_audit_exit_2
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
@@ -442,11 +549,67 @@ EOF
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
+  stub_clamscan_clean
   install_sast_gate_fail_semgrep
   run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
+}
+
+@test "ClamAV exit code 2 is an execution failure" {
+  #R065
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_clamscan_exit_2
+  run env RUN_DAST=false \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ClamAV failed to execute."* ]]
+}
+
+@test "ClamAV infected findings fail SAST gate when fail-on-high is enabled" {
+  #R065 #R030
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_clamscan_infected
+  run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ClamAV detected infected files"* ]]
+  [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
+}
+
+@test "ClamAV refreshes signatures with freshclam when DB is missing and retries scan" {
+  #R065
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_clamscan_missing_db_then_clean
+  stub_freshclam_ok
+  run env RUN_DAST=false \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"attempting one-time database refresh with freshclam"* ]]
+  [[ "$output" == *"Retrying ClamAV repository scan after signature refresh"* ]]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"freshclam --stdout"* ]]
+}
+
+@test "ClamAV prints freshness, target path, and heartbeat during long scan" {
+  #R065
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_clamscan_slow_clean
+  run env RUN_DAST=false CLAMAV_HEARTBEAT_SECONDS=1 CLAMAV_SCAN_TARGET="./teller" \
+    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ClamAV signature freshness"* ]]
+  [[ "$output" == *"ClamAV scan target:"*"/teller"* ]]
+  [[ "$output" == *"ClamAV scan in progress"* ]]
 }
 
 @test "DAST starts API, waits for health, completes when DAST tools minimal" {
@@ -458,7 +621,7 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
@@ -477,7 +640,7 @@ EOF
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
     RUN_TOKEN_CAPTURE_DAST=auto \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18788 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
@@ -494,7 +657,7 @@ EOF
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false \
     ZAP_CLI_CMD="/no/such/zap" \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18789 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 1 ]
@@ -510,7 +673,7 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=true \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18790 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 1 ]
@@ -530,9 +693,9 @@ EOF
   stub_zap_cli_ok "$zap_path"
   run env RUN_SAST=false RUN_MACOS_UI_DAST=false \
     ZAP_CLI_CMD="$zap_path" \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18791 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    DAST_OPENAPI_URL="http://127.0.0.1:8787/openapi.json" \
+    DAST_OPENAPI_URL="http://127.0.0.1:18791/openapi.json" \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-classification.log" ]
@@ -551,7 +714,7 @@ EOF
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
   stub_zap_cli_ok "$zap_path"
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=true RUN_MACOS_UI_DAST=true \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18792 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     ZAP_CLI_CMD="$zap_path" \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
@@ -573,9 +736,9 @@ EOF
   stub_curl_success
   stub_schemathesis_findings
   run env RUN_SAST=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
-    TELLER_CLASSIFIER_API_HOST=127.0.0.1 TELLER_CLASSIFIER_API_PORT=8787 \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18793 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    DAST_OPENAPI_URL="http://127.0.0.1:8787/openapi.json" \
+    DAST_OPENAPI_URL="http://127.0.0.1:18793/openapi.json" \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."* ]]
