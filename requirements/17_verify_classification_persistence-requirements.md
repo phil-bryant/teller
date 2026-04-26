@@ -1,0 +1,62 @@
+# Verify Classification Persistence Requirements
+
+## Scope
+
+Applies to `17_verify_classification_persistence.sh`.
+
+R001  Statement: Run in strict shell mode and fail fast.
+Design: Use `zsh` shebang and `set -euo pipefail`.
+Tests:
+- Cause command failure and verify script exits non-zero.
+
+R005  Statement: Auto-resolve identifiers when env vars are missing.
+Design: When `TXN_ID` and/or `CATEGORY_ID` are unset, query DB defaults from posted rows in `teller.transaction` and from `teller.nys_snw_category`.
+Design: If either query returns no row, fail with actionable guidance instead of a generic parameter expansion error.
+Tests:
+- Run without `TXN_ID` and verify script auto-selects one from `status='posted'` transactions.
+- Run without `CATEGORY_ID` and verify script auto-selects one.
+- Run with empty `teller.transaction` and verify explicit guidance to load data or pass `TXN_ID`.
+
+R006  Statement: Support strict env-only identifier mode.
+Design: `--require-env-ids` enforces required parameter expansion for `TXN_ID` and `CATEGORY_ID`.
+Tests:
+- Run with `--require-env-ids` and missing `TXN_ID` to verify immediate failure.
+- Run with `--require-env-ids` and missing `CATEGORY_ID` to verify immediate failure.
+
+R010  Statement: Support configurable API endpoint and database connection defaults.
+Design: Use `TELLER_CLASSIFIER_API_URL` and `TELLER_DB_*` overrides with localhost defaults.
+Tests:
+- Override API URL and verify request targets override.
+
+R015  Statement: Resolve DB password from environment or 1psa fallback.
+Design: Use `TELLER_DB_PASSWORD` when set, otherwise read from 1psa item.
+Tests:
+- Unset DB password and verify fallback 1psa lookup is used.
+
+R020  Statement: Post classification update request to classifier API.
+Design: Send JSON payload to `/v1/transactions/classifications` with provided IDs.
+Tests:
+- Verify request body includes provided transaction and category identifiers.
+
+R025  Statement: Query latest persisted classification for the target transaction.
+Design: Execute `psql` query ordered by `updated_at DESC LIMIT 1`.
+Tests:
+- Verify output line is `<transaction_id>:<nys_snw_category_id>:<type>`.
+
+R030  Statement: Print explicit pass/fail verification result.
+Design: Print a `✅ PASS:` line when persisted value matches expected `<TXN_ID>:<CATEGORY_ID>:user`.
+Design: Print a `❌ FAIL:` line and exit non-zero on API failure, mismatch, or missing persisted row.
+Design: Always print API response and persisted-row details before pass/fail status.
+Tests:
+- On matching persisted classification, verify output starts with `✅ PASS:`.
+- On mismatch or empty persisted row, verify output starts with `❌ FAIL:` and script exits non-zero.
+- On API request failure, verify output starts with `❌ FAIL:` and script exits non-zero.
+- On all outcomes after API call, verify output includes `API response:` and `Persisted row:` detail lines.
+
+## Changelog
+
+- 2026-04-19: Initial reverse-engineered requirements for `17_verify_classification_persistence.sh`.
+- 2026-04-20: Made smart identifier auto-resolution the default and added `--require-env-ids` strict mode.
+- 2026-04-21: Added explicit, actionable failure behavior when auto-resolve queries return no rows.
+- 2026-04-21: Added explicit `PASS:`/`FAIL:` result output with non-zero failures for API or persistence mismatch.
+- 2026-04-21: Restored detailed output (API response + persisted row) while keeping icon pass/fail status lines.
