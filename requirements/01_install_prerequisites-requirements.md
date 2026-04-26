@@ -117,9 +117,40 @@ Tests:
 - After successful install, verify executable path check passes.
 - Simulate missing wrapper after install and verify clear failure message.
 
+R079  Statement: Ensure Perl runtime is available for pgTAP Perl tooling.
+Design: Install Homebrew formula `perl` when `perl` is unavailable on `PATH`.
+Tests:
+- Run without `perl` and verify installer installs `perl`.
+- Rerun with `perl` already available and verify no reinstall occurs.
+
+R080  Statement: Ensure cpanminus is available for Perl module installs.
+Design: Install Homebrew formula `cpanminus` and verify `cpanm` resolves on `PATH`.
+Tests:
+- Run without `cpanm` and verify installer installs `cpanminus`.
+- Rerun with `cpanm` already available and verify no reinstall occurs.
+
+R085  Statement: Install pgTAP from upstream source when runner is missing.
+Design: If `pg_prove` is unavailable, clone `https://github.com/theory/pgtap.git` into sibling `../pgtap`, then run `make` and `make install`.
+Constraints:
+- Skip clone/build/install when `pg_prove` resolves on `PATH` or at `~/perl5/bin/pg_prove`.
+- Require `Makefile` in `../pgtap` before build/install.
+Tests:
+- Run without `pg_prove` and verify installer clones `../pgtap` and runs `make` then `make install`.
+- Rerun with `pg_prove` already available and verify pgtap source build/install path is skipped.
+
+R090  Statement: Ensure Perl pgTAP source handler installs to user-local Perl prefix.
+Design: If `pg_prove` is unavailable on `PATH` and at `~/perl5/bin/pg_prove`, run `cpanm --local-lib="$HOME/perl5" --reinstall TAP::Parser::SourceHandler::pgTAP`.
+Constraints:
+- Treat `~/perl5/bin/pg_prove` as the canonical installed location even when not on `PATH`.
+Tests:
+- Simulate missing runner and verify installer invokes `cpanm --local-lib="$HOME/perl5" --reinstall TAP::Parser::SourceHandler::pgTAP`.
+- Simulate runner already present at `~/perl5/bin/pg_prove` and verify cpanm install path is skipped.
+
 ## Changelog
 
 - 2026-04-23: Added R055 to require `bats-core` installation for shell unit-test support.
+- 2026-04-26: Added R079 to require Homebrew `perl` before cpanminus-managed pgTAP Perl tooling.
+- 2026-04-26: Reworked pgTAP prerequisites: R080 (`cpanminus`), R085 (build/install `../pgtap`), and R090 (user-local `cpanm` source handler install).
 - 2026-04-24: Added R060 and R065 to cover Xcode first-launch readiness and credentialed sudo flow.
 - 2026-04-24: Added R070 and R075 to require local OWASP ZAP cask installation and CLI path verification.
 - 2026-04-07: Added R012 for Go/Git bootstrap prerequisites used by `1psa` install flow.

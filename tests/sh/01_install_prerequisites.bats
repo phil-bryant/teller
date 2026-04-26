@@ -20,13 +20,16 @@ teardown() {
 }
 
 @test "idempotent path skips installs when dependencies already exist" {
-  #R010 #R035 #R040 #R050
+  #R010 #R035 #R040 #R050 #R079 #R080 #R085 #R090
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"
   stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
+  stub_cmd cpanm "exit 0"
+  stub_cmd perl "exit 0"
+  stub_cmd pg_prove "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
 
   run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
@@ -36,11 +39,14 @@ teardown() {
 }
 
 @test "clones pg_install when missing" {
-  #R025 #R030
+  #R025 #R030 #R079 #R080 #R085 #R090
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
+  stub_cmd cpanm "exit 0"
+  stub_cmd perl "exit 0"
+  stub_cmd pg_prove "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
 echo git "\$*" >> "${CALLS_LOG}"
@@ -58,11 +64,14 @@ EOF
 }
 
 @test "uses PSA_INSTALL_SUDO_ITEM during install flow" {
-  #R015 #R020 #R045 #R065
+  #R015 #R020 #R045 #R065 #R079 #R080 #R085 #R090
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
+  stub_cmd cpanm "exit 0"
+  stub_cmd perl "exit 0"
+  stub_cmd pg_prove "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
 echo git "\$*" >> "${CALLS_LOG}"
@@ -108,12 +117,13 @@ EOF
   [[ "$calls" == *"local-1psa -f custom_item custom_item"* ]]
 }
 
-@test "installs bats-core when bats is missing" {
-  #R055 #R060 #R070 #R075
+@test "installs bats-core perl and cpanminus when test runners are missing" {
+  #R055 #R060 #R070 #R075 #R079 #R080 #R085 #R090
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"
   stub_cmd swiftlint "exit 0"
+  stub_cmd pg_prove "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
   cat > "${STUB_BIN}/brew" <<EOF
 #!/usr/bin/env bash
@@ -125,6 +135,20 @@ exit 0
 BATS
   chmod +x "${STUB_BIN}/bats"
 fi
+if [[ "\$1" == "install" && "\$2" == "cpanminus" ]]; then
+  cat > "${STUB_BIN}/cpanm" <<'CPANM'
+#!/usr/bin/env bash
+exit 0
+CPANM
+  chmod +x "${STUB_BIN}/cpanm"
+fi
+if [[ "\$1" == "install" && "\$2" == "perl" ]]; then
+  cat > "${STUB_BIN}/perl" <<'PERL'
+#!/usr/bin/env bash
+exit 0
+PERL
+  chmod +x "${STUB_BIN}/perl"
+fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/brew"
@@ -133,4 +157,92 @@ EOF
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"brew install bats-core"* ]]
+  [[ "$calls" == *"brew install perl"* ]]
+  [[ "$calls" == *"brew install cpanminus"* ]]
+}
+
+@test "builds and installs pgtap from theory source when pg_prove is missing" {
+  #R085 #R030 #R090 #R079 #R080
+  mkdir -p "${TEST_TMPDIR}/pg_install/.git"
+  stub_cmd go "exit 0"
+  stub_cmd swiftlint "exit 0"
+  stub_cmd bats "exit 0"
+  stub_cmd perl "exit 0"
+  stub_cmd 1psa "echo installed; exit 0"
+  cat > "${STUB_BIN}/git" <<EOF
+#!/usr/bin/env bash
+echo git "\$*" >> "${CALLS_LOG}"
+if [[ "\$1" == "clone" ]]; then
+  mkdir -p "\$3/.git"
+  cat > "\$3/Makefile" <<'MAKE'
+all:
+	@true
+install:
+	@true
+MAKE
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/git"
+  cat > "${STUB_BIN}/make" <<EOF
+#!/usr/bin/env bash
+echo make "\$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/make"
+  cat > "${STUB_BIN}/cpanm" <<EOF
+#!/usr/bin/env bash
+echo cpanm "\$*" >> "${CALLS_LOG}"
+mkdir -p "${HOME}/perl5/bin"
+cat > "${HOME}/perl5/bin/pg_prove" <<'PGPROVE'
+#!/usr/bin/env bash
+exit 0
+PGPROVE
+chmod +x "${HOME}/perl5/bin/pg_prove"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/cpanm"
+  cat > "${STUB_BIN}/brew" <<EOF
+#!/usr/bin/env bash
+echo brew "\$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/brew"
+
+  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"git clone https://github.com/theory/pgtap.git ${TEST_TMPDIR}/pgtap"* ]]
+  [[ "$calls" == *"make -C ${TEST_TMPDIR}/pgtap"* ]]
+  [[ "$calls" == *"make -C ${TEST_TMPDIR}/pgtap install"* ]]
+  [[ "$calls" == *"cpanm --local-lib=${HOME}/perl5 --reinstall TAP::Parser::SourceHandler::pgTAP"* ]]
+  [ -x "${HOME}/perl5/bin/pg_prove" ]
+}
+
+@test "installs TAP::Parser::SourceHandler::pgTAP via user-local cpanm" {
+  #R090 #R079 #R080
+  mkdir -p "${TEST_TMPDIR}/pg_install/.git"
+  mkdir -p "${TEST_TMPDIR}/pgtap/.git"
+  cat > "${TEST_TMPDIR}/pgtap/Makefile" <<'MAKE'
+all:
+	@true
+install:
+	@true
+MAKE
+  stub_cmd brew "exit 0"
+  stub_cmd go "exit 0"
+  stub_cmd git "exit 0"
+  stub_cmd swiftlint "exit 0"
+  stub_cmd bats "exit 0"
+  stub_cmd cpanm "mkdir -p \"${HOME}/perl5/bin\"; printf '#!/usr/bin/env bash\nexit 0\n' > \"${HOME}/perl5/bin/pg_prove\"; chmod +x \"${HOME}/perl5/bin/pg_prove\"; exit 0"
+  stub_cmd pg_prove "exit 1"
+  stub_cmd 1psa "echo fake-pass; exit 0"
+  stub_cmd make "exit 0"
+  stub_cmd perl "exit 0"
+
+  run env PSA_INSTALL_SUDO_ITEM="custom_item" bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"cpanm --local-lib=${HOME}/perl5 --reinstall TAP::Parser::SourceHandler::pgTAP"* ]]
+  [ -x "${HOME}/perl5/bin/pg_prove" ]
 }

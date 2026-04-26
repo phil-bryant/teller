@@ -139,3 +139,11 @@ EOF
   ' "${CALLS_LOG}"
   grep "ON DELETE CASCADE" "${CALLS_LOG}"
 }
+
+@test "ensures pgtap extension is created in prod during bootstrap" {
+  #R050
+  export PATH="${STUB_BIN}:/usr/bin:/bin"
+  run bash "${FIXTURE_ROOT}/07_deploy_database.sh"
+  [ "$status" -eq 0 ]
+  grep "CREATE EXTENSION IF NOT EXISTS pgtap" "${CALLS_LOG}"
+}
