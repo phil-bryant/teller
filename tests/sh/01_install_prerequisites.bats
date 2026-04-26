@@ -25,6 +25,7 @@ teardown() {
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"
+  stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
 
@@ -38,6 +39,7 @@ teardown() {
   #R025 #R030
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
+  stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
@@ -59,6 +61,7 @@ EOF
   #R015 #R020 #R045 #R065
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
+  stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
@@ -110,6 +113,7 @@ EOF
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"
+  stub_cmd swiftlint "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
   cat > "${STUB_BIN}/brew" <<EOF
 #!/usr/bin/env bash

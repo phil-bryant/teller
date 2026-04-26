@@ -168,6 +168,7 @@ Useful flags:
 
 - `RUN_SAST=true|false` (default `true`)
 - `RUN_DAST=true|false` (default `true`)
+- `RUN_SWIFT_SAST=true|false` (default `true`; runs security-focused SwiftLint rules on first-party `./macos-ui` Swift code)
 - `RUN_ZAP=true|false` (default `true`, requires local `zap-baseline.py`)
 - `SECURITY_FAIL_ON_HIGH_CRITICAL=true|false` (default `true`)
 - `RUN_TOKEN_CAPTURE_DAST=true|false|auto` (default `auto`)
@@ -269,7 +270,7 @@ Active secret and credential sources are:
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `15_run_security_checks.sh`
-  - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets).
+  - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets, and SwiftLint for `macos-ui`).
   - Optionally runs DAST inline (starts local API target(s), runs Schemathesis against OpenAPI, and runs OWASP ZAP local CLI quick scan).
   - Supports optional token-capture target scanning when Teller local credentials are present.
 - `97_backup_database.sh`
