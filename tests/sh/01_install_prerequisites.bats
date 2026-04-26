@@ -20,13 +20,14 @@ teardown() {
 }
 
 @test "idempotent path skips installs when dependencies already exist" {
-  #R010 #R035 #R040 #R050 #R079 #R080 #R085 #R090
+  #R010 #R035 #R040 #R050 #R079 #R080 #R085 #R090 #R095
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"
   stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
+  stub_cmd clamscan "exit 0"
   stub_cmd cpanm "exit 0"
   stub_cmd perl "exit 0"
   stub_cmd pg_prove "exit 0"
@@ -39,11 +40,12 @@ teardown() {
 }
 
 @test "clones pg_install when missing" {
-  #R025 #R030 #R079 #R080 #R085 #R090
+  #R025 #R030 #R079 #R080 #R085 #R090 #R095
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
+  stub_cmd clamscan "exit 0"
   stub_cmd cpanm "exit 0"
   stub_cmd perl "exit 0"
   stub_cmd pg_prove "exit 0"
@@ -64,11 +66,12 @@ EOF
 }
 
 @test "uses PSA_INSTALL_SUDO_ITEM during install flow" {
-  #R015 #R020 #R045 #R065 #R079 #R080 #R085 #R090
+  #R015 #R020 #R045 #R065 #R079 #R080 #R085 #R090 #R095
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
+  stub_cmd clamscan "exit 0"
   stub_cmd cpanm "exit 0"
   stub_cmd perl "exit 0"
   stub_cmd pg_prove "exit 0"
@@ -118,7 +121,7 @@ EOF
 }
 
 @test "installs bats-core perl and cpanminus when test runners are missing" {
-  #R055 #R060 #R070 #R075 #R079 #R080 #R085 #R090
+  #R055 #R060 #R070 #R075 #R079 #R080 #R085 #R090 #R095
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"
@@ -149,6 +152,13 @@ exit 0
 PERL
   chmod +x "${STUB_BIN}/perl"
 fi
+if [[ "\$1" == "install" && "\$2" == "clamav" ]]; then
+  cat > "${STUB_BIN}/clamscan" <<'CLAMSCAN'
+#!/usr/bin/env bash
+exit 0
+CLAMSCAN
+  chmod +x "${STUB_BIN}/clamscan"
+fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/brew"
@@ -159,10 +169,11 @@ EOF
   [[ "$calls" == *"brew install bats-core"* ]]
   [[ "$calls" == *"brew install perl"* ]]
   [[ "$calls" == *"brew install cpanminus"* ]]
+  [[ "$calls" == *"brew install clamav"* ]]
 }
 
 @test "builds and installs pgtap from theory source when pg_prove is missing" {
-  #R085 #R030 #R090 #R079 #R080
+  #R085 #R030 #R090 #R079 #R080 #R095
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd go "exit 0"
   stub_cmd swiftlint "exit 0"
@@ -205,6 +216,13 @@ EOF
   cat > "${STUB_BIN}/brew" <<EOF
 #!/usr/bin/env bash
 echo brew "\$*" >> "${CALLS_LOG}"
+if [[ "\$1" == "install" && "\$2" == "clamav" ]]; then
+  cat > "${STUB_BIN}/clamscan" <<'CLAMSCAN'
+#!/usr/bin/env bash
+exit 0
+CLAMSCAN
+  chmod +x "${STUB_BIN}/clamscan"
+fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/brew"
@@ -220,7 +238,7 @@ EOF
 }
 
 @test "installs TAP::Parser::SourceHandler::pgTAP via user-local cpanm" {
-  #R090 #R079 #R080
+  #R090 #R079 #R080 #R095
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   mkdir -p "${TEST_TMPDIR}/pgtap/.git"
   cat > "${TEST_TMPDIR}/pgtap/Makefile" <<'MAKE'
@@ -234,6 +252,7 @@ MAKE
   stub_cmd git "exit 0"
   stub_cmd swiftlint "exit 0"
   stub_cmd bats "exit 0"
+  stub_cmd clamscan "exit 0"
   stub_cmd cpanm "mkdir -p \"${HOME}/perl5/bin\"; printf '#!/usr/bin/env bash\nexit 0\n' > \"${HOME}/perl5/bin/pg_prove\"; chmod +x \"${HOME}/perl5/bin/pg_prove\"; exit 0"
   stub_cmd pg_prove "exit 1"
   stub_cmd 1psa "echo fake-pass; exit 0"
