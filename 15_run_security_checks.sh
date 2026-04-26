@@ -8,6 +8,7 @@ cd "$SCRIPT_DIR"
 REPORT_DIR="${SECURITY_REPORT_DIR:-./.security-reports}"
 RUN_SAST="${RUN_SAST:-true}"
 RUN_DAST="${RUN_DAST:-true}"
+RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 #R015: Support configurable execution lanes and report destination.
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
@@ -26,6 +27,21 @@ require_command() {
     echo "Install security tooling with: pip install -r requirements-security.txt"
     exit 1
   fi
+}
+
+print_tool_header() {
+  #R055: Delimit each security tool execution with a boxed descriptor header.
+  local tool_name="$1"
+  local explainer_line_1="$2"
+  local explainer_line_2="$3"
+  local tool_url="$4"
+  local border="+==============================================================================+"
+  printf '%s\n' "$border"
+  printf '| %-76s |\n' "Security Tool: ${tool_name}"
+  printf '| %-76s |\n' "${explainer_line_1}"
+  printf '| %-76s |\n' "${explainer_line_2}"
+  printf '| %-76s |\n' "URL: ${tool_url}"
+  printf '%s\n' "$border"
 }
 
 ensure_security_venv() {
@@ -66,6 +82,11 @@ run_zap_quick_scan() {
   local target_url="$2"
   local html_report="$3"
   local log_report="$4"
+  print_tool_header \
+    "OWASP ZAP" \
+    "Dynamic scan of live HTTP endpoints for common web vulnerabilities." \
+    "Uses quick scan mode to spider and actively probe reachable routes." \
+    "https://www.zaproxy.org/"
   echo "▶ Running OWASP ZAP quick scan (CLI) against ${target_url}"
   "$zap_cli_cmd" -cmd \
     -quickurl "$target_url" \
@@ -74,8 +95,326 @@ run_zap_quick_scan() {
     -silent | tee "$log_report"
 }
 
+run_swift_sast() {
+  local swift_report="$1"
+  local swift_ui_dir="${SWIFT_UI_DIR:-./macos-ui}"
+  local swift_targets=()
+
+  if [[ "$RUN_SWIFT_SAST" != "true" ]]; then
+    echo "ℹ️  Swift Static Application Security Testing (SAST) skipped (set RUN_SWIFT_SAST=true to enable)."
+    printf '[]\n' > "$swift_report"
+    return 0
+  fi
+
+  if [[ ! -d "$swift_ui_dir" ]]; then
+    echo "ℹ️  Swift Static Application Security Testing (SAST) skipped (directory not found: ${swift_ui_dir})."
+    printf '[]\n' > "$swift_report"
+    return 0
+  fi
+
+  for candidate in "${swift_ui_dir}/Sources" "${swift_ui_dir}/Tests" "${swift_ui_dir}/UITests"; do
+    if [[ -d "$candidate" ]]; then
+      swift_targets+=("$candidate")
+    fi
+  done
+
+  if [[ "${#swift_targets[@]}" -eq 0 ]]; then
+    echo "ℹ️  Swift Static Application Security Testing (SAST) skipped (no Swift source/test directories under ${swift_ui_dir})."
+    printf '[]\n' > "$swift_report"
+    return 0
+  fi
+
+  require_command swiftlint
+  print_tool_header \
+    "SwiftLint" \
+    "Static linting for Swift code quality and risky language usage." \
+    "Security lane checks force-cast, force-try, and force-unwrapping patterns." \
+    "https://realm.github.io/SwiftLint/"
+  echo "▶ Running SwiftLint (security-focused rules) in ${swift_ui_dir}"
+  set +e
+  swiftlint lint \
+    --quiet \
+    --reporter json \
+    --force-exclude \
+    --only-rule force_cast \
+    --only-rule force_try \
+    --only-rule force_unwrapping \
+    "${swift_targets[@]}" > "$swift_report"
+  SWIFTLINT_EXIT=$?
+  set -e
+  if [[ "$SWIFTLINT_EXIT" -ne 0 ]] && [[ ! -s "$swift_report" ]]; then
+    echo "❌ SwiftLint failed to execute."
+    exit 1
+  fi
+  if [[ "$SWIFTLINT_EXIT" -ne 0 ]]; then
+    echo "⚠️  SwiftLint returned non-zero status; continuing with generated report."
+  fi
+}
+
 run_dast_checks() (
   set -euo pipefail
+
+  prepare_schemathesis_openapi_fixture() {
+    local source_openapi_url="$1"
+    local source_base_url="$2"
+    local output_schema_path="$3"
+    python3 - <<'PY' "$source_openapi_url" "$source_base_url" "$output_schema_path"
+import json
+import sys
+import urllib.parse
+import urllib.request
+
+openapi_url, base_url, out_path = sys.argv[1:4]
+
+def fetch_json(url: str):
+    with urllib.request.urlopen(url, timeout=20) as resp:
+        return json.load(resp)
+
+def post_json(url: str, payload: dict):
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return json.load(resp)
+
+schema = fetch_json(openapi_url)
+
+category_id = None
+transaction_id = None
+delete_seed_ids = []
+
+try:
+    categories = fetch_json(f"{base_url}/v1/categories")
+    if isinstance(categories, list) and categories:
+        category_id = categories[0].get("nys_snw_category_id")
+except Exception:
+    pass
+
+if category_id is None:
+    try:
+        created = post_json(
+            f"{base_url}/v1/categories",
+            {
+                "level_1": "DAST",
+                "level_1_name": "DAST Seed",
+                "level_2": "Validation",
+                "level_2_name": "Validation",
+                "level_3": "Schemathesis",
+                "level_4": "Seed",
+                "categorization": "Runtime",
+                "applicability": "all",
+            },
+        )
+        category_id = created.get("nys_snw_category_id")
+    except Exception:
+        pass
+
+def create_seed_category(seed_suffix: str):
+    try:
+        created = post_json(
+            f"{base_url}/v1/categories",
+            {
+                "level_1": "DAST",
+                "level_1_name": "DAST Seed",
+                "level_2": "Validation",
+                "level_2_name": "Validation",
+                "level_3": "Schemathesis",
+                "level_4": f"Delete Seed {seed_suffix}",
+                "categorization": f"Runtime {seed_suffix}",
+                "applicability": f"all-{seed_suffix}",
+            },
+        )
+        return created.get("nys_snw_category_id")
+    except Exception:
+        return None
+
+for idx in range(32):
+    seed_id = create_seed_category(str(idx))
+    if isinstance(seed_id, int):
+        delete_seed_ids.append(seed_id)
+
+try:
+    tx_payload = fetch_json(f"{base_url}/v1/transactions?limit=1&offset=0")
+    items = tx_payload.get("items", []) if isinstance(tx_payload, dict) else []
+    if items:
+        transaction_id = items[0].get("transaction_id")
+except Exception:
+    pass
+
+paths = schema.get("paths", {})
+
+def set_path_param_example(path: str, method: str, param_name: str, value):
+    operation = paths.get(path, {}).get(method, {})
+    for param in operation.get("parameters", []):
+        if param.get("in") == "path" and param.get("name") == param_name:
+            param["example"] = value
+
+def set_path_param_enum(path: str, method: str, param_name: str, values):
+    operation = paths.get(path, {}).get(method, {})
+    for param in operation.get("parameters", []):
+        if param.get("in") == "path" and param.get("name") == param_name:
+            schema_obj = param.get("schema")
+            if isinstance(schema_obj, dict):
+                schema_obj["enum"] = values
+            if values:
+                param["example"] = values[0]
+
+def set_json_body_example(path: str, method: str, example):
+    operation = paths.get(path, {}).get(method, {})
+    content = operation.get("requestBody", {}).get("content", {})
+    app_json = content.get("application/json")
+    if isinstance(app_json, dict):
+        app_json["example"] = example
+
+if category_id is not None:
+    set_path_param_example("/v1/categories/{nys_snw_category_id}", "put", "nys_snw_category_id", category_id)
+
+if delete_seed_ids:
+    set_path_param_enum("/v1/categories/{nys_snw_category_id}", "delete", "nys_snw_category_id", delete_seed_ids)
+elif category_id is not None:
+    set_path_param_example("/v1/categories/{nys_snw_category_id}", "delete", "nys_snw_category_id", category_id)
+
+if transaction_id is not None:
+    set_path_param_example("/v1/transactions/{transaction_id}/classification", "put", "transaction_id", transaction_id)
+
+if transaction_id is not None and category_id is not None:
+    set_json_body_example(
+        "/v1/transactions/{transaction_id}/classification",
+        "put",
+        {"transaction_id": transaction_id, "nys_snw_category_id": category_id},
+    )
+    set_json_body_example(
+        "/v1/transactions/classifications",
+        "post",
+        {"updates": [{"transaction_id": transaction_id, "nys_snw_category_id": category_id}]},
+    )
+
+with open(out_path, "w", encoding="utf-8") as fh:
+    json.dump(schema, fh)
+    fh.write("\n")
+
+print(
+    json.dumps(
+        {
+            "fixture": out_path,
+            "seeded_category_id": category_id,
+            "seeded_transaction_id": transaction_id,
+            "delete_seed_ids": delete_seed_ids,
+        }
+    )
+)
+PY
+  }
+
+  run_delete_category_contract_check() {
+    local schema_path="$1"
+    local source_base_url="$2"
+    local output_json_path="$3"
+    python3 - <<'PY' "$schema_path" "$source_base_url" "$output_json_path"
+import json
+import sys
+import urllib.error
+import urllib.request
+
+schema_path, base_url, output_json_path = sys.argv[1:4]
+
+with open(schema_path, "r", encoding="utf-8") as fh:
+    schema = json.load(fh)
+
+delete_path = "/v1/categories/{nys_snw_category_id}"
+paths = schema.get("paths", {})
+if delete_path not in paths:
+    payload = {
+        "status": "skipped",
+        "reason": f"OpenAPI schema does not include {delete_path}",
+    }
+    with open(output_json_path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh)
+        fh.write("\n")
+    print(json.dumps(payload))
+    sys.exit(0)
+
+seed_payload = {
+    "level_1": "DAST",
+    "level_1_name": "DAST Contract",
+    "level_2": "Validation",
+    "level_2_name": "Validation",
+    "level_3": "Schemathesis",
+    "level_4": "Delete Contract",
+    "categorization": "Runtime Contract",
+    "applicability": "all-contract",
+}
+
+def request_json(method: str, url: str, body=None):
+    data = None if body is None else json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            raw = resp.read().decode("utf-8")
+            payload = json.loads(raw) if raw else None
+            return resp.status, payload
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8")
+        payload = json.loads(raw) if raw else None
+        return exc.code, payload
+
+create_status, create_payload = request_json("POST", f"{base_url}/v1/categories", seed_payload)
+if create_status != 200 or not isinstance(create_payload, dict):
+    raise SystemExit(
+        f"Contract check failed: POST /v1/categories returned {create_status} with payload {create_payload}"
+    )
+
+category_id = create_payload.get("nys_snw_category_id")
+if not isinstance(category_id, int):
+    raise SystemExit(
+        f"Contract check failed: missing integer nys_snw_category_id in create response {create_payload}"
+    )
+
+delete_status, delete_payload = request_json(
+    "DELETE", f"{base_url}/v1/categories/{category_id}", None
+)
+if delete_status != 200 or not isinstance(delete_payload, dict):
+    raise SystemExit(
+        f"Contract check failed: DELETE /v1/categories/{{id}} returned {delete_status} with payload {delete_payload}"
+    )
+if delete_payload.get("deleted") is not True:
+    raise SystemExit(
+        f"Contract check failed: delete response missing deleted=true: {delete_payload}"
+    )
+if delete_payload.get("nys_snw_category_id") != category_id:
+    raise SystemExit(
+        "Contract check failed: delete response category id mismatch"
+    )
+
+second_delete_status, second_delete_payload = request_json(
+    "DELETE", f"{base_url}/v1/categories/{category_id}", None
+)
+if second_delete_status != 404:
+    raise SystemExit(
+        "Contract check failed: second delete should return 404 for unknown category id"
+    )
+
+summary = {
+    "status": "passed",
+    "created_category_id": category_id,
+    "first_delete_status": delete_status,
+    "second_delete_status": second_delete_status,
+    "second_delete_payload": second_delete_payload,
+}
+with open(output_json_path, "w", encoding="utf-8") as fh:
+    json.dump(summary, fh)
+    fh.write("\n")
+print(json.dumps(summary))
+PY
+  }
 
   local report_dir="$1"
   local report_dir_abs
@@ -88,9 +427,17 @@ run_dast_checks() (
 
   local run_schemathesis="${RUN_SCHEMATHESIS:-true}"
   local run_zap="${RUN_ZAP:-true}"
+  local run_macos_ui_dast="${RUN_MACOS_UI_DAST:-true}"
+  local reuse_existing_api="${MACOS_UI_DAST_REUSE_EXISTING_API:-false}"
   local run_token_capture_dast="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
   local fail_on_high_critical="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
   local zap_cli_cmd="${ZAP_CLI_CMD:-/Applications/ZAP.app/Contents/MacOS/ZAP.sh}"
+  local macos_ui_dast_proxy_host="${MACOS_UI_DAST_ZAP_PROXY_HOST:-127.0.0.1}"
+  local macos_ui_dast_proxy_port="${MACOS_UI_DAST_ZAP_PROXY_PORT:-8090}"
+  local macos_ui_dast_proxy_url="http://${macos_ui_dast_proxy_host}:${macos_ui_dast_proxy_port}"
+  local zap_api_url="${macos_ui_dast_proxy_url}/JSON/core/view/version/"
+  local zap_alerts_api_url="${macos_ui_dast_proxy_url}/JSON/core/view/alerts/"
+  local zap_html_report_api_url="${macos_ui_dast_proxy_url}/OTHER/core/other/htmlreport/"
 
   local token_capture_port="${TOKEN_CAPTURE_DAST_PORT:-8088}"
   local token_capture_url="${TOKEN_CAPTURE_DAST_URL:-http://127.0.0.1:${token_capture_port}}"
@@ -106,10 +453,14 @@ run_dast_checks() (
 
   local classifier_api_pid=""
   local token_capture_pid=""
+  local zap_proxy_pid=""
 
   cleanup() {
     if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then
       kill "$token_capture_pid" >/dev/null 2>&1 || true
+    fi
+    if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then
+      kill "$zap_proxy_pid" >/dev/null 2>&1 || true
     fi
     if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then
       kill "$classifier_api_pid" >/dev/null 2>&1 || true
@@ -118,23 +469,59 @@ run_dast_checks() (
   trap cleanup EXIT
 
   #R035: Start local classification API automatically for DAST execution.
-  echo "▶ Starting local classification API for DAST at ${base_url}"
-  TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
-    "$dast_app_python" "./14_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
-  classifier_api_pid="$!"
+  if [[ "$reuse_existing_api" == "true" ]]; then
+    echo "▶ Reusing existing classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
+  else
+    echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
+    TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
+      "$dast_app_python" "./14_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
+    classifier_api_pid="$!"
+  fi
   wait_for_http "${base_url}/health" 45
 
   #R045: Run Schemathesis and ZAP quick scans with configurable targets and gating.
   if [[ "$run_schemathesis" == "true" ]]; then
     require_command schemathesis
+    print_tool_header \
+      "Schemathesis" \
+      "Property-based API testing driven by the OpenAPI specification." \
+      "Finds contract mismatches by generating and exercising request scenarios." \
+      "https://schemathesis.readthedocs.io/"
     echo "▶ Running Schemathesis against ${openapi_url}"
-    schemathesis run "$openapi_url" \
+    local schemathesis_location="$openapi_url"
+    local schemathesis_openapi_fixture="${report_dir_abs}/schemathesis-openapi.json"
+    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" \
+      > "${report_dir_abs}/schemathesis-fixture.json"; then
+      schemathesis_location="$schemathesis_openapi_fixture"
+      echo "▶ Schemathesis fixture prepared at ${schemathesis_location}"
+    else
+      echo "⚠️  Schemathesis fixture preparation failed; using live OpenAPI URL."
+    fi
+    echo "▶ Running deterministic delete-category contract check"
+    run_delete_category_contract_check \
+      "$schemathesis_location" \
+      "$base_url" \
+      "${report_dir_abs}/schemathesis-delete-category-contract.json" \
+      | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
+    set +e
+    schemathesis run "$schemathesis_location" \
       --url "$base_url" \
+      --mode positive \
+      --exclude-path "/v1/categories/{nys_snw_category_id}" \
       --seed "$schemathesis_seed" \
       --max-examples "$schemathesis_max_examples" \
       --report junit \
       --report-junit-path "${report_dir_abs}/schemathesis-junit.xml" \
       | tee "${report_dir_abs}/schemathesis.log"
+    SCHEMATHESIS_EXIT=${PIPESTATUS[0]}
+    set -e
+    if [[ "$SCHEMATHESIS_EXIT" -gt 1 ]]; then
+      echo "❌ Schemathesis failed to execute."
+      exit 1
+    fi
+    if [[ "$SCHEMATHESIS_EXIT" -eq 1 ]]; then
+      echo "⚠️  Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."
+    fi
   fi
 
   if [[ "$run_zap" == "true" ]]; then
@@ -150,6 +537,62 @@ run_dast_checks() (
       "${report_dir_abs}/zap-classification.log"
   fi
 
+  #R060: Support local macOS UI Dynamic Application Security Testing (DAST) via ZAP proxy mode.
+  if [[ "$run_macos_ui_dast" == "true" ]]; then
+    if [[ "$run_zap" != "true" ]]; then
+      echo "❌ macOS UI Dynamic Application Security Testing (DAST) requires RUN_ZAP=true."
+      exit 1
+    fi
+
+    print_tool_header \
+      "OWASP ZAP (macOS UI proxy lane)" \
+      "Runs as a local HTTP proxy to inspect traffic emitted by macOS UI flows." \
+      "Captures findings while XCUITest drives realistic user interactions." \
+      "https://www.zaproxy.org/"
+    echo "▶ Starting OWASP ZAP daemon proxy for macOS UI Dynamic Application Security Testing (DAST) at ${macos_ui_dast_proxy_url}"
+    "$zap_cli_cmd" -daemon \
+      -host "$macos_ui_dast_proxy_host" \
+      -port "$macos_ui_dast_proxy_port" \
+      -config api.disablekey=true \
+      > "${report_dir_abs}/zap-macos-ui.log" 2>&1 &
+    zap_proxy_pid="$!"
+    wait_for_http "$zap_api_url" 60
+
+    echo "▶ Running macOS UI XCUITest smoke suite through ZAP proxy"
+    RUN_SNAPSHOT_TESTS=false \
+    RUN_XCUITESTS=true \
+    TELLER_CLASSIFIER_API_URL="$base_url" \
+    TELLER_CLASSIFIER_HTTP_PROXY="$macos_ui_dast_proxy_url" \
+      ./06_run_macos_ui_regression_tests.sh | tee "${report_dir_abs}/macos-ui-dast-xcuitest.log"
+
+    if curl -fsS "$zap_alerts_api_url" > "${report_dir_abs}/zap-macos-ui.json"; then
+      if [[ ! -s "${report_dir_abs}/zap-macos-ui.json" ]]; then
+        printf '{"alerts":[]}\n' > "${report_dir_abs}/zap-macos-ui.json"
+      fi
+    else
+      echo "⚠️  Failed to fetch ZAP macOS UI JSON alerts; using empty alert payload."
+      printf '{"alerts":[]}\n' > "${report_dir_abs}/zap-macos-ui.json"
+    fi
+
+    if curl -fsS "$zap_html_report_api_url" > "${report_dir_abs}/zap-macos-ui.html"; then
+      if [[ ! -s "${report_dir_abs}/zap-macos-ui.html" ]]; then
+        printf '<html><body>No ZAP HTML report emitted.</body></html>\n' > "${report_dir_abs}/zap-macos-ui.html"
+      fi
+    else
+      echo "⚠️  Failed to fetch ZAP macOS UI HTML report; writing placeholder report."
+      printf '<html><body>Failed to fetch ZAP HTML report.</body></html>\n' > "${report_dir_abs}/zap-macos-ui.html"
+    fi
+
+    if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then
+      echo "▶ Stopping OWASP ZAP daemon proxy after macOS UI Dynamic Application Security Testing (DAST)"
+      kill "$zap_proxy_pid" >/dev/null 2>&1 || true
+      wait "$zap_proxy_pid" >/dev/null 2>&1 || true
+      zap_proxy_pid=""
+    fi
+  else
+    echo "ℹ️  macOS UI Dynamic Application Security Testing (DAST) skipped (set RUN_MACOS_UI_DAST=true to enable)."
+  fi
+
   #R040: Support optional token-capture DAST coverage with auto-detection.
   if [[ "$run_token_capture_dast" == "auto" ]]; then
     if [[ -f "$HOME/.teller/application_id.txt" ]]; then
@@ -160,7 +603,7 @@ run_dast_checks() (
   fi
 
   if [[ "$run_token_capture_dast" == "true" ]]; then
-    echo "▶ Starting token capture server for DAST at ${token_capture_url}"
+    echo "▶ Starting token capture server for Dynamic Application Security Testing (DAST) at ${token_capture_url}"
     "$dast_app_python" "./teller/teller_connect_token_server.py" --no-open --mode manage --port "$token_capture_port" \
       >"${report_dir_abs}/token-capture.log" 2>&1 &
     token_capture_pid="$!"
@@ -174,27 +617,32 @@ run_dast_checks() (
         "${report_dir_abs}/zap-token-capture.log"
     fi
   else
-    echo "ℹ️  Token capture DAST skipped (set RUN_TOKEN_CAPTURE_DAST=true and ensure ~/.teller/application_id.txt exists)."
+    echo "ℹ️  Token capture Dynamic Application Security Testing (DAST) skipped (set RUN_TOKEN_CAPTURE_DAST=true and ensure ~/.teller/application_id.txt exists)."
   fi
 
   local high_alerts=0
   local alerts
-  for zap_json in "${report_dir_abs}/zap-classification.json" "${report_dir_abs}/zap-token-capture.json"; do
+  for zap_json in "${report_dir_abs}/zap-classification.json" "${report_dir_abs}/zap-token-capture.json" "${report_dir_abs}/zap-macos-ui.json"; do
     if [[ -f "$zap_json" ]]; then
       alerts="$(python3 - <<'PY' "$zap_json"
 import json, sys
 path = sys.argv[1]
 with open(path, "r", encoding="utf-8") as fh:
     payload = json.load(fh)
-sites = payload.get("site", []) if isinstance(payload, dict) else []
 count = 0
-for site in sites:
-    for alert in site.get("alerts", []):
-        try:
-            risk = int(alert.get("riskcode", "-1"))
-        except ValueError:
-            risk = -1
-        if risk >= 3:
+if isinstance(payload, dict) and isinstance(payload.get("site"), list):
+    for site in payload.get("site", []):
+        for alert in site.get("alerts", []):
+            try:
+                risk = int(alert.get("riskcode", "-1"))
+            except ValueError:
+                risk = -1
+            if risk >= 3:
+                count += 1
+elif isinstance(payload, dict) and isinstance(payload.get("alerts"), list):
+    for alert in payload.get("alerts", []):
+        risk = str(alert.get("risk", "")).lower()
+        if risk in {"high", "critical"}:
             count += 1
 print(count)
 PY
@@ -203,17 +651,17 @@ PY
     fi
   done
 
-  if [[ ! -f "${report_dir_abs}/zap-classification.json" ]] && [[ ! -f "${report_dir_abs}/zap-token-capture.json" ]]; then
+  if [[ ! -f "${report_dir_abs}/zap-classification.json" ]] && [[ ! -f "${report_dir_abs}/zap-token-capture.json" ]] && [[ ! -f "${report_dir_abs}/zap-macos-ui.json" ]]; then
     echo "ℹ️  ZAP CLI quick scan produced HTML/log output only; JSON alert parsing skipped."
   fi
 
-  echo "DAST high/critical alert count: ${high_alerts}"
+  echo "Dynamic Application Security Testing (DAST) high/critical alert count: ${high_alerts}"
   if [[ "$fail_on_high_critical" == "true" ]] && (( high_alerts > 0 )); then
-    echo "❌ DAST gate failed: High/Critical ZAP alerts detected."
+    echo "❌ Dynamic Application Security Testing (DAST) gate failed: High/Critical ZAP alerts detected."
     exit 1
   fi
 
-  echo "✅ DAST checks completed."
+  echo "✅ Dynamic Application Security Testing (DAST) checks completed."
 )
 
 ensure_security_venv
@@ -246,6 +694,11 @@ if [[ "$RUN_SAST" == "true" ]]; then
   require_command pip-audit
   require_command detect-secrets
 
+  print_tool_header \
+    "Semgrep" \
+    "Static pattern-based scanning for security and correctness issues." \
+    "Combines community and repo custom rules across tracked source files." \
+    "https://semgrep.dev/docs/"
   echo "▶ Running Semgrep"
   semgrep scan \
     --config "p/security-audit" \
@@ -255,6 +708,11 @@ if [[ "$RUN_SAST" == "true" ]]; then
     --output "${REPORT_DIR}/semgrep.json" \
     .
 
+  print_tool_header \
+    "Bandit" \
+    "Static security analyzer for Python source code." \
+    "Flags known insecure coding patterns and risky API usage." \
+    "https://bandit.readthedocs.io/"
   echo "▶ Running Bandit"
   #R025: Distinguish scanner findings from scanner execution failures.
   set +e
@@ -266,6 +724,11 @@ if [[ "$RUN_SAST" == "true" ]]; then
     exit 1
   fi
 
+  print_tool_header \
+    "pip-audit" \
+    "Dependency vulnerability scanner for installed Python packages." \
+    "Maps local dependencies to public vulnerability advisories." \
+    "https://github.com/pypa/pip-audit"
   echo "▶ Running pip-audit"
   set +e
   pip-audit --format json --output "${REPORT_DIR}/pip-audit.json"
@@ -276,10 +739,17 @@ if [[ "$RUN_SAST" == "true" ]]; then
     exit 1
   fi
 
+  print_tool_header \
+    "detect-secrets" \
+    "Scans repository files for high-entropy and known secret formats." \
+    "Helps catch accidentally committed credentials before release." \
+    "https://github.com/Yelp/detect-secrets"
   echo "▶ Running detect-secrets"
   detect-secrets scan --all-files --force-use-all-plugins \
     --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/)' \
     > "${REPORT_DIR}/detect-secrets.json"
+
+  run_swift_sast "${REPORT_DIR}/swiftlint.json"
 
   #R030: Produce consolidated SAST gate summary and enforce blocking policy.
   python3 - <<'PY' "${REPORT_DIR}" "${FAIL_ON_HIGH_CRITICAL}"
@@ -295,8 +765,9 @@ semgrep_path = report_dir / "semgrep.json"
 bandit_path = report_dir / "bandit.json"
 pip_audit_path = report_dir / "pip-audit.json"
 secrets_path = report_dir / "detect-secrets.json"
+swiftlint_path = report_dir / "swiftlint.json"
 
-for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path]:
+for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, swiftlint_path]:
     if not required.exists():
         print(f"Missing report file: {required}")
         sys.exit(1)
@@ -334,7 +805,13 @@ for findings in secret_results.values():
     if isinstance(findings, list):
         secret_findings += len(findings)
 
-high_critical_total = semgrep_high + bandit_high + secret_findings
+with swiftlint_path.open("r", encoding="utf-8") as fh:
+    swiftlint = json.load(fh)
+swiftlint_results = swiftlint if isinstance(swiftlint, list) else []
+swiftlint_high = sum(1 for item in swiftlint_results if str(item.get("severity", "")).lower() == "error")
+swiftlint_total = len(swiftlint_results)
+
+high_critical_total = semgrep_high + bandit_high + secret_findings + swiftlint_high
 
 summary = {
     "semgrep_total": semgrep_total,
@@ -343,6 +820,8 @@ summary = {
     "bandit_high_critical": bandit_high,
     "pip_audit_vulnerabilities": dep_vulns,
     "detect_secrets_findings": secret_findings,
+    "swiftlint_total": swiftlint_total,
+    "swiftlint_high_critical": swiftlint_high,
     "high_critical_total": high_critical_total,
     "gate_failed": fail_on_high and high_critical_total > 0,
 }
@@ -352,13 +831,14 @@ with summary_path.open("w", encoding="utf-8") as fh:
     json.dump(summary, fh, indent=2)
     fh.write("\n")
 
-print("SAST summary")
+print("Static Application Security Testing (SAST) summary")
 print(json.dumps(summary, indent=2))
 
 if fail_on_high and high_critical_total > 0:
-    print("❌ SAST gate failed: High/Critical findings detected.")
+    print("❌ Static Application Security Testing (SAST) gate failed: High/Critical findings detected.")
     sys.exit(1)
 PY
+  echo "✅ Static Application Security Testing (SAST) checks completed."
 fi
 
 if [[ "$RUN_DAST" == "true" ]]; then

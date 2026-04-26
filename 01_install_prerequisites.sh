@@ -219,6 +219,7 @@ echo ""
 echo "[Tooling] Checking build dependencies..."
 ensure_brew_formula "go"
 ensure_brew_formula "git"
+ensure_brew_formula "swiftlint"
 #R055: Ensure bats shell test runner dependency is installed via Homebrew.
 ensure_brew_formula "bats-core" "bats"
 ensure_zap_cli

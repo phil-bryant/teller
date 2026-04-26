@@ -8,9 +8,12 @@ cd "$SCRIPT_DIR"
 # Optional runner controls for local development.
 RUN_SHELL_TESTS="${RUN_SHELL_TESTS:-true}"
 RUN_PYTHON_TESTS="${RUN_PYTHON_TESTS:-true}"
+RUN_SQL_TESTS="${RUN_SQL_TESTS:-true}"
 RUN_SWIFT_TESTS="${RUN_SWIFT_TESTS:-true}"
 RUN_MACOS_UI_REGRESSION_TESTS="${RUN_MACOS_UI_REGRESSION_TESTS:-false}"
 BATS_FILTER="${BATS_FILTER:-}"
+SQL_TESTS_DIR="${SQL_TESTS_DIR:-./tests/sql}"
+SQL_TEST_DATABASE="${SQL_TEST_DATABASE:-${DB_NAME:-prod}}"
 
 #R005: Prefer project venv when available.
 if [[ -d "./teller-venv" ]]; then
@@ -39,6 +42,56 @@ fi
 if [[ "$RUN_PYTHON_TESTS" == "true" ]]; then
   echo "▶ Running Python unit tests (unittest)..."
   python3 -m unittest discover tests/py
+fi
+
+#R025 #R015: Run pgTAP SQL unit tests and stop on first failure.
+if [[ "$RUN_SQL_TESTS" == "true" ]]; then
+  if [[ -d "$SQL_TESTS_DIR" ]]; then
+    if ! command -v pg_prove >/dev/null 2>&1; then
+      echo "❌ pg_prove is required for pgTAP SQL unit tests. Install pgTAP tools and rerun."
+      exit 1
+    fi
+    if ! command -v psql >/dev/null 2>&1; then
+      echo "❌ psql is required to verify pgTAP extension availability. Install PostgreSQL client tools and rerun."
+      exit 1
+    fi
+
+    if [[ -n "${DB_PASSWORD:-}" ]]; then
+      pgtap_installed="$(
+        PGPASSWORD="${DB_PASSWORD}" psql -v ON_ERROR_STOP=1 -d "$SQL_TEST_DATABASE" -Atqc \
+          "SELECT 1 FROM pg_extension WHERE extname = 'pgtap' LIMIT 1;" 2>/dev/null || true
+      )"
+    else
+      pgtap_installed="$(
+        psql -v ON_ERROR_STOP=1 -d "$SQL_TEST_DATABASE" -Atqc \
+          "SELECT 1 FROM pg_extension WHERE extname = 'pgtap' LIMIT 1;" 2>/dev/null || true
+      )"
+    fi
+
+    if [[ "$pgtap_installed" != "1" ]]; then
+      echo "❌ pgtap extension is required in database '${SQL_TEST_DATABASE}'. Run: CREATE EXTENSION pgtap;"
+      exit 1
+    fi
+
+    shopt -s nullglob
+    sql_test_files=("$SQL_TESTS_DIR"/*.sql)
+    shopt -u nullglob
+
+    if [[ "${#sql_test_files[@]}" -eq 0 ]]; then
+      echo "ℹ️  Skipping SQL unit tests: no *.sql files found in ${SQL_TESTS_DIR}."
+    else
+      echo "▶ Running SQL unit tests (pgTAP via pg_prove)..."
+      for sql_test_file in "${sql_test_files[@]}"; do
+        if [[ -n "${DB_PASSWORD:-}" ]]; then
+          PGPASSWORD="${DB_PASSWORD}" pg_prove --dbname "$SQL_TEST_DATABASE" "$sql_test_file"
+        else
+          pg_prove --dbname "$SQL_TEST_DATABASE" "$sql_test_file"
+        fi
+      done
+    fi
+  else
+    echo "ℹ️  Skipping SQL unit tests: ${SQL_TESTS_DIR} not found."
+  fi
 fi
 
 #R020 #R015: Run Swift package tests and propagate failures.
