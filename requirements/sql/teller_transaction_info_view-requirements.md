@@ -6,7 +6,7 @@ Applies to `sql/postgres/teller_transaction_info_view.sql`.
 
 ## Ownership Boundaries
 
-Deployment sequencing and invocation remain defined in `requirements/06_deploy_database-requirements.md`, and ORM/table naming contracts remain defined in `requirements/teller_object-requirements.md`.
+Deployment sequencing and invocation remain defined in `requirements/07_deploy_database-requirements.md`, and ORM/table naming contracts remain defined in `requirements/teller_object-requirements.md`.
 
 R001  Statement: Provide a denormalized transaction reporting view across account and transaction-related tables.
 Design: Define `teller.transaction_info_view` by joining `teller.transaction` with account, type, details, and counterparty tables and projecting reporting columns.

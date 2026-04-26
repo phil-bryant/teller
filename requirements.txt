@@ -1,7 +1,6 @@
 fastapi==0.128.0
 uvicorn==0.27.1
 python-dotenv==1.2.2
-psycopg==3.1.18
 requests==2.33.1
 urllib3==2.6.3
 structlog==23.1.0
