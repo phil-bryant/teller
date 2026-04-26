@@ -71,8 +71,18 @@ Tests:
 - Set `RUN_MACOS_UI_DAST=true` with `RUN_ZAP=false` and verify explicit prerequisite failure.
 - Set `RUN_MACOS_UI_DAST=true` with stubbed ZAP/API/UI scripts and verify proxy startup, UI regression invocation, and macOS UI DAST artifacts.
 
+R065  Statement: Run ClamAV repository malware scans and include findings in SAST gating.
+Design: When `RUN_SAST=true` and `RUN_CLAMAV=true`, require `clamscan`, run a recursive repository scan, persist `clamav.log` and `clamav-summary.json`, treat exit code `1` as findings (not execution failure), and include infected file counts in `sast-summary.json` high/critical totals. Print signature freshness metadata (latest DB file timestamp/age) before scan execution, print the fully resolved scan target directory/path, and emit periodic progress heartbeat lines while ClamAV runs so long scans are not silent. If ClamAV reports missing signature databases (`No supported database files found`), run one-time `freshclam --stdout` refresh (bootstrapping config from Homebrew sample when needed) and retry the scan once before failing.
+Tests:
+- Run SAST lane with clean ClamAV output and verify `clamav.log`, `clamav-summary.json`, and `clamav_infected_files` summary field are produced.
+- Stub ClamAV to return exit code `2` and verify explicit execution failure.
+- Stub ClamAV to return exit code `1` with infected files and verify SAST gate failure when fail-on-high is enabled.
+- Stub missing ClamAV databases on first scan, verify `freshclam --stdout` runs, and verify the script retries ClamAV once.
+- Run ClamAV lane and verify output includes signature freshness metadata, explicit scan target path, and at least one in-progress heartbeat line for long-running scans.
+
 ## Changelog
 
 - 2026-04-24: Consolidated security scanning policy and runtime behavior from `docs/security-scanning.md` into script-scoped requirements for `15_run_security_checks.sh`.
+- 2026-04-26: Added R065 to require ClamAV repository scans with summarized findings and SAST gate integration.
 - 2026-04-26: Added boxed per-tool headers with brief explainers and official URLs for all security scanners.
 - 2026-04-26: Added local macOS UI DAST requirements for OWASP ZAP proxy-driven XCUITest coverage.

@@ -289,6 +289,8 @@ ensure_brew_formula "git"
 ensure_brew_formula "swiftlint"
 #R055: Ensure bats shell test runner dependency is installed via Homebrew.
 ensure_brew_formula "bats-core" "bats"
+#R095: Ensure ClamAV antivirus scanner is available for repository malware scans.
+ensure_brew_formula "clamav" "clamscan"
 #R079: Ensure Perl runtime is available for cpanminus-managed pgTAP tooling.
 ensure_brew_formula "perl"
 #R080: Ensure cpanminus is available for Perl module installation.

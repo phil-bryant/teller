@@ -146,9 +146,16 @@ Tests:
 - Simulate missing runner and verify installer invokes `cpanm --local-lib="$HOME/perl5" --reinstall TAP::Parser::SourceHandler::pgTAP`.
 - Simulate runner already present at `~/perl5/bin/pg_prove` and verify cpanm install path is skipped.
 
+R095  Statement: Ensure ClamAV command-line scanner is available for security checks.
+Design: Install Homebrew formula `clamav` and verify `clamscan` resolves on `PATH`.
+Tests:
+- Run without `clamscan` and verify installer installs `clamav`.
+- Rerun with `clamscan` already available and verify no reinstall occurs.
+
 ## Changelog
 
 - 2026-04-23: Added R055 to require `bats-core` installation for shell unit-test support.
+- 2026-04-26: Added R095 to require Homebrew `clamav` (`clamscan`) for repository malware scans.
 - 2026-04-26: Added R079 to require Homebrew `perl` before cpanminus-managed pgTAP Perl tooling.
 - 2026-04-26: Reworked pgTAP prerequisites: R080 (`cpanminus`), R085 (build/install `../pgtap`), and R090 (user-local `cpanm` source handler install).
 - 2026-04-24: Added R060 and R065 to cover Xcode first-launch readiness and credentialed sudo flow.
