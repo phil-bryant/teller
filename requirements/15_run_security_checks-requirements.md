@@ -20,7 +20,7 @@ Tests:
 - Run with `./teller-venv` present and verify pip-audit target interpreter output references project Python.
 
 R015  Statement: Support configurable execution lanes and report destination.
-Design: Resolve `SECURITY_REPORT_DIR`, `RUN_SAST`, `RUN_DAST`, and `SECURITY_FAIL_ON_HIGH_CRITICAL` from environment with safe defaults; always create the report directory before writing artifacts.
+Design: Resolve `SECURITY_REPORT_DIR`, `RUN_SAST`, `RUN_DAST`, `RUN_MACOS_UI_DAST`, and `SECURITY_FAIL_ON_HIGH_CRITICAL` from environment with safe defaults; always create the report directory before writing artifacts.
 Tests:
 - Set `RUN_SAST=false` and `RUN_DAST=false` and verify script exits cleanly after setup.
 
@@ -65,7 +65,14 @@ Design: Before each scanner invocation (Semgrep, Bandit, pip-audit, detect-secre
 Tests:
 - Run a passing SAST lane and verify output includes boxed header lines, at least one two-line explainer, and URL lines for SAST tools.
 
+R060  Statement: Support local macOS UI Dynamic Application Security Testing (DAST) through OWASP ZAP proxying.
+Design: When `RUN_MACOS_UI_DAST=true`, require `RUN_ZAP=true`, start OWASP ZAP in daemon/proxy mode on `MACOS_UI_DAST_ZAP_PROXY_HOST`/`MACOS_UI_DAST_ZAP_PROXY_PORT`, run `./06_run_macos_ui_regression_tests.sh` in XCUITest-only mode with `TELLER_CLASSIFIER_API_URL` + `TELLER_CLASSIFIER_HTTP_PROXY`, and emit `zap-macos-ui.json`, `zap-macos-ui.html`, and `macos-ui-dast-xcuitest.log` under the report directory. Support `MACOS_UI_DAST_REUSE_EXISTING_API=true` to skip launching a new API process.
+Tests:
+- Set `RUN_MACOS_UI_DAST=true` with `RUN_ZAP=false` and verify explicit prerequisite failure.
+- Set `RUN_MACOS_UI_DAST=true` with stubbed ZAP/API/UI scripts and verify proxy startup, UI regression invocation, and macOS UI DAST artifacts.
+
 ## Changelog
 
 - 2026-04-24: Consolidated security scanning policy and runtime behavior from `docs/security-scanning.md` into script-scoped requirements for `15_run_security_checks.sh`.
 - 2026-04-26: Added boxed per-tool headers with brief explainers and official URLs for all security scanners.
+- 2026-04-26: Added local macOS UI DAST requirements for OWASP ZAP proxy-driven XCUITest coverage.
