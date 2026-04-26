@@ -324,7 +324,7 @@ EOS
   for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" swiftlint.json sast-summary.json; do
     [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
   done
-  [[ "$output" == *"SAST summary"* ]]
+  [[ "$output" == *"Static Application Security Testing (SAST) summary"* ]]
 }
 
 @test "SAST prints boxed tool headers with explainers and official URLs" {
@@ -336,14 +336,14 @@ EOS
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"+==============================================================================+"* ]]
-  [[ "$output" == *"Tool: Semgrep"* ]]
+  [[ "$output" == *"Security Tool: Semgrep"* ]]
   [[ "$output" == *"Static pattern-based scanning for security and correctness issues."* ]]
   [[ "$output" == *"URL: https://semgrep.dev/docs/"* ]]
-  [[ "$output" == *"Tool: Bandit"* ]]
+  [[ "$output" == *"Security Tool: Bandit"* ]]
   [[ "$output" == *"URL: https://bandit.readthedocs.io/"* ]]
-  [[ "$output" == *"Tool: pip-audit"* ]]
+  [[ "$output" == *"Security Tool: pip-audit"* ]]
   [[ "$output" == *"URL: https://github.com/pypa/pip-audit"* ]]
-  [[ "$output" == *"Tool: detect-secrets"* ]]
+  [[ "$output" == *"Security Tool: detect-secrets"* ]]
   [[ "$output" == *"URL: https://github.com/Yelp/detect-secrets"* ]]
 }
 
@@ -413,7 +413,7 @@ EOF
   run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"SAST gate failed"* ]]
+  [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
 }
 
 @test "DAST starts API, waits for health, completes when DAST tools minimal" {
@@ -429,9 +429,9 @@ EOF
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Starting local classification API for DAST"* ]]
+  [[ "$output" == *"Starting local classification API for Dynamic Application Security Testing (DAST)"* ]]
   [ -f "${FIXTURE_ROOT}/.security-reports/classification-api.log" ]
-  [[ "$output" == *"DAST checks completed."* ]]
+  [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
 }
 
 @test "token-capture DAST auto skips when application id is absent" {
@@ -448,7 +448,7 @@ EOF
     DAST_APP_PYTHON=/usr/bin/python3 \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Token capture DAST skipped"* ]]
+  [[ "$output" == *"Token capture Dynamic Application Security Testing (DAST) skipped"* ]]
 }
 
 @test "DAST fails with clear error when ZAP is enabled but ZAP CLI missing" {
@@ -487,7 +487,7 @@ EOF
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-classification.log" ]
-  [[ "$output" == *"DAST checks completed."* ]]
+  [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
 }
 
 @test "Schemathesis findings do not abort DAST lane" {
@@ -504,8 +504,8 @@ EOF
     DAST_OPENAPI_URL="http://127.0.0.1:8787/openapi.json" \
     bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Schemathesis found API contract issues; continuing to ZAP and DAST gating."* ]]
-  [[ "$output" == *"DAST checks completed."* ]]
+  [[ "$output" == *"Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."* ]]
+  [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
 }
 
 @test "prints completion line with report directory" {

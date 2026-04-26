@@ -37,7 +37,7 @@ print_tool_header() {
   local tool_url="$4"
   local border="+==============================================================================+"
   printf '%s\n' "$border"
-  printf '| %-76s |\n' "Tool: ${tool_name}"
+  printf '| %-76s |\n' "Security Tool: ${tool_name}"
   printf '| %-76s |\n' "${explainer_line_1}"
   printf '| %-76s |\n' "${explainer_line_2}"
   printf '| %-76s |\n' "URL: ${tool_url}"
@@ -101,13 +101,13 @@ run_swift_sast() {
   local swift_targets=()
 
   if [[ "$RUN_SWIFT_SAST" != "true" ]]; then
-    echo "ℹ️  Swift SAST skipped (set RUN_SWIFT_SAST=true to enable)."
+    echo "ℹ️  Swift Static Application Security Testing (SAST) skipped (set RUN_SWIFT_SAST=true to enable)."
     printf '[]\n' > "$swift_report"
     return 0
   fi
 
   if [[ ! -d "$swift_ui_dir" ]]; then
-    echo "ℹ️  Swift SAST skipped (directory not found: ${swift_ui_dir})."
+    echo "ℹ️  Swift Static Application Security Testing (SAST) skipped (directory not found: ${swift_ui_dir})."
     printf '[]\n' > "$swift_report"
     return 0
   fi
@@ -119,7 +119,7 @@ run_swift_sast() {
   done
 
   if [[ "${#swift_targets[@]}" -eq 0 ]]; then
-    echo "ℹ️  Swift SAST skipped (no Swift source/test directories under ${swift_ui_dir})."
+    echo "ℹ️  Swift Static Application Security Testing (SAST) skipped (no Swift source/test directories under ${swift_ui_dir})."
     printf '[]\n' > "$swift_report"
     return 0
   fi
@@ -195,7 +195,7 @@ run_dast_checks() (
   trap cleanup EXIT
 
   #R035: Start local classification API automatically for DAST execution.
-  echo "▶ Starting local classification API for DAST at ${base_url}"
+  echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
   TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
     "$dast_app_python" "./14_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
   classifier_api_pid="$!"
@@ -225,7 +225,7 @@ run_dast_checks() (
       exit 1
     fi
     if [[ "$SCHEMATHESIS_EXIT" -eq 1 ]]; then
-      echo "⚠️  Schemathesis found API contract issues; continuing to ZAP and DAST gating."
+      echo "⚠️  Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."
     fi
   fi
 
@@ -252,7 +252,7 @@ run_dast_checks() (
   fi
 
   if [[ "$run_token_capture_dast" == "true" ]]; then
-    echo "▶ Starting token capture server for DAST at ${token_capture_url}"
+    echo "▶ Starting token capture server for Dynamic Application Security Testing (DAST) at ${token_capture_url}"
     "$dast_app_python" "./teller/teller_connect_token_server.py" --no-open --mode manage --port "$token_capture_port" \
       >"${report_dir_abs}/token-capture.log" 2>&1 &
     token_capture_pid="$!"
@@ -266,7 +266,7 @@ run_dast_checks() (
         "${report_dir_abs}/zap-token-capture.log"
     fi
   else
-    echo "ℹ️  Token capture DAST skipped (set RUN_TOKEN_CAPTURE_DAST=true and ensure ~/.teller/application_id.txt exists)."
+    echo "ℹ️  Token capture Dynamic Application Security Testing (DAST) skipped (set RUN_TOKEN_CAPTURE_DAST=true and ensure ~/.teller/application_id.txt exists)."
   fi
 
   local high_alerts=0
@@ -299,13 +299,13 @@ PY
     echo "ℹ️  ZAP CLI quick scan produced HTML/log output only; JSON alert parsing skipped."
   fi
 
-  echo "DAST high/critical alert count: ${high_alerts}"
+  echo "Dynamic Application Security Testing (DAST) high/critical alert count: ${high_alerts}"
   if [[ "$fail_on_high_critical" == "true" ]] && (( high_alerts > 0 )); then
-    echo "❌ DAST gate failed: High/Critical ZAP alerts detected."
+    echo "❌ Dynamic Application Security Testing (DAST) gate failed: High/Critical ZAP alerts detected."
     exit 1
   fi
 
-  echo "✅ DAST checks completed."
+  echo "✅ Dynamic Application Security Testing (DAST) checks completed."
 )
 
 ensure_security_venv
@@ -475,11 +475,11 @@ with summary_path.open("w", encoding="utf-8") as fh:
     json.dump(summary, fh, indent=2)
     fh.write("\n")
 
-print("SAST summary")
+print("Static Application Security Testing (SAST) summary")
 print(json.dumps(summary, indent=2))
 
 if fail_on_high and high_critical_total > 0:
-    print("❌ SAST gate failed: High/Critical findings detected.")
+    print("❌ Static Application Security Testing (SAST) gate failed: High/Critical findings detected.")
     sys.exit(1)
 PY
 fi
