@@ -20,22 +20,22 @@ Tests:
 - Run with `./teller-venv` present and verify pip-audit target interpreter output references project Python.
 
 R015  Statement: Support configurable execution lanes and report destination.
-Design: Resolve `SECURITY_REPORT_DIR`, `RUN_SAST`, `RUN_DAST`, and `SECURITY_FAIL_ON_HIGH_CRITICAL` from environment with safe defaults; always create the report directory before writing artifacts.
+Design: Resolve `SECURITY_REPORT_DIR`, `RUN_SAST`, `RUN_DAST`, `RUN_MACOS_UI_DAST`, and `SECURITY_FAIL_ON_HIGH_CRITICAL` from environment with safe defaults; always create the report directory before writing artifacts.
 Tests:
 - Set `RUN_SAST=false` and `RUN_DAST=false` and verify script exits cleanly after setup.
 
 R020  Statement: Run SAST scanners and persist machine-readable artifacts.
-Design: Require `semgrep`, `bandit`, `pip-audit`, and `detect-secrets`; execute scans with project configs and write JSON outputs under the report directory.
+Design: Require `semgrep`, `bandit`, `pip-audit`, and `detect-secrets`; execute scans with project configs and write JSON outputs under the report directory. When Swift sources are present under `./macos-ui` and `RUN_SWIFT_SAST=true`, run `swiftlint lint --reporter json` with focused security rules (`force_cast`, `force_try`, `force_unwrapping`) against first-party `Sources`/`Tests`/`UITests`, and persist `swiftlint.json` in the report directory.
 Tests:
-- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, and `detect-secrets.json` are produced.
+- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, `detect-secrets.json`, and `swiftlint.json` are produced.
 
 R025  Statement: Distinguish scanner findings from scanner execution failures.
-Design: Treat `bandit`/`pip-audit` exit codes greater than `1` as hard execution failures; allow exit code `1` as "findings detected" so gating is centralized in summary processing.
+Design: Treat `bandit`/`pip-audit`/`schemathesis` exit codes greater than `1` as hard execution failures; allow exit code `1` as "findings detected" so gating remains centralized (`sast-summary.json` for SAST and ZAP high/critical parsing for DAST).
 Tests:
 - Stub `bandit` to return `2` and verify script exits with explicit execution failure.
 
 R030  Statement: Produce a consolidated SAST gate summary and enforce blocking policy.
-Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, and all detect-secrets findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
+Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, SwiftLint `error`, and all detect-secrets findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
 Tests:
 - Seed report fixtures with one high-severity finding and verify gate failure when fail-on-high is enabled.
 
@@ -50,16 +50,29 @@ Tests:
 - Run with `RUN_TOKEN_CAPTURE_DAST=auto` and no application ID file and verify token-capture DAST is skipped.
 
 R045  Statement: Run Schemathesis and ZAP quick scans with configurable targets and high/critical gating.
-Design: Run Schemathesis against resolved OpenAPI URL, run ZAP CLI quick scans against classification and optional token-capture targets, parse any generated ZAP JSON alerts, and fail when high/critical alerts exist and fail-on-high is enabled.
+Design: Run Schemathesis against resolved OpenAPI URL (using positive-mode generation and runtime fixture examples for live IDs). Before Schemathesis, execute a deterministic contract check that creates and deletes a category (including second-delete 404 semantics) and persist its JSON/log artifacts. Exclude `/v1/categories/{nys_snw_category_id}` from Schemathesis fuzz/stateful generation to avoid non-deterministic resource-lifecycle skew now covered by the deterministic check. Run ZAP CLI quick scans against classification and optional token-capture targets, parse any generated ZAP JSON alerts, and fail when high/critical alerts exist and fail-on-high is enabled.
 Tests:
 - Configure `RUN_ZAP=true` with missing `ZAP_CLI_CMD` and verify explicit prerequisite failure.
 - Configure DAST with valid tooling and verify zap/schemathesis logs are written in the report directory.
 
 R050  Statement: Emit explicit completion status and artifact location for operators.
-Design: Print SAST/DAST progress markers, gate outcomes, and final success output including resolved report directory path.
+Design: Print SAST/DAST progress markers, gate outcomes, and explicit lane completion lines (`Static Application Security Testing (SAST) checks completed.` and `Dynamic Application Security Testing (DAST) checks completed.`) plus final success output including resolved report directory path.
 Tests:
 - Run a passing lane and verify final completion output includes the reports path.
+
+R055  Statement: Delimit every security tool run with a bounded header that includes purpose and official URL.
+Design: Before each scanner invocation (Semgrep, Bandit, pip-audit, detect-secrets, SwiftLint, Schemathesis, OWASP ZAP), print an ASCII box header containing the tool name, no more than two explainer lines describing what the test does, and a line with the tool's official URL.
+Tests:
+- Run a passing SAST lane and verify output includes boxed header lines, at least one two-line explainer, and URL lines for SAST tools.
+
+R060  Statement: Support local macOS UI Dynamic Application Security Testing (DAST) through OWASP ZAP proxying.
+Design: When `RUN_MACOS_UI_DAST=true`, require `RUN_ZAP=true`, start OWASP ZAP in daemon/proxy mode on `MACOS_UI_DAST_ZAP_PROXY_HOST`/`MACOS_UI_DAST_ZAP_PROXY_PORT`, run `./06_run_macos_ui_regression_tests.sh` in XCUITest-only mode with `TELLER_CLASSIFIER_API_URL` + `TELLER_CLASSIFIER_HTTP_PROXY`, and emit `zap-macos-ui.json`, `zap-macos-ui.html`, and `macos-ui-dast-xcuitest.log` under the report directory. Support `MACOS_UI_DAST_REUSE_EXISTING_API=true` to skip launching a new API process.
+Tests:
+- Set `RUN_MACOS_UI_DAST=true` with `RUN_ZAP=false` and verify explicit prerequisite failure.
+- Set `RUN_MACOS_UI_DAST=true` with stubbed ZAP/API/UI scripts and verify proxy startup, UI regression invocation, and macOS UI DAST artifacts.
 
 ## Changelog
 
 - 2026-04-24: Consolidated security scanning policy and runtime behavior from `docs/security-scanning.md` into script-scoped requirements for `15_run_security_checks.sh`.
+- 2026-04-26: Added boxed per-tool headers with brief explainers and official URLs for all security scanners.
+- 2026-04-26: Added local macOS UI DAST requirements for OWASP ZAP proxy-driven XCUITest coverage.

@@ -49,9 +49,9 @@ actor APIClient: ClassificationAPI {
     private let session: URLSession
     private let baseURL: URL
     init(baseURL: URL = URL(string: ProcessInfo.processInfo.environment["TELLER_CLASSIFIER_API_URL"] ?? "http://127.0.0.1:8787")!,
-         session: URLSession = .shared) {
+         session: URLSession? = nil) {
         self.baseURL = baseURL
-        self.session = session
+        self.session = session ?? APIClient.makeDefaultSession()
     }
 
     func fetchCategories() async throws -> [CategoryOption] {
@@ -105,5 +105,23 @@ actor APIClient: ClassificationAPI {
             throw APIError.requestFailed(String(data: data, encoding: .utf8) ?? "Server error \(http.statusCode)")
         }
         return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    private static func makeDefaultSession() -> URLSession {
+        let config = URLSessionConfiguration.default
+        if let proxyURLString = ProcessInfo.processInfo.environment["TELLER_CLASSIFIER_HTTP_PROXY"],
+           let proxyURL = URL(string: proxyURLString),
+           let host = proxyURL.host,
+           let port = proxyURL.port {
+            config.connectionProxyDictionary = [
+                kCFNetworkProxiesHTTPEnable as String: 1,
+                kCFNetworkProxiesHTTPProxy as String: host,
+                kCFNetworkProxiesHTTPPort as String: port,
+                kCFNetworkProxiesHTTPSEnable as String: 1,
+                kCFNetworkProxiesHTTPSProxy as String: host,
+                kCFNetworkProxiesHTTPSPort as String: port,
+            ]
+        }
+        return URLSession(configuration: config)
     }
 }

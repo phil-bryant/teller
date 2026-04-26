@@ -31,7 +31,16 @@ Tests:
 - Pre-create stale Swift module cache tied to an old package path and verify the runner clears cache before test invocation.
 - Disable Swift tests and verify runner skips Swift invocation.
 
+R025  Statement: Execute SQL unit tests from `tests/sql`.
+Design: When SQL tests are enabled, first verify `pgtap` is installed in the target database using `psql`, then run each `*.sql` pgTAP test file in `tests/sql` using `pg_prove --dbname <db>` and fail fast on the first failure.
+Tests:
+- With SQL tests enabled and `pgtap` extension missing, verify runner exits non-zero with actionable extension-install guidance.
+- With SQL tests enabled and `tests/sql` populated, verify `pg_prove --dbname prod <test-file>` is invoked.
+- With SQL tests enabled and `pg_prove` missing, verify runner exits non-zero with actionable install guidance.
+- Disable SQL tests and verify runner skips SQL invocation.
+
 ## Changelog
 
+- 2026-04-26: Added R025 to run SQL unit tests from `tests/sql`.
 - 2026-04-23: Added R020 to run Swift package tests from `./macos-ui`.
 - 2026-04-23: Initial requirements for `05_run_unit_tests.sh`.
