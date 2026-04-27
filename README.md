@@ -208,13 +208,32 @@ Artifacts are written to `./.security-reports/`:
 
 - `dependency-freshness.json` and `dependency-freshness.txt` (outdated package summary with major/minor/patch classification)
 - `teller-api-drift.json` and `teller-api-drift.txt` (live canary or fallback compatibility checks)
+- `postgres-freshness.json` and `postgres-freshness.txt` (PostgreSQL client/server freshness status and policy evaluation)
 
 Useful flags:
 
 - `DEPENDENCY_FAIL_ON_MAJOR=true|false` (default `false`) to fail when major dependency updates are available
 - `RUN_TELLER_CANARY=true|false` (default `true`)
+- `RUN_POSTGRES_FRESHNESS=true|false` (default `true`)
+- `POSTGRES_MIN_CLIENT_VERSION=x.y` (optional minimum accepted `psql` version)
+- `POSTGRES_CHECK_SERVER_VERSION=true|false` (default `true`; runs `SHOW server_version_num`)
+- `POSTGRES_MIN_SERVER_VERSION=x.y` (optional minimum accepted server version; used when server checks are enabled)
+- `POSTGRES_SERVER_DSN=...` (optional DSN passed to `psql` for server checks)
+- `POSTGRES_SERVER_PSQL_ARGS="-h localhost -U teller -d prod"` (optional explicit `psql` args for server checks)
+- `POSTGRES_SERVER_PSA_ITEM` / `POSTGRES_SERVER_PSA_FIELD` (defaults `localhost_postgres_teller` / `password`; used to resolve `PGPASSWORD` via `1psa` when needed)
+- `POSTGRES_FAIL_ON_STALE=true|false` (default `false`; fail when configured Postgres freshness policy is not met)
+- `POSTGRES_CHECK_CVES=true|false` (default `true`; evaluates versions against local CVE snapshot ranges)
+- `POSTGRES_FAIL_ON_CVE=true|false` (default `true`; fail when CVE policy is violated)
+- `POSTGRES_CVE_POLICY_FILE=/path/to/postgres-cve-policy.json` (default `./security/postgres-cve-policy.json`)
+- `POSTGRES_CVE_SNAPSHOT_FILE=/path/to/postgres-cve-snapshot.json` (default `./security/postgres-cve-snapshot.json`)
+- `POSTGRES_REFRESH_CVE_SNAPSHOT=true|false` (default `true`; refreshes CVE snapshot from postgresql.org at runtime)
 - `DEPENDENCY_REPORT_DIR=/path` (default `./.security-reports`)
 - `DEPENDENCY_CHECK_PYTHON=/path/to/python` (default `./teller-venv/bin/python` when available)
+
+PostgreSQL CVE policy files:
+
+- `./security/postgres-cve-policy.json` controls severity threshold and snapshot freshness requirements.
+- `./security/postgres-cve-snapshot.json` is the local advisory snapshot used by the freshness lane.
 
 Triage expectations:
 
