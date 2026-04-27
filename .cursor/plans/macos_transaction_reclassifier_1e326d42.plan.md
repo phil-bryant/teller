@@ -35,13 +35,13 @@ flowchart LR
 ```
 
 ## Implementation Steps
-- Create a local API module in Python that reuses DB session setup from [`/Users/phil/local/src/teller/teller/teller_db.py`](/Users/phil/local/src/teller/teller/teller_db.py).
+- Create a local API module in Python that reuses DB session setup from [`./teller/teller_db.py`](./teller/teller_db.py).
 - Add endpoints for:
   - list transactions with current classification (left join mapping table + category labels)
-  - list category hierarchy/options from [`/Users/phil/local/src/teller/sql/postgres/teller_nys_snw_category.sql`](/Users/phil/local/src/teller/sql/postgres/teller_nys_snw_category.sql)
-  - upsert transaction classification into [`/Users/phil/local/src/teller/sql/postgres/teller_transaction_nys_snw_category.sql`](/Users/phil/local/src/teller/sql/postgres/teller_transaction_nys_snw_category.sql) with `type='user'` and conflict handling on `transaction_id`
+  - list category hierarchy/options from [`./sql/postgres/teller_nys_snw_category.sql`](./sql/postgres/teller_nys_snw_category.sql)
+  - upsert transaction classification into [`./sql/postgres/teller_transaction_nys_snw_category.sql`](./sql/postgres/teller_transaction_nys_snw_category.sql) with `type='user'` and conflict handling on `transaction_id`
 - Add DB safety behavior in API:
-  - validate `transaction_id` exists in [`/Users/phil/local/src/teller/sql/postgres/teller_transaction.sql`](/Users/phil/local/src/teller/sql/postgres/teller_transaction.sql)
+  - validate `transaction_id` exists in [`./sql/postgres/teller_transaction.sql`](./sql/postgres/teller_transaction.sql)
   - validate `nys_snw_category_id` exists
   - update `updated_at` on reclassification
 - Scaffold a new SwiftUI macOS app target in-repo (new `macos/` folder), with:
@@ -64,10 +64,10 @@ flowchart LR
   - lightweight end-to-end script proving reclassification persists and is reloaded correctly
 
 ## Key Files To Add/Change
-- Reuse DB config from [`/Users/phil/local/src/teller/teller/teller_db.py`](/Users/phil/local/src/teller/teller/teller_db.py)
-- New API package under [`/Users/phil/local/src/teller/teller/`](/Users/phil/local/src/teller/teller/)
-- Optional API entry script near [`/Users/phil/local/src/teller/07_teller_client.py`](/Users/phil/local/src/teller/07_teller_client.py)
-- New macOS app project under [`/Users/phil/local/src/teller/macos/`](/Users/phil/local/src/teller/macos/)
+- Reuse DB config from [`./teller/teller_db.py`](./teller/teller_db.py)
+- New API package under [`./teller/`](./teller/)
+- Optional API entry script near [`./07_teller_client.py`](./07_teller_client.py)
+- New macOS app project under [`./macos/`](./macos/)
 
 ## Delivery Sequence
 - Phase 1: API + DB upsert correctness

@@ -17,7 +17,7 @@ SELECTOR_INSTITUTION_ID=""
 SELECTOR_ENROLLMENT_ID=""
 CONFIRM_DELETE="false"
 RESOLVED_CONTEXT=""
-DEBUG_LOG_PATH="/Users/phil/local/src/teller/.cursor/debug-581bea.log"
+DEBUG_LOG_PATH="./.cursor/debug-581bea.log"
 DEBUG_SESSION_ID="581bea"
 DEBUG_RUN_ID="pre-fix"
 
