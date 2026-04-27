@@ -27,6 +27,20 @@ Tests:
 - Run with `RUN_TELLER_CANARY=false` and verify drift script is skipped.
 - Run with `RUN_TELLER_CANARY=true` and verify drift artifacts are generated.
 
+R020  Statement: Support optional PostgreSQL version freshness checks.
+Design: Execute `scripts/check_postgres_freshness.py` only when `RUN_POSTGRES_FRESHNESS=true`, always write `postgres-freshness.json` and `postgres-freshness.txt`, and pass configured minimum versions / gating flags through environment-backed options.
+Tests:
+- Run default lane and verify PostgreSQL freshness artifacts are generated.
+- Run with `RUN_POSTGRES_FRESHNESS=false` and verify PostgreSQL freshness script is skipped.
+
+R025  Statement: Evaluate PostgreSQL freshness against local CVE policy/snapshot data.
+Design: Default `04_run_dependency_freshness_checks.sh` behavior passes CVE evaluation flags and repository policy/snapshot paths to `scripts/check_postgres_freshness.py`, refreshes snapshot data from PostgreSQL security advisories, and evaluates both client/server versions. Support disabling CVE checks via `RUN_POSTGRES_FRESHNESS` or `POSTGRES_CHECK_CVES=false`.
+Tests:
+- Run default lane and verify CVE policy/snapshot flags are passed to PostgreSQL freshness script.
+- Run with `POSTGRES_CHECK_CVES=false` and verify CVE flags are not passed.
+
 ## Changelog
 
 - 2026-04-26: Initial requirements for `04_run_dependency_freshness_checks.sh`.
+- 2026-04-26: Added optional PostgreSQL freshness requirements and test coverage.
+- 2026-04-26: Added CVE policy/snapshot integration requirements for PostgreSQL freshness checks.
