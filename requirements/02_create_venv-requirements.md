@@ -10,7 +10,7 @@ Tests:
 - Force a failing command and verify script exits non-zero.
 
 R005  Statement: Require sibling prerequisites script to exist.
-Design: Verify `01A_install_prerequisites.sh` in script directory before continuing.
+Design: Verify `01_install_prerequisites.sh` in script directory before continuing.
 Tests:
 - Rename prerequisites script and verify clear failure message.
 
