@@ -2,6 +2,8 @@
 
 Native macOS UI for reclassifying `teller.transaction` records into `teller.nys_snw_category`.
 
+This app now also includes a native **Connect** tab for local Teller enrollment management (capture, reconnect, add, delete, and manual token save flows backed by the local connect token server).
+
 ## 1) Start API
 
 From repo root:
@@ -24,6 +26,28 @@ swift run TransactionClassifier
 ```
 
 Or open `macos-ui/` directly in Xcode and run the executable target.
+
+To open directly on the Connect tab:
+
+```zsh
+TELLER_MACOS_START_TAB=connect swift run TransactionClassifier
+```
+
+## Connect integration settings
+
+The Connect tab calls the local token server APIs by default at `http://127.0.0.1:8080`.
+
+- `TELLER_CONNECT_API_URL` - base URL for `GET /api/status`, `GET /api/contexts`, `POST /api/store-token`, `POST /api/delete-context`.
+- `TELLER_CONNECT_MANAGER_URL` - browser URL used by "Open Browser Connect" fallback action.
+- `TELLER_CONNECT_HTTP_PROXY` - optional HTTP/HTTPS proxy for Connect API requests.
+
+From repo root, the recommended launcher is:
+
+```zsh
+./11_run_teller-connect-ui.sh
+```
+
+That command starts the local Connect server in stay-alive mode and launches this macOS app on the Connect tab (legacy web mode remains available through `--web`).
 
 ## 3) Keyboard shortcuts
 

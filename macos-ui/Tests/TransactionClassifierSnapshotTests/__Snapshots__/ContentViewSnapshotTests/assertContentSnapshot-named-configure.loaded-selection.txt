@@ -1,16 +1,16 @@
 [   AF    ! W U ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentV21TransactionClassifier11ContentViewVS_12_FrameLayout__ f=(0,0,1120,720) b=(-) => <NSViewBackingLayer>
-  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1c5ae162432PlatformViewRepresentableAdaptorGVS_P10$1c5af0efc13AppKitTabViewGVs15LazyMapSequenceVS_22_VariadicView_ChildrenVS_7TabItem____ f=(0,0,1120,720) b=(-) => <NSViewBackingLayer>
+  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1b9f4562432PlatformViewRepresentableAdaptorGVS_P10$1b9f54efc13AppKitTabViewGVs15LazyMapSequenceVS_22_VariadicView_ChildrenVS_7TabItem____ f=(0,0,1120,720) b=(-) => <NSViewBackingLayer>
     [   AF    !     ] h=-&- v=-&- NSTabView f=(-7,-10,1134,736) b=(-)
       [   AF    ! W   ] h=-&- v=-&- _TtGC7SwiftUI13NSHostingViewVS_14_ViewList_View_ f=(10,33,1114,690) b=(-) => <NSViewBackingLayer>
-        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1c5af6d5032PlatformViewRepresentableAdaptorVVS_19NavigationSplitCoreP10$1c5ae9e5c28NavigationSplitRepresentable__ f=(0,0,1114,690) b=(-) => <NSViewBackingLayer>
+        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1b9f5ad5032PlatformViewRepresentableAdaptorVVS_19NavigationSplitCoreP10$1b9f4de5c28NavigationSplitRepresentable__ f=(0,0,1114,690) b=(-) => <NSViewBackingLayer>
           [   A     !     ] h=-&- v=-&- NSView f=(0,0,1114,690) b=(-)
             [   AF    !     ] h=-&- v=-&- NSSplitView f=(0,0,1114,690) b=(-)
               [   A     !     ] h=--- v=--- _NSSplitViewItemViewWrapper f=(0,0,1114,690) b=(-)
-                [   AF    ! W   ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentVCVS_19NavigationSplitCoreP10$1c5ae9d4c26NavigationSplitCoordinator10ColumnViewGVS_22NavigationPaneModifierVS_21ContainerStyleContext___ f=(0,0,1114,690) b=(-) => <NSViewBackingLayer>
+                [   AF    ! W   ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentVCVS_19NavigationSplitCoreP10$1b9f4dd4c26NavigationSplitCoordinator10ColumnViewGVS_22NavigationPaneModifierVS_21ContainerStyleContext___ f=(0,0,1114,690) b=(-) => <NSViewBackingLayer>
                   [   AF    !     ] h=--- v=--- SwiftUI.KeyViewProxy f=(50,-2,33,24) b=(-)
-                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1c5ae162432PlatformViewRepresentableAdaptorVS_P10$1c5b276a424PlatformTextFieldAdaptor__ f=(440,64,662,24) b=(-) => <NSViewBackingLayer>
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1b9f4562432PlatformViewRepresentableAdaptorVS_P10$1b9f8b6a424PlatformTextFieldAdaptor__ f=(440,64,662,24) b=(-) => <NSViewBackingLayer>
                     [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField f=(0,0,662,24) b=(-)
-                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$1950f231815AppKitTextField_ f=(0,0,662,24) b=(-) => <NSViewBackingLayer>
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$18955631815AppKitTextField_ f=(0,0,662,24) b=(-) => <NSViewBackingLayer>
                       [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel f=(4,4,654,16) b=(-)
                   [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(440,98,132,24) b=(-) => <NSViewBackingLayer>
                   [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(580,98,141,24) b=(-) => <NSViewBackingLayer>
@@ -22,15 +22,15 @@
                 [   A     !     ] h=--- v=--- NSContainerConcentricGlassEffectView f=(8,8,420,674) b=(-)
                   [   A     ! w   ] h=--- v=--- _TtCE6AppKitCSo17NSGlassEffectViewP33_92F0BB6107B916AA04C9A991F505A16417ContentHolderView f=(0,0,420,674) b=(-) => <CALayer>
                     [   A     !     ] h=--- v=--- NSView f=(0,0,420,674) b=(-)
-                      [   AF    ! W   ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentVCVS_19NavigationSplitCoreP10$1c5ae9d4c26NavigationSplitCoordinator10ColumnViewGVS_22NavigationPaneModifierVS_19SidebarStyleContext___ f=(0,0,420,674) b=(-) => <NSViewBackingLayer>
+                      [   AF    ! W   ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentVCVS_19NavigationSplitCoreP10$1b9f4dd4c26NavigationSplitCoordinator10ColumnViewGVS_22NavigationPaneModifierVS_19SidebarStyleContext___ f=(0,0,420,674) b=(-) => <NSViewBackingLayer>
                         [   AF    !     ] h=--- v=--- SwiftUI.KeyViewProxy f=(337,12,71,24) b=(-)
-                        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1c5ae162432PlatformViewRepresentableAdaptorVS_P10$1c5b276a424PlatformTextFieldAdaptor__ f=(12,12,172,24) b=(-) => <NSViewBackingLayer>
+                        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1b9f4562432PlatformViewRepresentableAdaptorVS_P10$1b9f8b6a424PlatformTextFieldAdaptor__ f=(12,12,172,24) b=(-) => <NSViewBackingLayer>
                           [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField f=(0,0,172,24) b=(-)
-                            [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$1950f231815AppKitTextField_ f=(0,0,172,24) b=(-) => <NSViewBackingLayer>
+                            [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$18955631815AppKitTextField_ f=(0,0,172,24) b=(-) => <NSViewBackingLayer>
                             [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel f=(4,4,164,16) b=(-)
-                        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1c5ae162432PlatformViewRepresentableAdaptorVS_P10$1c5b33c3c6Switch__ f=(275,12,54,24) b=(-) => <NSViewBackingLayer>
+                        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1b9f4562432PlatformViewRepresentableAdaptorVS_P10$1b9f97c3c6Switch__ f=(275,12,54,24) b=(-) => <NSViewBackingLayer>
                           [   A     !     ] h=-&- v=-&- _TtC7SwiftUIP33_1246D37251EA3A918B392E2B95F8B7EF14PlatformSwitch "0" f=(0,0,54,24) b=(-)
-                            [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$1950f1ea812AppKitSwitch_ f=(0,0,54,24) b=(-) => <NSViewBackingLayer>
+                            [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$189555ea812AppKitSwitch_ f=(0,0,54,24) b=(-) => <NSViewBackingLayer>
                         [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(337,12,71,24) b=(-) => <NSViewBackingLayer>
                         [   A     ! W   ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView17PlatformContainer f=(12,44,396,618) b=(-) => <NSViewBackingLayer>
                           [   AF    !     ] h=--- v=--- SwiftUI.HostingScrollView f=(0,0,396,618) b=(-)
@@ -38,10 +38,10 @@
                               [   AF    !     ] h=--- v=--- _TtC7SwiftUIP33_6B9589E2B2301F373BAB5CF17408C38412DocumentView f=(0,0,0,0) b=(-)
                                 [   AF    ! W   ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView22PlatformGroupContainer f=(0,0,0,0) b=(-) => <NSViewBackingLayer>
                             [  HAF    ! W   ] h=--- v=--- NSScroller f=(0,0,0,100) b=(-) => <NSViewBackingLayer>
-                  [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVES_CSo17NSGlassEffectViewP10$1950f52888RootView_ f=(0,0,420,674) b=(-) => <NSViewBackingLayer>
+                  [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVES_CSo17NSGlassEffectViewP10$1895592888RootView_ f=(0,0,420,674) b=(-) => <NSViewBackingLayer>
               [  HA     !     ] h=--- v=--- NSSplitDividerView f=(428,0,0,690) b=(-)
               [   A     !     ] h=--- v=--- _NSSplitViewCollapsedInteractionsView f=(0,0,15,690) b=(-)
               [   A     !     ] h=--- v=--- _NSSplitViewCollapsedInteractionsView f=(1099,0,15,690) b=(-)
-      [   AF    !     ] h=--- v=--- NSSegmentedControl f=(458,5,218,24) b=(-)
-        [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_22AppKitSegmentedControl_ f=(0,0,218,24) b=(-) => <NSViewBackingLayer>
+      [   AF    !     ] h=--- v=--- NSSegmentedControl f=(421,5,292,24) b=(-)
+        [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_22AppKitSegmentedControl_ f=(0,0,292,24) b=(-) => <NSViewBackingLayer>
 A=autoresizesSubviews, C=canDrawConcurrently, D=needsDisplay, F=flipped, G=gstate, H=hidden (h=by ancestor), L=needsLayout (l=child needsLayout), U=needsUpdateConstraints (u=child needsUpdateConstraints), O=opaque, P=preservesContentDuringLiveResize, S=scaled/rotated, W=wantsLayer (w=ancestor wantsLayer), V=needsVibrancy (v=allowsVibrancy), #=has surface

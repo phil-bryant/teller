@@ -54,6 +54,18 @@ final class ContentViewSnapshotTests: XCTestCase {
     }
 
     @MainActor
+    func testConnectTabSnapshot() async {
+        await assertConnectSnapshot(named: "connect-tab") { _ in }
+    }
+
+    @MainActor
+    func testConnectTabErrorSnapshot() async {
+        await assertConnectSnapshot(named: "connect-tab-error") { viewModel in
+            viewModel.errorText = "Delete failed: context not found"
+        }
+    }
+
+    @MainActor
     private func assertContentSnapshot(named: String, configure: (ClassificationViewModel) -> Void) async {
         let viewModel = ClassificationViewModel(api: SnapshotFixtureAPI())
         viewModel.onlyUnclassified = false
@@ -61,7 +73,11 @@ final class ContentViewSnapshotTests: XCTestCase {
         configure(viewModel)
 
         let view = NSHostingView(
-            rootView: ContentView(viewModel: viewModel, autoLoadOnAppear: false)
+            rootView: ContentView(
+                viewModel: viewModel,
+                connectViewModel: ConnectViewModel(api: SnapshotFixtureConnectAPI()),
+                autoLoadOnAppear: false
+            )
                 .frame(width: 1120, height: 720)
         )
         view.frame = NSRect(x: 0, y: 0, width: 1120, height: 720)
@@ -73,6 +89,73 @@ final class ContentViewSnapshotTests: XCTestCase {
             named: named,
             record: Self.isRecording
         )
+    }
+
+    @MainActor
+    private func assertConnectSnapshot(named: String, configure: (ConnectViewModel) -> Void) async {
+        let classificationViewModel = ClassificationViewModel(api: SnapshotFixtureAPI())
+        classificationViewModel.onlyUnclassified = false
+        await classificationViewModel.loadAll()
+
+        let connectViewModel = ConnectViewModel(api: SnapshotFixtureConnectAPI())
+        await connectViewModel.loadAll()
+        configure(connectViewModel)
+
+        let view = NSHostingView(
+            rootView: ContentView(
+                viewModel: classificationViewModel,
+                connectViewModel: connectViewModel,
+                autoLoadOnAppear: false,
+                startTab: "connect"
+            )
+            .frame(width: 1120, height: 720)
+        )
+        view.frame = NSRect(x: 0, y: 0, width: 1120, height: 720)
+        view.layoutSubtreeIfNeeded()
+
+        assertSnapshot(
+            of: view,
+            as: .recursiveDescription,
+            named: named,
+            record: Self.isRecording
+        )
+    }
+}
+
+actor SnapshotFixtureConnectAPI: ConnectAPI {
+    func fetchStatus() async throws -> ConnectStatusResponse {
+        ConnectStatusResponse(token_saved: false, saved_path: "", error: "")
+    }
+
+    func fetchContexts() async throws -> [ConnectContext] {
+        [
+            ConnectContext(
+                key: "default",
+                source: "default",
+                institution_id: "inst_alpha",
+                enrollment_id: "enr_alpha",
+                token_path: "/tmp/auth_token.json",
+                enrollment_path: "/tmp/enrollment_id.txt"
+            ),
+            ConnectContext(
+                key: "suffix:inst_beta",
+                source: "suffix",
+                institution_id: "inst_beta",
+                enrollment_id: "enr_beta",
+                token_path: "/tmp/auth_token_inst_beta.json",
+                enrollment_path: "/tmp/enrollment_id_inst_beta.txt"
+            ),
+        ]
+    }
+
+    func storeToken(_ request: ConnectStoreTokenRequest) async throws -> ConnectStoreTokenResponse {
+        _ = request
+        return ConnectStoreTokenResponse(ok: true, path: "/tmp/auth_token.json", enrollment_id_path: "/tmp/enrollment_id.txt")
+    }
+
+    func deleteContext(targetKey: String) async throws -> ConnectDeleteContextResponse {
+        _ = targetKey
+        return ConnectDeleteContextResponse(ok: true, moved_token: nil, moved_enrollment: nil, remaining: [])
     }
 }
 

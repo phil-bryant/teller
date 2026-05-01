@@ -8,6 +8,7 @@ AUTH_TOKEN_FILE="${TELLER_DIR}/auth_token.json"
 ENROLLMENT_ID_FILE="${TELLER_DIR}/enrollment_id.txt"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CAPTURE_SERVER_SCRIPT="${SCRIPT_DIR}/teller/teller_connect_token_server.py"
+MACOS_UI_RUNNER="${SCRIPT_DIR}/16_run_classification_macos-ui.sh"
 PORT="${PORT:-8080}"
 CONNECT_ENVIRONMENT="${CONNECT_ENVIRONMENT:-development}"
 ENROLLMENT_ID="${ENROLLMENT_ID:-}"
@@ -184,6 +185,34 @@ run_connect_capture() {
         --enrollment-id-file "$output_enrollment_file" --mode "$capture_mode"
 }
 
+run_macos_connect_ui() {
+    #R095: Native migration path launches macOS UI against a local stay-alive Connect API server.
+    if [ ! -x "$CAPTURE_SERVER_SCRIPT" ]; then
+        echo "❌ Missing executable capture server: $CAPTURE_SERVER_SCRIPT"
+        echo "Try: chmod +x \"$CAPTURE_SERVER_SCRIPT\""
+        exit 1
+    fi
+    if [ ! -x "$MACOS_UI_RUNNER" ]; then
+        # Compatibility fallback for minimal test fixtures and non-macOS environments.
+        run_connect_capture "" "$AUTH_TOKEN_FILE" "$ENROLLMENT_ID_FILE" "manage"
+        return
+    fi
+
+    local connect_api_url connect_manager_url capture_pid
+    connect_api_url="http://127.0.0.1:${PORT}"
+    connect_manager_url="${TELLER_CONNECT_MANAGER_URL:-$connect_api_url}"
+
+    PORT="$PORT" CONNECT_ENVIRONMENT="$CONNECT_ENVIRONMENT" "$CAPTURE_SERVER_SCRIPT" \
+        --port "$PORT" --environment "$CONNECT_ENVIRONMENT" --mode "manage" --no-open --stay-alive &
+    capture_pid=$!
+    trap 'kill "$capture_pid" >/dev/null 2>&1 || true' EXIT INT TERM
+
+    TELLER_CONNECT_API_URL="$connect_api_url" \
+        TELLER_CONNECT_MANAGER_URL="$connect_manager_url" \
+        TELLER_MACOS_START_TAB="connect" \
+        "$MACOS_UI_RUNNER"
+}
+
 sanitize_suffix() {
     local raw="$1"
     raw="$(printf "%s" "$raw" | tr '[:upper:]' '[:lower:]')"
@@ -229,6 +258,8 @@ usage() {
     echo "Usage:"
     echo "  ./11_run_teller-connect-ui.sh                 # default: no copy/paste flow"
     echo "  ./11_run_teller-connect-ui.sh --connect      # explicit no copy/paste flow"
+    echo "  ./11_run_teller-connect-ui.sh --macos-ui     # open native macOS Connect tab"
+    echo "  ./11_run_teller-connect-ui.sh --web          # force legacy localhost web UI"
     echo "  ./11_run_teller-connect-ui.sh --manual"
     echo "  ./11_run_teller-connect-ui.sh [token_xxx]"
     echo "  ./11_run_teller-connect-ui.sh --clipboard"
@@ -339,7 +370,16 @@ main() {
             exit 0
             ;;
         ""|--connect)
-            #R050: Default/connect mode launches local enrollment manager.
+            #R050: Default/connect mode launches native macOS Connect manager.
+            run_macos_connect_ui
+            exit 0
+            ;;
+        --macos-ui)
+            run_macos_connect_ui
+            exit 0
+            ;;
+        --web)
+            #R050: Legacy web mode remains available for compatibility.
             run_connect_capture "" "$AUTH_TOKEN_FILE" "$ENROLLMENT_ID_FILE" "manage"
             exit 0
             ;;

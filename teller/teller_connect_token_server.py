@@ -487,6 +487,7 @@ def main():
     parser.add_argument("--auth-token-file", default=os.getenv("AUTH_TOKEN_OUTPUT_FILE", str(AUTH_TOKEN_FILE)))
     parser.add_argument("--enrollment-id-file", default=os.getenv("ENROLLMENT_ID_OUTPUT_FILE", str(ENROLLMENT_ID_FILE)))
     parser.add_argument("--no-open", action="store_true")
+    parser.add_argument("--stay-alive", action="store_true")
     args = parser.parse_args()
 
     if not APP_ID_FILE.is_file():
@@ -530,7 +531,7 @@ def main():
         webbrowser.open(f"http://localhost:{args.port}")
 
     try:
-        while not state.completed:
+        while not state.completed or args.stay_alive:
             time.sleep(0.25)
     except KeyboardInterrupt:
         print("\nStopped before token was captured.")
