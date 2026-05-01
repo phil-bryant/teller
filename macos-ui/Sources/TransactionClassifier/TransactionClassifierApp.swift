@@ -4,14 +4,16 @@ import SwiftUI
 @main
 struct TransactionClassifierApp: App {
     @State private var viewModel: ClassificationViewModel
+    @State private var connectViewModel: ConnectViewModel
 
     init() {
         _viewModel = State(initialValue: buildDefaultViewModel())
+        _connectViewModel = State(initialValue: buildDefaultConnectViewModel())
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(viewModel: viewModel)
+            ContentView(viewModel: viewModel, connectViewModel: connectViewModel)
                 .frame(minWidth: 1120, minHeight: 720)
                 .onAppear {
                     if detectAppLaunchMode() == .normal {

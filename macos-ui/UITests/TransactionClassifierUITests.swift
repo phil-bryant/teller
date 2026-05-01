@@ -234,6 +234,35 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Transaction txn_001"].waitForExistence(timeout: 5))
     }
 
+    func testConnectTabAddEnrollmentFlow() {
+        let connectTab = app.tabBars.buttons["Connect"]
+        XCTAssertTrue(connectTab.waitForExistence(timeout: 5))
+        connectTab.click()
+
+        let tokenField = uiElement("connect-token-field")
+        XCTAssertTrue(tokenField.waitForExistence(timeout: 5))
+        tokenField.click()
+        tokenField.typeText("token_fixture")
+
+        let enrollmentField = uiElement("connect-enrollment-id-field")
+        XCTAssertTrue(enrollmentField.waitForExistence(timeout: 5))
+        enrollmentField.click()
+        enrollmentField.typeText("enr_new")
+
+        let institutionField = uiElement("connect-institution-hint-field")
+        XCTAssertTrue(institutionField.waitForExistence(timeout: 5))
+        institutionField.click()
+        institutionField.typeText("inst_new")
+
+        let addButton = uiElement("connect-add-button")
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
+        addButton.click()
+
+        XCTAssertTrue(app.staticTexts["inst_new"].waitForExistence(timeout: 5))
+        let status = uiElement("connect-status-text")
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+    }
+
     private func disableUnclassifiedFilter() {
         let toggle = uiElement("only-unclassified-toggle")
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))

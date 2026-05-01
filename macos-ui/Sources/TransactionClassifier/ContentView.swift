@@ -1,18 +1,33 @@
 import SwiftUI
 
+private enum AppTab: Hashable {
+    case classify
+    case manageCategories
+    case connect
+}
+
 struct ContentView: View {
     @Bindable var viewModel: ClassificationViewModel
+    @Bindable var connectViewModel: ConnectViewModel
     @FocusState private var searchFocused: Bool
     @State private var scrollTargetId: String?
+    @State private var selectedTab: AppTab
     let autoLoadOnAppear: Bool
 
-    init(viewModel: ClassificationViewModel, autoLoadOnAppear: Bool = true) {
+    init(
+        viewModel: ClassificationViewModel,
+        connectViewModel: ConnectViewModel,
+        autoLoadOnAppear: Bool = true,
+        startTab: String? = nil
+    ) {
         self.viewModel = viewModel
+        self.connectViewModel = connectViewModel
         self.autoLoadOnAppear = autoLoadOnAppear
+        _selectedTab = State(initialValue: initialTab(startTab: startTab))
     }
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             // #R001: Render split-view transaction browsing with list and detail panes.
             NavigationSplitView {
                 VStack(spacing: 8) {
@@ -77,12 +92,20 @@ struct ContentView: View {
                     }
             }
             .tabItem { Label("Classify", systemImage: "slider.horizontal.3") }
+            .tag(AppTab.classify)
             .accessibilityIdentifier("classify-tab")
 
             CategoryManagerView(viewModel: viewModel)
                 .padding(12)
                 .tabItem { Label("Manage Categories", systemImage: "square.and.pencil") }
+                .tag(AppTab.manageCategories)
                 .accessibilityIdentifier("manage-categories-tab")
+
+            ConnectView(viewModel: connectViewModel)
+                .padding(12)
+                .tabItem { Label("Connect", systemImage: "link.badge.plus") }
+                .tag(AppTab.connect)
+                .accessibilityIdentifier("connect-tab")
         }
         .navigationTitle("Transaction Classifier")
         .navigationSplitViewStyle(.balanced)
@@ -162,6 +185,18 @@ struct ContentView: View {
                 Color.clear
             }
         }
+    }
+}
+
+private func initialTab(startTab: String?, processInfo: ProcessInfo = .processInfo) -> AppTab {
+    let normalized = startTab?.lowercased() ?? processInfo.environment["TELLER_MACOS_START_TAB"]?.lowercased()
+    switch normalized {
+    case "connect":
+        return .connect
+    case "manage", "manage-categories":
+        return .manageCategories
+    default:
+        return .classify
     }
 }
 
