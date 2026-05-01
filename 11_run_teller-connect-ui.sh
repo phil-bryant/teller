@@ -186,7 +186,7 @@ run_connect_capture() {
 }
 
 run_macos_connect_ui() {
-    #R095: Native migration path launches macOS UI against a local stay-alive Connect API server.
+    # Native migration path launches macOS UI against a local stay-alive Connect API server.
     if [ ! -x "$CAPTURE_SERVER_SCRIPT" ]; then
         echo "❌ Missing executable capture server: $CAPTURE_SERVER_SCRIPT"
         echo "Try: chmod +x \"$CAPTURE_SERVER_SCRIPT\""

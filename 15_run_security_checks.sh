@@ -285,6 +285,8 @@ PY
       --exclude-dir='^backups$' \
       --exclude-dir='^archive/backup_extracts$' \
       --exclude-dir='^bank_statements$' \
+      --exclude-dir='(^|.*/)macos-ui/\.build(/.*)?$' \
+      --exclude-dir='(^|.*/)macos-ui/\.derivedData-ui-tests(/.*)?$' \
       "$clamav_scan_target" > "$report_path" 2>&1 &
     local clamav_pid=$!
     echo "▶ ClamAV scan in progress (started) target=${clamav_scan_target_abs}"
