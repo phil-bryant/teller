@@ -157,6 +157,28 @@ actor SnapshotFixtureConnectAPI: ConnectAPI {
         _ = targetKey
         return ConnectDeleteContextResponse(ok: true, moved_token: nil, moved_enrollment: nil, remaining: [])
     }
+
+    func startSession(action: ConnectAction, selectedContext: ConnectContext?) async throws -> ConnectStartSession {
+        if action == .reconnect {
+            guard let selectedContext else {
+                throw ConnectServiceError.validation("Select a context before reconnecting.")
+            }
+            return ConnectStartSession(
+                action: action,
+                targetKey: selectedContext.key,
+                applicationId: "app_snapshot",
+                environment: "development",
+                enrollmentId: selectedContext.enrollment_id
+            )
+        }
+        return ConnectStartSession(
+            action: action,
+            targetKey: "",
+            applicationId: "app_snapshot",
+            environment: "development",
+            enrollmentId: ""
+        )
+    }
 }
 
 actor SnapshotFixtureAPI: ClassificationAPI {

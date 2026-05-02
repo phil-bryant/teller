@@ -2,6 +2,8 @@ import XCTest
 
 final class TransactionClassifierUITests: XCTestCase {
     private var app: XCUIApplication!
+    private let defaultUITimeout: TimeInterval = 5
+    private let connectTabTimeout: TimeInterval = 5
 
     private func uiElement(_ identifier: String) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
@@ -13,6 +15,10 @@ final class TransactionClassifierUITests: XCTestCase {
         app.launchArguments += ["--ui-testing"]
         app.launchEnvironment["TELLER_UI_TEST_MODE"] = "1"
         app.launchEnvironment["TELLER_UI_TEST_PAGE_SIZE"] = "2"
+        // Keep connect-tab regressions deterministic by launching directly into Connect.
+        if name.contains("ConnectTab") {
+            app.launchEnvironment["TELLER_MACOS_START_TAB"] = "connect"
+        }
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_API_URL")
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_HTTP_PROXY")
         // #R035
@@ -225,31 +231,39 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Transaction txn_001"].waitForExistence(timeout: 5))
     }
 
-    func testConnectTabAddEnrollmentFlow() throws {
-        try openConnectTab()
+    func testConnectTabManualSaveFlow() {
+        openConnectTab()
 
-        let tokenField = uiElement("connect-token-field")
+        let tokenField = app.secureTextFields.firstMatch
         XCTAssertTrue(tokenField.waitForExistence(timeout: 5))
         tokenField.click()
         tokenField.typeText("token_fixture")
 
-        let enrollmentField = uiElement("connect-enrollment-id-field")
-        XCTAssertTrue(enrollmentField.waitForExistence(timeout: 5))
-        enrollmentField.click()
-        enrollmentField.typeText("enr_new")
+        let saveButton = uiElement("connect-manual-save-button")
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        saveButton.click()
 
-        let institutionField = uiElement("connect-institution-hint-field")
-        XCTAssertTrue(institutionField.waitForExistence(timeout: 5))
-        institutionField.click()
-        institutionField.typeText("inst_new")
-
-        let addButton = uiElement("connect-add-button")
-        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
-        addButton.click()
-
-        XCTAssertTrue(app.staticTexts["inst_new"].waitForExistence(timeout: 5))
         let status = uiElement("connect-status-text")
         XCTAssertTrue(status.waitForExistence(timeout: 5))
+    }
+
+    func testConnectTabDoesNotExposeNextUnclassifiedToolbarControl() {
+        openConnectTab()
+        XCTAssertFalse(nextUnclassifiedControlExists())
+    }
+
+    func testHelpMenuListsAllHotkeys() {
+        // #R035
+        let helpMenu = app.menuBars.menuBarItems["Help"]
+        XCTAssertTrue(helpMenu.waitForExistence(timeout: 5))
+        helpMenu.click()
+
+        XCTAssertTrue(app.menuItems["Keyboard Shortcuts"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Focus Search — Cmd+F"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Next Unclassified — Cmd+]"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Undo — Cmd+Z"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Apply to Selected — Cmd+Return"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Save Category — Cmd+S"].waitForExistence(timeout: 5))
     }
 
     private func disableUnclassifiedFilter() {
@@ -291,8 +305,11 @@ final class TransactionClassifierUITests: XCTestCase {
         }
     }
 
-    private func openConnectTab() throws {
-        if uiElement("connect-token-field").exists {
+    private func openConnectTab() {
+        let tokenField = app.secureTextFields.firstMatch
+        let manualSaveButton = app.buttons["Save Manual Token"].firstMatch
+
+        if tokenField.waitForExistence(timeout: connectTabTimeout) || manualSaveButton.waitForExistence(timeout: connectTabTimeout) {
             return
         }
 
@@ -306,20 +323,17 @@ final class TransactionClassifierUITests: XCTestCase {
             }
         }
 
-        let tokenField = uiElement("connect-token-field")
-        if tokenField.waitForExistence(timeout: 15) {
+        if tokenField.waitForExistence(timeout: defaultUITimeout) || manualSaveButton.waitForExistence(timeout: defaultUITimeout) {
             return
         }
 
-        // Fallback: relaunch directly on connect tab via launch environment.
-        app.terminate()
-        app.launchEnvironment["TELLER_MACOS_START_TAB"] = "connect"
-        app.launch()
-        if uiElement("connect-root").waitForExistence(timeout: 15),
-           uiElement("connect-token-field").waitForExistence(timeout: 15) {
-            return
-        }
+        XCTFail("Connect tab controls were not accessible in this XCUITest host run.")
+    }
 
-        throw XCTSkip("Connect tab controls were not accessible in this XCUITest host run.")
+    private func nextUnclassifiedControlExists() -> Bool {
+        if uiElement("next-unclassified-button").exists {
+            return true
+        }
+        return app.buttons["Next Unclassified"].exists
     }
 }

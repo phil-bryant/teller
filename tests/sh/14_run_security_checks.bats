@@ -5,7 +5,7 @@ load "helpers/common.bash"
 # Minimal OpenAPI/health server for DAST (stdlib only, no Teller/FastAPI deps).
 write_dast_13_stub() {
   local root="$1"
-  cat > "${root}/14_run_classification_api.py" <<'PY'
+  cat > "${root}/13_run_classification_api.py" <<'PY'
 #!/usr/bin/env python3
 import http.server
 import os
@@ -32,7 +32,7 @@ if __name__ == "__main__":
   with socketserver.TCPServer((host, port), H) as s:
     s.serve_forever()
 PY
-  chmod +x "${root}/14_run_classification_api.py"
+  chmod +x "${root}/13_run_classification_api.py"
 }
 
 write_macos_ui_regression_stub() {
@@ -72,7 +72,7 @@ EOS
 
 copy_security_project_files() {
   create_repo_fixture
-  copy_script_to_fixture "15_run_security_checks.sh"
+  copy_script_to_fixture "14_run_security_checks.sh"
   cp "$(repo_root)/requirements-security.txt" "${FIXTURE_ROOT}/"
   cp "$(repo_root)/.semgrep.yml" "${FIXTURE_ROOT}/"
   cp "$(repo_root)/.bandit" "${FIXTURE_ROOT}/"
@@ -209,6 +209,7 @@ stub_schemathesis_ok() {
   cat > "${STUB_BIN}/schemathesis" <<'EOF'
 #!/usr/bin/env bash
 # invoked as: schemathesis run URL ...
+echo "schemathesis $*" >> "${CALLS_LOG}"
 printf '%s\n' "ok"
 exit 0
 EOF
@@ -218,6 +219,7 @@ EOF
 stub_schemathesis_findings() {
   cat > "${STUB_BIN}/schemathesis" <<'EOF'
 #!/usr/bin/env bash
+echo "schemathesis $*" >> "${CALLS_LOG}"
 printf '%s\n' "contract-findings"
 exit 1
 EOF
@@ -362,7 +364,7 @@ teardown() {
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   mkdir -p "${TEST_TMPDIR}/elsewhere"
   run env RUN_SAST=false RUN_DAST=false \
-    bash -c "cd '${TEST_TMPDIR}/elsewhere' && exec bash '${FIXTURE_ROOT}/15_run_security_checks.sh'"
+    bash -c "cd '${TEST_TMPDIR}/elsewhere' && exec bash '${FIXTURE_ROOT}/14_run_security_checks.sh'"
   [ "$status" -eq 0 ]
   [ -d "${FIXTURE_ROOT}/.security-reports" ]
   [[ "$output" == *"Security checks completed"* ]]
@@ -394,7 +396,7 @@ EOS
   copy_security_project_files
   write_python3_venv_stub
   run env RUN_SAST=false RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Creating isolated security virtualenv"* ]]
   [ -d "${FIXTURE_ROOT}/.security-venv" ]
@@ -409,7 +411,7 @@ EOS
   copy_security_project_files
   write_python3_venv_stub_no_sast_tools
   run env RUN_SAST=false RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Installing security toolchain into ./.security-venv"* ]]
   calls="$(<"${CALLS_LOG}")"
@@ -424,7 +426,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_clamscan_clean
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"pip-audit target interpreter:"*teller-venv* ]]
 }
@@ -437,7 +439,7 @@ EOS
   touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   run env RUN_SAST=false RUN_DAST=false SECURITY_REPORT_DIR="${FIXTURE_ROOT}/.custom-rep" \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [ -d "${FIXTURE_ROOT}/.custom-rep" ]
 }
@@ -449,7 +451,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_clamscan_clean
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" swiftlint.json clamav.log "clamav-summary.json" sast-summary.json; do
     [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
@@ -467,7 +469,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_clamscan_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"+==============================================================================+"* ]]
   [[ "$output" == *"Security Tool: Semgrep"* ]]
@@ -494,7 +496,7 @@ import Foundation
 EOF
   stub_swiftlint_ok
   run env RUN_DAST=false RUN_SWIFT_SAST=true \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/swiftlint.json" ]
   calls="$(<"${CALLS_LOG}")"
@@ -513,7 +515,7 @@ import Foundation
 EOF
   stub_swiftlint_exit_2
   run env RUN_DAST=false RUN_SWIFT_SAST=true \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"SwiftLint failed to execute."* ]]
 }
@@ -526,7 +528,7 @@ EOF
   stub_clamscan_clean
   install_bandit_exit_2
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Bandit failed to execute."* ]]
 }
@@ -539,7 +541,7 @@ EOF
   stub_clamscan_clean
   install_pip_audit_exit_2
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pip-audit failed to execute."* ]]
 }
@@ -552,7 +554,7 @@ EOF
   stub_clamscan_clean
   install_sast_gate_fail_semgrep
   run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
 }
@@ -564,7 +566,7 @@ EOF
   install_passing_sast_stubs_in_venv
   stub_clamscan_exit_2
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"ClamAV failed to execute."* ]]
 }
@@ -576,7 +578,7 @@ EOF
   install_passing_sast_stubs_in_venv
   stub_clamscan_infected
   run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"ClamAV detected infected files"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
@@ -590,7 +592,7 @@ EOF
   stub_clamscan_missing_db_then_clean
   stub_freshclam_ok
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"attempting one-time database refresh with freshclam"* ]]
   [[ "$output" == *"Retrying ClamAV repository scan after signature refresh"* ]]
@@ -605,7 +607,7 @@ EOF
   install_passing_sast_stubs_in_venv
   stub_clamscan_slow_clean
   run env RUN_DAST=false CLAMAV_HEARTBEAT_SECONDS=1 CLAMAV_SCAN_TARGET="./teller" \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"ClamAV signature freshness"* ]]
   [[ "$output" == *"ClamAV scan target:"*"/teller"* ]]
@@ -613,7 +615,7 @@ EOF
 }
 
 @test "DAST starts API, waits for health, completes when DAST tools minimal" {
-  #R035
+  #R035 #R070
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
@@ -621,12 +623,17 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Starting local classification API for Dynamic Application Security Testing (DAST)"* ]]
   [ -f "${FIXTURE_ROOT}/.security-reports/classification-api.log" ]
+  [ -f "${FIXTURE_ROOT}/.security-reports/category-integrity.json" ]
+  category_integrity_status="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("status",""))' "${FIXTURE_ROOT}/.security-reports/category-integrity.json")"
+  [ "$category_integrity_status" = "error" ]
+  [[ "$output" == *"Category integrity report:"* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
 }
 
@@ -639,10 +646,11 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
     RUN_TOKEN_CAPTURE_DAST=auto \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18788 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Token capture Dynamic Application Security Testing (DAST) skipped"* ]]
 }
@@ -656,10 +664,11 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
     ZAP_CLI_CMD="/no/such/zap" \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18789 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Missing ZAP CLI executable:"* ]]
 }
@@ -673,15 +682,16 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=true \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18790 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"macOS UI Dynamic Application Security Testing (DAST) requires RUN_ZAP=true."* ]]
 }
 
 @test "DAST with ZAP stub writes zap log and completes" {
-  #R045
+  #R045 #R070
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
@@ -692,13 +702,17 @@ EOF
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
   stub_zap_cli_ok "$zap_path"
   run env RUN_SAST=false RUN_MACOS_UI_DAST=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
     ZAP_CLI_CMD="$zap_path" \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18791 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     DAST_OPENAPI_URL="http://127.0.0.1:18791/openapi.json" \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-classification.log" ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" != *"--exclude-path /v1/categories"* ]]
+  [[ "$calls" != *"--exclude-path /v1/categories/{nys_snw_category_id}"* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
 }
 
@@ -714,10 +728,11 @@ EOF
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
   stub_zap_cli_ok "$zap_path"
   run env RUN_SAST=false RUN_SCHEMATHESIS=false RUN_ZAP=true RUN_MACOS_UI_DAST=true \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18792 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     ZAP_CLI_CMD="$zap_path" \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-macos-ui.json" ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-macos-ui.html" ]
@@ -736,10 +751,11 @@ EOF
   stub_curl_success
   stub_schemathesis_findings
   run env RUN_SAST=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18793 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     DAST_OPENAPI_URL="http://127.0.0.1:18793/openapi.json" \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
@@ -753,7 +769,7 @@ EOF
   touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   run env RUN_SAST=false RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/15_run_security_checks.sh"
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Security checks completed. Reports:"*".security-reports"* ]]
 }

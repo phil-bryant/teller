@@ -174,4 +174,26 @@ actor UITestingFixtureConnectAPI: ConnectAPI {
         contexts.removeAll { $0.key == targetKey }
         return ConnectDeleteContextResponse(ok: true, moved_token: nil, moved_enrollment: nil, remaining: contexts)
     }
+
+    func startSession(action: ConnectAction, selectedContext: ConnectContext?) async throws -> ConnectStartSession {
+        if action == .reconnect {
+            guard let selectedContext, selectedContext.hasEnrollmentId else {
+                throw ConnectServiceError.validation("Selected context has no enrollment_id.")
+            }
+            return ConnectStartSession(
+                action: action,
+                targetKey: selectedContext.key,
+                applicationId: "app_fixture",
+                environment: "development",
+                enrollmentId: selectedContext.enrollment_id
+            )
+        }
+        return ConnectStartSession(
+            action: action,
+            targetKey: "",
+            applicationId: "app_fixture",
+            environment: "development",
+            enrollmentId: ""
+        )
+    }
 }

@@ -4,13 +4,9 @@
 
 In this repository, enrollment management is now owned by the native macOS app in `macos-ui` (Connect tab) rather than a standalone local web page.
 
-- Primary entrypoint: `./11_run_teller-connect-ui.sh` (launches macOS Connect tab)
-- Legacy web-only flow: `./11_run_teller-connect-ui.sh --web`
-- Local API contract consumed by the macOS Connect tab:
-  - `GET /api/status`
-  - `GET /api/contexts`
-  - `POST /api/store-token`
-  - `POST /api/delete-context`
+- Primary entrypoint: `./15_run_classification_macos-ui.sh`
+- Connect flow: native `WKWebView` inside the Connect tab
+- Local context persistence: in-process Swift service writing `~/.teller/auth_token*.json` + `~/.teller/enrollment_id*.txt`
 
 The upstream Teller web snippets below remain useful reference material for `connect.js` behavior and enrollment payload structure.
 

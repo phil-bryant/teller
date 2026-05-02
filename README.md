@@ -18,13 +18,12 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `08_verify_deploy_database.sh`
 - `09_verify_updated_at_trigger_coverage.sh`
 - `10_configure_teller_io.sh`
-- `11_run_teller-connect-ui.sh`
-- `12_fetch_teller_api_data.py`
-- `13_backfill_bank_statements.py`
-- `14_run_classification_api.py`
-- `16_run_classification_macos-ui.sh`
-- `17_verify_classification_persistence.sh`
-- `15_run_security_checks.sh`
+- `11_fetch_teller_api_data.py`
+- `12_backfill_bank_statements.py`
+- `13_run_classification_api.py`
+- `15_run_classification_macos-ui.sh`
+- `16_verify_classification_persistence.sh`
+- `14_run_security_checks.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -47,9 +46,9 @@ source ./teller-venv/bin/activate
 ./08_verify_deploy_database.sh
 ./06_run_macos_ui_regression_tests.sh
 ./09_verify_updated_at_trigger_coverage.sh
-./15_run_security_checks.sh
+./14_run_security_checks.sh
 ./10_configure_teller_io.sh
-./11_run_teller-connect-ui.sh
+./15_run_classification_macos-ui.sh
 ```
 
 ## Testing and Verification
@@ -60,7 +59,7 @@ Run these checks from the project root after activating the project virtual envi
 source ./teller-venv/bin/activate
 ```
 
-Security scanning currently runs via `15_run_security_checks.sh` (SAST and optional DAST).
+Security scanning currently runs via `14_run_security_checks.sh` (SAST and optional DAST).
 Dependency freshness automation runs via `04_run_dependency_freshness_checks.sh`.
 
 ### 1) Requirements Traceability Verification
@@ -74,7 +73,7 @@ Verifies every requirement ID in `requirements/*.md` is mapped to matching `#R..
 Optional single-pair mode:
 
 ```bash
-./00_verify_requirements_traceability.sh requirements/17_verify_classification_persistence-requirements.md 17_verify_classification_persistence.sh
+./00_verify_requirements_traceability.sh requirements/16_verify_classification_persistence-requirements.md 16_verify_classification_persistence.sh
 ```
 
 ### 2) Unit Tests
@@ -120,19 +119,19 @@ This checks API-to-database persistence by writing one classification via API an
 1. Start the API in one terminal:
 
 ```bash
-./14_run_classification_api.py
+./13_run_classification_api.py
 ```
 
 2. Run the verifier in another terminal:
 
 ```bash
-./17_verify_classification_persistence.sh
+./16_verify_classification_persistence.sh
 ```
 
 Strict/CI-style mode requiring explicit IDs:
 
 ```bash
-TXN_ID=txn_xxx CATEGORY_ID=123 ./17_verify_classification_persistence.sh --require-env-ids
+TXN_ID=txn_xxx CATEGORY_ID=123 ./16_verify_classification_persistence.sh --require-env-ids
 ```
 
 ### 4) Built-In Smoke Verifications in Setup Scripts
@@ -142,9 +141,8 @@ These checks run automatically as part of existing setup/token workflows:
 - `./10_configure_teller_io.sh`
   - Verifies Teller mTLS connectivity using `GET /institutions`.
   - If `~/.teller/auth_token.json` exists, also checks `GET /accounts`.
-- `./11_run_teller-connect-ui.sh`
-  - After capture/reconnect/manual token save, runs a best-effort `GET /accounts` verification when `curl`, `jq`, cert/key, and token are available.
-  - Prints diagnostics/warnings when verification cannot run or returns non-200.
+- `./15_run_classification_macos-ui.sh`
+  - Opens the native macOS app; Connect tab now owns enrollment add/reconnect/delete and token persistence.
 
 ### 5) Security Scanning (SAST/DAST)
 
@@ -161,7 +159,7 @@ python3 -m venv .security-venv
 Run the full security lane:
 
 ```bash
-./15_run_security_checks.sh
+./14_run_security_checks.sh
 ```
 
 Useful flags:
@@ -183,7 +181,7 @@ Useful flags:
 Example local macOS UI DAST run:
 
 ```bash
-RUN_SAST=false RUN_MACOS_UI_DAST=true ./15_run_security_checks.sh
+RUN_SAST=false RUN_MACOS_UI_DAST=true ./14_run_security_checks.sh
 ```
 
 ClamAV notes:
@@ -192,7 +190,7 @@ ClamAV notes:
 - During long scans, it emits periodic heartbeat lines so the run is not silent.
 - On first run, if malware signature databases are missing, the script automatically attempts a one-time `freshclam --stdout` update and retries the scan.
 
-For policy and behavior details, see `requirements/15_run_security_checks-requirements.md`.
+For policy and behavior details, see `requirements/14_run_security_checks-requirements.md`.
 
 ### 6) Dependency Freshness + Teller API Drift
 
@@ -261,7 +259,7 @@ Active secret and credential sources are:
   - `localhost_postgres_postgres` / `localhost_postgres_teller` by default for DB scripts
   - optional Teller item lookups in `10_configure_teller_io.sh`
 - Environment variables passed to scripts (for example `TELLER_APPLICATION_ID`, `TELLER_ACCESS_TOKEN`, `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`)
-- `~/.env` for local runtime settings loaded by `12_fetch_teller_api_data.py`
+- `~/.env` for local runtime settings loaded by `11_fetch_teller_api_data.py`
 
 ## What Each Core Script Does
 
@@ -290,24 +288,19 @@ Active secret and credential sources are:
   - Ensures `~/.teller` contains required Teller credentials/config files.
   - Supports importing Teller secrets from environment variables or `1psa`.
   - Runs Teller API smoke tests (`/institutions`, optionally `/accounts`).
-- `11_run_teller-connect-ui.sh`
-  - Saves a fresh Teller Connect `accessToken` into `~/.teller/auth_token.json`.
-  - Default mode is no copy/paste: runs local Connect capture server on `http://localhost:8080`.
-  - Persists enrollment id to `~/.teller/enrollment_id.txt` for future repair mode.
-  - Also supports token argument, secure prompt (`--manual`), or macOS clipboard mode.
-  - Also provides enrollment management (`--list`, `--delete`, `--reconnect`, `--add`).
-- `12_fetch_teller_api_data.py`
+- `11_fetch_teller_api_data.py`
   - Runs Teller API client operations.
-- `13_backfill_bank_statements.py`
+- `12_backfill_bank_statements.py`
   - Backfills statements data.
-- `14_run_classification_api.py`
+- `13_run_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
-- `16_run_classification_macos-ui.sh`
+- `15_run_classification_macos-ui.sh`
   - Runs the local macOS UI app wrapper (`swift run TransactionClassifier`) from the repo root.
-- `17_verify_classification_persistence.sh`
+  - Connect tab hosts native Teller Connect enrollment/reconnect/add/delete (WebView-backed, no standalone localhost server).
+- `16_verify_classification_persistence.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
-- `15_run_security_checks.sh`
+- `14_run_security_checks.sh`
   - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets, ClamAV, and SwiftLint for `macos-ui`).
   - Optionally runs DAST inline (starts local API target(s), runs Schemathesis against OpenAPI, and runs OWASP ZAP local CLI quick scan).
   - Supports optional token-capture target scanning when Teller local credentials are present.
@@ -377,64 +370,17 @@ TELLER_KEY_PSA_ITEM=localhost_teller_key \
 
 ### Save Refreshed Access Token
 
-After completing Teller Connect, capture the returned `accessToken`:
+After completing Teller Connect in the native app, the returned token is saved under `~/.teller`:
 
 ```bash
-./11_run_teller-connect-ui.sh
+./15_run_classification_macos-ui.sh
 ```
 
-Default `11` behavior:
+Connect behavior:
 
-- Starts local Teller Connect capture UI at `http://localhost:8080`
-- On successful enrollment, automatically writes `~/.teller/auth_token.json`
-- Persists enrollment id at `~/.teller/enrollment_id.txt`
-- Immediately verifies `/accounts` with the saved token/cert
-- Supports repair mode for disconnected enrollments without creating a new enrollment:
-  - `ENROLLMENT_ID=enr_xxx ./11_run_teller-connect-ui.sh`
-  - Automatic when `AUTO_REPAIR=true` and `~/.teller/enrollment_id.txt` exists
-
-Other options (manual/alternative input):
-
-```bash
-./11_run_teller-connect-ui.sh --manual
-./11_run_teller-connect-ui.sh token_xxx
-./11_run_teller-connect-ui.sh --clipboard
-ENROLLMENT_ID=enr_xxx ./11_run_teller-connect-ui.sh
-AUTO_REPAIR=false ./11_run_teller-connect-ui.sh
-```
-
-### Enrollment Management Status (`11_run_teller-connect-ui.sh`)
-
-Requirements now define `11_run_teller-connect-ui.sh` as the enrollment-management CLI entrypoint.
-
-Required management actions:
-
-- list all known local enrollment contexts
-- delete one selected enrollment context
-- reconnect (repair) one selected enrollment
-- add a new enrollment without overwriting existing contexts
-
-Command examples:
-
-```bash
-./11_run_teller-connect-ui.sh --list
-./11_run_teller-connect-ui.sh --add
-./11_run_teller-connect-ui.sh --reconnect --institution_id first_ak_bank_trust
-./11_run_teller-connect-ui.sh --delete --enrollment_id enr_xxx --yes
-```
-
-Behavior notes:
-
-- `--add` opens Connect and you pick institution in Teller UI; files are persisted as `auth_token_<suffix>.json`
-- `--add` suffix is derived from Teller identity data when available; fallback uses enrollment id, then unique numeric suffix
-- `--reconnect` repairs only the selected enrollment context
-- `--delete` removes only selected local files and moves them into `~/.Trash`
-
-Then verify token/API access:
-
-```bash
-./11_run_teller-connect-ui.sh
-```
+- Open the **Connect** tab to add, reconnect, or delete local enrollment contexts.
+- Successful Connect writes `auth_token*.json` and `enrollment_id*.txt` with restrictive permissions.
+- `11_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
 
 ## 1psa Items Used by Database Scripts
 
