@@ -12,10 +12,8 @@ This directory contains `bats-core` unit tests for repository shell scripts.
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R035`, `R040`
 - `10_configure_teller_io.bats` -> `10_configure_teller_io.sh`
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R035`, `R040`
-- `11_run_teller-connect-ui.bats` -> `11_run_teller-connect-ui.sh`
-  - Requirement IDs: `R050`, `R055`, `R060`, `R070`, `R075`, `R080`, `R085`, `R090`
 - `99_restore_database.bats` -> `99_restore_database.sh`
-  - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R040`, `R045`
+  - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R040`, `R045`, `R070`
 
 ## Tier 2 (implemented after Tier 1 baseline)
 
@@ -25,7 +23,7 @@ This directory contains `bats-core` unit tests for repository shell scripts.
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`
 - `05_run_unit_tests.bats` -> `05_run_unit_tests.sh`
   - Requirement IDs: `R001`, `R005`, `R010`, `R015`, `R020`
-- `14_run_transaction_classification_macos-ui.bats` -> `16_run_classification_macos-ui.sh`
+- `14_run_transaction_classification_macos-ui.bats` -> `15_run_classification_macos-ui.sh`
   - Wrapper contract test (forwarding and package-path composition)
 
 ## Notes

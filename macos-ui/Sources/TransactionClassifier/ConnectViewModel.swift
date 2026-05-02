@@ -1,12 +1,17 @@
-import AppKit
 import Foundation
 import Observation
+
+// #R001 #R005 #R010 #R015 #R020 #R025
+// ConnectViewModel requirement tags are mapped to state-management behavior:
+// - #R001 load/refresh context hydration, #R005 action handlers, #R010 confirmed deletion mutation,
+// - #R015 session lifecycle callbacks, #R020 manual token save validation, #R025 initial load/status/error propagation.
 
 @MainActor
 @Observable
 final class ConnectViewModel {
     var contexts: [ConnectContext] = []
     var selectedContextKey: String?
+    var activeSession: ConnectStartSession?
     var manualToken = ""
     var manualEnrollmentId = ""
     var manualInstitutionHint = ""
@@ -66,22 +71,73 @@ final class ConnectViewModel {
         let normalizedToken = manualToken.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedEnrollmentId = manualEnrollmentId.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedInstitution = manualInstitutionHint.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedToken.isEmpty else {
+        await saveToken(
+            action: action,
+            token: normalizedToken,
+            enrollmentId: normalizedEnrollmentId,
+            institutionHint: normalizedInstitution
+        )
+    }
+
+    func saveCapturedToken(
+        action: ConnectAction,
+        targetKey: String,
+        token: String,
+        enrollmentId: String,
+        institutionHint: String
+    ) async {
+        await saveToken(
+            action: action,
+            token: token.trimmingCharacters(in: .whitespacesAndNewlines),
+            enrollmentId: enrollmentId.trimmingCharacters(in: .whitespacesAndNewlines),
+            institutionHint: institutionHint.trimmingCharacters(in: .whitespacesAndNewlines),
+            targetKeyOverride: targetKey
+        )
+    }
+
+    func startConnect(action: ConnectAction) async {
+        do {
+            let session = try await api.startSession(action: action, selectedContext: selectedContext)
+            activeSession = session
+            statusText = "Opening \(action.buttonLabel.lowercased()) flow..."
+            errorText = ""
+        } catch {
+            activeSession = nil
+            errorText = error.localizedDescription
+            statusText = "Connect flow unavailable."
+        }
+    }
+
+    func cancelConnect() {
+        activeSession = nil
+    }
+
+    private func saveToken(
+        action: ConnectAction,
+        token: String,
+        enrollmentId: String,
+        institutionHint: String,
+        targetKeyOverride: String? = nil
+    ) async {
+        guard !token.isEmpty else {
             errorText = "Token is required."
             return
         }
-
         var targetKey = ""
         if action == .reconnect {
-            guard let selectedContext else {
-                errorText = "Select a context before reconnecting."
-                return
+            if let targetKeyOverride {
+                targetKey = targetKeyOverride
+            } else {
+                guard let selectedContext else {
+                    errorText = "Select a context before reconnecting."
+                    return
+                }
+                guard selectedContext.hasEnrollmentId else {
+                    errorText = "Selected context has no enrollment_id."
+                    return
+                }
+                targetKey = selectedContext.key
             }
-            guard selectedContext.hasEnrollmentId else {
-                errorText = "Selected context has no enrollment_id."
-                return
-            }
-            targetKey = selectedContext.key
         }
 
         busy = true
@@ -89,11 +145,11 @@ final class ConnectViewModel {
         do {
             let response = try await api.storeToken(
                 ConnectStoreTokenRequest(
-                    token: normalizedToken,
-                    enrollmentId: normalizedEnrollmentId,
+                    token: token,
+                    enrollmentId: enrollmentId,
                     action: action.rawValue,
                     targetKey: targetKey,
-                    institutionIdHint: normalizedInstitution
+                    institutionIdHint: institutionHint
                 )
             )
             contexts = try await api.fetchContexts()
@@ -103,6 +159,7 @@ final class ConnectViewModel {
             lastSavedTokenPath = response.path
             statusText = "\(action.buttonLabel) token saved at \(response.path)."
             errorText = ""
+            activeSession = nil
             if action != .reconnect {
                 manualToken = ""
             }
@@ -131,20 +188,10 @@ final class ConnectViewModel {
         }
     }
 
-    func openLegacyConnectManager() {
-        guard let url = URL(string: ProcessInfo.processInfo.environment["TELLER_CONNECT_MANAGER_URL"] ?? "http://127.0.0.1:8080") else {
-            errorText = "Invalid Connect manager URL."
-            return
-        }
-        NSWorkspace.shared.open(url)
-        statusText = "Opened Teller Connect manager in your browser."
-        errorText = ""
-    }
-
     private func updateStatusFromServer(_ status: ConnectStatusResponse) {
         lastSavedTokenPath = status.saved_path
         if !status.error.isEmpty {
-            statusText = "Connect server reported an error."
+            statusText = "Connect service reported an error."
             errorText = status.error
             return
         }

@@ -44,6 +44,28 @@ actor MockConnectAPI: ConnectAPI {
         return ConnectDeleteContextResponse(ok: true, moved_token: nil, moved_enrollment: nil, remaining: contexts)
     }
 
+    func startSession(action: ConnectAction, selectedContext: ConnectContext?) async throws -> ConnectStartSession {
+        if action == .reconnect {
+            guard let selectedContext, selectedContext.hasEnrollmentId else {
+                throw ConnectServiceError.validation("Selected context has no enrollment_id.")
+            }
+            return ConnectStartSession(
+                action: action,
+                targetKey: selectedContext.key,
+                applicationId: "app_test",
+                environment: "development",
+                enrollmentId: selectedContext.enrollment_id
+            )
+        }
+        return ConnectStartSession(
+            action: action,
+            targetKey: "",
+            applicationId: "app_test",
+            environment: "development",
+            enrollmentId: ""
+        )
+    }
+
     func recordedLastStored() -> ConnectStoreTokenRequest? {
         lastStored
     }
@@ -71,6 +93,7 @@ private func sampleContext(
 final class ConnectViewModelTests: XCTestCase {
     @MainActor
     func testLoadAllPopulatesContextsAndStatus() async {
+        // #R001
         let api = MockConnectAPI(
             status: ConnectStatusResponse(token_saved: true, saved_path: "/tmp/auth_token.json", error: ""),
             contexts: [sampleContext()]

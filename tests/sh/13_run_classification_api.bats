@@ -7,7 +7,7 @@ teardown() {
 }
 
 src() {
-  printf '%s' "$(repo_root)/14_run_classification_api.py"
+  printf '%s' "$(repo_root)/13_run_classification_api.py"
 }
 
 @test "resolves default host and port" {

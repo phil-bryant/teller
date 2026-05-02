@@ -2,6 +2,8 @@
 import argparse
 import json
 import logging
+import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List
@@ -51,47 +53,29 @@ class TellerAPIClient:
         return code, message
 
     def _repair_enrollment(self) -> bool:
-        #R010: Attempt local Teller Connect repair for disconnected enrollments.
+        #R010: Attempt local Teller Connect repair through macOS UI.
         enrollment_id_file = TELLER_DIR / "enrollment_id.txt"
         enrollment_id = self._enrollment_id or (enrollment_id_file.read_text().strip() if enrollment_id_file.is_file() else "")
         repaired = False
         if enrollment_id:
             try:
-                import time, threading, webbrowser
-                from http.server import ThreadingHTTPServer
-                from teller.teller_connect_token_server import (
-                    APP_ID_FILE,
-                    AUTH_TOKEN_FILE,
-                    ENROLLMENT_ID_FILE,
-                    CaptureState,
-                    Handler,
+                launcher = Path(__file__).resolve().parent / "15_run_classification_macos-ui.sh"
+                if not launcher.is_file():
+                    raise OSError(f"Missing launcher: {launcher}")
+                if not os.access(launcher, os.X_OK):
+                    raise OSError(f"Launcher is not executable: {launcher}")
+                print(
+                    f"Enrollment disconnected — repairing {enrollment_id} via macOS Connect UI.\n"
+                    "The app will open on the Connect tab. Complete reconnect there, then return here."
                 )
-                state = CaptureState(
-                    APP_ID_FILE.read_text(encoding="utf-8").strip(),
-                    "development",
-                    enrollment_id,
-                    AUTH_TOKEN_FILE,
-                    ENROLLMENT_ID_FILE,
-                    "capture",
-                    [],
-                )
-                server = ThreadingHTTPServer(("127.0.0.1", 8080), Handler)
-                server.capture_state = state
-                print(f"Enrollment disconnected — repairing {enrollment_id} via Teller Connect\n"
-                      f"Complete the challenge in your browser at http://localhost:8080")
-                threading.Thread(target=server.serve_forever, daemon=True).start()
-                webbrowser.open("http://localhost:8080")
-                try:
-                    while not state.token_saved:
-                        time.sleep(0.25)
-                    repaired = True
-                    self._load_auth()
-                    print("Enrollment repaired. Resuming...")
-                except KeyboardInterrupt:
-                    print("\nRepair cancelled.")
-                server.shutdown()
-                server.server_close()
-            except (ImportError, OSError) as exc:
+                env = os.environ.copy()
+                env["TELLER_MACOS_START_TAB"] = "connect"
+                subprocess.Popen([str(launcher)], env=env)
+                input("Press Enter after reconnect is complete to retry Teller API calls...")
+                self._load_auth()
+                repaired = True
+                print("Enrollment repair step completed. Resuming...")
+            except (OSError, subprocess.SubprocessError) as exc:
                 log.warning("Auto-repair failed", error=str(exc))
         else:
             log.warning("Cannot auto-repair: no enrollment ID", path=str(enrollment_id_file))
@@ -290,7 +274,7 @@ def main():
         if exc.code:
             print(f"Error code: {exc.code}")
         if exc.code.startswith("enrollment.disconnected"):
-            print("Auto-repair failed. Run ./11_run_teller-connect-ui.sh to repair the enrollment manually.")
+            print("Auto-repair failed. Run ./15_run_classification_macos-ui.sh and use the Connect tab to repair.")
         sys.exit(1)
 
 if __name__ == "__main__":

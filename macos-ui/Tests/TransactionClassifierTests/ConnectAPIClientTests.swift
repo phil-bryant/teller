@@ -3,71 +3,37 @@ import XCTest
 @testable import TransactionClassifier
 
 final class ConnectAPIClientTests: XCTestCase {
-    private func makeClient(baseURL: URL = URL(string: "http://127.0.0.1:8080")!) -> ConnectAPIClient {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [URLProtocolStub.self]
-        let session = URLSession(configuration: config)
-        return ConnectAPIClient(baseURL: baseURL, session: session)
+    private func makeTempHome() throws -> URL {
+        let temp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("connect-client-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true, attributes: nil)
+        return temp
     }
 
-    private func requestBodyData(_ request: URLRequest) throws -> Data {
-        if let body = request.httpBody {
-            return body
-        }
-        guard let stream = request.httpBodyStream else {
-            throw APIError.invalidResponse
-        }
-        stream.open()
-        defer { stream.close() }
-        var data = Data()
-        var buffer = [UInt8](repeating: 0, count: 1024)
-        while stream.hasBytesAvailable {
-            let read = stream.read(&buffer, maxLength: buffer.count)
-            if read < 0 {
-                throw stream.streamError ?? APIError.invalidResponse
-            }
-            if read == 0 {
-                break
-            }
-            data.append(buffer, count: read)
-        }
-        return data
+    private func makeClient(home: URL) -> ConnectAPIClient {
+        ConnectAPIClient(homeDirectory: home)
     }
 
-    func testFetchContextsUsesConnectEndpoint() async throws {
-        URLProtocolStub.requestHandler = { request in
-            XCTAssertEqual(request.httpMethod, "GET")
-            XCTAssertEqual(request.url?.path, "/api/contexts")
-            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            let body = """
-            {"contexts":[{"key":"default","source":"default","institution_id":"inst_alpha","enrollment_id":"enr_alpha","token_path":"/tmp/a.json","enrollment_path":"/tmp/a.txt"}]}
-            """
-            return (response, Data(body.utf8))
-        }
+    func testFetchContextsReadsDefaultAndSuffixFiles() async throws {
+        // #R001
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        try Data("{\"current\":\"token_default\"}\n".utf8).write(to: tellerDir.appendingPathComponent("auth_token.json"))
+        try Data("enr_default\n".utf8).write(to: tellerDir.appendingPathComponent("enrollment_id.txt"))
+        try Data("{\"current\":\"token_beta\"}\n".utf8).write(to: tellerDir.appendingPathComponent("auth_token_inst_beta.json"))
+        try Data("enr_beta\n".utf8).write(to: tellerDir.appendingPathComponent("enrollment_id_inst_beta.txt"))
 
-        let client = makeClient()
+        let client = makeClient(home: home)
         let contexts = try await client.fetchContexts()
-        XCTAssertEqual(contexts.count, 1)
+        XCTAssertEqual(contexts.count, 2)
         XCTAssertEqual(contexts.first?.key, "default")
+        XCTAssertTrue(contexts.contains { $0.key == "suffix:inst_beta" })
     }
 
-    func testStoreTokenPostsExpectedPayload() async throws {
-        URLProtocolStub.requestHandler = { request in
-            XCTAssertEqual(request.httpMethod, "POST")
-            XCTAssertEqual(request.url?.path, "/api/store-token")
-            let body = try self.requestBodyData(request)
-            let payload = try JSONDecoder().decode(ConnectStoreTokenRequest.self, from: body)
-            XCTAssertEqual(payload.action, "add")
-            XCTAssertEqual(payload.targetKey, "")
-            XCTAssertEqual(payload.institutionIdHint, "inst_new")
-            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            let responseBody = """
-            {"ok":true,"path":"/tmp/auth_token_inst_new.json","enrollment_id_path":"/tmp/enrollment_id_inst_new.txt"}
-            """
-            return (response, Data(responseBody.utf8))
-        }
-
-        let client = makeClient()
+    func testStoreTokenAddWritesSuffixedFiles() async throws {
+        let home = try makeTempHome()
+        let client = makeClient(home: home)
         let response = try await client.storeToken(
             ConnectStoreTokenRequest(
                 token: "token_abc",
@@ -78,25 +44,27 @@ final class ConnectAPIClientTests: XCTestCase {
             )
         )
         XCTAssertTrue(response.ok)
+        XCTAssertTrue(response.path.hasSuffix("auth_token_inst_new.json"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: response.path))
+        let saved = try Data(contentsOf: URL(fileURLWithPath: response.path))
+        XCTAssertTrue(String(decoding: saved, as: UTF8.self).contains("token_abc"))
     }
 
-    func testDeleteContextPostsTargetKey() async throws {
-        URLProtocolStub.requestHandler = { request in
-            XCTAssertEqual(request.httpMethod, "POST")
-            XCTAssertEqual(request.url?.path, "/api/delete-context")
-            let body = try self.requestBodyData(request)
-            let payload = try JSONDecoder().decode(ConnectDeleteContextRequest.self, from: body)
-            XCTAssertEqual(payload.targetKey, "suffix:inst_beta")
-            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            let responseBody = """
-            {"ok":true,"moved_token":"/Trash/token.json","moved_enrollment":"/Trash/enrollment.txt","remaining":[]}
-            """
-            return (response, Data(responseBody.utf8))
-        }
+    func testDeleteContextMovesFilesToTrashFolder() async throws {
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        let tokenPath = tellerDir.appendingPathComponent("auth_token_inst_beta.json")
+        let enrollmentPath = tellerDir.appendingPathComponent("enrollment_id_inst_beta.txt")
+        try Data("{\"current\":\"token_beta\"}\n".utf8).write(to: tokenPath)
+        try Data("enr_beta\n".utf8).write(to: enrollmentPath)
 
-        let client = makeClient()
+        let client = makeClient(home: home)
         let response = try await client.deleteContext(targetKey: "suffix:inst_beta")
         XCTAssertTrue(response.ok)
-        XCTAssertEqual(response.remaining.count, 0)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tokenPath.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: enrollmentPath.path))
+        XCTAssertNotNil(response.moved_token)
+        XCTAssertNotNil(response.moved_enrollment)
     }
 }

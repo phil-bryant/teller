@@ -65,3 +65,28 @@ struct ConnectDeleteContextResponse: Codable, Hashable, Sendable {
     let moved_enrollment: String?
     let remaining: [ConnectContext]
 }
+
+struct ConnectStartSession: Hashable, Sendable, Identifiable {
+    let id: UUID
+    let action: ConnectAction
+    let targetKey: String
+    let applicationId: String
+    let environment: String
+    let enrollmentId: String
+
+    init(
+        id: UUID = UUID(),
+        action: ConnectAction,
+        targetKey: String,
+        applicationId: String,
+        environment: String,
+        enrollmentId: String
+    ) {
+        self.id = id
+        self.action = action
+        self.targetKey = targetKey
+        self.applicationId = applicationId
+        self.environment = environment
+        self.enrollmentId = enrollmentId
+    }
+}

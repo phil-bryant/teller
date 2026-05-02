@@ -11,7 +11,6 @@
               [   AF    !     ] h=-&- v=-&- SwiftUI.SwiftUIOutlineListView f=(0,0,460,598) b=(-)
             [  HAF    ! W   ] h=--- v=--- NSScroller f=(-17,0,17,0) b=(-) => <NSViewBackingLayer>
         [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(12,654,121,24) b=(-) => <NSViewBackingLayer>
-        [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(141,654,165,24) b=(-) => <NSViewBackingLayer>
         [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$1b9f4562432PlatformViewRepresentableAdaptorVS_P10$1b9f8b6d418SecureFieldAdaptor__ f=(484,38,618,24) b=(-) => <NSViewBackingLayer>
           [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitSecureTextField f=(0,0,618,24) b=(-)
             [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$18955631815AppKitTextField_ f=(0,0,618,24) b=(-) => <NSViewBackingLayer>
@@ -27,6 +26,7 @@
         [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(484,140,76,24) b=(-) => <NSViewBackingLayer>
         [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(568,140,146,24) b=(-) => <NSViewBackingLayer>
         [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(722,140,117,24) b=(-) => <NSViewBackingLayer>
+        [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView f=(484,174,141,24) b=(-) => <NSViewBackingLayer>
       [   AF    !     ] h=--- v=--- NSSegmentedControl f=(421,5,292,24) b=(-)
         [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_22AppKitSegmentedControl_ f=(0,0,292,24) b=(-) => <NSViewBackingLayer>
 A=autoresizesSubviews, C=canDrawConcurrently, D=needsDisplay, F=flipped, G=gstate, H=hidden (h=by ancestor), L=needsLayout (l=child needsLayout), U=needsUpdateConstraints (u=child needsUpdateConstraints), O=opaque, P=preservesContentDuringLiveResize, S=scaled/rotated, W=wantsLayer (w=ancestor wantsLayer), V=needsVibrancy (v=allowsVibrancy), #=has surface

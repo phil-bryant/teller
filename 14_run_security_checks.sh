@@ -437,6 +437,356 @@ PY
 run_dast_checks() (
   set -euo pipefail
 
+  run_category_integrity_checks() {
+    local report_dir_abs="$1"
+    local integrity_report_path="${report_dir_abs}/category-integrity.json"
+    local seed_sql_path="./sql/postgres/teller_nys_snw_category.sql"
+    local strict_mode="${DAST_CATEGORY_INTEGRITY_STRICT:-true}"
+
+    echo "▶ Running post-DAST category integrity checks"
+    set +e
+    python3 - <<'PY' "$integrity_report_path" "$seed_sql_path" "$strict_mode"
+import json
+import os
+import pathlib
+import re
+import sys
+from datetime import datetime, timezone
+
+report_path = pathlib.Path(sys.argv[1])
+seed_sql_path = pathlib.Path(sys.argv[2])
+strict_mode = sys.argv[3].lower() == "true"
+
+TEXT_FIELDS = [
+    "level_1",
+    "level_1_name",
+    "level_2",
+    "level_2_name",
+    "level_3",
+    "level_4",
+    "categorization",
+    "applicability",
+]
+
+def parse_seed_row_count(sql_text: str) -> int:
+    match = re.search(r"INSERT\s+INTO\s+teller\.nys_snw_category.*?\bVALUES\b", sql_text, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        raise ValueError("Could not locate INSERT ... VALUES block in seed SQL.")
+
+    i = match.end()
+    depth = 0
+    in_string = False
+    row_count = 0
+    saw_row_open = False
+
+    while i < len(sql_text):
+        ch = sql_text[i]
+        if in_string:
+            if ch == "'":
+                if i + 1 < len(sql_text) and sql_text[i + 1] == "'":
+                    i += 2
+                    continue
+                in_string = False
+            i += 1
+            continue
+
+        if ch == "'":
+            in_string = True
+            i += 1
+            continue
+        if ch == "(":
+            depth += 1
+            if depth == 1:
+                row_count += 1
+                saw_row_open = True
+            i += 1
+            continue
+        if ch == ")":
+            depth = max(0, depth - 1)
+            i += 1
+            continue
+        if ch == ";" and saw_row_open and depth == 0:
+            break
+        i += 1
+
+    if row_count <= 0:
+        raise ValueError("Seed SQL parser found zero inserted category rows.")
+    return row_count
+
+def build_report_base(seed_row_count: int):
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "status": "passed",
+        "gate_failed": False,
+        "strict_mode": strict_mode,
+        "canonical_seed_row_count": seed_row_count,
+        "canonical_seed_max_id": seed_row_count,
+        "invariants": [],
+        "errors": [],
+    }
+
+def append_invariant(report: dict, name: str, description: str, count: int, examples):
+    report["invariants"].append(
+        {
+            "name": name,
+            "description": description,
+            "count": int(count),
+            "ok": int(count) == 0,
+            "examples": examples,
+        }
+    )
+
+def serialize_row(row, columns):
+    return {col: row[idx] for idx, col in enumerate(columns)}
+
+def write_report(report: dict):
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with report_path.open("w", encoding="utf-8") as fh:
+        json.dump(report, fh, indent=2)
+        fh.write("\n")
+
+def print_failures(report: dict):
+    failing = [item for item in report["invariants"] if not item.get("ok", False)]
+    for item in failing:
+        print(f"❌ Category integrity invariant failed: {item['name']} (count={item['count']})")
+        print(f"   {item['description']}")
+        for example in item.get("examples", [])[:5]:
+            print(f"   example: {json.dumps(example, ensure_ascii=True)}")
+    if report.get("errors"):
+        for error in report["errors"]:
+            print(f"❌ Category integrity check error: {error}")
+
+seed_row_count = 0
+try:
+    seed_sql_text = seed_sql_path.read_text(encoding="utf-8")
+    seed_row_count = parse_seed_row_count(seed_sql_text)
+except Exception as exc:
+    report = build_report_base(seed_row_count)
+    report["status"] = "error"
+    report["gate_failed"] = strict_mode
+    report["errors"].append(f"Unable to parse canonical category seed SQL at {seed_sql_path}: {exc}")
+    write_report(report)
+    print(f"Category integrity report: {report_path}")
+    print_failures(report)
+    if strict_mode:
+        print("❌ Post-DAST category integrity gate failed: canonical seed metadata unavailable.")
+        raise SystemExit(2)
+    print("⚠️  Post-DAST category integrity checks skipped (non-strict mode).")
+    raise SystemExit(0)
+
+report = build_report_base(seed_row_count)
+canonical_max_id = seed_row_count
+
+engine = None
+connect_error = None
+try:
+    from teller.teller_db import get_engine
+    engine = get_engine()
+except Exception as exc:
+    connect_error = f"Unable to initialize database engine via teller.teller_db: {exc}"
+
+if engine is None:
+    report["status"] = "error"
+    report["gate_failed"] = strict_mode
+    report["errors"].append(connect_error or "Database engine unavailable.")
+    write_report(report)
+    print(f"Category integrity report: {report_path}")
+    print_failures(report)
+    if strict_mode:
+        print("❌ Post-DAST category integrity gate failed: database integrity could not be verified.")
+        raise SystemExit(2)
+    print("⚠️  Post-DAST category integrity checks skipped (non-strict mode).")
+    raise SystemExit(0)
+
+with engine.connect() as conn:
+    # Invariant 1: IDs should stay in canonical seed range.
+    unexpected_id_count = conn.exec_driver_sql(
+        """
+        SELECT COUNT(*)
+          FROM teller.nys_snw_category
+         WHERE nys_snw_category_id < 1 OR nys_snw_category_id > %(canonical_max_id)s
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).scalar_one()
+    unexpected_id_rows = conn.exec_driver_sql(
+        """
+        SELECT nys_snw_category_id, level_1, level_2, level_3, categorization
+          FROM teller.nys_snw_category
+         WHERE nys_snw_category_id < 1 OR nys_snw_category_id > %(canonical_max_id)s
+         ORDER BY nys_snw_category_id
+         LIMIT 20
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).fetchall()
+    append_invariant(
+        report,
+        "unexpected_category_ids",
+        f"Category IDs must remain within canonical seed range [1, {canonical_max_id}].",
+        unexpected_id_count,
+        [serialize_row(row, ["nys_snw_category_id", "level_1", "level_2", "level_3", "categorization"]) for row in unexpected_id_rows],
+    )
+
+    # Invariant 2: Canonical IDs should not be missing.
+    missing_id_count = conn.exec_driver_sql(
+        """
+        SELECT COUNT(*)
+          FROM generate_series(1, %(canonical_max_id)s) AS expected_id
+     LEFT JOIN teller.nys_snw_category c
+            ON c.nys_snw_category_id = expected_id
+         WHERE c.nys_snw_category_id IS NULL
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).scalar_one()
+    missing_id_rows = conn.exec_driver_sql(
+        """
+        SELECT expected_id
+          FROM generate_series(1, %(canonical_max_id)s) AS expected_id
+     LEFT JOIN teller.nys_snw_category c
+            ON c.nys_snw_category_id = expected_id
+         WHERE c.nys_snw_category_id IS NULL
+         ORDER BY expected_id
+         LIMIT 20
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).fetchall()
+    append_invariant(
+        report,
+        "missing_canonical_ids",
+        "Canonical seed IDs should be present after DAST.",
+        missing_id_count,
+        [serialize_row(row, ["expected_id"]) for row in missing_id_rows],
+    )
+
+    # Invariant 3: No control / non-printable chars in hierarchy text.
+    control_predicate = " OR ".join([f"{field} ~ '[[:cntrl:]]'" for field in TEXT_FIELDS])
+    control_char_count = conn.exec_driver_sql(
+        f"""
+        SELECT COUNT(*)
+          FROM teller.nys_snw_category
+         WHERE {control_predicate}
+        """
+    ).scalar_one()
+    control_char_rows = conn.exec_driver_sql(
+        f"""
+        SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name,
+               level_3, level_4, categorization, applicability
+          FROM teller.nys_snw_category
+         WHERE {control_predicate}
+         ORDER BY nys_snw_category_id
+         LIMIT 10
+        """
+    ).fetchall()
+    append_invariant(
+        report,
+        "control_characters_in_hierarchy",
+        "Hierarchy text fields must not contain control/non-printable characters.",
+        control_char_count,
+        [
+            serialize_row(
+                row,
+                [
+                    "nys_snw_category_id",
+                    "level_1",
+                    "level_1_name",
+                    "level_2",
+                    "level_2_name",
+                    "level_3",
+                    "level_4",
+                    "categorization",
+                    "applicability",
+                ],
+            )
+            for row in control_char_rows
+        ],
+    )
+
+    # Invariant 4: Rows cannot be completely empty across hierarchy text fields.
+    empty_predicate = " AND ".join([f"NULLIF(BTRIM(COALESCE({field}, '')), '') IS NULL" for field in TEXT_FIELDS])
+    empty_row_count = conn.exec_driver_sql(
+        f"""
+        SELECT COUNT(*)
+          FROM teller.nys_snw_category
+         WHERE {empty_predicate}
+        """
+    ).scalar_one()
+    empty_row_samples = conn.exec_driver_sql(
+        f"""
+        SELECT nys_snw_category_id
+          FROM teller.nys_snw_category
+         WHERE {empty_predicate}
+         ORDER BY nys_snw_category_id
+         LIMIT 20
+        """
+    ).fetchall()
+    append_invariant(
+        report,
+        "empty_hierarchy_rows",
+        "Category rows must include at least one non-empty hierarchy text field.",
+        empty_row_count,
+        [serialize_row(row, ["nys_snw_category_id"]) for row in empty_row_samples],
+    )
+
+    # Invariant 5: Referential sanity for transaction category mappings.
+    orphaned_mapping_count = conn.exec_driver_sql(
+        """
+        SELECT COUNT(*)
+          FROM teller.transaction_nys_snw_category t
+     LEFT JOIN teller.nys_snw_category c
+            ON c.nys_snw_category_id = t.nys_snw_category_id
+         WHERE c.nys_snw_category_id IS NULL
+        """
+    ).scalar_one()
+    orphaned_mapping_rows = conn.exec_driver_sql(
+        """
+        SELECT t.transaction_id, t.nys_snw_category_id
+          FROM teller.transaction_nys_snw_category t
+     LEFT JOIN teller.nys_snw_category c
+            ON c.nys_snw_category_id = t.nys_snw_category_id
+         WHERE c.nys_snw_category_id IS NULL
+         ORDER BY t.transaction_id
+         LIMIT 20
+        """
+    ).fetchall()
+    append_invariant(
+        report,
+        "orphaned_transaction_category_links",
+        "Every transaction category mapping must reference an existing category row.",
+        orphaned_mapping_count,
+        [serialize_row(row, ["transaction_id", "nys_snw_category_id"]) for row in orphaned_mapping_rows],
+    )
+
+violations = [item for item in report["invariants"] if not item.get("ok", False)]
+if violations:
+    report["status"] = "failed"
+    report["gate_failed"] = True
+else:
+    report["status"] = "passed"
+    report["gate_failed"] = False
+
+repair_script = pathlib.Path("./scripts/repair_nys_snw_category.sql")
+if repair_script.exists():
+    report["repair_script_available"] = str(repair_script)
+
+write_report(report)
+print(f"Category integrity report: {report_path}")
+if violations:
+    print_failures(report)
+    if repair_script.exists():
+        print(f"ℹ️  Optional manual repair script available: {repair_script}")
+        print("ℹ️  No automatic cleanup was applied in security checks.")
+    print("❌ Post-DAST category integrity gate failed due to invariant violations.")
+    raise SystemExit(2)
+
+print("✅ Post-DAST category integrity checks passed.")
+raise SystemExit(0)
+PY
+    local integrity_exit=$?
+    set -e
+    if [[ "$integrity_exit" -ne 0 ]]; then
+      return "$integrity_exit"
+    fi
+  }
+
   prepare_schemathesis_openapi_fixture() {
     local source_openapi_url="$1"
     local source_base_url="$2"
@@ -757,7 +1107,7 @@ PY
   else
     echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
     TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
-      "$dast_app_python" "./14_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
+      "$dast_app_python" "./13_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
     classifier_api_pid="$!"
   fi
   wait_for_http "${base_url}/health" 45
@@ -790,7 +1140,6 @@ PY
     schemathesis run "$schemathesis_location" \
       --url "$base_url" \
       --mode positive \
-      --exclude-path "/v1/categories/{nys_snw_category_id}" \
       --seed "$schemathesis_seed" \
       --max-examples "$schemathesis_max_examples" \
       --report junit \
@@ -886,21 +1235,10 @@ PY
   fi
 
   if [[ "$run_token_capture_dast" == "true" ]]; then
-    echo "▶ Starting token capture server for Dynamic Application Security Testing (DAST) at ${token_capture_url}"
-    "$dast_app_python" "./teller/teller_connect_token_server.py" --no-open --mode manage --port "$token_capture_port" \
-      >"${report_dir_abs}/token-capture.log" 2>&1 &
-    token_capture_pid="$!"
-    wait_for_http "${token_capture_url}/api/status" 45
-
-    if [[ "$run_zap" == "true" ]]; then
-      run_zap_quick_scan \
-        "$zap_cli_cmd" \
-        "$token_capture_url" \
-        "${report_dir_abs}/zap-token-capture.html" \
-        "${report_dir_abs}/zap-token-capture.log"
-    fi
+    echo "ℹ️  Token capture Dynamic Application Security Testing (DAST) moved to macOS UI Connect WebView coverage."
+    echo "ℹ️  Legacy localhost token-capture endpoint scan is deprecated and no longer runs."
   else
-    echo "ℹ️  Token capture Dynamic Application Security Testing (DAST) skipped (set RUN_TOKEN_CAPTURE_DAST=true and ensure ~/.teller/application_id.txt exists)."
+    echo "ℹ️  Token capture Dynamic Application Security Testing (DAST) skipped."
   fi
 
   local high_alerts=0
@@ -943,6 +1281,9 @@ PY
     echo "❌ Dynamic Application Security Testing (DAST) gate failed: High/Critical ZAP alerts detected."
     exit 1
   fi
+
+  #R070: Enforce post-DAST category table integrity invariants.
+  run_category_integrity_checks "$report_dir_abs"
 
   echo "✅ Dynamic Application Security Testing (DAST) checks completed."
 )

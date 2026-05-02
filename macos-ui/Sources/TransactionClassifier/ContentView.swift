@@ -105,7 +105,6 @@ struct ContentView: View {
                 .padding(12)
                 .tabItem { Label("Connect", systemImage: "link.badge.plus") }
                 .tag(AppTab.connect)
-                .accessibilityIdentifier("connect-tab")
         }
         .navigationTitle("Transaction Classifier")
         .navigationSplitViewStyle(.balanced)
@@ -114,8 +113,10 @@ struct ContentView: View {
                 // #R010: Expose keyboard-first shortcuts for search focus, next-unclassified, and undo.
                 Button("Focus Search") { searchFocused = true }.keyboardShortcut("f", modifiers: .command)
                     .accessibilityIdentifier("focus-search-button")
-                Button("Next Unclassified") { viewModel.nextUnclassified() }.keyboardShortcut("]", modifiers: .command)
-                    .accessibilityIdentifier("next-unclassified-button")
+                if selectedTab != .connect {
+                    Button("Next Unclassified") { viewModel.nextUnclassified() }.keyboardShortcut("]", modifiers: .command)
+                        .accessibilityIdentifier("next-unclassified-button")
+                }
                 Button("Undo") { Task { await viewModel.undoLast() } }.keyboardShortcut("z", modifiers: .command)
                     .accessibilityIdentifier("undo-button")
             }

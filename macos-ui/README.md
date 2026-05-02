@@ -9,7 +9,7 @@ This app now also includes a native **Connect** tab for local Teller enrollment 
 From repo root:
 
 ```zsh
-./14_run_classification_api.py
+./13_run_classification_api.py
 ```
 
 Defaults to `http://127.0.0.1:8787`. Override with:
@@ -35,19 +35,17 @@ TELLER_MACOS_START_TAB=connect swift run TransactionClassifier
 
 ## Connect integration settings
 
-The Connect tab calls the local token server APIs by default at `http://127.0.0.1:8080`.
+Connect is now owned in-process by the app (local file-backed service + native WebView flow).
 
-- `TELLER_CONNECT_API_URL` - base URL for `GET /api/status`, `GET /api/contexts`, `POST /api/store-token`, `POST /api/delete-context`.
-- `TELLER_CONNECT_MANAGER_URL` - browser URL used by "Open Browser Connect" fallback action.
-- `TELLER_CONNECT_HTTP_PROXY` - optional HTTP/HTTPS proxy for Connect API requests.
+- `CONNECT_ENVIRONMENT` - Teller Connect environment passed into native Connect setup (default `development`).
 
 From repo root, the recommended launcher is:
 
 ```zsh
-./11_run_teller-connect-ui.sh
+./15_run_classification_macos-ui.sh
 ```
 
-That command starts the local Connect server in stay-alive mode and launches this macOS app on the Connect tab (legacy web mode remains available through `--web`).
+That command launches this macOS app; open the Connect tab to manage local enrollments.
 
 ## 3) Keyboard shortcuts
 
@@ -62,9 +60,9 @@ From repo root:
 
 - `./05_run_unit_tests.sh` (API/unit tests)
 - `./06_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
-- `RUN_SAST=false RUN_MACOS_UI_DAST=true ./15_run_security_checks.sh` (local OWASP ZAP-backed DAST for UI-driven API traffic)
-- `./17_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./17_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
+- `RUN_SAST=false RUN_MACOS_UI_DAST=true ./14_run_security_checks.sh` (local OWASP ZAP-backed DAST for UI-driven API traffic)
+- `./16_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./16_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
 
 ## 5) Automated UI regression testing
 
