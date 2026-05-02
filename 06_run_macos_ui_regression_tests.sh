@@ -12,7 +12,7 @@ RUN_XCUITESTS="${RUN_XCUITESTS:-true}"
 SNAPSHOT_RECORD="${SNAPSHOT_RECORD:-false}"
 #R035: Expose XCUITest runtime overrides for worker-specific configuration.
 XCUITEST_PROJECT="${XCUITEST_PROJECT:-./macos-ui/TransactionClassifierUIAutomation.xcodeproj}"
-XCUITEST_SCHEME="${XCUITEST_SCHEME:-TransactionClassifierUITestHost}"
+XCUITEST_SCHEME="${XCUITEST_SCHEME:-TransactionClassifierUITestHost-CI}"
 XCUITEST_DESTINATION="${XCUITEST_DESTINATION:-platform=macOS}"
 XCUITEST_DERIVED_DATA_PATH="${XCUITEST_DERIVED_DATA_PATH:-./macos-ui/.derivedData-ui-tests}"
 
