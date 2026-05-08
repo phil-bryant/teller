@@ -47,6 +47,31 @@ From repo root, the recommended launcher is:
 
 That command launches this macOS app; open the Connect tab to manage local enrollments.
 
+## Crash reporting (PLCrashReporter)
+
+The app now initializes `PLCrashReporter` on startup. If a prior run crashed, the next launch will persist the binary crash payload and metadata under:
+
+- `~/Library/Application Support/<bundle-id>/CrashReports/*.plcrash`
+- `~/Library/Application Support/<bundle-id>/CrashReports/*.json`
+
+The `.plcrash` file is suitable for downstream symbolication/hand-off; the `.json` file stores minimal routing metadata (`bundle_id`, `version`, `build`, `captured_at`, `format`).
+
+### Local verification
+
+1. Launch once with an intentional crash toggle:
+
+```zsh
+TELLER_MACOS_FORCE_CRASH_ON_LAUNCH=1 swift run TransactionClassifier
+```
+
+2. Launch again normally:
+
+```zsh
+swift run TransactionClassifier
+```
+
+On the second launch, the app should detect and persist the pending crash report, then purge pending state.
+
 ## 3) Keyboard shortcuts
 
 - `Cmd+F` focus search

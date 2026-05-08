@@ -256,3 +256,33 @@ EOF
     return 1
   fi
 }
+
+@test "optionally runs crash reporter smoke verification lane" {
+  #R050
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  cat > "${STUB_BIN}/swift" <<EOF
+#!/usr/bin/env bash
+echo swift "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swift"
+  cat > "${STUB_BIN}/xcodebuild" <<EOF
+#!/usr/bin/env bash
+echo xcodebuild "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/xcodebuild"
+  cat > "${FIXTURE_ROOT}/17_verify_macos_crash_reporter.sh" <<EOF
+#!/usr/bin/env bash
+echo crash-smoke "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${FIXTURE_ROOT}/17_verify_macos_crash_reporter.sh"
+
+  run bash -c "cd '${FIXTURE_ROOT}' && \
+    export PATH='${STUB_BIN}:'\${PATH} && \
+    RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=false RUN_CRASH_REPORTER_SMOKE_TEST=true \
+    ./06_run_macos_ui_regression_tests.sh"
+  [ "$status" -eq 0 ]
+  grep -F "crash-smoke" "${CALLS_LOG}"
+}

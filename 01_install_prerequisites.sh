@@ -276,6 +276,9 @@ print_final_guidance() {
     echo "Local prerequisite paths:"
     echo "- 1psa source: ${ONEPSA_DIR}"
     echo "- pg_install source: ${PG_INSTALL_DIR}"
+    echo ""
+    echo "Optional validation:"
+    echo "- ./17_verify_macos_crash_reporter.sh"
 }
 
 print_header

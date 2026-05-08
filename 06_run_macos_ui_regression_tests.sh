@@ -8,6 +8,7 @@ cd "$SCRIPT_DIR"
 
 RUN_SNAPSHOT_TESTS="${RUN_SNAPSHOT_TESTS:-true}"
 RUN_XCUITESTS="${RUN_XCUITESTS:-true}"
+RUN_CRASH_REPORTER_SMOKE_TEST="${RUN_CRASH_REPORTER_SMOKE_TEST:-false}"
 #R030: Default to full UI regression coverage when no overrides are provided.
 SNAPSHOT_RECORD="${SNAPSHOT_RECORD:-false}"
 #R035: Expose XCUITest runtime overrides for worker-specific configuration.
@@ -133,4 +134,12 @@ if [[ "$RUN_XCUITESTS" == "true" ]]; then
 else
   #R025: Support snapshot-only gate by explicitly skipping XCUITest lane.
   echo "ℹ️  Skipping XCUITest smoke suite (RUN_XCUITESTS=false)."
+fi
+
+#R050: Optionally run PLCrashReporter startup smoke verification in UI regression lane.
+if [[ "$RUN_CRASH_REPORTER_SMOKE_TEST" == "true" ]]; then
+  echo "▶ Running PLCrashReporter smoke verification..."
+  ./17_verify_macos_crash_reporter.sh
+else
+  echo "ℹ️  Skipping PLCrashReporter smoke verification (RUN_CRASH_REPORTER_SMOKE_TEST=false)."
 fi
