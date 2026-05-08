@@ -8,6 +8,7 @@ struct TransactionClassifierApp: App {
     @State private var connectViewModel: ConnectViewModel
 
     init() {
+        CrashReporterService.start()
         _viewModel = State(initialValue: buildDefaultViewModel())
         _connectViewModel = State(initialValue: buildDefaultConnectViewModel())
     }

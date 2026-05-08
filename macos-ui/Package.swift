@@ -6,10 +6,16 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [.executable(name: "TransactionClassifier", targets: ["TransactionClassifier"])],
     dependencies: [
+        .package(url: "https://github.com/microsoft/plcrashreporter.git", from: "1.12.0"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
     ],
     targets: [
-        .executableTarget(name: "TransactionClassifier"),
+        .executableTarget(
+            name: "TransactionClassifier",
+            dependencies: [
+                .product(name: "CrashReporter", package: "plcrashreporter"),
+            ]
+        ),
         .testTarget(name: "TransactionClassifierTests", dependencies: ["TransactionClassifier"]),
         .testTarget(
             name: "TransactionClassifierSnapshotTests",

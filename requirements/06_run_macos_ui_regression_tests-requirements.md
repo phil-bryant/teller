@@ -56,8 +56,15 @@ Design: Validate each parsed selector index against the known UI regression test
 Tests:
 - Run `06_run_macos_ui_regression_tests.sh 99` and verify the script exits non-zero with an unknown-test-number error and does not call `xcodebuild`.
 
+R050  Statement: Support an optional PLCrashReporter smoke-verification lane in macOS UI regression runs.
+Design: When `RUN_CRASH_REPORTER_SMOKE_TEST=true`, execute `./17_verify_macos_crash_reporter.sh` after snapshot/XCUITest lanes; otherwise emit an explicit skip message.
+Tests:
+- Set `RUN_CRASH_REPORTER_SMOKE_TEST=true` and verify `./17_verify_macos_crash_reporter.sh` is invoked.
+- Set `RUN_CRASH_REPORTER_SMOKE_TEST=false` and verify skip output is emitted.
+
 ## Changelog
 
 - 2026-04-24: Initial requirements for `06_run_macos_ui_regression_tests.sh`.
 - 2026-04-24: Folded gate rollout guidance from `macos-ui/UI_REGRESSION_ROLLOUT.md` into script-scoped requirements.
 - 2026-05-02: Added optional numeric XCUITest selectors and strict out-of-range validation requirements.
+- 2026-05-07: Added R050 for optional PLCrashReporter smoke-verification lane.
