@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `15_run_security_checks.sh`.
+Applies to `14_run_security_checks.sh`.
 
 R001  Statement: Run in strict shell mode and execute from repository root.
 Design: Use `set -euo pipefail`, resolve script directory from `${BASH_SOURCE[0]}`, and `cd` into that directory.
@@ -25,9 +25,9 @@ Tests:
 - Set `RUN_SAST=false` and `RUN_DAST=false` and verify script exits cleanly after setup.
 
 R020  Statement: Run SAST scanners and persist machine-readable artifacts.
-Design: Require `semgrep`, `bandit`, `pip-audit`, and `detect-secrets`; execute scans with project configs and write JSON outputs under the report directory. When Swift sources are present under `./macos-ui` and `RUN_SWIFT_SAST=true`, run `swiftlint lint --reporter json` with focused security rules (`force_cast`, `force_try`, `force_unwrapping`) against first-party `Sources`/`Tests`/`UITests`, and persist `swiftlint.json` in the report directory.
+Design: Require `semgrep`, `bandit`, `pip-audit`, `detect-secrets`, and `shellcheck`; execute scans with project configs and write JSON outputs under the report directory. When Swift sources are present under `./macos-ui` and `RUN_SWIFT_SAST=true`, run `swiftlint lint --reporter json` with focused security rules (`force_cast`, `force_try`, `force_unwrapping`) against first-party `Sources`/`Tests`/`UITests`, and persist `swiftlint.json` in the report directory.
 Tests:
-- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, `detect-secrets.json`, and `swiftlint.json` are produced.
+- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, `detect-secrets.json`, `shellcheck.json`, and `swiftlint.json` are produced.
 
 R025  Statement: Distinguish scanner findings from scanner execution failures.
 Design: Treat `bandit`/`pip-audit`/`schemathesis` exit codes greater than `1` as hard execution failures; allow exit code `1` as "findings detected" so gating remains centralized (`sast-summary.json` for SAST and ZAP high/critical parsing for DAST).
@@ -35,12 +35,12 @@ Tests:
 - Stub `bandit` to return `2` and verify script exits with explicit execution failure.
 
 R030  Statement: Produce a consolidated SAST gate summary and enforce blocking policy.
-Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, SwiftLint `error`, and all detect-secrets findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
+Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, SwiftLint `error`, ShellCheck `error`, and all detect-secrets findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
 Tests:
 - Seed report fixtures with one high-severity finding and verify gate failure when fail-on-high is enabled.
 
 R035  Statement: Start local classification API automatically for DAST execution.
-Design: Launch `14_run_classification_api.py` on resolved host/port values, wait for `/health`, and always clean up spawned background processes with an EXIT trap.
+Design: Launch `13_run_classification_api.py` on resolved host/port values, wait for `/health`, and always clean up spawned background processes with an EXIT trap.
 Tests:
 - Run DAST lane and verify API process is started, health-check gated, and terminated on completion.
 
@@ -50,10 +50,10 @@ Tests:
 - Run with `RUN_TOKEN_CAPTURE_DAST=auto` and no application ID file and verify token-capture DAST is skipped.
 
 R045  Statement: Run Schemathesis and ZAP quick scans with configurable targets and high/critical gating.
-Design: Run Schemathesis against resolved OpenAPI URL (using positive-mode generation and runtime fixture examples for live IDs). Before Schemathesis, execute a deterministic contract check that creates and deletes a category (including second-delete 404 semantics) and persist its JSON/log artifacts. Exclude `/v1/categories/{nys_snw_category_id}` from Schemathesis fuzz/stateful generation to avoid non-deterministic resource-lifecycle skew now covered by the deterministic check. Run ZAP CLI quick scans against classification and optional token-capture targets, parse any generated ZAP JSON alerts, and fail when high/critical alerts exist and fail-on-high is enabled.
+Design: Run Schemathesis against resolved OpenAPI URL (using positive-mode generation and runtime fixture examples for live IDs). Before Schemathesis, execute a deterministic contract check that creates and deletes a category (including second-delete 404 semantics) and persist its JSON/log artifacts. Keep category mutation paths (`/v1/categories` and `/v1/categories/{nys_snw_category_id}`) in Schemathesis coverage so fuzzing can surface unsafe mutation behavior. Run ZAP CLI quick scans against classification and optional token-capture targets, parse any generated ZAP JSON alerts, and fail when high/critical alerts exist and fail-on-high is enabled.
 Tests:
 - Configure `RUN_ZAP=true` with missing `ZAP_CLI_CMD` and verify explicit prerequisite failure.
-- Configure DAST with valid tooling and verify zap/schemathesis logs are written in the report directory.
+- Configure DAST with valid tooling and verify zap/schemathesis logs are written in the report directory without category-path exclusions.
 
 R050  Statement: Emit explicit completion status and artifact location for operators.
 Design: Print SAST/DAST progress markers, gate outcomes, and explicit lane completion lines (`Static Application Security Testing (SAST) checks completed.` and `Dynamic Application Security Testing (DAST) checks completed.`) plus final success output including resolved report directory path.
@@ -71,18 +71,24 @@ Tests:
 - Set `RUN_MACOS_UI_DAST=true` with `RUN_ZAP=false` and verify explicit prerequisite failure.
 - Set `RUN_MACOS_UI_DAST=true` with stubbed ZAP/API/UI scripts and verify proxy startup, UI regression invocation, and macOS UI DAST artifacts.
 
-R065  Statement: Run ClamAV repository malware scans and include findings in SAST gating.
-Design: When `RUN_SAST=true` and `RUN_CLAMAV=true`, require `clamscan`, run a recursive repository scan, persist `clamav.log` and `clamav-summary.json`, treat exit code `1` as findings (not execution failure), and include infected file counts in `sast-summary.json` high/critical totals. Print signature freshness metadata (latest DB file timestamp/age) before scan execution, print the fully resolved scan target directory/path, and emit periodic progress heartbeat lines while ClamAV runs so long scans are not silent. If ClamAV reports missing signature databases (`No supported database files found`), run one-time `freshclam --stdout` refresh (bootstrapping config from Homebrew sample when needed) and retry the scan once before failing.
+R065  Statement: Run ShellCheck in SAST mode and include findings in centralized SAST gating.
+Design: When `RUN_SAST=true`, require `shellcheck`, run JSON-format ShellCheck scans across numbered shell scripts, persist `shellcheck.json`, treat exit code `1` as findings (not execution failure), and include ShellCheck `error` counts in `sast-summary.json` high/critical totals.
 Tests:
-- Run SAST lane with clean ClamAV output and verify `clamav.log`, `clamav-summary.json`, and `clamav_infected_files` summary field are produced.
-- Stub ClamAV to return exit code `2` and verify explicit execution failure.
-- Stub ClamAV to return exit code `1` with infected files and verify SAST gate failure when fail-on-high is enabled.
-- Stub missing ClamAV databases on first scan, verify `freshclam --stdout` runs, and verify the script retries ClamAV once.
-- Run ClamAV lane and verify output includes signature freshness metadata, explicit scan target path, and at least one in-progress heartbeat line for long-running scans.
+- Run SAST lane with clean ShellCheck output and verify `shellcheck.json`, plus `shellcheck_total` and `shellcheck_high_critical` fields in `sast-summary.json`.
+- Stub ShellCheck to return exit code `2` and verify explicit execution failure.
+- Stub ShellCheck to return exit code `1` with at least one `error` finding and verify SAST gate failure when fail-on-high is enabled.
+
+R070  Statement: Fail DAST when category data integrity invariants are violated after fuzzing.
+Design: After DAST scanners complete, run SQL-backed invariants against `teller.nys_snw_category` and `teller.transaction_nys_snw_category`, including unexpected IDs outside canonical seed range, missing canonical IDs, control/non-printable hierarchy characters, empty hierarchy rows, and orphaned transaction-category references. Always emit `.security-reports/category-integrity.json` with counts/examples and fail the DAST lane when violations are found (`DAST_CATEGORY_INTEGRITY_STRICT=true` by default). If manual repair SQL exists, surface it as optional guidance only and do not auto-apply cleanup.
+Tests:
+- Run DAST in non-strict mode without a DB engine and verify `category-integrity.json` is still emitted with actionable status/error metadata.
+- Run DAST with Schemathesis stubs and verify category mutation paths are not excluded from Schemathesis arguments.
 
 ## Changelog
 
-- 2026-04-24: Consolidated security scanning policy and runtime behavior from `docs/security-scanning.md` into script-scoped requirements for `15_run_security_checks.sh`.
+- 2026-04-24: Consolidated security scanning policy and runtime behavior from `docs/security-scanning.md` into script-scoped requirements for `14_run_security_checks.sh`.
 - 2026-04-26: Added R065 to require ClamAV repository scans with summarized findings and SAST gate integration.
 - 2026-04-26: Added boxed per-tool headers with brief explainers and official URLs for all security scanners.
 - 2026-04-26: Added local macOS UI DAST requirements for OWASP ZAP proxy-driven XCUITest coverage.
+- 2026-05-02: Added R070 post-DAST category-integrity gate and removed Schemathesis category-path exclusions.
+- 2026-05-09: Re-scoped R065 from ClamAV-in-SAST to ShellCheck-in-SAST and moved AV behavior to `18_run_av_checks.sh`.

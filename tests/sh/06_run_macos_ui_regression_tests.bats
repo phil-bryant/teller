@@ -188,3 +188,101 @@ EOF
   grep -F "platform=macOS,arch=arm64" "${CALLS_LOG}"
   grep -F "macos-ui/.dd-ui" "${CALLS_LOG}"
 }
+
+@test "runs only selected XCUITests by numeric selectors" {
+  #R040
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  cat > "${STUB_BIN}/swift" <<EOF
+#!/usr/bin/env bash
+echo swift "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swift"
+  cat > "${STUB_BIN}/xcodebuild" <<EOF
+#!/usr/bin/env bash
+echo xcodebuild "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/xcodebuild"
+
+  run bash -c "cd '${FIXTURE_ROOT}' && \
+    export PATH='${STUB_BIN}:'\${PATH} && \
+    RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true \
+    ./06_run_macos_ui_regression_tests.sh 1,3,5-6"
+  [ "$status" -eq 0 ]
+
+  grep -F "testSearchFilterFindsFixtureRow" "${CALLS_LOG}"
+  grep -F "testApplyCategoryFromTypeaheadUpdatesSelection" "${CALLS_LOG}"
+  grep -F "testUndoRestoresPriorCategoryOnAlreadyClassifiedRow" "${CALLS_LOG}"
+  grep -F "testLoadMoreAppendsRowsAndUpdatesStatusText" "${CALLS_LOG}"
+
+  if grep -q -- "-only-testing:TransactionClassifierUITests " "${CALLS_LOG}"; then
+    return 1
+  fi
+
+  : > "${CALLS_LOG}"
+  run bash -c "cd '${FIXTURE_ROOT}' && \
+    export PATH='${STUB_BIN}:'\${PATH} && \
+    RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true \
+    ./06_run_macos_ui_regression_tests.sh 13"
+  [ "$status" -eq 0 ]
+  grep -F "testHelpMenuListsAllHotkeys" "${CALLS_LOG}"
+}
+
+@test "fails when selector references non-existent test numbers" {
+  #R045
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  cat > "${STUB_BIN}/swift" <<EOF
+#!/usr/bin/env bash
+echo swift "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swift"
+  cat > "${STUB_BIN}/xcodebuild" <<EOF
+#!/usr/bin/env bash
+echo xcodebuild "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/xcodebuild"
+
+  run bash -c "cd '${FIXTURE_ROOT}' && \
+    export PATH='${STUB_BIN}:'\${PATH} && \
+    RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true \
+    ./06_run_macos_ui_regression_tests.sh 99"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Unknown UI regression test number"* ]]
+
+  if grep -q "xcodebuild" "${CALLS_LOG}"; then
+    return 1
+  fi
+}
+
+@test "optionally runs crash reporter smoke verification lane" {
+  #R050
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  cat > "${STUB_BIN}/swift" <<EOF
+#!/usr/bin/env bash
+echo swift "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swift"
+  cat > "${STUB_BIN}/xcodebuild" <<EOF
+#!/usr/bin/env bash
+echo xcodebuild "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/xcodebuild"
+  cat > "${FIXTURE_ROOT}/17_verify_macos_crash_reporter.sh" <<EOF
+#!/usr/bin/env bash
+echo crash-smoke "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${FIXTURE_ROOT}/17_verify_macos_crash_reporter.sh"
+
+  run bash -c "cd '${FIXTURE_ROOT}' && \
+    export PATH='${STUB_BIN}:'\${PATH} && \
+    RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=false RUN_CRASH_REPORTER_SMOKE_TEST=true \
+    ./06_run_macos_ui_regression_tests.sh"
+  [ "$status" -eq 0 ]
+  grep -F "crash-smoke" "${CALLS_LOG}"
+}

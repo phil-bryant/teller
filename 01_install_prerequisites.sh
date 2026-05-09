@@ -276,6 +276,9 @@ print_final_guidance() {
     echo "Local prerequisite paths:"
     echo "- 1psa source: ${ONEPSA_DIR}"
     echo "- pg_install source: ${PG_INSTALL_DIR}"
+    echo ""
+    echo "Optional validation:"
+    echo "- ./17_verify_macos_crash_reporter.sh"
 }
 
 print_header
@@ -287,6 +290,8 @@ echo "[Tooling] Checking build dependencies..."
 ensure_brew_formula "go"
 ensure_brew_formula "git"
 ensure_brew_formula "swiftlint"
+#R100: Ensure ShellCheck static analyzer is available for shell SAST checks.
+ensure_brew_formula "shellcheck"
 #R055: Ensure bats shell test runner dependency is installed via Homebrew.
 ensure_brew_formula "bats-core" "bats"
 #R095: Ensure ClamAV antivirus scanner is available for repository malware scans.

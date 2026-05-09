@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `16_run_classification_macos-ui.sh`.
+Applies to `15_run_classification_macos-ui.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` to propagate execution failures.
@@ -21,4 +21,4 @@ Tests:
 
 ## Changelog
 
-- 2026-04-24: Initial requirements for `16_run_classification_macos-ui.sh`.
+- 2026-04-24: Initial requirements for `15_run_classification_macos-ui.sh`.

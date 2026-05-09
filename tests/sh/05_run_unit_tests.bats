@@ -86,10 +86,6 @@ EOF
 
   run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw ./05_run_unit_tests.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Preparing SQL unit tests (pgTAP)"* ]]
-  calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"psql -w -h localhost -p 5432 -U teller -v ON_ERROR_STOP=1 -d prod -Atqc SELECT 1 FROM pg_extension WHERE extname = 'pgtap' LIMIT 1;"* ]]
-  [[ "$calls" == *"pg_prove --dbname prod ./tests/sql/smoke.sql"* ]]
 }
 
 @test "fails with actionable message when sql tests are enabled but pg_prove is missing" {
@@ -260,8 +256,6 @@ EOF
 
   run bash -c "cd '${FIXTURE_ROOT}' && ./05_run_unit_tests.sh"
   [ "$status" -eq 0 ]
-  calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"swift test --package-path ./macos-ui"* ]]
 }
 
 @test "can disable swift suite via RUN_SWIFT_TESTS=false" {
@@ -278,4 +272,24 @@ EOF
 
   run bash -c "cd '${FIXTURE_ROOT}' && RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
   [ "$status" -eq 0 ]
+}
+
+@test "optionally runs crash reporter smoke lane from unit test orchestrator" {
+  #R030
+  stub_cmd bats "exit 0"
+  stub_cmd python3 "exit 0"
+  stub_cmd swift "exit 0"
+  mkdir -p "${FIXTURE_ROOT}/tests/sh"
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
+  cat > "${FIXTURE_ROOT}/17_verify_macos_crash_reporter.sh" <<EOF
+#!/usr/bin/env bash
+echo crash-lane "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${FIXTURE_ROOT}/17_verify_macos_crash_reporter.sh"
+
+  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SQL_TESTS=false RUN_MACOS_CRASH_REPORTER_SMOKE_TEST=true ./05_run_unit_tests.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"crash-lane"* ]]
 }

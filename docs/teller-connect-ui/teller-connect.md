@@ -1,5 +1,15 @@
 # Teller Connect (https://teller.io/docs/guides/connect)
 
+## Repository note: native macOS migration
+
+In this repository, enrollment management is now owned by the native macOS app in `macos-ui` (Connect tab) rather than a standalone local web page.
+
+- Primary entrypoint: `./15_run_classification_macos-ui.sh`
+- Connect flow: native `WKWebView` inside the Connect tab
+- Local context persistence: in-process Swift service writing `~/.teller/auth_token*.json` + `~/.teller/enrollment_id*.txt`
+
+The upstream Teller web snippets below remain useful reference material for `connect.js` behavior and enrollment payload structure.
+
 How to link your users' financial accounts to your application using Teller Connect
 
 Interactive demo: [https://teller.io/connect/demo?appearance=system](https://teller.io/connect/demo?appearance=system)
