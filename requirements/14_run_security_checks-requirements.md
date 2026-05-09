@@ -25,9 +25,9 @@ Tests:
 - Set `RUN_SAST=false` and `RUN_DAST=false` and verify script exits cleanly after setup.
 
 R020  Statement: Run SAST scanners and persist machine-readable artifacts.
-Design: Require `semgrep`, `bandit`, `pip-audit`, and `detect-secrets`; execute scans with project configs and write JSON outputs under the report directory. When Swift sources are present under `./macos-ui` and `RUN_SWIFT_SAST=true`, run `swiftlint lint --reporter json` with focused security rules (`force_cast`, `force_try`, `force_unwrapping`) against first-party `Sources`/`Tests`/`UITests`, and persist `swiftlint.json` in the report directory.
+Design: Require `semgrep`, `bandit`, `pip-audit`, `detect-secrets`, and `shellcheck`; execute scans with project configs and write JSON outputs under the report directory. When Swift sources are present under `./macos-ui` and `RUN_SWIFT_SAST=true`, run `swiftlint lint --reporter json` with focused security rules (`force_cast`, `force_try`, `force_unwrapping`) against first-party `Sources`/`Tests`/`UITests`, and persist `swiftlint.json` in the report directory.
 Tests:
-- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, `detect-secrets.json`, and `swiftlint.json` are produced.
+- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, `detect-secrets.json`, `shellcheck.json`, and `swiftlint.json` are produced.
 
 R025  Statement: Distinguish scanner findings from scanner execution failures.
 Design: Treat `bandit`/`pip-audit`/`schemathesis` exit codes greater than `1` as hard execution failures; allow exit code `1` as "findings detected" so gating remains centralized (`sast-summary.json` for SAST and ZAP high/critical parsing for DAST).
@@ -35,7 +35,7 @@ Tests:
 - Stub `bandit` to return `2` and verify script exits with explicit execution failure.
 
 R030  Statement: Produce a consolidated SAST gate summary and enforce blocking policy.
-Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, SwiftLint `error`, and all detect-secrets findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
+Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, SwiftLint `error`, ShellCheck `error`, and all detect-secrets findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
 Tests:
 - Seed report fixtures with one high-severity finding and verify gate failure when fail-on-high is enabled.
 
@@ -71,14 +71,12 @@ Tests:
 - Set `RUN_MACOS_UI_DAST=true` with `RUN_ZAP=false` and verify explicit prerequisite failure.
 - Set `RUN_MACOS_UI_DAST=true` with stubbed ZAP/API/UI scripts and verify proxy startup, UI regression invocation, and macOS UI DAST artifacts.
 
-R065  Statement: Run ClamAV repository malware scans and include findings in SAST gating.
-Design: When `RUN_SAST=true` and `RUN_CLAMAV=true`, require `clamscan`, run a recursive repository scan, persist `clamav.log` and `clamav-summary.json`, treat exit code `1` as findings (not execution failure), and include infected file counts in `sast-summary.json` high/critical totals. Print signature freshness metadata (latest DB file timestamp/age) before scan execution, print the fully resolved scan target directory/path, and emit periodic progress heartbeat lines while ClamAV runs so long scans are not silent. If ClamAV reports missing signature databases (`No supported database files found`), run one-time `freshclam --stdout` refresh (bootstrapping config from Homebrew sample when needed) and retry the scan once before failing.
+R065  Statement: Run ShellCheck in SAST mode and include findings in centralized SAST gating.
+Design: When `RUN_SAST=true`, require `shellcheck`, run JSON-format ShellCheck scans across numbered shell scripts, persist `shellcheck.json`, treat exit code `1` as findings (not execution failure), and include ShellCheck `error` counts in `sast-summary.json` high/critical totals.
 Tests:
-- Run SAST lane with clean ClamAV output and verify `clamav.log`, `clamav-summary.json`, and `clamav_infected_files` summary field are produced.
-- Stub ClamAV to return exit code `2` and verify explicit execution failure.
-- Stub ClamAV to return exit code `1` with infected files and verify SAST gate failure when fail-on-high is enabled.
-- Stub missing ClamAV databases on first scan, verify `freshclam --stdout` runs, and verify the script retries ClamAV once.
-- Run ClamAV lane and verify output includes signature freshness metadata, explicit scan target path, and at least one in-progress heartbeat line for long-running scans.
+- Run SAST lane with clean ShellCheck output and verify `shellcheck.json`, plus `shellcheck_total` and `shellcheck_high_critical` fields in `sast-summary.json`.
+- Stub ShellCheck to return exit code `2` and verify explicit execution failure.
+- Stub ShellCheck to return exit code `1` with at least one `error` finding and verify SAST gate failure when fail-on-high is enabled.
 
 R070  Statement: Fail DAST when category data integrity invariants are violated after fuzzing.
 Design: After DAST scanners complete, run SQL-backed invariants against `teller.nys_snw_category` and `teller.transaction_nys_snw_category`, including unexpected IDs outside canonical seed range, missing canonical IDs, control/non-printable hierarchy characters, empty hierarchy rows, and orphaned transaction-category references. Always emit `.security-reports/category-integrity.json` with counts/examples and fail the DAST lane when violations are found (`DAST_CATEGORY_INTEGRITY_STRICT=true` by default). If manual repair SQL exists, surface it as optional guidance only and do not auto-apply cleanup.
@@ -93,3 +91,4 @@ Tests:
 - 2026-04-26: Added boxed per-tool headers with brief explainers and official URLs for all security scanners.
 - 2026-04-26: Added local macOS UI DAST requirements for OWASP ZAP proxy-driven XCUITest coverage.
 - 2026-05-02: Added R070 post-DAST category-integrity gate and removed Schemathesis category-path exclusions.
+- 2026-05-09: Re-scoped R065 from ClamAV-in-SAST to ShellCheck-in-SAST and moved AV behavior to `18_run_av_checks.sh`.

@@ -7,7 +7,7 @@ Local PostgreSQL schema setup and management scripts for Teller data.
 Run setup scripts in numeric order. The workflow is designed around:
 
 - `01_install_prerequisites.sh`
-  - Ensures Homebrew, required tooling (including `clamscan` from ClamAV), `1psa`, and `pg_install` are present.
+  - Ensures Homebrew, required tooling (including `shellcheck` and `clamscan` from ClamAV), `1psa`, and `pg_install` are present.
   - Ensures Xcode first-launch and license acceptance are completed (using `1psa` for sudo credential input when needed).
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
@@ -24,6 +24,7 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `15_run_classification_macos-ui.sh`
 - `16_verify_classification_persistence.sh`
 - `14_run_security_checks.sh`
+- `18_run_av_checks.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -47,6 +48,7 @@ source ./teller-venv/bin/activate
 ./06_run_macos_ui_regression_tests.sh
 ./09_verify_updated_at_trigger_coverage.sh
 ./14_run_security_checks.sh
+./18_run_av_checks.sh
 ./10_configure_teller_io.sh
 ./15_run_classification_macos-ui.sh
 ```
@@ -60,6 +62,7 @@ source ./teller-venv/bin/activate
 ```
 
 Security scanning currently runs via `14_run_security_checks.sh` (SAST and optional DAST).
+Antivirus scanning runs via `18_run_av_checks.sh` (ClamAV lane).
 Dependency freshness automation runs via `04_run_dependency_freshness_checks.sh`.
 
 ### 1) Requirements Traceability Verification
@@ -167,16 +170,13 @@ Useful flags:
 - `RUN_SAST=true|false` (default `true`)
 - `RUN_DAST=true|false` (default `true`)
 - `RUN_SWIFT_SAST=true|false` (default `true`; runs security-focused SwiftLint rules on first-party `./macos-ui` Swift code)
-- `RUN_CLAMAV=true|false` (default `true`; runs recursive ClamAV malware scan on repository files)
-- `CLAMAV_SCAN_TARGET=/path` (default `.`; scan root for ClamAV repository scan)
-- `CLAMAV_HEARTBEAT_SECONDS=15` (default `15`; emits periodic "still scanning" status lines during ClamAV scans)
-- `CLAMAV_SIGNATURE_MAX_AGE_HOURS=48` (default `48`; freshness threshold for signature age warning output)
 - `RUN_ZAP=true|false` (default `true`, requires local ZAP CLI executable, e.g. `ZAP.sh`)
 - `RUN_MACOS_UI_DAST=true|false` (default `true`; runs macOS XCUITest smoke flows through a local ZAP proxy)
 - `MACOS_UI_DAST_ZAP_PROXY_HOST` / `MACOS_UI_DAST_ZAP_PROXY_PORT` (defaults `127.0.0.1` / `8090`)
 - `MACOS_UI_DAST_REUSE_EXISTING_API=true|false` (default `false`; reuse already-running classification API instead of starting one)
 - `SECURITY_FAIL_ON_HIGH_CRITICAL=true|false` (default `true`)
 - `RUN_TOKEN_CAPTURE_DAST=true|false|auto` (default `auto`)
+- ShellCheck runs automatically in SAST mode and writes `shellcheck.json` into the report directory.
 
 Example local macOS UI DAST run:
 
@@ -184,8 +184,24 @@ Example local macOS UI DAST run:
 RUN_SAST=false RUN_MACOS_UI_DAST=true ./14_run_security_checks.sh
 ```
 
-ClamAV notes:
-- The security script prints the resolved scan target path before scanning.
+### 5b) Antivirus Scanning (ClamAV)
+
+Run the dedicated AV lane:
+
+```bash
+./18_run_av_checks.sh
+```
+
+Useful flags:
+
+- `RUN_CLAMAV=true|false` (default `true`; runs recursive ClamAV malware scan on repository files)
+- `AV_FAIL_ON_INFECTED=true|false` (default `true`; fails lane when infected files are detected)
+- `CLAMAV_SCAN_TARGET=/path` (default `.`; scan root for ClamAV repository scan)
+- `CLAMAV_HEARTBEAT_SECONDS=15` (default `15`; emits periodic "still scanning" status lines during ClamAV scans)
+- `CLAMAV_SIGNATURE_MAX_AGE_HOURS=48` (default `48`; freshness threshold for signature age warning output)
+
+ClamAV AV-lane notes:
+- The AV script prints the resolved scan target path before scanning.
 - It prints signature freshness metadata (latest DB file + age).
 - During long scans, it emits periodic heartbeat lines so the run is not silent.
 - On first run, if malware signature databases are missing, the script automatically attempts a one-time `freshclam --stdout` update and retries the scan.
@@ -265,7 +281,7 @@ Active secret and credential sources are:
 
 - `01_install_prerequisites.sh`
   - Ensures Homebrew is installed.
-  - Ensures `go`, `git`, `bats`, `swiftlint`, and `clamscan` are available.
+  - Ensures `go`, `git`, `bats`, `swiftlint`, `shellcheck`, and `clamscan` are available.
   - Installs `1psa` (from `../1psa`) and clones `pg_install` into `../pg_install`.
 - `02_create_venv.sh`
   - Creates a Python virtual environment named `<repo>-venv`.
@@ -301,9 +317,11 @@ Active secret and credential sources are:
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `14_run_security_checks.sh`
-  - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets, ClamAV, and SwiftLint for `macos-ui`).
+  - Runs local SAST checks (Semgrep, Bandit, pip-audit, detect-secrets, ShellCheck, and SwiftLint for `macos-ui`).
   - Optionally runs DAST inline (starts local API target(s), runs Schemathesis against OpenAPI, and runs OWASP ZAP local CLI quick scan).
   - Supports optional token-capture target scanning when Teller local credentials are present.
+- `18_run_av_checks.sh`
+  - Runs dedicated ClamAV antivirus checks (signature freshness, recursive scan, optional one-time `freshclam` retry, and AV gating).
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
   - Also captures matching cluster globals (roles/grants) for reliable restores.

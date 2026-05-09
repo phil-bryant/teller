@@ -255,6 +255,35 @@ EOF
   chmod +x "${STUB_BIN}/swiftlint"
 }
 
+stub_shellcheck_clean() {
+  cat > "${STUB_BIN}/shellcheck" <<'EOF'
+#!/usr/bin/env bash
+echo "shellcheck $*" >> "${CALLS_LOG}"
+printf '%s' '[]'
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/shellcheck"
+}
+
+stub_shellcheck_error_findings() {
+  cat > "${STUB_BIN}/shellcheck" <<'EOF'
+#!/usr/bin/env bash
+echo "shellcheck $*" >> "${CALLS_LOG}"
+printf '%s' '[{"file":"./14_run_security_checks.sh","line":1,"level":"error","code":2086,"message":"Double quote to prevent globbing"}]'
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/shellcheck"
+}
+
+stub_shellcheck_exit_2() {
+  cat > "${STUB_BIN}/shellcheck" <<'EOF'
+#!/usr/bin/env bash
+echo "shellcheck $*" >> "${CALLS_LOG}"
+exit 2
+EOF
+  chmod +x "${STUB_BIN}/shellcheck"
+}
+
 stub_clamscan_clean() {
   cat > "${STUB_BIN}/clamscan" <<'EOF'
 #!/usr/bin/env bash
@@ -424,7 +453,7 @@ EOS
   copy_security_project_files
   /usr/bin/python3 -m venv "${FIXTURE_ROOT}/teller-venv"
   install_passing_sast_stubs_in_venv
-  stub_clamscan_clean
+  stub_shellcheck_clean
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
@@ -449,15 +478,17 @@ EOS
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
-  stub_clamscan_clean
+  stub_shellcheck_clean
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
-  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" swiftlint.json clamav.log "clamav-summary.json" sast-summary.json; do
+  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" shellcheck.json swiftlint.json sast-summary.json; do
     [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
   done
-  infected_count="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("clamav_infected_files",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
-  [ "$infected_count" = "0" ]
+  shellcheck_total="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_total",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
+  shellcheck_high="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_high_critical",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
+  [ "$shellcheck_total" = "0" ]
+  [ "$shellcheck_high" = "0" ]
   [[ "$output" == *"Static Application Security Testing (SAST) summary"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) checks completed."* ]]
 }
@@ -467,7 +498,7 @@ EOS
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
-  stub_clamscan_clean
+  stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
@@ -481,15 +512,15 @@ EOS
   [[ "$output" == *"URL: https://github.com/pypa/pip-audit"* ]]
   [[ "$output" == *"Security Tool: detect-secrets"* ]]
   [[ "$output" == *"URL: https://github.com/Yelp/detect-secrets"* ]]
-  [[ "$output" == *"Security Tool: ClamAV"* ]]
-  [[ "$output" == *"URL: https://www.clamav.net/"* ]]
+  [[ "$output" == *"Security Tool: ShellCheck"* ]]
+  [[ "$output" == *"URL: https://www.shellcheck.net/"* ]]
 }
 
 @test "Swift SAST runs SwiftLint when Swift sources are present" {
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
-  stub_clamscan_clean
+  stub_shellcheck_clean
   mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
   cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
 import Foundation
@@ -508,7 +539,7 @@ EOF
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
-  stub_clamscan_clean
+  stub_shellcheck_clean
   mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
   cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
 import Foundation
@@ -525,7 +556,7 @@ EOF
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
-  stub_clamscan_clean
+  stub_shellcheck_clean
   install_bandit_exit_2
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
@@ -538,7 +569,7 @@ EOF
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
-  stub_clamscan_clean
+  stub_shellcheck_clean
   install_pip_audit_exit_2
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
@@ -551,7 +582,7 @@ EOF
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
-  stub_clamscan_clean
+  stub_shellcheck_clean
   install_sast_gate_fail_semgrep
   run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
@@ -559,59 +590,29 @@ EOF
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
 }
 
-@test "ClamAV exit code 2 is an execution failure" {
+@test "ShellCheck exit code 2 is an execution failure" {
   #R065
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
-  stub_clamscan_exit_2
+  stub_shellcheck_exit_2
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"ClamAV failed to execute."* ]]
+  [[ "$output" == *"ShellCheck failed to execute."* ]]
 }
 
-@test "ClamAV infected findings fail SAST gate when fail-on-high is enabled" {
+@test "ShellCheck error findings fail SAST gate when fail-on-high is enabled" {
   #R065 #R030
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
-  stub_clamscan_infected
+  stub_shellcheck_error_findings
   run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"ClamAV detected infected files"* ]]
+  [[ "$output" == *"ShellCheck reported findings"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
-}
-
-@test "ClamAV refreshes signatures with freshclam when DB is missing and retries scan" {
-  #R065
-  setup_shell_test
-  copy_security_project_files
-  install_passing_sast_stubs_in_venv
-  stub_clamscan_missing_db_then_clean
-  stub_freshclam_ok
-  run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"attempting one-time database refresh with freshclam"* ]]
-  [[ "$output" == *"Retrying ClamAV repository scan after signature refresh"* ]]
-  calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"freshclam --stdout"* ]]
-}
-
-@test "ClamAV prints freshness, target path, and heartbeat during long scan" {
-  #R065
-  setup_shell_test
-  copy_security_project_files
-  install_passing_sast_stubs_in_venv
-  stub_clamscan_slow_clean
-  run env RUN_DAST=false CLAMAV_HEARTBEAT_SECONDS=1 CLAMAV_SCAN_TARGET="./teller" \
-    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"ClamAV signature freshness"* ]]
-  [[ "$output" == *"ClamAV scan target:"*"/teller"* ]]
-  [[ "$output" == *"ClamAV scan in progress"* ]]
 }
 
 @test "DAST starts API, waits for health, completes when DAST tools minimal" {

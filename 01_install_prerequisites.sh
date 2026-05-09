@@ -290,6 +290,8 @@ echo "[Tooling] Checking build dependencies..."
 ensure_brew_formula "go"
 ensure_brew_formula "git"
 ensure_brew_formula "swiftlint"
+#R100: Ensure ShellCheck static analyzer is available for shell SAST checks.
+ensure_brew_formula "shellcheck"
 #R055: Ensure bats shell test runner dependency is installed via Homebrew.
 ensure_brew_formula "bats-core" "bats"
 #R095: Ensure ClamAV antivirus scanner is available for repository malware scans.
