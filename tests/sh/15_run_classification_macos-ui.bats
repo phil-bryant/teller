@@ -5,7 +5,7 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "16_run_classification_macos-ui.sh"
+  copy_script_to_fixture "15_run_classification_macos-ui.sh"
   mkdir -p "${FIXTURE_ROOT}/macos-ui"
 }
 
@@ -22,7 +22,7 @@ exit 0
 EOF
   chmod +x "${STUB_BIN}/swift"
 
-  run "${FIXTURE_ROOT}/16_run_classification_macos-ui.sh" --api-url http://127.0.0.1:8787 --dry-run
+  run env PATH="${STUB_BIN}:${PATH}" "${FIXTURE_ROOT}/15_run_classification_macos-ui.sh" --api-url http://127.0.0.1:8787 --dry-run
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"swift run --package-path"* ]]

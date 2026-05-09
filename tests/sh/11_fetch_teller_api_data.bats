@@ -12,7 +12,7 @@ teardown() {
 }
 
 repo_src() {
-  printf '%s' "$(repo_root)/12_fetch_teller_api_data.py"
+  printf '%s' "$(repo_root)/11_fetch_teller_api_data.py"
 }
 
 @test "argparse includes debug, dry run, and institution" {
@@ -29,9 +29,9 @@ repo_src() {
   [ "$status" -eq 0 ]
 }
 
-@test "Teller client imports connect repair" {
+@test "Teller client uses macOS UI connect repair launcher" {
   #R010
-  run grep "teller_connect_token_server" "$(repo_src)"
+  run grep "15_run_classification_macos-ui.sh" "$(repo_src)"
   [ "$status" -eq 0 ]
   run grep "_repair_enrollment" "$(repo_src)"
   [ "$status" -eq 0 ]

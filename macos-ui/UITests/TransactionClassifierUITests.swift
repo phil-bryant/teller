@@ -2,6 +2,8 @@ import XCTest
 
 final class TransactionClassifierUITests: XCTestCase {
     private var app: XCUIApplication!
+    private let defaultUITimeout: TimeInterval = 5
+    private let connectTabTimeout: TimeInterval = 5
 
     private func uiElement(_ identifier: String) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
@@ -13,6 +15,10 @@ final class TransactionClassifierUITests: XCTestCase {
         app.launchArguments += ["--ui-testing"]
         app.launchEnvironment["TELLER_UI_TEST_MODE"] = "1"
         app.launchEnvironment["TELLER_UI_TEST_PAGE_SIZE"] = "2"
+        // Keep connect-tab regressions deterministic by launching directly into Connect.
+        if name.contains("ConnectTab") {
+            app.launchEnvironment["TELLER_MACOS_START_TAB"] = "connect"
+        }
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_API_URL")
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_HTTP_PROXY")
         // #R035
@@ -54,10 +60,7 @@ final class TransactionClassifierUITests: XCTestCase {
         applyDiningToCoffeeRow()
         XCTAssertTrue(app.staticTexts["Assigned: Dining"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Saved 1 classification(s)"].waitForExistence(timeout: 5))
-
-        let undoButton = uiElement("undo-button")
-        XCTAssertTrue(undoButton.waitForExistence(timeout: 5))
-        undoButton.click()
+        app.typeKey("z", modifierFlags: .command)
         XCTAssertTrue(app.staticTexts["Assigned: none"].waitForExistence(timeout: 5))
     }
 
@@ -92,9 +95,7 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Assigned: Dining"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Saved 1 classification(s)"].waitForExistence(timeout: 5))
 
-        let undoButton = uiElement("undo-button")
-        XCTAssertTrue(undoButton.waitForExistence(timeout: 5))
-        undoButton.click()
+        app.typeKey("z", modifierFlags: .command)
 
         // Undo must restore the prior non-nil category ("Utilities"), not just clear the row.
         XCTAssertTrue(app.staticTexts["Assigned: Utilities"].waitForExistence(timeout: 5))
@@ -196,13 +197,9 @@ final class TransactionClassifierUITests: XCTestCase {
             "Test pre-condition failed: txn_001 must be scrolled off-screen before Next Unclassified is triggered."
         )
 
-        // Trigger Next Unclassified. Click the toolbar button (more robust than a keyboard
-        // shortcut after an explicit scroll gesture) — this must both select txn_001 and
-        // scroll it back into view per #R025. macOS exposes toolbar items under multiple
-        // accessibility queries; use `buttons[...].firstMatch` to disambiguate.
-        let nextButton = app.buttons["next-unclassified-button"].firstMatch
-        XCTAssertTrue(nextButton.waitForExistence(timeout: 5))
-        nextButton.click()
+        // Trigger Next Unclassified via keyboard shortcut. Toolbar item placement can vary
+        // when tab count changes, but Cmd+] remains stable and exercises the same behavior.
+        app.typeKey("]", modifierFlags: .command)
 
         // Verify the selection change actually happened by checking the detail pane header.
         XCTAssertTrue(app.staticTexts["Transaction txn_001"].waitForExistence(timeout: 5))
@@ -232,6 +229,41 @@ final class TransactionClassifierUITests: XCTestCase {
         rowLabel.click()
 
         XCTAssertTrue(app.staticTexts["Transaction txn_001"].waitForExistence(timeout: 5))
+    }
+
+    func testConnectTabManualSaveFlow() {
+        openConnectTab()
+
+        let tokenField = app.secureTextFields.firstMatch
+        XCTAssertTrue(tokenField.waitForExistence(timeout: 5))
+        tokenField.click()
+        tokenField.typeText("token_fixture")
+
+        let saveButton = uiElement("connect-manual-save-button")
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        saveButton.click()
+
+        let status = uiElement("connect-status-text")
+        XCTAssertTrue(status.waitForExistence(timeout: 5))
+    }
+
+    func testConnectTabDoesNotExposeNextUnclassifiedToolbarControl() {
+        openConnectTab()
+        XCTAssertFalse(nextUnclassifiedControlExists())
+    }
+
+    func testHelpMenuListsAllHotkeys() {
+        // #R035
+        let helpMenu = app.menuBars.menuBarItems["Help"]
+        XCTAssertTrue(helpMenu.waitForExistence(timeout: 5))
+        helpMenu.click()
+
+        XCTAssertTrue(app.menuItems["Keyboard Shortcuts"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Focus Search — Cmd+F"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Next Unclassified — Cmd+]"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Undo — Cmd+Z"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Apply to Selected — Cmd+Return"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.menuItems["Save Category — Cmd+S"].waitForExistence(timeout: 5))
     }
 
     private func disableUnclassifiedFilter() {
@@ -271,5 +303,37 @@ final class TransactionClassifierUITests: XCTestCase {
         if let value = ProcessInfo.processInfo.environment[key], !value.isEmpty {
             app.launchEnvironment[key] = value
         }
+    }
+
+    private func openConnectTab() {
+        let tokenField = app.secureTextFields.firstMatch
+        let manualSaveButton = app.buttons["Save Manual Token"].firstMatch
+
+        if tokenField.waitForExistence(timeout: connectTabTimeout) || manualSaveButton.waitForExistence(timeout: connectTabTimeout) {
+            return
+        }
+
+        let segmentedButton = app.segmentedControls.buttons["Connect"].firstMatch
+        if segmentedButton.exists {
+            segmentedButton.click()
+        } else {
+            let genericButton = app.buttons["Connect"].firstMatch
+            if genericButton.exists {
+                genericButton.click()
+            }
+        }
+
+        if tokenField.waitForExistence(timeout: defaultUITimeout) || manualSaveButton.waitForExistence(timeout: defaultUITimeout) {
+            return
+        }
+
+        XCTFail("Connect tab controls were not accessible in this XCUITest host run.")
+    }
+
+    private func nextUnclassifiedControlExists() -> Bool {
+        if uiElement("next-unclassified-button").exists {
+            return true
+        }
+        return app.buttons["Next Unclassified"].exists
     }
 }

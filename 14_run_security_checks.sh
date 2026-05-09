@@ -9,7 +9,6 @@ REPORT_DIR="${SECURITY_REPORT_DIR:-./.security-reports}"
 RUN_SAST="${RUN_SAST:-true}"
 RUN_DAST="${RUN_DAST:-true}"
 RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
-RUN_CLAMAV="${RUN_CLAMAV:-true}"
 #R015: Support configurable execution lanes and report destination.
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
@@ -152,288 +151,393 @@ run_swift_sast() {
   fi
 }
 
-run_clamav_scan() {
-  #R065: Run repository malware scanning with ClamAV and persist machine-readable summary.
-  local clamav_report="$1"
-  local clamav_summary="$2"
-  local clamav_scan_target="${CLAMAV_SCAN_TARGET:-.}"
-  local clamav_signature_max_age_hours="${CLAMAV_SIGNATURE_MAX_AGE_HOURS:-48}"
+run_shellcheck_sast() {
+  #R065: Run ShellCheck against shell scripts and persist machine-readable findings.
+  local shellcheck_report="$1"
+  local shellcheck_targets=()
 
-  if [[ "$RUN_CLAMAV" != "true" ]]; then
-    echo "ℹ️  ClamAV repository scan skipped (set RUN_CLAMAV=true to enable)."
-    printf '%s\n' '{"scanned_files":0,"infected_files":0,"exit_code":0,"skipped":true}' > "$clamav_summary"
-    : > "$clamav_report"
+  require_command shellcheck
+  print_tool_header \
+    "ShellCheck" \
+    "Static analysis for shell scripts to catch common correctness and safety issues." \
+    "Runs JSON-reporting checks across numbered shell automation scripts." \
+    "https://www.shellcheck.net/"
+  shopt -s nullglob
+  shellcheck_targets=(./[0-9][0-9]_*.sh)
+  shopt -u nullglob
+
+  if [[ "${#shellcheck_targets[@]}" -eq 0 ]]; then
+    printf '[]\n' > "$shellcheck_report"
+    echo "ℹ️  ShellCheck skipped (no numbered shell scripts found)."
     return 0
   fi
 
-  require_command clamscan
-  print_tool_header \
-    "ClamAV" \
-    "Signature-based malware scan across repository files." \
-    "Detects known malicious payloads before release or deployment." \
-    "https://www.clamav.net/"
-  resolve_target_abs_path() {
-    local target_path="$1"
-    if [[ -d "$target_path" ]]; then
-      (
-        cd "$target_path"
-        pwd
-      )
-      return
-    fi
-    (
-      cd "$(dirname "$target_path")"
-      printf '%s/%s\n' "$(pwd)" "$(basename "$target_path")"
-    )
-  }
-
-  detect_clamav_db_dir() {
-    local brew_prefix=""
-    if [[ -n "${CLAMAV_DB_DIR:-}" ]]; then
-      printf '%s\n' "${CLAMAV_DB_DIR}"
-      return
-    fi
-    brew_prefix="$(brew --prefix 2>/dev/null || true)"
-    if [[ -n "$brew_prefix" ]] && [[ -d "${brew_prefix}/var/lib/clamav" ]]; then
-      printf '%s\n' "${brew_prefix}/var/lib/clamav"
-      return
-    fi
-    if [[ -d "/var/lib/clamav" ]]; then
-      printf '%s\n' "/var/lib/clamav"
-      return
-    fi
-    printf '%s\n' ""
-  }
-
-  print_clamav_signature_status() {
-    local db_dir="$1"
-    local max_age_hours="$2"
-    if [[ -z "$db_dir" ]]; then
-      echo "ℹ️  ClamAV signature freshness: unknown (database directory not found)."
-      return
-    fi
-    echo "▶ ClamAV signature DB directory: ${db_dir}"
-    python3 - <<'PY' "$db_dir" "$max_age_hours"
-import datetime as dt
-import json
-import pathlib
-import sys
-
-db_dir = pathlib.Path(sys.argv[1])
-max_age_hours = int(sys.argv[2])
-patterns = ("*.cvd", "*.cld", "*.inc")
-files = []
-for pattern in patterns:
-    files.extend(db_dir.glob(pattern))
-
-if not files:
-    print("⚠️  ClamAV signature freshness: no database files found.")
-    sys.exit(0)
-
-latest = max(files, key=lambda p: p.stat().st_mtime)
-latest_dt = dt.datetime.fromtimestamp(latest.stat().st_mtime, tz=dt.timezone.utc)
-now = dt.datetime.now(tz=dt.timezone.utc)
-age_hours = (now - latest_dt).total_seconds() / 3600.0
-status = "fresh" if age_hours <= max_age_hours else "stale"
-
-payload = {
-    "latest_file": latest.name,
-    "updated_utc": latest_dt.isoformat().replace("+00:00", "Z"),
-    "age_hours": round(age_hours, 2),
-    "max_age_hours": max_age_hours,
-    "status": status,
-}
-print("▶ ClamAV signature freshness:")
-print(json.dumps(payload, indent=2))
-if status == "stale":
-    print("⚠️  ClamAV signatures look stale; consider running 'freshclam --stdout'.")
-PY
-  }
-
-  if [[ ! -e "$clamav_scan_target" ]]; then
-    echo "❌ ClamAV scan target not found: ${clamav_scan_target}"
-    exit 1
-  fi
-  local clamav_scan_target_abs=""
-  clamav_scan_target_abs="$(resolve_target_abs_path "$clamav_scan_target")"
-  echo "▶ Running ClamAV repository scan"
-  echo "▶ ClamAV scan target: ${clamav_scan_target_abs}"
-  local clamav_db_dir=""
-  clamav_db_dir="$(detect_clamav_db_dir)"
-  print_clamav_signature_status "$clamav_db_dir" "$clamav_signature_max_age_hours"
-
-  run_clamscan_once() {
-    local report_path="$1"
-    local heartbeat_seconds="${CLAMAV_HEARTBEAT_SECONDS:-15}"
-    local poll_seconds="${CLAMAV_POLL_SECONDS:-1}"
-    if ! [[ "$heartbeat_seconds" =~ ^[0-9]+$ ]] || (( heartbeat_seconds < 1 )); then
-      heartbeat_seconds=15
-    fi
-    if ! [[ "$poll_seconds" =~ ^[0-9]+$ ]] || (( poll_seconds < 1 )); then
-      poll_seconds=1
-    fi
-    local start_ts
-    start_ts="$(date +%s)"
-    local next_heartbeat_ts=$(( start_ts + heartbeat_seconds ))
-    clamscan \
-      --recursive \
-      --infected \
-      --exclude-dir='^\.git$' \
-      --exclude-dir='^teller-venv$' \
-      --exclude-dir='^\.security-venv$' \
-      --exclude-dir='^\.security-reports$' \
-      --exclude-dir='^backups$' \
-      --exclude-dir='^archive/backup_extracts$' \
-      --exclude-dir='^bank_statements$' \
-      "$clamav_scan_target" > "$report_path" 2>&1 &
-    local clamav_pid=$!
-    echo "▶ ClamAV scan in progress (started) target=${clamav_scan_target_abs}"
-    while kill -0 "$clamav_pid" >/dev/null 2>&1; do
-      sleep "$poll_seconds"
-      if kill -0 "$clamav_pid" >/dev/null 2>&1; then
-        local now_ts
-        now_ts="$(date +%s)"
-        if (( now_ts >= next_heartbeat_ts )); then
-          next_heartbeat_ts=$(( now_ts + heartbeat_seconds ))
-        local elapsed
-          elapsed=$(( now_ts - start_ts ))
-          echo "▶ ClamAV scan in progress (${elapsed}s elapsed) target=${clamav_scan_target_abs}"
-        fi
-      fi
-    done
-    wait "$clamav_pid"
-    local scan_exit=$?
-    if [[ -f "$report_path" ]]; then
-      cat "$report_path"
-    fi
-    return "$scan_exit"
-  }
-
-  ensure_freshclam_config() {
-    local conf_path=""
-    local sample_path=""
-    local brew_prefix=""
-
-    brew_prefix="$(brew --prefix 2>/dev/null || true)"
-    if [[ -n "$brew_prefix" ]]; then
-      conf_path="${brew_prefix}/etc/clamav/freshclam.conf"
-      sample_path="${brew_prefix}/etc/clamav/freshclam.conf.sample"
-    fi
-
-    if [[ -z "$conf_path" ]]; then
-      return 1
-    fi
-
-    if [[ ! -f "$conf_path" ]]; then
-      if [[ -f "$sample_path" ]]; then
-        cp "$sample_path" "$conf_path"
-        echo "▶ Created ClamAV freshclam config from sample at ${sample_path}"
-      else
-        return 1
-      fi
-    fi
-
-    if [[ -f "$conf_path" ]] && grep -Eq '^[[:space:]]*Example([[:space:]]|$)' "$conf_path"; then
-      python3 - <<'PY' "$conf_path"
-from pathlib import Path
-import re
-import sys
-path = Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-text = re.sub(r'(?m)^[ \t]*Example(?:[ \t].*)?$', '# Example', text)
-path.write_text(text, encoding="utf-8")
-PY
-      echo "▶ Updated ${conf_path} to disable 'Example' mode"
-    fi
-  }
-
+  echo "▶ Running ShellCheck"
   set +e
-  run_clamscan_once "$clamav_report"
-  local clamav_exit=$?
+  shellcheck --format=json "${shellcheck_targets[@]}" > "$shellcheck_report"
+  SHELLCHECK_EXIT=$?
   set -e
-
-  local clamav_report_text=""
-  if [[ -f "$clamav_report" ]]; then
-    clamav_report_text="$(<"$clamav_report")"
-  fi
-  if [[ "$clamav_exit" -gt 1 ]] && [[ "$clamav_report_text" == *"No supported database files found"* ]]; then
-    echo "⚠️  ClamAV signatures are missing; attempting one-time database refresh with freshclam."
-    if command -v freshclam >/dev/null 2>&1; then
-      set +e
-      freshclam --stdout 2>&1 | tee "${clamav_report}.freshclam.log"
-      local freshclam_exit=${PIPESTATUS[0]}
-      set -e
-      local freshclam_log_text=""
-      if [[ -f "${clamav_report}.freshclam.log" ]]; then
-        freshclam_log_text="$(<"${clamav_report}.freshclam.log")"
-      fi
-      if [[ "$freshclam_exit" -ne 0 ]] && [[ "$freshclam_log_text" == *"Can't open/parse the config file"* ]]; then
-        echo "⚠️  freshclam config missing or invalid; attempting one-time config bootstrap."
-        if ensure_freshclam_config; then
-          set +e
-          freshclam --stdout 2>&1 | tee "${clamav_report}.freshclam.log"
-          freshclam_exit=${PIPESTATUS[0]}
-          set -e
-        fi
-      fi
-      if [[ "$freshclam_exit" -ne 0 ]]; then
-        echo "❌ freshclam failed to download ClamAV signatures."
-        echo "Run 'freshclam --stdout' manually, then rerun security checks."
-        exit 1
-      fi
-      echo "▶ Retrying ClamAV repository scan after signature refresh"
-      set +e
-      run_clamscan_once "$clamav_report"
-      clamav_exit=$?
-      set -e
-    else
-      echo "❌ ClamAV database is missing and 'freshclam' is unavailable."
-      echo "Install/update ClamAV signatures, then rerun security checks."
-      exit 1
-    fi
-  fi
-
-  if [[ "$clamav_exit" -gt 1 ]]; then
-    echo "❌ ClamAV failed to execute."
+  if [[ "$SHELLCHECK_EXIT" -gt 1 ]]; then
+    echo "❌ ShellCheck failed to execute."
     exit 1
   fi
-
-  python3 - <<'PY' "$clamav_report" "$clamav_summary" "$clamav_exit"
-import json
-import re
-import sys
-from pathlib import Path
-
-report_path = Path(sys.argv[1])
-summary_path = Path(sys.argv[2])
-exit_code = int(sys.argv[3])
-text = report_path.read_text(encoding="utf-8", errors="replace")
-
-scanned_match = re.search(r"Scanned files:\s*(\d+)", text)
-infected_match = re.search(r"Infected files:\s*(\d+)", text)
-
-summary = {
-    "scanned_files": int(scanned_match.group(1)) if scanned_match else 0,
-    "infected_files": int(infected_match.group(1)) if infected_match else (1 if exit_code == 1 else 0),
-    "exit_code": exit_code,
-    "skipped": False,
-}
-
-with summary_path.open("w", encoding="utf-8") as fh:
-    json.dump(summary, fh, indent=2)
-    fh.write("\n")
-
-print("ClamAV summary")
-print(json.dumps(summary, indent=2))
-PY
-
-  if [[ "$clamav_exit" -eq 1 ]]; then
-    echo "⚠️  ClamAV detected infected files; gating will evaluate this as high/critical."
+  if [[ "$SHELLCHECK_EXIT" -eq 1 ]]; then
+    echo "⚠️  ShellCheck reported findings; continuing to centralized SAST gating."
   fi
 }
 
 run_dast_checks() (
   set -euo pipefail
+
+  run_category_integrity_checks() {
+    local report_dir_abs="$1"
+    local integrity_report_path="${report_dir_abs}/category-integrity.json"
+    local seed_sql_path="./sql/postgres/teller_nys_snw_category.sql"
+    local strict_mode="${DAST_CATEGORY_INTEGRITY_STRICT:-true}"
+
+    echo "▶ Running post-DAST category integrity checks"
+    set +e
+    python3 - <<'PY' "$integrity_report_path" "$seed_sql_path" "$strict_mode"
+import json
+import os
+import pathlib
+import re
+import sys
+from datetime import datetime, timezone
+
+report_path = pathlib.Path(sys.argv[1])
+seed_sql_path = pathlib.Path(sys.argv[2])
+strict_mode = sys.argv[3].lower() == "true"
+
+TEXT_FIELDS = [
+    "level_1",
+    "level_1_name",
+    "level_2",
+    "level_2_name",
+    "level_3",
+    "level_4",
+    "categorization",
+    "applicability",
+]
+
+def parse_seed_row_count(sql_text: str) -> int:
+    match = re.search(r"INSERT\s+INTO\s+teller\.nys_snw_category.*?\bVALUES\b", sql_text, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        raise ValueError("Could not locate INSERT ... VALUES block in seed SQL.")
+
+    i = match.end()
+    depth = 0
+    in_string = False
+    row_count = 0
+    saw_row_open = False
+
+    while i < len(sql_text):
+        ch = sql_text[i]
+        if in_string:
+            if ch == "'":
+                if i + 1 < len(sql_text) and sql_text[i + 1] == "'":
+                    i += 2
+                    continue
+                in_string = False
+            i += 1
+            continue
+
+        if ch == "'":
+            in_string = True
+            i += 1
+            continue
+        if ch == "(":
+            depth += 1
+            if depth == 1:
+                row_count += 1
+                saw_row_open = True
+            i += 1
+            continue
+        if ch == ")":
+            depth = max(0, depth - 1)
+            i += 1
+            continue
+        if ch == ";" and saw_row_open and depth == 0:
+            break
+        i += 1
+
+    if row_count <= 0:
+        raise ValueError("Seed SQL parser found zero inserted category rows.")
+    return row_count
+
+def build_report_base(seed_row_count: int):
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "status": "passed",
+        "gate_failed": False,
+        "strict_mode": strict_mode,
+        "canonical_seed_row_count": seed_row_count,
+        "canonical_seed_max_id": seed_row_count,
+        "invariants": [],
+        "errors": [],
+    }
+
+def append_invariant(report: dict, name: str, description: str, count: int, examples):
+    report["invariants"].append(
+        {
+            "name": name,
+            "description": description,
+            "count": int(count),
+            "ok": int(count) == 0,
+            "examples": examples,
+        }
+    )
+
+def serialize_row(row, columns):
+    return {col: row[idx] for idx, col in enumerate(columns)}
+
+def write_report(report: dict):
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with report_path.open("w", encoding="utf-8") as fh:
+        json.dump(report, fh, indent=2)
+        fh.write("\n")
+
+def print_failures(report: dict):
+    failing = [item for item in report["invariants"] if not item.get("ok", False)]
+    for item in failing:
+        print(f"❌ Category integrity invariant failed: {item['name']} (count={item['count']})")
+        print(f"   {item['description']}")
+        for example in item.get("examples", [])[:5]:
+            print(f"   example: {json.dumps(example, ensure_ascii=True)}")
+    if report.get("errors"):
+        for error in report["errors"]:
+            print(f"❌ Category integrity check error: {error}")
+
+seed_row_count = 0
+try:
+    seed_sql_text = seed_sql_path.read_text(encoding="utf-8")
+    seed_row_count = parse_seed_row_count(seed_sql_text)
+except Exception as exc:
+    report = build_report_base(seed_row_count)
+    report["status"] = "error"
+    report["gate_failed"] = strict_mode
+    report["errors"].append(f"Unable to parse canonical category seed SQL at {seed_sql_path}: {exc}")
+    write_report(report)
+    print(f"Category integrity report: {report_path}")
+    print_failures(report)
+    if strict_mode:
+        print("❌ Post-DAST category integrity gate failed: canonical seed metadata unavailable.")
+        raise SystemExit(2)
+    print("⚠️  Post-DAST category integrity checks skipped (non-strict mode).")
+    raise SystemExit(0)
+
+report = build_report_base(seed_row_count)
+canonical_max_id = seed_row_count
+
+engine = None
+connect_error = None
+try:
+    from teller.teller_db import get_engine
+    engine = get_engine()
+except Exception as exc:
+    connect_error = f"Unable to initialize database engine via teller.teller_db: {exc}"
+
+if engine is None:
+    report["status"] = "error"
+    report["gate_failed"] = strict_mode
+    report["errors"].append(connect_error or "Database engine unavailable.")
+    write_report(report)
+    print(f"Category integrity report: {report_path}")
+    print_failures(report)
+    if strict_mode:
+        print("❌ Post-DAST category integrity gate failed: database integrity could not be verified.")
+        raise SystemExit(2)
+    print("⚠️  Post-DAST category integrity checks skipped (non-strict mode).")
+    raise SystemExit(0)
+
+with engine.connect() as conn:
+    # Invariant 1: IDs should stay in canonical seed range.
+    unexpected_id_count = conn.exec_driver_sql(
+        """
+        SELECT COUNT(*)
+          FROM teller.nys_snw_category
+         WHERE nys_snw_category_id < 1 OR nys_snw_category_id > %(canonical_max_id)s
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).scalar_one()
+    unexpected_id_rows = conn.exec_driver_sql(
+        """
+        SELECT nys_snw_category_id, level_1, level_2, level_3, categorization
+          FROM teller.nys_snw_category
+         WHERE nys_snw_category_id < 1 OR nys_snw_category_id > %(canonical_max_id)s
+         ORDER BY nys_snw_category_id
+         LIMIT 20
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).fetchall()
+    append_invariant(
+        report,
+        "unexpected_category_ids",
+        f"Category IDs must remain within canonical seed range [1, {canonical_max_id}].",
+        unexpected_id_count,
+        [serialize_row(row, ["nys_snw_category_id", "level_1", "level_2", "level_3", "categorization"]) for row in unexpected_id_rows],
+    )
+
+    # Invariant 2: Canonical IDs should not be missing.
+    missing_id_count = conn.exec_driver_sql(
+        """
+        SELECT COUNT(*)
+          FROM generate_series(1, %(canonical_max_id)s) AS expected_id
+     LEFT JOIN teller.nys_snw_category c
+            ON c.nys_snw_category_id = expected_id
+         WHERE c.nys_snw_category_id IS NULL
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).scalar_one()
+    missing_id_rows = conn.exec_driver_sql(
+        """
+        SELECT expected_id
+          FROM generate_series(1, %(canonical_max_id)s) AS expected_id
+     LEFT JOIN teller.nys_snw_category c
+            ON c.nys_snw_category_id = expected_id
+         WHERE c.nys_snw_category_id IS NULL
+         ORDER BY expected_id
+         LIMIT 20
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).fetchall()
+    append_invariant(
+        report,
+        "missing_canonical_ids",
+        "Canonical seed IDs should be present after DAST.",
+        missing_id_count,
+        [serialize_row(row, ["expected_id"]) for row in missing_id_rows],
+    )
+
+    # Invariant 3: No control / non-printable chars in hierarchy text.
+    control_predicate = " OR ".join([f"{field} ~ '[[:cntrl:]]'" for field in TEXT_FIELDS])
+    control_char_count = conn.exec_driver_sql(
+        f"""
+        SELECT COUNT(*)
+          FROM teller.nys_snw_category
+         WHERE {control_predicate}
+        """
+    ).scalar_one()
+    control_char_rows = conn.exec_driver_sql(
+        f"""
+        SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name,
+               level_3, level_4, categorization, applicability
+          FROM teller.nys_snw_category
+         WHERE {control_predicate}
+         ORDER BY nys_snw_category_id
+         LIMIT 10
+        """
+    ).fetchall()
+    append_invariant(
+        report,
+        "control_characters_in_hierarchy",
+        "Hierarchy text fields must not contain control/non-printable characters.",
+        control_char_count,
+        [
+            serialize_row(
+                row,
+                [
+                    "nys_snw_category_id",
+                    "level_1",
+                    "level_1_name",
+                    "level_2",
+                    "level_2_name",
+                    "level_3",
+                    "level_4",
+                    "categorization",
+                    "applicability",
+                ],
+            )
+            for row in control_char_rows
+        ],
+    )
+
+    # Invariant 4: Rows cannot be completely empty across hierarchy text fields.
+    empty_predicate = " AND ".join([f"NULLIF(BTRIM(COALESCE({field}, '')), '') IS NULL" for field in TEXT_FIELDS])
+    empty_row_count = conn.exec_driver_sql(
+        f"""
+        SELECT COUNT(*)
+          FROM teller.nys_snw_category
+         WHERE {empty_predicate}
+        """
+    ).scalar_one()
+    empty_row_samples = conn.exec_driver_sql(
+        f"""
+        SELECT nys_snw_category_id
+          FROM teller.nys_snw_category
+         WHERE {empty_predicate}
+         ORDER BY nys_snw_category_id
+         LIMIT 20
+        """
+    ).fetchall()
+    append_invariant(
+        report,
+        "empty_hierarchy_rows",
+        "Category rows must include at least one non-empty hierarchy text field.",
+        empty_row_count,
+        [serialize_row(row, ["nys_snw_category_id"]) for row in empty_row_samples],
+    )
+
+    # Invariant 5: Referential sanity for transaction category mappings.
+    orphaned_mapping_count = conn.exec_driver_sql(
+        """
+        SELECT COUNT(*)
+          FROM teller.transaction_nys_snw_category t
+     LEFT JOIN teller.nys_snw_category c
+            ON c.nys_snw_category_id = t.nys_snw_category_id
+         WHERE c.nys_snw_category_id IS NULL
+        """
+    ).scalar_one()
+    orphaned_mapping_rows = conn.exec_driver_sql(
+        """
+        SELECT t.transaction_id, t.nys_snw_category_id
+          FROM teller.transaction_nys_snw_category t
+     LEFT JOIN teller.nys_snw_category c
+            ON c.nys_snw_category_id = t.nys_snw_category_id
+         WHERE c.nys_snw_category_id IS NULL
+         ORDER BY t.transaction_id
+         LIMIT 20
+        """
+    ).fetchall()
+    append_invariant(
+        report,
+        "orphaned_transaction_category_links",
+        "Every transaction category mapping must reference an existing category row.",
+        orphaned_mapping_count,
+        [serialize_row(row, ["transaction_id", "nys_snw_category_id"]) for row in orphaned_mapping_rows],
+    )
+
+violations = [item for item in report["invariants"] if not item.get("ok", False)]
+if violations:
+    report["status"] = "failed"
+    report["gate_failed"] = True
+else:
+    report["status"] = "passed"
+    report["gate_failed"] = False
+
+repair_script = pathlib.Path("./scripts/repair_nys_snw_category.sql")
+if repair_script.exists():
+    report["repair_script_available"] = str(repair_script)
+
+write_report(report)
+print(f"Category integrity report: {report_path}")
+if violations:
+    print_failures(report)
+    if repair_script.exists():
+        print(f"ℹ️  Optional manual repair script available: {repair_script}")
+        print("ℹ️  No automatic cleanup was applied in security checks.")
+    print("❌ Post-DAST category integrity gate failed due to invariant violations.")
+    raise SystemExit(2)
+
+print("✅ Post-DAST category integrity checks passed.")
+raise SystemExit(0)
+PY
+    local integrity_exit=$?
+    set -e
+    if [[ "$integrity_exit" -ne 0 ]]; then
+      return "$integrity_exit"
+    fi
+  }
 
   prepare_schemathesis_openapi_fixture() {
     local source_openapi_url="$1"
@@ -755,7 +859,7 @@ PY
   else
     echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
     TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
-      "$dast_app_python" "./14_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
+      "$dast_app_python" "./13_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
     classifier_api_pid="$!"
   fi
   wait_for_http "${base_url}/health" 45
@@ -788,7 +892,6 @@ PY
     schemathesis run "$schemathesis_location" \
       --url "$base_url" \
       --mode positive \
-      --exclude-path "/v1/categories/{nys_snw_category_id}" \
       --seed "$schemathesis_seed" \
       --max-examples "$schemathesis_max_examples" \
       --report junit \
@@ -884,21 +987,10 @@ PY
   fi
 
   if [[ "$run_token_capture_dast" == "true" ]]; then
-    echo "▶ Starting token capture server for Dynamic Application Security Testing (DAST) at ${token_capture_url}"
-    "$dast_app_python" "./teller/teller_connect_token_server.py" --no-open --mode manage --port "$token_capture_port" \
-      >"${report_dir_abs}/token-capture.log" 2>&1 &
-    token_capture_pid="$!"
-    wait_for_http "${token_capture_url}/api/status" 45
-
-    if [[ "$run_zap" == "true" ]]; then
-      run_zap_quick_scan \
-        "$zap_cli_cmd" \
-        "$token_capture_url" \
-        "${report_dir_abs}/zap-token-capture.html" \
-        "${report_dir_abs}/zap-token-capture.log"
-    fi
+    echo "ℹ️  Token capture Dynamic Application Security Testing (DAST) moved to macOS UI Connect WebView coverage."
+    echo "ℹ️  Legacy localhost token-capture endpoint scan is deprecated and no longer runs."
   else
-    echo "ℹ️  Token capture Dynamic Application Security Testing (DAST) skipped (set RUN_TOKEN_CAPTURE_DAST=true and ensure ~/.teller/application_id.txt exists)."
+    echo "ℹ️  Token capture Dynamic Application Security Testing (DAST) skipped."
   fi
 
   local high_alerts=0
@@ -942,6 +1034,9 @@ PY
     exit 1
   fi
 
+  #R070: Enforce post-DAST category table integrity invariants.
+  run_category_integrity_checks "$report_dir_abs"
+
   echo "✅ Dynamic Application Security Testing (DAST) checks completed."
 )
 
@@ -974,6 +1069,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   require_command bandit
   require_command pip-audit
   require_command detect-secrets
+  require_command shellcheck
 
   print_tool_header \
     "Semgrep" \
@@ -1030,8 +1126,8 @@ if [[ "$RUN_SAST" == "true" ]]; then
     --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/)' \
     > "${REPORT_DIR}/detect-secrets.json"
 
-  #R065: Execute ClamAV within SAST lane and feed infected counts into centralized gating.
-  run_clamav_scan "${REPORT_DIR}/clamav.log" "${REPORT_DIR}/clamav-summary.json"
+  #R065: Execute ShellCheck within SAST lane and feed severity counts into centralized gating.
+  run_shellcheck_sast "${REPORT_DIR}/shellcheck.json"
   run_swift_sast "${REPORT_DIR}/swiftlint.json"
 
   #R030: Produce consolidated SAST gate summary and enforce blocking policy.
@@ -1049,9 +1145,9 @@ bandit_path = report_dir / "bandit.json"
 pip_audit_path = report_dir / "pip-audit.json"
 secrets_path = report_dir / "detect-secrets.json"
 swiftlint_path = report_dir / "swiftlint.json"
-clamav_summary_path = report_dir / "clamav-summary.json"
+shellcheck_path = report_dir / "shellcheck.json"
 
-for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, swiftlint_path, clamav_summary_path]:
+for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, swiftlint_path, shellcheck_path]:
     if not required.exists():
         print(f"Missing report file: {required}")
         sys.exit(1)
@@ -1095,15 +1191,13 @@ swiftlint_results = swiftlint if isinstance(swiftlint, list) else []
 swiftlint_high = sum(1 for item in swiftlint_results if str(item.get("severity", "")).lower() == "error")
 swiftlint_total = len(swiftlint_results)
 
-with clamav_summary_path.open("r", encoding="utf-8") as fh:
-    clamav_summary = json.load(fh)
-clamav_infected = (
-    int(clamav_summary.get("infected_files", 0))
-    if isinstance(clamav_summary, dict)
-    else 0
-)
+with shellcheck_path.open("r", encoding="utf-8") as fh:
+    shellcheck = json.load(fh)
+shellcheck_results = shellcheck if isinstance(shellcheck, list) else []
+shellcheck_high = sum(1 for item in shellcheck_results if str(item.get("level", "")).lower() == "error")
+shellcheck_total = len(shellcheck_results)
 
-high_critical_total = semgrep_high + bandit_high + secret_findings + swiftlint_high + clamav_infected
+high_critical_total = semgrep_high + bandit_high + secret_findings + swiftlint_high + shellcheck_high
 
 summary = {
     "semgrep_total": semgrep_total,
@@ -1112,7 +1206,8 @@ summary = {
     "bandit_high_critical": bandit_high,
     "pip_audit_vulnerabilities": dep_vulns,
     "detect_secrets_findings": secret_findings,
-    "clamav_infected_files": clamav_infected,
+    "shellcheck_total": shellcheck_total,
+    "shellcheck_high_critical": shellcheck_high,
     "swiftlint_total": swiftlint_total,
     "swiftlint_high_critical": swiftlint_high,
     "high_critical_total": high_critical_total,

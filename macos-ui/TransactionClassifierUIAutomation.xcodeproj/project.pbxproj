@@ -16,6 +16,10 @@
 		A10000010000000000000007 /* UITestingSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000007 /* UITestingSupport.swift */; };
 		A10000010000000000000008 /* TransactionClassifierUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000008 /* TransactionClassifierUITests.swift */; };
 		A10000010000000000000009 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A10001010000000000000009 /* XCTest.framework */; };
+		A10000010000000000000010 /* ConnectAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000012 /* ConnectAPIClient.swift */; };
+		A10000010000000000000011 /* ConnectModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000013 /* ConnectModels.swift */; };
+		A10000010000000000000012 /* ConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000014 /* ConnectView.swift */; };
+		A10000010000000000000013 /* ConnectViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000015 /* ConnectViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +44,10 @@
 		A10001010000000000000009 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
 		A10001010000000000000010 /* TransactionClassifierUITestHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TransactionClassifierUITestHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10001010000000000000011 /* TransactionClassifierUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TransactionClassifierUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10001010000000000000012 /* ConnectAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectAPIClient.swift; sourceTree = "<group>"; };
+		A10001010000000000000013 /* ConnectModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectModels.swift; sourceTree = "<group>"; };
+		A10001010000000000000014 /* ConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectView.swift; sourceTree = "<group>"; };
+		A10001010000000000000015 /* ConnectViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,6 +91,10 @@
 				A10001010000000000000005 /* Models.swift */,
 				A10001010000000000000006 /* TransactionClassifierApp.swift */,
 				A10001010000000000000007 /* UITestingSupport.swift */,
+				A10001010000000000000012 /* ConnectAPIClient.swift */,
+				A10001010000000000000013 /* ConnectModels.swift */,
+				A10001010000000000000014 /* ConnectView.swift */,
+				A10001010000000000000015 /* ConnectViewModel.swift */,
 			);
 		};
 		A10003010000000000000003 /* UITests */ = {
@@ -185,6 +197,10 @@
 				A10000010000000000000005 /* Models.swift in Sources */,
 				A10000010000000000000006 /* TransactionClassifierApp.swift in Sources */,
 				A10000010000000000000007 /* UITestingSupport.swift in Sources */,
+				A10000010000000000000010 /* ConnectAPIClient.swift in Sources */,
+				A10000010000000000000011 /* ConnectModels.swift in Sources */,
+				A10000010000000000000012 /* ConnectView.swift in Sources */,
+				A10000010000000000000013 /* ConnectViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -268,6 +284,8 @@
 		A10005010000000000000005 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ALWAYS_USE_SEPARATE_HEADERMAPS = YES;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGNING_ALLOWED = YES;
@@ -277,6 +295,8 @@
 		A10005010000000000000006 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ALWAYS_USE_SEPARATE_HEADERMAPS = YES;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGNING_ALLOWED = YES;

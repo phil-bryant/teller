@@ -44,8 +44,15 @@ Tests:
 - With SQL tests enabled and `TELLER_DB_PASSWORD` unset, verify runner falls back to `1psa` lookup for teller DB password.
 - Disable SQL tests and verify runner skips SQL invocation.
 
+R030  Statement: Allow opt-in PLCrashReporter smoke verification from the unit test orchestrator.
+Design: When `RUN_MACOS_CRASH_REPORTER_SMOKE_TEST=true`, execute `./17_verify_macos_crash_reporter.sh` after core test lanes.
+Tests:
+- Set `RUN_MACOS_CRASH_REPORTER_SMOKE_TEST=true` and verify the crash-verification script is invoked.
+- Leave `RUN_MACOS_CRASH_REPORTER_SMOKE_TEST=false` and verify the crash-verification script is not invoked.
+
 ## Changelog
 
+- 2026-05-07: Added R030 for optional PLCrashReporter smoke verification lane.
 - 2026-04-26: Added R025 to run SQL unit tests from `tests/sql`.
 - 2026-04-23: Added R020 to run Swift package tests from `./macos-ui`.
 - 2026-04-23: Initial requirements for `05_run_unit_tests.sh`.

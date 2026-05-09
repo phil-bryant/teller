@@ -11,6 +11,7 @@ RUN_PYTHON_TESTS="${RUN_PYTHON_TESTS:-true}"
 RUN_SQL_TESTS="${RUN_SQL_TESTS:-true}"
 RUN_SWIFT_TESTS="${RUN_SWIFT_TESTS:-true}"
 RUN_MACOS_UI_REGRESSION_TESTS="${RUN_MACOS_UI_REGRESSION_TESTS:-false}"
+RUN_MACOS_CRASH_REPORTER_SMOKE_TEST="${RUN_MACOS_CRASH_REPORTER_SMOKE_TEST:-false}"
 BATS_FILTER="${BATS_FILTER:-}"
 SQL_TESTS_DIR="${SQL_TESTS_DIR:-./tests/sql}"
 SQL_TEST_DATABASE="${SQL_TEST_DATABASE:-${TELLER_DB_NAME:-${DB_NAME:-prod}}}"
@@ -144,4 +145,10 @@ fi
 if [[ "$RUN_MACOS_UI_REGRESSION_TESTS" == "true" ]]; then
   echo "▶ Running macOS UI regression test lane..."
   ./06_run_macos_ui_regression_tests.sh
+fi
+
+#R030: Allow opt-in PLCrashReporter smoke verification in unit-test orchestration.
+if [[ "$RUN_MACOS_CRASH_REPORTER_SMOKE_TEST" == "true" ]]; then
+  echo "▶ Running macOS crash reporter smoke test lane..."
+  ./17_verify_macos_crash_reporter.sh
 fi
