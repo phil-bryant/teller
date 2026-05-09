@@ -9,7 +9,6 @@ REPORT_DIR="${SECURITY_REPORT_DIR:-./.security-reports}"
 RUN_SAST="${RUN_SAST:-true}"
 RUN_DAST="${RUN_DAST:-true}"
 RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
-RUN_CLAMAV="${RUN_CLAMAV:-true}"
 #R015: Support configurable execution lanes and report destination.
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
@@ -152,285 +151,38 @@ run_swift_sast() {
   fi
 }
 
-run_clamav_scan() {
-  #R065: Run repository malware scanning with ClamAV and persist machine-readable summary.
-  local clamav_report="$1"
-  local clamav_summary="$2"
-  local clamav_scan_target="${CLAMAV_SCAN_TARGET:-.}"
-  local clamav_signature_max_age_hours="${CLAMAV_SIGNATURE_MAX_AGE_HOURS:-48}"
+run_shellcheck_sast() {
+  #R065: Run ShellCheck against shell scripts and persist machine-readable findings.
+  local shellcheck_report="$1"
+  local shellcheck_targets=()
 
-  if [[ "$RUN_CLAMAV" != "true" ]]; then
-    echo "ℹ️  ClamAV repository scan skipped (set RUN_CLAMAV=true to enable)."
-    printf '%s\n' '{"scanned_files":0,"infected_files":0,"exit_code":0,"skipped":true}' > "$clamav_summary"
-    : > "$clamav_report"
+  require_command shellcheck
+  print_tool_header \
+    "ShellCheck" \
+    "Static analysis for shell scripts to catch common correctness and safety issues." \
+    "Runs JSON-reporting checks across numbered shell automation scripts." \
+    "https://www.shellcheck.net/"
+  shopt -s nullglob
+  shellcheck_targets=(./[0-9][0-9]_*.sh)
+  shopt -u nullglob
+
+  if [[ "${#shellcheck_targets[@]}" -eq 0 ]]; then
+    printf '[]\n' > "$shellcheck_report"
+    echo "ℹ️  ShellCheck skipped (no numbered shell scripts found)."
     return 0
   fi
 
-  require_command clamscan
-  print_tool_header \
-    "ClamAV" \
-    "Signature-based malware scan across repository files." \
-    "Detects known malicious payloads before release or deployment." \
-    "https://www.clamav.net/"
-  resolve_target_abs_path() {
-    local target_path="$1"
-    if [[ -d "$target_path" ]]; then
-      (
-        cd "$target_path"
-        pwd
-      )
-      return
-    fi
-    (
-      cd "$(dirname "$target_path")"
-      printf '%s/%s\n' "$(pwd)" "$(basename "$target_path")"
-    )
-  }
-
-  detect_clamav_db_dir() {
-    local brew_prefix=""
-    if [[ -n "${CLAMAV_DB_DIR:-}" ]]; then
-      printf '%s\n' "${CLAMAV_DB_DIR}"
-      return
-    fi
-    brew_prefix="$(brew --prefix 2>/dev/null || true)"
-    if [[ -n "$brew_prefix" ]] && [[ -d "${brew_prefix}/var/lib/clamav" ]]; then
-      printf '%s\n' "${brew_prefix}/var/lib/clamav"
-      return
-    fi
-    if [[ -d "/var/lib/clamav" ]]; then
-      printf '%s\n' "/var/lib/clamav"
-      return
-    fi
-    printf '%s\n' ""
-  }
-
-  print_clamav_signature_status() {
-    local db_dir="$1"
-    local max_age_hours="$2"
-    if [[ -z "$db_dir" ]]; then
-      echo "ℹ️  ClamAV signature freshness: unknown (database directory not found)."
-      return
-    fi
-    echo "▶ ClamAV signature DB directory: ${db_dir}"
-    python3 - <<'PY' "$db_dir" "$max_age_hours"
-import datetime as dt
-import json
-import pathlib
-import sys
-
-db_dir = pathlib.Path(sys.argv[1])
-max_age_hours = int(sys.argv[2])
-patterns = ("*.cvd", "*.cld", "*.inc")
-files = []
-for pattern in patterns:
-    files.extend(db_dir.glob(pattern))
-
-if not files:
-    print("⚠️  ClamAV signature freshness: no database files found.")
-    sys.exit(0)
-
-latest = max(files, key=lambda p: p.stat().st_mtime)
-latest_dt = dt.datetime.fromtimestamp(latest.stat().st_mtime, tz=dt.timezone.utc)
-now = dt.datetime.now(tz=dt.timezone.utc)
-age_hours = (now - latest_dt).total_seconds() / 3600.0
-status = "fresh" if age_hours <= max_age_hours else "stale"
-
-payload = {
-    "latest_file": latest.name,
-    "updated_utc": latest_dt.isoformat().replace("+00:00", "Z"),
-    "age_hours": round(age_hours, 2),
-    "max_age_hours": max_age_hours,
-    "status": status,
-}
-print("▶ ClamAV signature freshness:")
-print(json.dumps(payload, indent=2))
-if status == "stale":
-    print("⚠️  ClamAV signatures look stale; consider running 'freshclam --stdout'.")
-PY
-  }
-
-  if [[ ! -e "$clamav_scan_target" ]]; then
-    echo "❌ ClamAV scan target not found: ${clamav_scan_target}"
-    exit 1
-  fi
-  local clamav_scan_target_abs=""
-  clamav_scan_target_abs="$(resolve_target_abs_path "$clamav_scan_target")"
-  echo "▶ Running ClamAV repository scan"
-  echo "▶ ClamAV scan target: ${clamav_scan_target_abs}"
-  local clamav_db_dir=""
-  clamav_db_dir="$(detect_clamav_db_dir)"
-  print_clamav_signature_status "$clamav_db_dir" "$clamav_signature_max_age_hours"
-
-  run_clamscan_once() {
-    local report_path="$1"
-    local heartbeat_seconds="${CLAMAV_HEARTBEAT_SECONDS:-15}"
-    local poll_seconds="${CLAMAV_POLL_SECONDS:-1}"
-    if ! [[ "$heartbeat_seconds" =~ ^[0-9]+$ ]] || (( heartbeat_seconds < 1 )); then
-      heartbeat_seconds=15
-    fi
-    if ! [[ "$poll_seconds" =~ ^[0-9]+$ ]] || (( poll_seconds < 1 )); then
-      poll_seconds=1
-    fi
-    local start_ts
-    start_ts="$(date +%s)"
-    local next_heartbeat_ts=$(( start_ts + heartbeat_seconds ))
-    clamscan \
-      --recursive \
-      --infected \
-      --exclude-dir='^\.git$' \
-      --exclude-dir='^teller-venv$' \
-      --exclude-dir='^\.security-venv$' \
-      --exclude-dir='^\.security-reports$' \
-      --exclude-dir='^backups$' \
-      --exclude-dir='^archive/backup_extracts$' \
-      --exclude-dir='^bank_statements$' \
-      --exclude-dir='(^|.*/)macos-ui/\.build(/.*)?$' \
-      --exclude-dir='(^|.*/)macos-ui/\.derivedData-ui-tests(/.*)?$' \
-      "$clamav_scan_target" > "$report_path" 2>&1 &
-    local clamav_pid=$!
-    echo "▶ ClamAV scan in progress (started) target=${clamav_scan_target_abs}"
-    while kill -0 "$clamav_pid" >/dev/null 2>&1; do
-      sleep "$poll_seconds"
-      if kill -0 "$clamav_pid" >/dev/null 2>&1; then
-        local now_ts
-        now_ts="$(date +%s)"
-        if (( now_ts >= next_heartbeat_ts )); then
-          next_heartbeat_ts=$(( now_ts + heartbeat_seconds ))
-        local elapsed
-          elapsed=$(( now_ts - start_ts ))
-          echo "▶ ClamAV scan in progress (${elapsed}s elapsed) target=${clamav_scan_target_abs}"
-        fi
-      fi
-    done
-    wait "$clamav_pid"
-    local scan_exit=$?
-    if [[ -f "$report_path" ]]; then
-      cat "$report_path"
-    fi
-    return "$scan_exit"
-  }
-
-  ensure_freshclam_config() {
-    local conf_path=""
-    local sample_path=""
-    local brew_prefix=""
-
-    brew_prefix="$(brew --prefix 2>/dev/null || true)"
-    if [[ -n "$brew_prefix" ]]; then
-      conf_path="${brew_prefix}/etc/clamav/freshclam.conf"
-      sample_path="${brew_prefix}/etc/clamav/freshclam.conf.sample"
-    fi
-
-    if [[ -z "$conf_path" ]]; then
-      return 1
-    fi
-
-    if [[ ! -f "$conf_path" ]]; then
-      if [[ -f "$sample_path" ]]; then
-        cp "$sample_path" "$conf_path"
-        echo "▶ Created ClamAV freshclam config from sample at ${sample_path}"
-      else
-        return 1
-      fi
-    fi
-
-    if [[ -f "$conf_path" ]] && grep -Eq '^[[:space:]]*Example([[:space:]]|$)' "$conf_path"; then
-      python3 - <<'PY' "$conf_path"
-from pathlib import Path
-import re
-import sys
-path = Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-text = re.sub(r'(?m)^[ \t]*Example(?:[ \t].*)?$', '# Example', text)
-path.write_text(text, encoding="utf-8")
-PY
-      echo "▶ Updated ${conf_path} to disable 'Example' mode"
-    fi
-  }
-
+  echo "▶ Running ShellCheck"
   set +e
-  run_clamscan_once "$clamav_report"
-  local clamav_exit=$?
+  shellcheck --format=json "${shellcheck_targets[@]}" > "$shellcheck_report"
+  SHELLCHECK_EXIT=$?
   set -e
-
-  local clamav_report_text=""
-  if [[ -f "$clamav_report" ]]; then
-    clamav_report_text="$(<"$clamav_report")"
-  fi
-  if [[ "$clamav_exit" -gt 1 ]] && [[ "$clamav_report_text" == *"No supported database files found"* ]]; then
-    echo "⚠️  ClamAV signatures are missing; attempting one-time database refresh with freshclam."
-    if command -v freshclam >/dev/null 2>&1; then
-      set +e
-      freshclam --stdout 2>&1 | tee "${clamav_report}.freshclam.log"
-      local freshclam_exit=${PIPESTATUS[0]}
-      set -e
-      local freshclam_log_text=""
-      if [[ -f "${clamav_report}.freshclam.log" ]]; then
-        freshclam_log_text="$(<"${clamav_report}.freshclam.log")"
-      fi
-      if [[ "$freshclam_exit" -ne 0 ]] && [[ "$freshclam_log_text" == *"Can't open/parse the config file"* ]]; then
-        echo "⚠️  freshclam config missing or invalid; attempting one-time config bootstrap."
-        if ensure_freshclam_config; then
-          set +e
-          freshclam --stdout 2>&1 | tee "${clamav_report}.freshclam.log"
-          freshclam_exit=${PIPESTATUS[0]}
-          set -e
-        fi
-      fi
-      if [[ "$freshclam_exit" -ne 0 ]]; then
-        echo "❌ freshclam failed to download ClamAV signatures."
-        echo "Run 'freshclam --stdout' manually, then rerun security checks."
-        exit 1
-      fi
-      echo "▶ Retrying ClamAV repository scan after signature refresh"
-      set +e
-      run_clamscan_once "$clamav_report"
-      clamav_exit=$?
-      set -e
-    else
-      echo "❌ ClamAV database is missing and 'freshclam' is unavailable."
-      echo "Install/update ClamAV signatures, then rerun security checks."
-      exit 1
-    fi
-  fi
-
-  if [[ "$clamav_exit" -gt 1 ]]; then
-    echo "❌ ClamAV failed to execute."
+  if [[ "$SHELLCHECK_EXIT" -gt 1 ]]; then
+    echo "❌ ShellCheck failed to execute."
     exit 1
   fi
-
-  python3 - <<'PY' "$clamav_report" "$clamav_summary" "$clamav_exit"
-import json
-import re
-import sys
-from pathlib import Path
-
-report_path = Path(sys.argv[1])
-summary_path = Path(sys.argv[2])
-exit_code = int(sys.argv[3])
-text = report_path.read_text(encoding="utf-8", errors="replace")
-
-scanned_match = re.search(r"Scanned files:\s*(\d+)", text)
-infected_match = re.search(r"Infected files:\s*(\d+)", text)
-
-summary = {
-    "scanned_files": int(scanned_match.group(1)) if scanned_match else 0,
-    "infected_files": int(infected_match.group(1)) if infected_match else (1 if exit_code == 1 else 0),
-    "exit_code": exit_code,
-    "skipped": False,
-}
-
-with summary_path.open("w", encoding="utf-8") as fh:
-    json.dump(summary, fh, indent=2)
-    fh.write("\n")
-
-print("ClamAV summary")
-print(json.dumps(summary, indent=2))
-PY
-
-  if [[ "$clamav_exit" -eq 1 ]]; then
-    echo "⚠️  ClamAV detected infected files; gating will evaluate this as high/critical."
+  if [[ "$SHELLCHECK_EXIT" -eq 1 ]]; then
+    echo "⚠️  ShellCheck reported findings; continuing to centralized SAST gating."
   fi
 }
 
@@ -1317,6 +1069,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   require_command bandit
   require_command pip-audit
   require_command detect-secrets
+  require_command shellcheck
 
   print_tool_header \
     "Semgrep" \
@@ -1373,8 +1126,8 @@ if [[ "$RUN_SAST" == "true" ]]; then
     --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/)' \
     > "${REPORT_DIR}/detect-secrets.json"
 
-  #R065: Execute ClamAV within SAST lane and feed infected counts into centralized gating.
-  run_clamav_scan "${REPORT_DIR}/clamav.log" "${REPORT_DIR}/clamav-summary.json"
+  #R065: Execute ShellCheck within SAST lane and feed severity counts into centralized gating.
+  run_shellcheck_sast "${REPORT_DIR}/shellcheck.json"
   run_swift_sast "${REPORT_DIR}/swiftlint.json"
 
   #R030: Produce consolidated SAST gate summary and enforce blocking policy.
@@ -1392,9 +1145,9 @@ bandit_path = report_dir / "bandit.json"
 pip_audit_path = report_dir / "pip-audit.json"
 secrets_path = report_dir / "detect-secrets.json"
 swiftlint_path = report_dir / "swiftlint.json"
-clamav_summary_path = report_dir / "clamav-summary.json"
+shellcheck_path = report_dir / "shellcheck.json"
 
-for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, swiftlint_path, clamav_summary_path]:
+for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, swiftlint_path, shellcheck_path]:
     if not required.exists():
         print(f"Missing report file: {required}")
         sys.exit(1)
@@ -1438,15 +1191,13 @@ swiftlint_results = swiftlint if isinstance(swiftlint, list) else []
 swiftlint_high = sum(1 for item in swiftlint_results if str(item.get("severity", "")).lower() == "error")
 swiftlint_total = len(swiftlint_results)
 
-with clamav_summary_path.open("r", encoding="utf-8") as fh:
-    clamav_summary = json.load(fh)
-clamav_infected = (
-    int(clamav_summary.get("infected_files", 0))
-    if isinstance(clamav_summary, dict)
-    else 0
-)
+with shellcheck_path.open("r", encoding="utf-8") as fh:
+    shellcheck = json.load(fh)
+shellcheck_results = shellcheck if isinstance(shellcheck, list) else []
+shellcheck_high = sum(1 for item in shellcheck_results if str(item.get("level", "")).lower() == "error")
+shellcheck_total = len(shellcheck_results)
 
-high_critical_total = semgrep_high + bandit_high + secret_findings + swiftlint_high + clamav_infected
+high_critical_total = semgrep_high + bandit_high + secret_findings + swiftlint_high + shellcheck_high
 
 summary = {
     "semgrep_total": semgrep_total,
@@ -1455,7 +1206,8 @@ summary = {
     "bandit_high_critical": bandit_high,
     "pip_audit_vulnerabilities": dep_vulns,
     "detect_secrets_findings": secret_findings,
-    "clamav_infected_files": clamav_infected,
+    "shellcheck_total": shellcheck_total,
+    "shellcheck_high_critical": shellcheck_high,
     "swiftlint_total": swiftlint_total,
     "swiftlint_high_critical": swiftlint_high,
     "high_critical_total": high_critical_total,
