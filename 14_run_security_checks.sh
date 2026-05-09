@@ -159,7 +159,7 @@ run_shellcheck_sast() {
   require_command shellcheck
   print_tool_header \
     "ShellCheck" \
-    "Static analysis for shell scripts to catch common correctness and safety issues." \
+    "Static analysis for shell scripts to catch correctness and safety issues." \
     "Runs JSON-reporting checks across numbered shell automation scripts." \
     "https://www.shellcheck.net/"
   shopt -s nullglob
