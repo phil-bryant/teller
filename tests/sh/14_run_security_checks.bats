@@ -279,6 +279,7 @@ stub_zap_cli_ok() {
   local path="$1"
   cat > "$path" <<'EOF'
 #!/usr/bin/env bash
+echo "zap $*" >> "${CALLS_LOG}"
 echo "zap-stub" 
 exit 0
 EOF
@@ -792,9 +793,60 @@ EOF
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-classification.log" ]
   calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"zap -cmd -dir ${FIXTURE_ROOT}/.security-reports/zap-home"* ]]
   [[ "$calls" != *"--exclude-path /v1/categories"* ]]
   [[ "$calls" != *"--exclude-path /v1/categories/{nys_snw_category_id}"* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
+}
+
+@test "DAST honors custom ZAP_HOME_DIR override" {
+  setup_shell_test
+  copy_security_project_files
+  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
+  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  stub_curl_success
+  stub_schemathesis_ok
+  local zap_path="${TEST_TMPDIR}/ZAP.sh"
+  stub_zap_cli_ok "$zap_path"
+  local custom_zap_home="${FIXTURE_ROOT}/.custom-zap-home"
+  run env RUN_SAST=false RUN_MACOS_UI_DAST=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
+    ZAP_CLI_CMD="$zap_path" \
+    ZAP_HOME_DIR="$custom_zap_home" \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18794 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    DAST_OPENAPI_URL="http://127.0.0.1:18794/openapi.json" \
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
+  [ "$status" -eq 0 ]
+  [ -d "$custom_zap_home" ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"zap -cmd -dir ${custom_zap_home}"* ]]
+}
+
+@test "DAST enforces ZAP_QUIET=false by omitting ZAP silent flag" {
+  #R085
+  setup_shell_test
+  copy_security_project_files
+  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
+  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  stub_curl_success
+  stub_schemathesis_ok
+  local zap_path="${TEST_TMPDIR}/ZAP.sh"
+  stub_zap_cli_ok "$zap_path"
+  run env RUN_SAST=false RUN_MACOS_UI_DAST=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
+    ZAP_CLI_CMD="$zap_path" \
+    ZAP_QUIET=false \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18795 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    DAST_OPENAPI_URL="http://127.0.0.1:18795/openapi.json" \
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"zap -cmd -dir ${FIXTURE_ROOT}/.security-reports/zap-home"* ]]
+  [[ "$calls" != *" -silent"* ]]
 }
 
 @test "macOS UI DAST runs regression through proxy and writes artifacts" {
@@ -818,6 +870,8 @@ EOF
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-macos-ui.json" ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-macos-ui.html" ]
   [ -f "${FIXTURE_ROOT}/.security-reports/macos-ui-dast-xcuitest.log" ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"zap -daemon -dir ${FIXTURE_ROOT}/.security-reports/zap-home"* ]]
   [[ "$output" == *"Running macOS UI XCUITest smoke suite through ZAP proxy"* ]]
   [[ "$output" == *"RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true"* ]]
   [[ "$output" == *"TELLER_CLASSIFIER_HTTP_PROXY=http://127.0.0.1:8090"* ]]

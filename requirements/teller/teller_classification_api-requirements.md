@@ -39,9 +39,9 @@ Tests:
 - Attempt write for unknown transaction/category and verify 404 responses.
 
 R030  Statement: Enforce transaction ID consistency for single-write endpoint.
-Design: `/v1/transactions/{transaction_id}/classification` requires path transaction ID to match payload transaction ID and returns 400 on mismatch.
+Design: `/v1/transactions/{transaction_id}/classification` treats the path transaction ID as the sole identifier and accepts only category mutation fields in the request body.
 Tests:
-- Submit mismatched IDs and verify 400 response detail.
+- Submit a single-write payload containing `transaction_id` and verify request validation rejects the unexpected field.
 
 R035  Statement: Support batch classification writes with non-empty updates.
 Design: `/v1/transactions/classifications` requires at least one update and applies `_write_one` for each mutation, returning one response row per input.
@@ -56,7 +56,7 @@ Tests:
 - Submit write requests with mismatched token and verify 401 response.
 
 R045  Statement: Reject malformed mutation payloads before database persistence.
-Design: Category mutation fields reject control/non-printable characters and require at least one non-empty normalized hierarchy value; classification mutations constrain `transaction_id` format/length, and batch writes cap `updates` list length.
+Design: Category mutation fields reject control/non-printable characters, require at least one non-empty normalized hierarchy value, and publish an OpenAPI object-level `minProperties: 1` constraint so empty objects are schema-invalid; batch classification mutations constrain `transaction_id` format/length and cap `updates` list length.
 Tests:
 - Submit category payload with control characters and verify validation failure.
 - Submit category payload with all-empty hierarchy values and verify validation failure.
@@ -66,3 +66,4 @@ Tests:
 
 - 2026-04-22: Initial reverse-engineered requirements for `teller/teller_classification_api.py`.
 - 2026-05-09: Added R040/R045 for 1psa-backed write-token auth and stricter mutation payload validation.
+- 2026-05-10: Updated R030 single-write contract to path-only transaction identity and tightened R045 OpenAPI schema parity for category mutation payloads.

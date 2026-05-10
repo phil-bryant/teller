@@ -80,20 +80,32 @@ wait_for_http() {
 
 run_zap_quick_scan() {
   local zap_cli_cmd="$1"
-  local target_url="$2"
-  local html_report="$3"
-  local log_report="$4"
+  local zap_home_dir="$2"
+  local zap_quiet="$3"
+  local target_url="$4"
+  local html_report="$5"
+  local log_report="$6"
   print_tool_header \
     "OWASP ZAP" \
     "Dynamic scan of live HTTP endpoints for common web vulnerabilities." \
     "Uses quick scan mode to spider and actively probe reachable routes." \
     "https://www.zaproxy.org/"
   echo "▶ Running OWASP ZAP quick scan (CLI) against ${target_url}"
-  "$zap_cli_cmd" -cmd \
-    -quickurl "$target_url" \
-    -quickout "$html_report" \
-    -quickprogress \
-    -silent | tee "$log_report"
+  echo "▶ ZAP home directory: ${zap_home_dir}"
+  if [[ "$zap_quiet" == "true" ]]; then
+    "$zap_cli_cmd" -cmd \
+      -dir "$zap_home_dir" \
+      -quickurl "$target_url" \
+      -quickout "$html_report" \
+      -quickprogress \
+      -silent | tee "$log_report"
+  else
+    "$zap_cli_cmd" -cmd \
+      -dir "$zap_home_dir" \
+      -quickurl "$target_url" \
+      -quickout "$html_report" \
+      -quickprogress | tee "$log_report"
+  fi
 }
 
 read_classifier_write_token() {
@@ -718,7 +730,7 @@ if transaction_id is not None and category_id is not None:
     set_json_body_example(
         "/v1/transactions/{transaction_id}/classification",
         "put",
-        {"transaction_id": transaction_id, "nys_snw_category_id": category_id},
+        {"nys_snw_category_id": category_id},
     )
     set_json_body_example(
         "/v1/transactions/classifications",
@@ -899,6 +911,9 @@ PY
   local dast_write_token
   dast_write_token="$(read_classifier_write_token)"
   local zap_cli_cmd="${ZAP_CLI_CMD:-/Applications/ZAP.app/Contents/MacOS/ZAP.sh}"
+  local zap_home_dir="${ZAP_HOME_DIR:-${report_dir_abs}/zap-home}"
+  #R085: Keep ZAP quick-scan output visible by default unless explicitly silenced.
+  local zap_quiet="${ZAP_QUIET:-false}"
   local macos_ui_dast_proxy_host="${MACOS_UI_DAST_ZAP_PROXY_HOST:-127.0.0.1}"
   local macos_ui_dast_proxy_port="${MACOS_UI_DAST_ZAP_PROXY_PORT:-8090}"
   local macos_ui_dast_proxy_url="http://${macos_ui_dast_proxy_host}:${macos_ui_dast_proxy_port}"
@@ -921,6 +936,7 @@ PY
   local zap_proxy_pid=""
 
   trap 'if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then kill "$token_capture_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then kill "$zap_proxy_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then kill "$classifier_api_pid" >/dev/null 2>&1 || true; fi' EXIT
+  mkdir -p "$zap_home_dir"
 
   #R035: Start local classification API automatically for DAST execution.
   if [[ "$reuse_existing_api" == "true" ]]; then
@@ -987,6 +1003,8 @@ PY
     fi
     run_zap_quick_scan \
       "$zap_cli_cmd" \
+      "$zap_home_dir" \
+      "$zap_quiet" \
       "$zap_classification_target" \
       "${report_dir_abs}/zap-classification.html" \
       "${report_dir_abs}/zap-classification.log"
@@ -1006,6 +1024,7 @@ PY
       "https://www.zaproxy.org/"
     echo "▶ Starting OWASP ZAP daemon proxy for macOS UI Dynamic Application Security Testing (DAST) at ${macos_ui_dast_proxy_url}"
     "$zap_cli_cmd" -daemon \
+      -dir "$zap_home_dir" \
       -host "$macos_ui_dast_proxy_host" \
       -port "$macos_ui_dast_proxy_port" \
       -config api.disablekey=true \
