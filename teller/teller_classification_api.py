@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Annotated, Any, Dict, List, Literal, Optional
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
-from sqlalchemy.exc import DataError
+from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy import text
 from teller.teller_db import get_session
 
@@ -78,6 +78,7 @@ _CATEGORY_TEXT_FIELDS = (
     "categorization",
     "applicability",
 )
+_CATEGORY_TEXT_PATTERN = r"^(?=.*\S)[^\x00-\x1F\x7F]+$"
 
 
 def _contains_control_characters(value: str) -> bool:
@@ -95,7 +96,7 @@ def _validate_text_field(field_name: str, value: Optional[str]) -> Optional[str]
 def _normalize_text(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
-    normalized = value.replace("\x00", "").strip()
+    normalized = "".join(char for char in value if not unicodedata.category(char).startswith("C")).strip()
     return normalized if normalized else None
 
 
@@ -151,9 +152,20 @@ class CategoryOption(BaseModel):
 
 
 class CategoryMutation(BaseModel):
+    _schema_properties = {
+        field_name: {
+            "type": "string",
+            "maxLength": 120,
+            "pattern": _CATEGORY_TEXT_PATTERN,
+        }
+        for field_name in _CATEGORY_TEXT_FIELDS
+    }
     model_config = ConfigDict(
         extra="forbid",
-        json_schema_extra={"minProperties": 1},
+        json_schema_extra={
+            "minProperties": 1,
+            "properties": _schema_properties,
+        },
     )
     level_1: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     level_1_name: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
@@ -164,20 +176,16 @@ class CategoryMutation(BaseModel):
     categorization: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     applicability: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
 
-    @field_validator(*_CATEGORY_TEXT_FIELDS)
+    @model_validator(mode="before")
     @classmethod
-    def reject_control_characters(cls, value: Optional[str], info):
-        #R045: Reject control/non-printable characters in category mutation payloads.
-        return _validate_text_field(info.field_name, value)
-
-    @model_validator(mode="after")
-    def require_non_empty_hierarchy(self):
-        #R045: Require at least one non-empty normalized hierarchy field.
-        normalized_values = [_normalize_text(getattr(self, field_name)) for field_name in _CATEGORY_TEXT_FIELDS]
-        if all(value is None for value in normalized_values):
-            raise ValueError("At least one non-empty hierarchy field is required")
-        return self
-
+    def reject_null_hierarchy_values(cls, values: Any):
+        if not isinstance(values, dict):
+            return values
+        null_fields = [field_name for field_name in _CATEGORY_TEXT_FIELDS if field_name in values and values[field_name] is None]
+        if null_fields:
+            field_list = ", ".join(null_fields)
+            raise ValueError(f"Null hierarchy values are not allowed: {field_list}")
+        return values
 
 class CategoryDeleteResponse(BaseModel):
     nys_snw_category_id: int
@@ -297,6 +305,8 @@ def _fetch_category(session, category_id: int) -> Dict[str, object]:
 
 def _write_category(session, body: CategoryMutation, category_id: Optional[int] = None) -> CategoryOption:
     params = _category_params(body)
+    if all(value is None for value in params.values()):
+        raise HTTPException(status_code=409, detail="Category mutation must include at least one non-empty hierarchy field")
     try:
         if category_id is None:
             created = session.execute(text("""
@@ -331,6 +341,8 @@ def _write_category(session, body: CategoryMutation, category_id: Optional[int] 
         return CategoryOption(**row, display_label=_display_label(row))
     except HTTPException:
         raise
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail="Category mutation conflicts with an existing hierarchy row")
     except (DataError, UnicodeEncodeError):
         raise HTTPException(status_code=400, detail="Invalid category payload for database constraints")
     except Exception:
@@ -404,6 +416,7 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/categories", response_model=CategoryOption, responses={
         400: {"model": ApiError, "description": "Invalid category payload"},
+        409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
     })
     def create_category(request: Request, body: CategoryMutation):
         _require_write_access(request)
@@ -412,6 +425,7 @@ def create_app() -> FastAPI:
 
     @app.put("/v1/categories/{nys_snw_category_id:int}", response_model=CategoryOption, responses={
         400: {"model": ApiError, "description": "Invalid category payload"},
+        409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
         404: {"model": ApiError, "description": "Unknown category id"},
     })
     def update_category(request: Request, nys_snw_category_id: int, body: CategoryMutation):

@@ -56,14 +56,21 @@ Tests:
 - Submit write requests with mismatched token and verify 401 response.
 
 R045  Statement: Reject malformed mutation payloads before database persistence.
-Design: Category mutation fields reject control/non-printable characters, require at least one non-empty normalized hierarchy value, and publish an OpenAPI object-level `minProperties: 1` constraint so empty objects are schema-invalid; batch classification mutations constrain `transaction_id` format/length and cap `updates` list length.
+Design: Category mutation fields reject explicit `null` field values, normalize by stripping control/non-printable characters before persistence, and reject all-empty normalized hierarchy writes with HTTP 409 conflict semantics in `_write_category`; OpenAPI publishes `minProperties` plus per-field/non-empty guards so empty or null-only objects are schema-invalid; batch classification mutations constrain `transaction_id` format/length and cap `updates` list length.
 Tests:
-- Submit category payload with control characters and verify validation failure.
-- Submit category payload with all-empty hierarchy values and verify validation failure.
+- Submit category payload with control characters and verify normalized persistence-safe values.
+- Submit category payload with all-empty hierarchy values and verify write path returns HTTP 409 conflict.
+- Submit category payload with explicit `null` hierarchy field values and verify validation failure.
 - Submit classification payload with invalid transaction ID pattern or oversized batch and verify validation failure.
+
+R050  Statement: Surface duplicate category hierarchy writes as conflict responses.
+Design: Category create/update writes translate unique-index integrity violations to HTTP 409 so contract tests can classify duplicate hierarchy payloads as conflicts.
+Tests:
+- Trigger duplicate category hierarchy writes and verify HTTP 409 response.
 
 ## Changelog
 
 - 2026-04-22: Initial reverse-engineered requirements for `teller/teller_classification_api.py`.
 - 2026-05-09: Added R040/R045 for 1psa-backed write-token auth and stricter mutation payload validation.
 - 2026-05-10: Updated R030 single-write contract to path-only transaction identity and tightened R045 OpenAPI schema parity for category mutation payloads.
+- 2026-05-10: Added R050 to map duplicate category hierarchy integrity violations to HTTP 409 conflict responses.
