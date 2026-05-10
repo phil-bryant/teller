@@ -48,7 +48,7 @@ extension ClassificationAPI {
 actor APIClient: ClassificationAPI {
     private let session: URLSession
     private let baseURL: URL
-    init(baseURL: URL = URL(string: ProcessInfo.processInfo.environment["TELLER_CLASSIFIER_API_URL"] ?? "http://127.0.0.1:8787")!,
+    init(baseURL: URL = APIClient.defaultBaseURL(),
          session: URLSession? = nil) {
         self.baseURL = baseURL
         self.session = session ?? APIClient.makeDefaultSession()
@@ -59,14 +59,19 @@ actor APIClient: ClassificationAPI {
     }
 
     func fetchTransactions(search: String, onlyUnclassified: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
-        var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/transactions"), resolvingAgainstBaseURL: false)!
+        guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/transactions"), resolvingAgainstBaseURL: false) else {
+            throw APIError.invalidResponse
+        }
         comp.queryItems = [
             URLQueryItem(name: "search", value: search),
             URLQueryItem(name: "only_unclassified", value: onlyUnclassified ? "true" : "false"),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "offset", value: String(offset)),
         ]
-        return try await send(url: comp.url!)
+        guard let transactionsURL = comp.url else {
+            throw APIError.invalidResponse
+        }
+        return try await send(url: transactionsURL)
     }
 
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse] {
@@ -123,5 +128,13 @@ actor APIClient: ClassificationAPI {
             ]
         }
         return URLSession(configuration: config)
+    }
+
+    private static func defaultBaseURL() -> URL {
+        let baseURLString = ProcessInfo.processInfo.environment["TELLER_CLASSIFIER_API_URL"] ?? "http://127.0.0.1:8787"
+        if let parsedURL = URL(string: baseURLString) {
+            return parsedURL
+        }
+        return URL(fileURLWithPath: "/")
     }
 }

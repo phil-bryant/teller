@@ -107,8 +107,9 @@ final class TransactionClassifierUITests: XCTestCase {
 
         let loadMoreButton = uiElement("load-more-button")
         XCTAssertTrue(loadMoreButton.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Coffee Roasters"].exists)
-        XCTAssertFalse(app.staticTexts["Corner Market"].exists)
+        XCTAssertTrue(app.staticTexts["Coffee Roasters"].waitForExistence(timeout: 5))
+        let cornerMarket = app.staticTexts["Corner Market"]
+        XCTAssertFalse(cornerMarket.exists)
 
         loadMoreButton.click()
 
@@ -174,23 +175,20 @@ final class TransactionClassifierUITests: XCTestCase {
 
         // Scroll the list aggressively toward the bottom so txn_001 is pushed off the top
         // of the visible viewport. This is the pre-condition that makes #R025 observable.
-        list.scroll(byDeltaX: 0, deltaY: -1500)
-
         let topRow = app.descendants(matching: .any)
             .matching(identifier: "transaction-row-txn_001").firstMatch
         XCTAssertTrue(topRow.waitForExistence(timeout: 5))
 
-        // Confirm the pre-condition via frame comparison: the row should now sit above the
-        // list's visible frame after scrolling.
+        // Confirm the pre-condition using hittability rather than frame math, which is
+        // less brittle across host rendering differences.
         var outOfViewConfirmed = false
-        for _ in 0..<20 {
-            let listFrame = list.frame
-            let rowFrame = topRow.frame
-            if !listFrame.intersects(rowFrame) || rowFrame.maxY < listFrame.minY {
+        for _ in 0..<30 {
+            list.scroll(byDeltaX: 0, deltaY: -600)
+            if !topRow.isHittable {
                 outOfViewConfirmed = true
                 break
             }
-            Thread.sleep(forTimeInterval: 0.1)
+            Thread.sleep(forTimeInterval: 0.15)
         }
         XCTAssertTrue(
             outOfViewConfirmed,
@@ -204,13 +202,11 @@ final class TransactionClassifierUITests: XCTestCase {
         // Verify the selection change actually happened by checking the detail pane header.
         XCTAssertTrue(app.staticTexts["Transaction txn_001"].waitForExistence(timeout: 5))
 
-        // The row must now be scrolled so its frame intersects the list's visible frame. We
-        // poll across several attempts to allow the scroll animation to complete.
+        // The row must now be brought back into view. Poll across several attempts to allow
+        // list animation/layout to settle.
         var scrolledIntoView = false
         for _ in 0..<20 {
-            let listFrame = list.frame
-            let rowFrame = topRow.frame
-            if listFrame.intersects(rowFrame) && rowFrame.maxY >= listFrame.minY && rowFrame.minY <= listFrame.maxY {
+            if topRow.isHittable {
                 scrolledIntoView = true
                 break
             }
@@ -269,7 +265,12 @@ final class TransactionClassifierUITests: XCTestCase {
     private func disableUnclassifiedFilter() {
         let toggle = uiElement("only-unclassified-toggle")
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        toggle.click()
+        let rawValue = String(describing: toggle.value ?? "")
+        let normalized = rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let isOn = normalized == "1" || normalized == "true" || normalized == "on"
+        if isOn {
+            toggle.click()
+        }
         // #R020 auto-refresh brings the classified fixture row into the list.
         XCTAssertTrue(app.staticTexts["Electric Utility Co"].waitForExistence(timeout: 5))
     }

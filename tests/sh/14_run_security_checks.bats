@@ -60,6 +60,11 @@ if [[ "$1" == "-m" && "$2" == "venv" ]]; then
   chmod +x "$vpath/bin/semgrep"
   {
     echo "#!/bin/bash"
+    echo "echo gitleaks; exit 0"
+  } > "$vpath/bin/gitleaks"
+  chmod +x "$vpath/bin/gitleaks"
+  {
+    echo "#!/bin/bash"
     echo "echo pip; exit 0"
   } > "$vpath/bin/pip"
   chmod +x "$vpath/bin/pip"
@@ -139,6 +144,22 @@ echo '{"results":{}}'
 exit 0
 EOF
   chmod +x "${vbin}/detect-secrets"
+  cat > "${vbin}/gitleaks" <<'EOF'
+#!/usr/bin/env bash
+report=""
+set -- "$@"
+while [ $# -gt 0 ]; do
+  if [[ "$1" == --report-path ]]; then
+    report="$2"
+    shift 2
+    continue
+  fi
+  shift
+done
+printf '%s' '[]' > "$report"
+exit 0
+EOF
+  chmod +x "${vbin}/gitleaks"
 }
 
 install_sast_gate_fail_semgrep() {
@@ -174,6 +195,33 @@ install_pip_audit_exit_2() {
 exit 2
 EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/pip-audit"
+}
+
+install_gitleaks_exit_2() {
+  cat > "${FIXTURE_ROOT}/.security-venv/bin/gitleaks" <<'EOF'
+#!/usr/bin/env bash
+exit 2
+EOF
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/gitleaks"
+}
+
+install_gitleaks_findings() {
+  cat > "${FIXTURE_ROOT}/.security-venv/bin/gitleaks" <<'EOF'
+#!/usr/bin/env bash
+report=""
+set -- "$@"
+while [ $# -gt 0 ]; do
+  if [[ "$1" == --report-path ]]; then
+    report="$2"
+    shift 2
+    continue
+  fi
+  shift
+done
+printf '%s' '[{"Description":"Hardcoded secret","File":"./teller/safe_test.py"}]' > "$report"
+exit 1
+EOF
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/gitleaks"
 }
 
 stub_curl_success() {
@@ -482,13 +530,15 @@ EOS
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 0 ]
-  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" shellcheck.json swiftlint.json sast-summary.json; do
+  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" gitleaks.json shellcheck.json swiftlint.json sast-summary.json; do
     [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
   done
   shellcheck_total="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_total",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
   shellcheck_high="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_high_critical",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
+  gitleaks_findings="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("gitleaks_findings",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
   [ "$shellcheck_total" = "0" ]
   [ "$shellcheck_high" = "0" ]
+  [ "$gitleaks_findings" = "0" ]
   [[ "$output" == *"Static Application Security Testing (SAST) summary"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) checks completed."* ]]
 }
@@ -512,6 +562,8 @@ EOS
   [[ "$output" == *"URL: https://github.com/pypa/pip-audit"* ]]
   [[ "$output" == *"Security Tool: detect-secrets"* ]]
   [[ "$output" == *"URL: https://github.com/Yelp/detect-secrets"* ]]
+  [[ "$output" == *"Security Tool: gitleaks"* ]]
+  [[ "$output" == *"URL: https://github.com/gitleaks/gitleaks"* ]]
   [[ "$output" == *"Security Tool: ShellCheck"* ]]
   [[ "$output" == *"URL: https://www.shellcheck.net/"* ]]
 }
@@ -577,6 +629,19 @@ EOF
   [[ "$output" == *"pip-audit failed to execute."* ]]
 }
 
+@test "gitleaks exit code 2 is an execution failure" {
+  #R075
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  install_gitleaks_exit_2
+  run env RUN_DAST=false \
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"gitleaks failed to execute."* ]]
+}
+
 @test "SAST gate fails on high or critical per summary" {
   #R030
   setup_shell_test
@@ -587,6 +652,20 @@ EOF
   run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
     bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
   [ "$status" -eq 1 ]
+  [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
+}
+
+@test "gitleaks findings fail SAST gate when fail-on-high is enabled" {
+  #R075 #R030
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  install_gitleaks_findings
+  run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
+    bash "${FIXTURE_ROOT}/14_run_security_checks.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"gitleaks reported findings"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
 }
 

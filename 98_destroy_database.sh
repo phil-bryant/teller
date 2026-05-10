@@ -26,7 +26,7 @@ if [ -z "$POSTGRES_PASSWORD" ]; then
 fi
 
 #R010: Require explicit destroy confirmation.
-read -p "Are you sure you want to destroy the database and all roles? This cannot be undone. Type 'destroy' to confirm: " confirmation
+read -r -p "Are you sure you want to destroy the database and all roles? This cannot be undone. Type 'destroy' to confirm: " confirmation
 
 if [ "$confirmation" != "destroy" ]; then
     echo "Destruction cancelled"

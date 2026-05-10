@@ -82,10 +82,26 @@ Design: For `teller.transaction_nys_snw_category`, recreate the transaction FK w
 Tests:
 - Scoped restore `transaction_nys_snw_category` and verify FK delete action is `CASCADE`.
 
+R070  Statement: Resolve teller password from configurable 1psa source for full-restore credential re-sync.
+Design: Read teller password via `TELLER_PSA_ITEM`/`TELLER_PSA_FIELD` with default item `localhost_postgres_teller`, and require non-empty value before restore proceeds.
+Tests:
+- Force empty teller password lookup and verify restore exits non-zero with clear error.
+
+R075  Statement: Re-sync teller role credential to current 1psa secret after full restore.
+Design: In full restore mode, after globals replay and database restore, run `ALTER USER teller WITH PASSWORD ...` using resolved teller secret.
+Tests:
+- Run full restore from globals containing stale teller hash and verify post-restore role password is updated to current secret source.
+
+R080  Statement: Verify teller authentication succeeds after full restore credential re-sync.
+Design: After full restore and password reset, perform `psql` login as `teller` against target database and fail restore if authentication does not succeed.
+Tests:
+- Force mismatch between restored role password and expected secret and verify script fails on post-restore teller login check.
+
 ## Changelog
 
 - 2026-04-21: Refined R020/R030 for table mode to skip globals requirements/replay and updated R040 table-name format.
 - 2026-04-21: Refined R025 to allow restore into existing teller schema when `--table` is provided.
 - 2026-04-21: Added R040 and R045 for optional `--table` restore scope and `--from` composition.
 - 2026-04-24: Added R050/R055/R060/R065 for post-scoped-restore invariant repair; refined R035 for fail-fast target SQL helper coverage.
+- 2026-05-09: Added R070/R075/R080 for full-restore teller credential re-sync and auth verification against current 1psa secret.
 - 2026-04-19: Initial reverse-engineered requirements for `99_restore_database.sh`.

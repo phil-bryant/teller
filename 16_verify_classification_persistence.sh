@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 #R001: Run in strict shell mode and fail fast.
 set -euo pipefail
 

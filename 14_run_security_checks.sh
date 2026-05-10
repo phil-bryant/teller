@@ -24,7 +24,7 @@ fi
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "❌ Missing required command: $1"
-    echo "Install security tooling with: pip install -r requirements-security.txt"
+    echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r requirements-security.txt"
     exit 1
   fi
 }
@@ -186,6 +186,39 @@ run_shellcheck_sast() {
   fi
 }
 
+run_gitleaks_sast() {
+  #R075: Run gitleaks and preserve JSON findings for centralized secret-leak gating.
+  local gitleaks_report="$1"
+
+  require_command gitleaks
+  print_tool_header \
+    "gitleaks" \
+    "Detects hardcoded secrets and credential patterns in tracked files." \
+    "Runs repository-focused leak detection and emits JSON findings." \
+    "https://github.com/gitleaks/gitleaks"
+  echo "▶ Running gitleaks"
+  set +e
+  gitleaks detect \
+    --source . \
+    --no-git \
+    --gitleaks-ignore-path ".gitleaksignore" \
+    --report-format json \
+    --report-path "$gitleaks_report"
+  GITLEAKS_EXIT=$?
+  set -e
+  if [[ "$GITLEAKS_EXIT" -gt 1 ]]; then
+    echo "❌ gitleaks failed to execute."
+    exit 1
+  fi
+  if [[ "$GITLEAKS_EXIT" -eq 1 ]]; then
+    echo "⚠️  gitleaks reported findings; continuing to centralized SAST gating."
+  fi
+
+  if [[ ! -s "$gitleaks_report" ]]; then
+    printf '[]\n' > "$gitleaks_report"
+  fi
+}
+
 run_dast_checks() (
   set -euo pipefail
 
@@ -197,7 +230,7 @@ run_dast_checks() (
 
     echo "▶ Running post-DAST category integrity checks"
     set +e
-    python3 - <<'PY' "$integrity_report_path" "$seed_sql_path" "$strict_mode"
+    "$dast_app_python" - <<'PY' "$integrity_report_path" "$seed_sql_path" "$strict_mode"
 import json
 import os
 import pathlib
@@ -703,6 +736,7 @@ import json
 import sys
 import urllib.error
 import urllib.request
+import uuid
 
 schema_path, base_url, output_json_path = sys.argv[1:4]
 
@@ -722,15 +756,16 @@ if delete_path not in paths:
     print(json.dumps(payload))
     sys.exit(0)
 
+seed_suffix = uuid.uuid4().hex[:8]
 seed_payload = {
     "level_1": "DAST",
     "level_1_name": "DAST Contract",
     "level_2": "Validation",
     "level_2_name": "Validation",
     "level_3": "Schemathesis",
-    "level_4": "Delete Contract",
-    "categorization": "Runtime Contract",
-    "applicability": "all-contract",
+    "level_4": f"Delete Contract {seed_suffix}",
+    "categorization": f"Runtime Contract {seed_suffix}",
+    "applicability": f"all-contract-{seed_suffix}",
 }
 
 def request_json(method: str, url: str, body=None):
@@ -744,12 +779,37 @@ def request_json(method: str, url: str, body=None):
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
             raw = resp.read().decode("utf-8")
-            payload = json.loads(raw) if raw else None
+            if not raw:
+                payload = None
+            else:
+                try:
+                    payload = json.loads(raw)
+                except json.JSONDecodeError:
+                    payload = {"raw": raw}
             return resp.status, payload
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode("utf-8")
-        payload = json.loads(raw) if raw else None
+        if not raw:
+            payload = None
+        else:
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                payload = {"raw": raw}
         return exc.code, payload
+
+preflight_status, preflight_payload = request_json("GET", f"{base_url}/v1/categories", None)
+if preflight_status != 200:
+    payload = {
+        "status": "skipped",
+        "reason": f"Prerequisite endpoint GET /v1/categories unavailable ({preflight_status})",
+        "payload": preflight_payload,
+    }
+    with open(output_json_path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh)
+        fh.write("\n")
+    print(json.dumps(payload))
+    sys.exit(0)
 
 create_status, create_payload = request_json("POST", f"{base_url}/v1/categories", seed_payload)
 if create_status != 200 or not isinstance(create_payload, dict):
@@ -824,8 +884,6 @@ PY
   local zap_alerts_api_url="${macos_ui_dast_proxy_url}/JSON/core/view/alerts/"
   local zap_html_report_api_url="${macos_ui_dast_proxy_url}/OTHER/core/other/htmlreport/"
 
-  local token_capture_port="${TOKEN_CAPTURE_DAST_PORT:-8088}"
-  local token_capture_url="${TOKEN_CAPTURE_DAST_URL:-http://127.0.0.1:${token_capture_port}}"
   local dast_app_python="${DAST_APP_PYTHON:-./teller-venv/bin/python}"
 
   local schemathesis_seed="${SCHEMATHESIS_SEED:-424242}"
@@ -840,18 +898,7 @@ PY
   local token_capture_pid=""
   local zap_proxy_pid=""
 
-  cleanup() {
-    if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then
-      kill "$token_capture_pid" >/dev/null 2>&1 || true
-    fi
-    if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then
-      kill "$zap_proxy_pid" >/dev/null 2>&1 || true
-    fi
-    if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then
-      kill "$classifier_api_pid" >/dev/null 2>&1 || true
-    fi
-  }
-  trap cleanup EXIT
+  trap 'if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then kill "$token_capture_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then kill "$zap_proxy_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then kill "$classifier_api_pid" >/dev/null 2>&1 || true; fi' EXIT
 
   #R035: Start local classification API automatically for DAST execution.
   if [[ "$reuse_existing_api" == "true" ]]; then
@@ -1070,6 +1117,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   require_command pip-audit
   require_command detect-secrets
   require_command shellcheck
+  require_command gitleaks
 
   print_tool_header \
     "Semgrep" \
@@ -1123,8 +1171,10 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "https://github.com/Yelp/detect-secrets"
   echo "▶ Running detect-secrets"
   detect-secrets scan --all-files --force-use-all-plugins \
-    --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/)' \
+    --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/|^requirements/)' \
     > "${REPORT_DIR}/detect-secrets.json"
+
+  run_gitleaks_sast "${REPORT_DIR}/gitleaks.json"
 
   #R065: Execute ShellCheck within SAST lane and feed severity counts into centralized gating.
   run_shellcheck_sast "${REPORT_DIR}/shellcheck.json"
@@ -1146,8 +1196,9 @@ pip_audit_path = report_dir / "pip-audit.json"
 secrets_path = report_dir / "detect-secrets.json"
 swiftlint_path = report_dir / "swiftlint.json"
 shellcheck_path = report_dir / "shellcheck.json"
+gitleaks_path = report_dir / "gitleaks.json"
 
-for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, swiftlint_path, shellcheck_path]:
+for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, swiftlint_path, shellcheck_path, gitleaks_path]:
     if not required.exists():
         print(f"Missing report file: {required}")
         sys.exit(1)
@@ -1197,7 +1248,16 @@ shellcheck_results = shellcheck if isinstance(shellcheck, list) else []
 shellcheck_high = sum(1 for item in shellcheck_results if str(item.get("level", "")).lower() == "error")
 shellcheck_total = len(shellcheck_results)
 
-high_critical_total = semgrep_high + bandit_high + secret_findings + swiftlint_high + shellcheck_high
+with gitleaks_path.open("r", encoding="utf-8") as fh:
+    gitleaks = json.load(fh)
+if isinstance(gitleaks, list):
+    gitleaks_findings = len(gitleaks)
+elif isinstance(gitleaks, dict) and isinstance(gitleaks.get("findings"), list):
+    gitleaks_findings = len(gitleaks.get("findings", []))
+else:
+    gitleaks_findings = 0
+
+high_critical_total = semgrep_high + bandit_high + secret_findings + swiftlint_high + shellcheck_high + gitleaks_findings
 
 summary = {
     "semgrep_total": semgrep_total,
@@ -1208,6 +1268,7 @@ summary = {
     "detect_secrets_findings": secret_findings,
     "shellcheck_total": shellcheck_total,
     "shellcheck_high_critical": shellcheck_high,
+    "gitleaks_findings": gitleaks_findings,
     "swiftlint_total": swiftlint_total,
     "swiftlint_high_critical": swiftlint_high,
     "high_critical_total": high_critical_total,

@@ -13,6 +13,8 @@ LAUNCH_LOG="$(mktemp)"
 MARKER_FILE="$(mktemp)"
 latest_plcrash=""
 latest_json=""
+baseline_plcrash=""
+baseline_json=""
 
 #R030: Fail clearly when required local tooling is unavailable.
 if ! command -v swift >/dev/null 2>&1; then
@@ -53,8 +55,23 @@ refresh_latest_artifacts() {
 }
 
 artifacts_are_fresh() {
-  [[ -n "$latest_plcrash" && -n "$latest_json" && "$latest_plcrash" -nt "$MARKER_FILE" && "$latest_json" -nt "$MARKER_FILE" ]]
+  if [[ -z "$latest_plcrash" || -z "$latest_json" ]]; then
+    return 1
+  fi
+
+  # Prefer filename change detection because filesystems can have coarse mtime granularity.
+  if [[ -n "$baseline_plcrash" && -n "$baseline_json" ]]; then
+    if [[ "$latest_plcrash" != "$baseline_plcrash" && "$latest_json" != "$baseline_json" ]]; then
+      return 0
+    fi
+  fi
+
+  [[ "$latest_plcrash" -nt "$MARKER_FILE" && "$latest_json" -nt "$MARKER_FILE" ]]
 }
+
+refresh_latest_artifacts
+baseline_plcrash="$latest_plcrash"
+baseline_json="$latest_json"
 
 echo "▶ Triggering intentional crash to seed pending crash report..."
 #R010: Require intentional crash run to fail non-zero.
@@ -82,8 +99,9 @@ for ((second=1; second<=STARTUP_WAIT_SECONDS; second++)); do
     break
   fi
   if ! kill -0 "$APP_PID" >/dev/null 2>&1; then
-    break
+    :
   fi
+  # Allow crash artifact persistence to complete even after process exit.
   sleep 1
 done
 

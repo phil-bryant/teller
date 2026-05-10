@@ -93,3 +93,62 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"Schema teller already exists"* ]]
 }
+
+@test "fails when teller password lookup is empty" {
+  #R070
+  dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
+  globals_path="${FIXTURE_ROOT}/backups/snapshot_globals.sql"
+  touch "$dump_path" "$globals_path"
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"localhost_postgres_teller"* ]]; then
+  echo ""
+else
+  echo "postgres-pass"
+fi
+EOF
+  chmod +x "${STUB_BIN}/1psa"
+  stub_cmd psql "exit 0"
+  stub_cmd pg_restore "exit 0"
+
+  run bash "${FIXTURE_ROOT}/99_restore_database.sh" --from "$dump_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Failed to read teller password"* ]]
+}
+
+@test "full restore re-syncs teller password and verifies teller auth" {
+  #R075 #R080
+  dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
+  globals_path="${FIXTURE_ROOT}/backups/snapshot_globals.sql"
+  touch "$dump_path" "$globals_path"
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"localhost_postgres_teller"* ]]; then
+  echo "teller-pass"
+else
+  echo "postgres-pass"
+fi
+EOF
+  chmod +x "${STUB_BIN}/1psa"
+  cat > "${STUB_BIN}/psql" <<EOF
+#!/usr/bin/env bash
+echo psql "\$*" >> "${CALLS_LOG}"
+if [[ "\$*" == *"SELECT 1 FROM pg_database"* ]]; then
+  echo ""
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/psql"
+  cat > "${STUB_BIN}/pg_restore" <<EOF
+#!/usr/bin/env bash
+echo pg_restore "\$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/pg_restore"
+
+  run bash "${FIXTURE_ROOT}/99_restore_database.sh" --from "$dump_path"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"ALTER USER teller WITH PASSWORD"* ]]
+  [[ "$calls" == *"-U teller -d prod -tAc SELECT 1;"* ]]
+}
