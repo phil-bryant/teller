@@ -69,9 +69,11 @@ if [[ "$RUN_POSTGRES_FRESHNESS" == "true" ]]; then
   fi
   if [[ "$POSTGRES_CHECK_SERVER_VERSION" == "true" ]] && [[ -z "${PGPASSWORD:-}" ]] && command -v 1psa >/dev/null 2>&1; then
     if [[ "$POSTGRES_SERVER_PSA_FIELD" == "password" ]]; then
-      export PGPASSWORD="$(1psa -p "$POSTGRES_SERVER_PSA_ITEM" 2>/dev/null || true)"
+      postgres_password="$(1psa -p "$POSTGRES_SERVER_PSA_ITEM" 2>/dev/null || true)"
+      export PGPASSWORD="$postgres_password"
     else
-      export PGPASSWORD="$(1psa -f "$POSTGRES_SERVER_PSA_ITEM" "$POSTGRES_SERVER_PSA_FIELD" 2>/dev/null || true)"
+      postgres_password="$(1psa -f "$POSTGRES_SERVER_PSA_ITEM" "$POSTGRES_SERVER_PSA_FIELD" 2>/dev/null || true)"
+      export PGPASSWORD="$postgres_password"
     fi
   fi
   POSTGRES_FRESHNESS_ARGS=(

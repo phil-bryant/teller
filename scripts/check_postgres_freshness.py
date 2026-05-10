@@ -10,10 +10,11 @@ import re
 import shlex
 import shutil
 import subprocess
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import requests
 
 
 SEVERITY_ORDER = {
@@ -188,9 +189,14 @@ def extract_major(version: str | None) -> str | None:
 
 
 def fetch_url_text(url: str) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": "teller-postgres-cve-check/1.0"})
-    with urllib.request.urlopen(req, timeout=20) as response:
-        return response.read().decode("utf-8", errors="replace")
+    response = requests.get(
+        url,
+        headers={"User-Agent": "teller-postgres-cve-check/1.0"},
+        timeout=20,
+    )
+    response.raise_for_status()
+    response.encoding = response.encoding or "utf-8"
+    return response.text
 
 
 def fetch_postgresql_cve_snapshot(majors: set[str]) -> dict[str, Any]:

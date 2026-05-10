@@ -159,12 +159,19 @@ Tests:
 - Run without `shellcheck` and verify installer installs `shellcheck`.
 - Rerun with `shellcheck` already available and verify no reinstall occurs.
 
+R105  Statement: Ensure gitleaks command-line scanner is available for SAST secret leak analysis.
+Design: Install Homebrew formula `gitleaks` and verify `gitleaks` resolves on `PATH`.
+Tests:
+- Run without `gitleaks` and verify installer installs `gitleaks`.
+- Rerun with `gitleaks` already available and verify no reinstall occurs.
+
 ## Changelog
 
 - 2026-05-07: Updated R050 guidance to include optional PLCrashReporter smoke verification entrypoint.
 - 2026-04-23: Added R055 to require `bats-core` installation for shell unit-test support.
 - 2026-04-26: Added R095 to require Homebrew `clamav` (`clamscan`) for repository malware scans.
 - 2026-05-09: Added R100 to require Homebrew `shellcheck` for shell-script SAST scanning.
+- 2026-05-09: Added R105 to require Homebrew `gitleaks` for secret-leak scanning.
 - 2026-04-26: Added R079 to require Homebrew `perl` before cpanminus-managed pgTAP Perl tooling.
 - 2026-04-26: Reworked pgTAP prerequisites: R080 (`cpanminus`), R085 (build/install `../pgtap`), and R090 (user-local `cpanm` source handler install).
 - 2026-04-24: Added R060 and R065 to cover Xcode first-launch readiness and credentialed sudo flow.

@@ -6,6 +6,8 @@ set -euo pipefail
 #R015: Configure credential source and target database via environment overrides.
 POSTGRES_PSA_ITEM="${POSTGRES_PSA_ITEM:-localhost_postgres_postgres}"
 POSTGRES_PSA_FIELD="${POSTGRES_PSA_FIELD:-password}"
+TELLER_PSA_ITEM="${TELLER_PSA_ITEM:-localhost_postgres_teller}"
+TELLER_PSA_FIELD="${TELLER_PSA_FIELD:-password}"
 DATABASE_NAME="${DATABASE_NAME:-prod}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -145,9 +147,22 @@ else
     POSTGRES_PASSWORD="$(1psa -f "$POSTGRES_PSA_ITEM" "$POSTGRES_PSA_FIELD")"
 fi
 
+#R070: Resolve teller password from configured 1psa item/field.
+if [ "$TELLER_PSA_FIELD" = "password" ]; then
+    TELLER_PASSWORD="$(1psa -p "$TELLER_PSA_ITEM")"
+else
+    TELLER_PASSWORD="$(1psa -f "$TELLER_PSA_ITEM" "$TELLER_PSA_FIELD")"
+fi
+
 #R015: Refuse restore when password lookup is empty.
 if [ -z "$POSTGRES_PASSWORD" ]; then
     echo "Failed to read postgres password from 1psa item: $POSTGRES_PSA_ITEM"
+    exit 1
+fi
+
+#R070: Refuse restore when teller password lookup is empty.
+if [ -z "$TELLER_PASSWORD" ]; then
+    echo "Failed to read teller password from 1psa item: $TELLER_PSA_ITEM"
     exit 1
 fi
 
@@ -209,6 +224,15 @@ if [ -n "$TABLE_NAME" ]; then
 else
     PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH"
     PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d postgres --clean --if-exists --create "$BACKUP_PATH"
+    #R075: Re-sync teller role credential to live 1psa secret after globals restore.
+    PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+        -v teller_password="$TELLER_PASSWORD" \
+        -c "ALTER USER teller WITH PASSWORD :'teller_password';"
+    #R080: Verify teller login with the same 1psa credential to catch stale globals drift.
+    if ! PGPASSWORD="$TELLER_PASSWORD" psql -w -v ON_ERROR_STOP=1 -U teller -d "$DATABASE_NAME" -tAc "SELECT 1;" >/dev/null; then
+        echo "Restore completed but teller authentication failed with 1psa secret from $TELLER_PSA_ITEM."
+        exit 1
+    fi
 fi
 #R045: Support combining --from with --table for scoped restore from explicit dump.
 #R035: Print completion status with source backup path.

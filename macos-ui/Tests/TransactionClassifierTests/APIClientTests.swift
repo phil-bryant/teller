@@ -33,11 +33,29 @@ final class URLProtocolStub: URLProtocol {
 }
 
 final class APIClientTests: XCTestCase {
-    private func makeClient(baseURL: URL = URL(string: "http://127.0.0.1:8787")!) -> APIClient {
+    private func makeClient(baseURL: URL = APIClientTests.testBaseURL) -> APIClient {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [URLProtocolStub.self]
         let session = URLSession(configuration: config)
         return APIClient(baseURL: baseURL, session: session)
+    }
+
+    private static let testBaseURL: URL = {
+        var components = URLComponents()
+        components.scheme = "http"
+        components.host = "127.0.0.1"
+        components.port = 8787
+        return components.url ?? URL(fileURLWithPath: "/")
+    }()
+
+    private func makeHTTPResponse(for request: URLRequest, statusCode: Int) throws -> HTTPURLResponse {
+        guard let requestURL = request.url else {
+            throw APIError.invalidResponse
+        }
+        guard let response = HTTPURLResponse(url: requestURL, statusCode: statusCode, httpVersion: nil, headerFields: nil) else {
+            throw APIError.invalidResponse
+        }
+        return response
     }
 
     private func requestBodyData(_ request: URLRequest) throws -> Data {
@@ -69,7 +87,7 @@ final class APIClientTests: XCTestCase {
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/categories")
-            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
             let body = """
             [{"nys_snw_category_id":101,"level_1":null,"level_1_name":null,"level_2":null,"level_2_name":null,"level_3":null,"level_4":null,"categorization":"Dining","applicability":null,"display_label":"Dining"}]
             """
@@ -87,13 +105,16 @@ final class APIClientTests: XCTestCase {
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/transactions")
-            let components = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!
+            guard let requestURL = request.url,
+                  let components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false) else {
+                throw APIError.invalidResponse
+            }
             let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
             XCTAssertEqual(query["search"], "coffee")
             XCTAssertEqual(query["only_unclassified"], "true")
             XCTAssertEqual(query["limit"], "25")
             XCTAssertEqual(query["offset"], "50")
-            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
             let body = """
             {"total":1,"items":[{"transaction_id":"txn_1","account_id":"acc_1","institution_id":"inst_1","account_last_four":"1234","date":"2026-04-18","amount":"10.50","description":"Coffee","status":"posted","transaction_type_code":"card_payment","teller_category":"food","classification":null}]}
             """
@@ -115,7 +136,7 @@ final class APIClientTests: XCTestCase {
             let body = try self.requestBodyData(request)
             let payload = try JSONDecoder().decode(ClassificationBatchRequest.self, from: body)
             XCTAssertEqual(payload.updates.map(\.transaction_id), ["txn_1", "txn_2"])
-            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
             let responseBody = """
             [{"transaction_id":"txn_1","nys_snw_category_id":101,"type":"user","updated_at":"now"},{"transaction_id":"txn_2","nys_snw_category_id":null,"type":"user","updated_at":"now"}]
             """
@@ -133,7 +154,7 @@ final class APIClientTests: XCTestCase {
     func testNon2xxReturnsServerMessageInRequestFailedError() async {
         // #R010
         URLProtocolStub.requestHandler = { request in
-            let response = HTTPURLResponse(url: request.url!, statusCode: 409, httpVersion: nil, headerFields: nil)!
+            let response = try self.makeHTTPResponse(for: request, statusCode: 409)
             return (response, Data("conflict: duplicate category".utf8))
         }
 
@@ -157,7 +178,7 @@ final class APIClientTests: XCTestCase {
             case 0:
                 XCTAssertEqual(request.httpMethod, "POST")
                 XCTAssertEqual(request.url?.path, "/v1/categories")
-                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                let response = try self.makeHTTPResponse(for: request, statusCode: 200)
                 let body = """
                 {"nys_snw_category_id":300,"level_1":null,"level_1_name":null,"level_2":null,"level_2_name":null,"level_3":null,"level_4":null,"categorization":"Pets","applicability":null,"display_label":"Pets"}
                 """
@@ -165,7 +186,7 @@ final class APIClientTests: XCTestCase {
             case 1:
                 XCTAssertEqual(request.httpMethod, "PUT")
                 XCTAssertEqual(request.url?.path, "/v1/categories/300")
-                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                let response = try self.makeHTTPResponse(for: request, statusCode: 200)
                 let body = """
                 {"nys_snw_category_id":300,"level_1":null,"level_1_name":null,"level_2":null,"level_2_name":null,"level_3":null,"level_4":null,"categorization":"Pets Updated","applicability":null,"display_label":"Pets Updated"}
                 """
@@ -173,7 +194,7 @@ final class APIClientTests: XCTestCase {
             default:
                 XCTAssertEqual(request.httpMethod, "DELETE")
                 XCTAssertEqual(request.url?.path, "/v1/categories/300")
-                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                let response = try self.makeHTTPResponse(for: request, statusCode: 200)
                 let body = """
                 {"nys_snw_category_id":300,"deleted":true}
                 """

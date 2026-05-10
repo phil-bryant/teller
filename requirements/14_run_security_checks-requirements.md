@@ -25,9 +25,9 @@ Tests:
 - Set `RUN_SAST=false` and `RUN_DAST=false` and verify script exits cleanly after setup.
 
 R020  Statement: Run SAST scanners and persist machine-readable artifacts.
-Design: Require `semgrep`, `bandit`, `pip-audit`, `detect-secrets`, and `shellcheck`; execute scans with project configs and write JSON outputs under the report directory. When Swift sources are present under `./macos-ui` and `RUN_SWIFT_SAST=true`, run `swiftlint lint --reporter json` with focused security rules (`force_cast`, `force_try`, `force_unwrapping`) against first-party `Sources`/`Tests`/`UITests`, and persist `swiftlint.json` in the report directory.
+Design: Require `semgrep`, `bandit`, `pip-audit`, `detect-secrets`, `gitleaks`, and `shellcheck`; execute scans with project configs and write JSON outputs under the report directory. When Swift sources are present under `./macos-ui` and `RUN_SWIFT_SAST=true`, run `swiftlint lint --reporter json` with focused security rules (`force_cast`, `force_try`, `force_unwrapping`) against first-party `Sources`/`Tests`/`UITests`, and persist `swiftlint.json` in the report directory.
 Tests:
-- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, `detect-secrets.json`, `shellcheck.json`, and `swiftlint.json` are produced.
+- Run SAST lane and verify `semgrep.json`, `bandit.json`, `pip-audit.json`, `detect-secrets.json`, `gitleaks.json`, `shellcheck.json`, and `swiftlint.json` are produced.
 
 R025  Statement: Distinguish scanner findings from scanner execution failures.
 Design: Treat `bandit`/`pip-audit`/`schemathesis` exit codes greater than `1` as hard execution failures; allow exit code `1` as "findings detected" so gating remains centralized (`sast-summary.json` for SAST and ZAP high/critical parsing for DAST).
@@ -35,7 +35,7 @@ Tests:
 - Stub `bandit` to return `2` and verify script exits with explicit execution failure.
 
 R030  Statement: Produce a consolidated SAST gate summary and enforce blocking policy.
-Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, SwiftLint `error`, ShellCheck `error`, and all detect-secrets findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
+Design: Aggregate Semgrep `ERROR`, Bandit `HIGH`, SwiftLint `error`, ShellCheck `error`, all detect-secrets findings, and all gitleaks findings into `sast-summary.json`; fail when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and high/critical totals are non-zero.
 Tests:
 - Seed report fixtures with one high-severity finding and verify gate failure when fail-on-high is enabled.
 
@@ -84,6 +84,12 @@ Tests:
 - Run DAST in non-strict mode without a DB engine and verify `category-integrity.json` is still emitted with actionable status/error metadata.
 - Run DAST with Schemathesis stubs and verify category mutation paths are not excluded from Schemathesis arguments.
 
+R075  Statement: Run gitleaks during SAST and enforce finding-aware execution handling.
+Design: Execute `gitleaks detect` against the repository root, emit `gitleaks.json`, treat exit code `1` as findings (not execution failure), and treat exit codes greater than `1` as execution failures.
+Tests:
+- Stub gitleaks to return exit code `2` and verify explicit execution failure.
+- Stub gitleaks to return exit code `1` with findings and verify SAST gate failure when fail-on-high is enabled.
+
 ## Changelog
 
 - 2026-04-24: Consolidated security scanning policy and runtime behavior from `docs/security-scanning.md` into script-scoped requirements for `14_run_security_checks.sh`.
@@ -92,3 +98,4 @@ Tests:
 - 2026-04-26: Added local macOS UI DAST requirements for OWASP ZAP proxy-driven XCUITest coverage.
 - 2026-05-02: Added R070 post-DAST category-integrity gate and removed Schemathesis category-path exclusions.
 - 2026-05-09: Re-scoped R065 from ClamAV-in-SAST to ShellCheck-in-SAST and moved AV behavior to `18_run_av_checks.sh`.
+- 2026-05-09: Added R075 to include gitleaks in SAST execution and centralized gating.

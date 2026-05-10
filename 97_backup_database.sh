@@ -7,6 +7,7 @@ set -euo pipefail
 POSTGRES_PSA_ITEM="${POSTGRES_PSA_ITEM:-localhost_postgres_postgres}"
 POSTGRES_PSA_FIELD="${POSTGRES_PSA_FIELD:-password}"
 DATABASE_NAME="${DATABASE_NAME:-prod}"
+BACKUP_INCLUDE_ROLE_AUTH_DATA="${BACKUP_INCLUDE_ROLE_AUTH_DATA:-false}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="${SCRIPT_DIR}/backups"
@@ -53,7 +54,11 @@ chmod 770 "$BACKUP_DIR"
 #R025: Write timestamped custom-format database dump.
 PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U postgres -d "$DATABASE_NAME" -Fc -C -f "$BACKUP_PATH"
 #R030: Write matching globals-only dump for roles/grants.
-PGPASSWORD="$POSTGRES_PASSWORD" pg_dumpall -U postgres --globals-only -f "$GLOBALS_BACKUP_PATH"
+GLOBALS_ROLE_PASSWORD_ARGS=()
+if [ "$BACKUP_INCLUDE_ROLE_AUTH_DATA" != "true" ]; then
+    GLOBALS_ROLE_PASSWORD_ARGS+=(--no-role-passwords)
+fi
+PGPASSWORD="$POSTGRES_PASSWORD" pg_dumpall -U postgres --globals-only "${GLOBALS_ROLE_PASSWORD_ARGS[@]}" -f "$GLOBALS_BACKUP_PATH"
 
 #R035: Restrict output file permissions and print resulting paths.
 chmod 660 "$BACKUP_PATH"

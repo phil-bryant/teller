@@ -20,6 +20,8 @@
 		A10000010000000000000011 /* ConnectModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000013 /* ConnectModels.swift */; };
 		A10000010000000000000012 /* ConnectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000014 /* ConnectView.swift */; };
 		A10000010000000000000013 /* ConnectViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000015 /* ConnectViewModel.swift */; };
+		A10000010000000000000014 /* CrashReporterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000016 /* CrashReporterService.swift */; };
+		A10000010000000000000015 /* CrashReporter in Frameworks */ = {isa = PBXBuildFile; productRef = A1000B010000000000000001 /* CrashReporter */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +50,7 @@
 		A10001010000000000000013 /* ConnectModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectModels.swift; sourceTree = "<group>"; };
 		A10001010000000000000014 /* ConnectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectView.swift; sourceTree = "<group>"; };
 		A10001010000000000000015 /* ConnectViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewModel.swift; sourceTree = "<group>"; };
+		A10001010000000000000016 /* CrashReporterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000010000000000000015 /* CrashReporter in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,6 +99,7 @@
 				A10001010000000000000013 /* ConnectModels.swift */,
 				A10001010000000000000014 /* ConnectView.swift */,
 				A10001010000000000000015 /* ConnectViewModel.swift */,
+				A10001010000000000000016 /* CrashReporterService.swift */,
 			);
 		};
 		A10003010000000000000003 /* UITests */ = {
@@ -136,6 +141,9 @@
 			dependencies = (
 			);
 			name = TransactionClassifierUITestHost;
+			packageProductDependencies = (
+				A1000B010000000000000001 /* CrashReporter */,
+			);
 			productName = TransactionClassifierUITestHost;
 			productReference = A10001010000000000000010 /* TransactionClassifierUITestHost.app */;
 			productType = "com.apple.product-type.application";
@@ -175,6 +183,9 @@
 				Base,
 			);
 			mainGroup = A10003010000000000000001;
+			packageReferences = (
+				A1000A010000000000000001 /* XCRemoteSwiftPackageReference "plcrashreporter" */,
+			);
 			productRefGroup = A10003010000000000000005 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -201,6 +212,7 @@
 				A10000010000000000000011 /* ConnectModels.swift in Sources */,
 				A10000010000000000000012 /* ConnectView.swift in Sources */,
 				A10000010000000000000013 /* ConnectViewModel.swift in Sources */,
+				A10000010000000000000014 /* CrashReporterService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -222,10 +234,30 @@
 		};
 /* End PBXTargetDependency section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		A1000A010000000000000001 /* XCRemoteSwiftPackageReference "plcrashreporter" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/microsoft/plcrashreporter.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1000B010000000000000001 /* CrashReporter */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1000A010000000000000001 /* XCRemoteSwiftPackageReference "plcrashreporter" */;
+			productName = CrashReporter;
+		};
+/* End XCSwiftPackageProductDependency section */
+
 /* Begin XCBuildConfiguration section */
 		A10005010000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGNING_ALLOWED = YES;
@@ -240,6 +272,7 @@
 		A10005010000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGNING_ALLOWED = YES;
@@ -254,6 +287,7 @@
 		A10005010000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGNING_ALLOWED = YES;
@@ -269,6 +303,7 @@
 		A10005010000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGNING_ALLOWED = YES;

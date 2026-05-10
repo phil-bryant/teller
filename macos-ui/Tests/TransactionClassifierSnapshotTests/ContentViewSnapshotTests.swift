@@ -122,6 +122,10 @@ final class ContentViewSnapshotTests: XCTestCase {
     }
 }
 
+private func fixtureAmount(_ value: String) -> Decimal {
+    Decimal(string: value) ?? .zero
+}
+
 actor SnapshotFixtureConnectAPI: ConnectAPI {
     func fetchStatus() async throws -> ConnectStatusResponse {
         ConnectStatusResponse(token_saved: false, saved_path: "", error: "")
@@ -189,9 +193,9 @@ actor SnapshotFixtureAPI: ClassificationAPI {
     ]
 
     private let rows: [TransactionRow] = [
-        .init(transaction_id: "txn_001", account_id: "acc_1", institution_id: "inst_1", account_last_four: "1111", date: "2026-04-20", amount: Decimal(string: "16.24")!, description: "Coffee Roasters", status: "posted", transaction_type_code: "card_payment", teller_category: "food", classification: nil),
-        .init(transaction_id: "txn_002", account_id: "acc_1", institution_id: "inst_1", account_last_four: "1111", date: "2026-04-19", amount: Decimal(string: "88.50")!, description: "Electric Utility Co", status: "posted", transaction_type_code: "ach", teller_category: "utilities", classification: .init(nys_snw_category_id: 102, display_label: "Utilities")),
-        .init(transaction_id: "txn_003", account_id: "acc_1", institution_id: "inst_1", account_last_four: "1111", date: "2026-04-18", amount: Decimal(string: "44.10")!, description: "City Transit Card", status: "posted", transaction_type_code: "card_payment", teller_category: "transport", classification: .init(nys_snw_category_id: 103, display_label: "Transportation")),
+        .init(transaction_id: "txn_001", account_id: "acc_1", institution_id: "inst_1", account_last_four: "1111", date: "2026-04-20", amount: fixtureAmount("16.24"), description: "Coffee Roasters", status: "posted", transaction_type_code: "card_payment", teller_category: "food", classification: nil),
+        .init(transaction_id: "txn_002", account_id: "acc_1", institution_id: "inst_1", account_last_four: "1111", date: "2026-04-19", amount: fixtureAmount("88.50"), description: "Electric Utility Co", status: "posted", transaction_type_code: "ach", teller_category: "utilities", classification: .init(nys_snw_category_id: 102, display_label: "Utilities")),
+        .init(transaction_id: "txn_003", account_id: "acc_1", institution_id: "inst_1", account_last_four: "1111", date: "2026-04-18", amount: fixtureAmount("44.10"), description: "City Transit Card", status: "posted", transaction_type_code: "card_payment", teller_category: "transport", classification: .init(nys_snw_category_id: 103, display_label: "Transportation")),
     ]
 
     func fetchCategories() async throws -> [CategoryOption] {

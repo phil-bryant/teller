@@ -40,11 +40,12 @@ private func sampleTransaction(_ id: String, date: String = "2026-04-18", classi
 final class ClassificationViewModelTests: XCTestCase {
     func testTransactionListDecodesDecimalAmountString() throws {
         // #R001
-        let data = """
+        let payload = """
         {"total":1,"items":[{"transaction_id":"txn_1","account_id":"acc_1","date":"2026-04-18","amount":"33.21",
         "description":"DoorDash","status":"pending","transaction_type_code":"card_payment","teller_category":null,
         "classification":null}]}
-        """.data(using: .utf8)!
+        """
+        let data = try XCTUnwrap(payload.data(using: .utf8))
         let decoded = try JSONDecoder().decode(TransactionListResponse.self, from: data)
         XCTAssertEqual(decoded.items.first?.amount, Decimal(string: "33.21"))
     }
