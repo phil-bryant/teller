@@ -2,6 +2,7 @@ import unittest
 from datetime import datetime, timezone
 from fastapi import HTTPException
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -49,6 +50,11 @@ class _FakeSession:
 
     def commit(self):
         self.commits += 1
+
+
+class _IntegrityErrorSession(_FakeSession):
+    def execute(self, sql, params=None):
+        raise IntegrityError(statement=str(sql), params=params or {}, orig=Exception("duplicate key"))
 
 
 class _SessionContext:
@@ -108,7 +114,6 @@ class ClassificationApiTests(unittest.TestCase):
             CategoryMutation(
                 level_1=" II. ",
                 level_1_name="",
-                level_2=None,
                 level_2_name="  Housing  ",
                 level_3=" ",
                 level_4="A.",
@@ -171,20 +176,36 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(response.display_label, "EXPENSES > Housing > 2. > Mortgage")
         self.assertEqual(session.commits, 1)
 
-    def test_category_mutation_rejects_control_characters(self):
-        #R045
-        with self.assertRaises(ValidationError):
-            CategoryMutation(level_1="EXPENSES\n")
+    def test_write_category_returns_conflict_for_duplicate_hierarchy(self):
+        session = _IntegrityErrorSession(rows=[])
+        with self.assertRaises(HTTPException) as ctx:
+            _write_category(session, CategoryMutation(level_1="II.", categorization="Rent"))
+        self.assertEqual(ctx.exception.status_code, 409)
 
-    def test_category_mutation_requires_non_empty_field(self):
+    def test_category_mutation_sanitizes_control_characters(self):
+        #R045
+        params = _category_params(CategoryMutation(level_1="EXPE\nNSES", categorization="Rent"))
+        self.assertEqual(params["level_1"], "EXPENSES")
+
+    def test_write_category_rejects_empty_normalized_payload(self):
+        #R045
+        session = _FakeSession(rows=[])
+        with self.assertRaises(HTTPException) as ctx:
+            _write_category(session, CategoryMutation(level_1="   ", level_2_name=""))
+        self.assertEqual(ctx.exception.status_code, 409)
+
+    def test_category_mutation_rejects_null_field_values(self):
         #R045
         with self.assertRaises(ValidationError):
-            CategoryMutation(level_1="   ", level_2_name="")
+            CategoryMutation(level_1=None)
 
     def test_category_mutation_openapi_schema_requires_non_empty_object(self):
         #R045
         schema = create_app().openapi()["components"]["schemas"]["CategoryMutation"]
         self.assertEqual(schema.get("minProperties"), 1)
+        level_1_schema = schema.get("properties", {}).get("level_1", {})
+        self.assertEqual(level_1_schema.get("type"), "string")
+        self.assertEqual(level_1_schema.get("pattern"), r"^(?=.*\S)[^\x00-\x1F\x7F]+$")
 
     def test_write_one_inserts_when_missing_existing_mapping(self):
         ts = datetime.now(tz=timezone.utc)
