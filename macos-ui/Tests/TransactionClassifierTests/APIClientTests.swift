@@ -37,7 +37,7 @@ final class APIClientTests: XCTestCase {
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [URLProtocolStub.self]
         let session = URLSession(configuration: config)
-        return APIClient(baseURL: baseURL, session: session)
+        return APIClient(baseURL: baseURL, writeToken: "test-write-token", session: session)
     }
 
     private static let testBaseURL: URL = {
@@ -128,11 +128,12 @@ final class APIClientTests: XCTestCase {
     }
 
     func testSaveClassificationsPostsBatchPayload() async throws {
-        // #R005
+        // #R005 #R045
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.url?.path, "/v1/transactions/classifications")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
             let body = try self.requestBodyData(request)
             let payload = try JSONDecoder().decode(ClassificationBatchRequest.self, from: body)
             XCTAssertEqual(payload.updates.map(\.transaction_id), ["txn_1", "txn_2"])
@@ -170,7 +171,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testCategoryLifecycleUsesCreateUpdateDeleteEndpoints() async throws {
-        // #R040
+        // #R040 #R045
         var callIndex = 0
         URLProtocolStub.requestHandler = { request in
             defer { callIndex += 1 }
@@ -178,6 +179,7 @@ final class APIClientTests: XCTestCase {
             case 0:
                 XCTAssertEqual(request.httpMethod, "POST")
                 XCTAssertEqual(request.url?.path, "/v1/categories")
+                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
                 let response = try self.makeHTTPResponse(for: request, statusCode: 200)
                 let body = """
                 {"nys_snw_category_id":300,"level_1":null,"level_1_name":null,"level_2":null,"level_2_name":null,"level_3":null,"level_4":null,"categorization":"Pets","applicability":null,"display_label":"Pets"}
@@ -186,6 +188,7 @@ final class APIClientTests: XCTestCase {
             case 1:
                 XCTAssertEqual(request.httpMethod, "PUT")
                 XCTAssertEqual(request.url?.path, "/v1/categories/300")
+                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
                 let response = try self.makeHTTPResponse(for: request, statusCode: 200)
                 let body = """
                 {"nys_snw_category_id":300,"level_1":null,"level_1_name":null,"level_2":null,"level_2_name":null,"level_3":null,"level_4":null,"categorization":"Pets Updated","applicability":null,"display_label":"Pets Updated"}
@@ -194,6 +197,7 @@ final class APIClientTests: XCTestCase {
             default:
                 XCTAssertEqual(request.httpMethod, "DELETE")
                 XCTAssertEqual(request.url?.path, "/v1/categories/300")
+                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
                 let response = try self.makeHTTPResponse(for: request, statusCode: 200)
                 let body = """
                 {"nys_snw_category_id":300,"deleted":true}

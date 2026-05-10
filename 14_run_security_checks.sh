@@ -12,6 +12,7 @@ RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 #R015: Support configurable execution lanes and report destination.
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
+WRITE_TOKEN_PSA_ITEM="TELLER_CLASSIFIER_WRITE_TOKEN"
 
 mkdir -p "$REPORT_DIR"
 
@@ -93,6 +94,17 @@ run_zap_quick_scan() {
     -quickout "$html_report" \
     -quickprogress \
     -silent | tee "$log_report"
+}
+
+read_classifier_write_token() {
+  #R080: Resolve DAST write token only from 1psa.
+  local write_token
+  write_token="$(1psa -p "$WRITE_TOKEN_PSA_ITEM")"
+  if [[ -z "$write_token" ]]; then
+    echo "❌ Failed to read classifier write token from 1psa item: ${WRITE_TOKEN_PSA_ITEM}"
+    exit 1
+  fi
+  printf '%s' "$write_token"
 }
 
 run_swift_sast() {
@@ -576,13 +588,14 @@ PY
     local source_openapi_url="$1"
     local source_base_url="$2"
     local output_schema_path="$3"
-    python3 - <<'PY' "$source_openapi_url" "$source_base_url" "$output_schema_path"
+    local write_token="$4"
+    python3 - <<'PY' "$source_openapi_url" "$source_base_url" "$output_schema_path" "$write_token"
 import json
 import sys
 import urllib.parse
 import urllib.request
 
-openapi_url, base_url, out_path = sys.argv[1:4]
+openapi_url, base_url, out_path, write_token = sys.argv[1:5]
 
 def fetch_json(url: str):
     with urllib.request.urlopen(url, timeout=20) as resp:
@@ -592,7 +605,10 @@ def post_json(url: str, payload: dict):
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "X-Teller-Write-Token": write_token,
+        },
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=20) as resp:
@@ -731,14 +747,15 @@ PY
     local schema_path="$1"
     local source_base_url="$2"
     local output_json_path="$3"
-    python3 - <<'PY' "$schema_path" "$source_base_url" "$output_json_path"
+    local write_token="$4"
+    python3 - <<'PY' "$schema_path" "$source_base_url" "$output_json_path" "$write_token"
 import json
 import sys
 import urllib.error
 import urllib.request
 import uuid
 
-schema_path, base_url, output_json_path = sys.argv[1:4]
+schema_path, base_url, output_json_path, write_token = sys.argv[1:5]
 
 with open(schema_path, "r", encoding="utf-8") as fh:
     schema = json.load(fh)
@@ -770,10 +787,13 @@ seed_payload = {
 
 def request_json(method: str, url: str, body=None):
     data = None if body is None else json.dumps(body).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if method != "GET":
+        headers["X-Teller-Write-Token"] = write_token
     req = urllib.request.Request(
         url,
         data=data,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method=method,
     )
     try:
@@ -876,6 +896,8 @@ PY
   local reuse_existing_api="${MACOS_UI_DAST_REUSE_EXISTING_API:-false}"
   local run_token_capture_dast="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
   local fail_on_high_critical="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
+  local dast_write_token
+  dast_write_token="$(read_classifier_write_token)"
   local zap_cli_cmd="${ZAP_CLI_CMD:-/Applications/ZAP.app/Contents/MacOS/ZAP.sh}"
   local macos_ui_dast_proxy_host="${MACOS_UI_DAST_ZAP_PROXY_HOST:-127.0.0.1}"
   local macos_ui_dast_proxy_port="${MACOS_UI_DAST_ZAP_PROXY_PORT:-8090}"
@@ -922,7 +944,7 @@ PY
     echo "▶ Running Schemathesis against ${openapi_url}"
     local schemathesis_location="$openapi_url"
     local schemathesis_openapi_fixture="${report_dir_abs}/schemathesis-openapi.json"
-    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" \
+    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" "$dast_write_token" \
       > "${report_dir_abs}/schemathesis-fixture.json"; then
       schemathesis_location="$schemathesis_openapi_fixture"
       echo "▶ Schemathesis fixture prepared at ${schemathesis_location}"
@@ -934,10 +956,12 @@ PY
       "$schemathesis_location" \
       "$base_url" \
       "${report_dir_abs}/schemathesis-delete-category-contract.json" \
+      "$dast_write_token" \
       | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
     set +e
     schemathesis run "$schemathesis_location" \
       --url "$base_url" \
+      --header "X-Teller-Write-Token: ${dast_write_token}" \
       --mode positive \
       --seed "$schemathesis_seed" \
       --max-examples "$schemathesis_max_examples" \

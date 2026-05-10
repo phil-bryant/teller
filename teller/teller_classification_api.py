@@ -1,9 +1,12 @@
 from __future__ import annotations
+import subprocess
+import unicodedata
+from functools import lru_cache
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Annotated, Any, Dict, List, Literal, Optional
 from fastapi import FastAPI, HTTPException, Query, Request, Response
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 from sqlalchemy.exc import DataError
 from sqlalchemy import text
 from teller.teller_db import get_session
@@ -63,6 +66,75 @@ _TRANSACTION_LIST_SQL = text("""
     LIMIT :limit OFFSET :offset
 """)
 
+_WRITE_TOKEN_PSA_ITEM = "TELLER_CLASSIFIER_WRITE_TOKEN"
+_WRITE_TOKEN_HEADER = "x-teller-write-token"
+_CATEGORY_TEXT_FIELDS = (
+    "level_1",
+    "level_1_name",
+    "level_2",
+    "level_2_name",
+    "level_3",
+    "level_4",
+    "categorization",
+    "applicability",
+)
+
+
+def _contains_control_characters(value: str) -> bool:
+    return any(unicodedata.category(char).startswith("C") for char in value)
+
+
+def _validate_text_field(field_name: str, value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    if _contains_control_characters(value):
+        raise ValueError(f"{field_name} contains control or non-printable characters")
+    return value
+
+
+def _normalize_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = value.replace("\x00", "").strip()
+    return normalized if normalized else None
+
+
+@lru_cache(maxsize=1)
+def _configured_write_token() -> str:
+    try:
+        result = subprocess.run(
+            ["1psa", "-p", _WRITE_TOKEN_PSA_ITEM],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail="1psa is required to resolve classifier write token") from exc
+    except subprocess.CalledProcessError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to resolve classifier write token from 1psa item {_WRITE_TOKEN_PSA_ITEM}",
+        ) from exc
+    token = result.stdout.strip()
+    if not token:
+        raise HTTPException(
+            status_code=500,
+            detail=f"1psa item {_WRITE_TOKEN_PSA_ITEM} returned an empty classifier write token",
+        )
+    return token
+
+
+def _require_write_access(request: Request) -> None:
+    #R040: Require authenticated write-token header for state-changing routes.
+    candidate = request.headers.get(_WRITE_TOKEN_HEADER)
+    if not candidate:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing write token header: X-Teller-Write-Token",
+        )
+    if candidate != _configured_write_token():
+        raise HTTPException(status_code=401, detail="Invalid write token")
+
 
 #R001: FastAPI app factory and route wiring for classification APIs.
 class CategoryOption(BaseModel):
@@ -88,6 +160,20 @@ class CategoryMutation(BaseModel):
     level_4: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     categorization: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     applicability: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+
+    @field_validator(*_CATEGORY_TEXT_FIELDS)
+    @classmethod
+    def reject_control_characters(cls, value: Optional[str], info):
+        #R045: Reject control/non-printable characters in category mutation payloads.
+        return _validate_text_field(info.field_name, value)
+
+    @model_validator(mode="after")
+    def require_non_empty_hierarchy(self):
+        #R045: Require at least one non-empty normalized hierarchy field.
+        normalized_values = [_normalize_text(getattr(self, field_name)) for field_name in _CATEGORY_TEXT_FIELDS]
+        if all(value is None for value in normalized_values):
+            raise ValueError("At least one non-empty hierarchy field is required")
+        return self
 
 
 class CategoryDeleteResponse(BaseModel):
@@ -125,12 +211,19 @@ class TransactionListResponse(BaseModel):
 
 class ClassificationMutation(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    transaction_id: str = Field(min_length=1)
+    transaction_id: Annotated[str, StringConstraints(min_length=1, max_length=120, pattern=r"^[A-Za-z0-9_.:-]+$")]
     nys_snw_category_id: Optional[int] = None
+
+    @field_validator("transaction_id")
+    @classmethod
+    def reject_control_characters(cls, value: str):
+        #R045: Enforce transaction identifier hygiene constraints.
+        return _validate_text_field("transaction_id", value)
 
 
 class ClassificationBatchRequest(BaseModel):
-    updates: List[ClassificationMutation] = Field(min_length=1)
+    model_config = ConfigDict(extra="forbid")
+    updates: List[ClassificationMutation] = Field(min_length=1, max_length=250)
 
 
 class ClassificationWriteResponse(BaseModel):
@@ -166,13 +259,6 @@ def _ensure_exists(session, table: str, column: str, value: object, error: str):
     row = session.execute(query, {"value": value}).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail=error)
-
-
-def _normalize_text(value: Optional[str]) -> Optional[str]:
-    if value is None:
-        return None
-    normalized = value.replace("\x00", "").strip()
-    return normalized if normalized else None
 
 
 def _category_params(body: CategoryMutation) -> Dict[str, Optional[str]]:
@@ -311,7 +397,8 @@ def create_app() -> FastAPI:
     @app.post("/v1/categories", response_model=CategoryOption, responses={
         400: {"model": ApiError, "description": "Invalid category payload"},
     })
-    def create_category(body: CategoryMutation):
+    def create_category(request: Request, body: CategoryMutation):
+        _require_write_access(request)
         with get_session() as session:
             return _write_category(session, body)
 
@@ -319,7 +406,8 @@ def create_app() -> FastAPI:
         400: {"model": ApiError, "description": "Invalid category payload"},
         404: {"model": ApiError, "description": "Unknown category id"},
     })
-    def update_category(nys_snw_category_id: int, body: CategoryMutation):
+    def update_category(request: Request, nys_snw_category_id: int, body: CategoryMutation):
+        _require_write_access(request)
         with get_session() as session:
             return _write_category(session, body, category_id=nys_snw_category_id)
 
@@ -327,7 +415,8 @@ def create_app() -> FastAPI:
         404: {"model": ApiError, "description": "Unknown category id"},
         409: {"model": ApiError, "description": "Category still referenced by transactions"},
     })
-    def delete_category(nys_snw_category_id: int):
+    def delete_category(request: Request, nys_snw_category_id: int):
+        _require_write_access(request)
         with get_session() as session:
             _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", nys_snw_category_id,
                            f"Unknown nys_snw_category_id: {nys_snw_category_id}")
@@ -435,7 +524,13 @@ def create_app() -> FastAPI:
         400: {"model": ApiError, "description": "Malformed request body"},
         404: {"model": ApiError, "description": "Unknown transaction or category id"},
     })
-    def set_classification(transaction_id: str, body: ClassificationMutation):
+    def set_classification(request: Request, transaction_id: str, body: ClassificationMutation):
+        _require_write_access(request)
+        if body.transaction_id != transaction_id:
+            raise HTTPException(
+                status_code=400,
+                detail="transaction_id in request body must match path transaction_id",
+            )
         with get_session() as session:
             return _write_one(session, transaction_id, body.nys_snw_category_id)
 
@@ -443,7 +538,8 @@ def create_app() -> FastAPI:
     @app.post("/v1/transactions/classifications", response_model=List[ClassificationWriteResponse], responses={
         404: {"model": ApiError, "description": "Unknown transaction or category id"},
     })
-    def set_classifications(body: ClassificationBatchRequest):
+    def set_classifications(request: Request, body: ClassificationBatchRequest):
+        _require_write_access(request)
         with get_session() as session:
             responses = [_write_one(session, item.transaction_id, item.nys_snw_category_id) for item in body.updates]
         return responses

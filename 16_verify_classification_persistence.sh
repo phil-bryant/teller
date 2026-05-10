@@ -28,6 +28,12 @@ DB_PASSWORD="${TELLER_DB_PASSWORD:-}"
 if [[ -z "$DB_PASSWORD" ]]; then
   DB_PASSWORD="$(1psa -p "${TELLER_PSA_ITEM:-localhost_postgres_teller}")"
 fi
+WRITE_TOKEN="$(1psa -p TELLER_CLASSIFIER_WRITE_TOKEN)"
+#R035: Resolve classifier write token via 1psa only.
+if [[ -z "$WRITE_TOKEN" ]]; then
+  echo "Failed to read classifier write token from 1psa item: TELLER_CLASSIFIER_WRITE_TOKEN" >&2
+  exit 1
+fi
 
 #R005: Auto-resolve transaction/category identifiers when env vars are omitted.
 db_scalar() {
@@ -59,6 +65,7 @@ fi
 API_RESPONSE="<request failed>"
 if ! API_RESPONSE="$(curl -f -sS -X POST "${API_URL}/v1/transactions/classifications" \
   -H "Content-Type: application/json" \
+  -H "X-Teller-Write-Token: ${WRITE_TOKEN}" \
   -d "{\"updates\":[{\"transaction_id\":\"${TXN_ID}\",\"nys_snw_category_id\":${CATEGORY_ID}}]}")"; then
   echo "API response: ${API_RESPONSE}"
   echo "Persisted row: <not checked>"

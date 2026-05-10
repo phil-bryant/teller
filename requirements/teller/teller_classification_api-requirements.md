@@ -49,6 +49,20 @@ Tests:
 - Submit empty update list and verify 400 response.
 - Submit multiple updates and verify response cardinality and per-item write results.
 
+R040  Statement: Require authenticated write token for all mutating classification endpoints.
+Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, require `X-Teller-Write-Token` for category/classification mutations, and return 401 for missing or invalid tokens.
+Tests:
+- Submit write requests without `X-Teller-Write-Token` and verify 401 response.
+- Submit write requests with mismatched token and verify 401 response.
+
+R045  Statement: Reject malformed mutation payloads before database persistence.
+Design: Category mutation fields reject control/non-printable characters and require at least one non-empty normalized hierarchy value; classification mutations constrain `transaction_id` format/length, and batch writes cap `updates` list length.
+Tests:
+- Submit category payload with control characters and verify validation failure.
+- Submit category payload with all-empty hierarchy values and verify validation failure.
+- Submit classification payload with invalid transaction ID pattern or oversized batch and verify validation failure.
+
 ## Changelog
 
 - 2026-04-22: Initial reverse-engineered requirements for `teller/teller_classification_api.py`.
+- 2026-05-09: Added R040/R045 for 1psa-backed write-token auth and stricter mutation payload validation.

@@ -62,11 +62,24 @@ class _SessionContext:
 
 
 class ClassificationApiTests(unittest.TestCase):
+    def setUp(self):
+        self._token_patch = patch(
+            "teller.teller_classification_api._configured_write_token",
+            return_value="test-write-token",
+        )
+        self._token_patch.start()
+
+    def tearDown(self):
+        self._token_patch.stop()
+
     def _route_endpoint(self, app, path, method):
         for route in app.routes:
             if getattr(route, "path", None) == path and method in getattr(route, "methods", set()):
                 return route.endpoint
         raise AssertionError(f"route not found: {method} {path}")
+
+    def _authorized_request(self):
+        return SimpleNamespace(headers={"x-teller-write-token": "test-write-token"})
 
     def test_create_app_registers_required_routes(self):
         #R001
@@ -157,6 +170,16 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(response.display_label, "EXPENSES > Housing > 2. > Mortgage")
         self.assertEqual(session.commits, 1)
 
+    def test_category_mutation_rejects_control_characters(self):
+        #R045
+        with self.assertRaises(ValidationError):
+            CategoryMutation(level_1="EXPENSES\n")
+
+    def test_category_mutation_requires_non_empty_field(self):
+        #R045
+        with self.assertRaises(ValidationError):
+            CategoryMutation(level_1="   ", level_2_name="")
+
     def test_write_one_inserts_when_missing_existing_mapping(self):
         ts = datetime.now(tz=timezone.utc)
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(row=(1,)), _Result(row=None), _Result(row=(ts,))])
@@ -193,6 +216,11 @@ class ClassificationApiTests(unittest.TestCase):
             _write_one(session, "txn_1", 999)
         self.assertEqual(ctx.exception.status_code, 404)
         self.assertIn("Unknown nys_snw_category_id", ctx.exception.detail)
+
+    def test_classification_mutation_rejects_invalid_transaction_id(self):
+        #R045
+        with self.assertRaises(ValidationError):
+            ClassificationMutation(transaction_id="txn with spaces", nys_snw_category_id=1)
 
     @patch("teller.teller_classification_api.get_session")
     def test_categories_endpoint_returns_display_labels(self, get_session_mock):
@@ -284,9 +312,32 @@ class ClassificationApiTests(unittest.TestCase):
             ]
         )
         get_session_mock.return_value = _SessionContext(session)
-        body = endpoint(CategoryMutation(level_1_name="EXPENSES", categorization="Pets"))
+        body = endpoint(request=self._authorized_request(), body=CategoryMutation(level_1_name="EXPENSES", categorization="Pets"))
         self.assertEqual(body.nys_snw_category_id, 55)
         self.assertEqual(body.display_label, "EXPENSES > Pets")
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_create_category_endpoint_requires_write_token(self, get_session_mock):
+        #R040
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/categories", "POST")
+        get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(request=SimpleNamespace(headers={}), body=CategoryMutation(level_1_name="EXPENSES"))
+        self.assertEqual(ctx.exception.status_code, 401)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_create_category_endpoint_rejects_invalid_write_token(self, get_session_mock):
+        #R040
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/categories", "POST")
+        get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=SimpleNamespace(headers={"x-teller-write-token": "wrong-token"}),
+                body=CategoryMutation(level_1_name="EXPENSES"),
+            )
+        self.assertEqual(ctx.exception.status_code, 401)
 
     @patch("teller.teller_classification_api.get_session")
     def test_update_category_endpoint_404s_for_unknown_id(self, get_session_mock):
@@ -295,7 +346,7 @@ class ClassificationApiTests(unittest.TestCase):
         session = _FakeSession(rows=[_Result(row=None)])
         get_session_mock.return_value = _SessionContext(session)
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(nys_snw_category_id=999, body=CategoryMutation(categorization="X"))
+            endpoint(request=self._authorized_request(), nys_snw_category_id=999, body=CategoryMutation(categorization="X"))
         self.assertEqual(ctx.exception.status_code, 404)
 
     @patch("teller.teller_classification_api.get_session")
@@ -305,7 +356,7 @@ class ClassificationApiTests(unittest.TestCase):
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(scalar=2)])
         get_session_mock.return_value = _SessionContext(session)
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(nys_snw_category_id=4)
+            endpoint(request=self._authorized_request(), nys_snw_category_id=4)
         self.assertEqual(ctx.exception.status_code, 409)
         self.assertIn("still reference", ctx.exception.detail)
 
@@ -315,7 +366,7 @@ class ClassificationApiTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id:int}", "DELETE")
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(scalar=0), _Result()])
         get_session_mock.return_value = _SessionContext(session)
-        body = endpoint(nys_snw_category_id=4)
+        body = endpoint(request=self._authorized_request(), nys_snw_category_id=4)
         self.assertEqual(body.nys_snw_category_id, 4)
         self.assertTrue(body.deleted)
         self.assertEqual(session.commits, 1)
@@ -387,11 +438,14 @@ class ClassificationApiTests(unittest.TestCase):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/{transaction_id}/classification", "PUT")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
-        endpoint(transaction_id="txn_path", body=ClassificationMutation(transaction_id="txn_body", nys_snw_category_id=12))
-        write_one_mock.assert_called_once()
-        call_args, _ = write_one_mock.call_args
-        self.assertEqual(call_args[1], "txn_path")
-        self.assertEqual(call_args[2], 12)
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=self._authorized_request(),
+                transaction_id="txn_path",
+                body=ClassificationMutation(transaction_id="txn_body", nys_snw_category_id=12),
+            )
+        self.assertEqual(ctx.exception.status_code, 400)
+        write_one_mock.assert_not_called()
 
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
@@ -399,6 +453,16 @@ class ClassificationApiTests(unittest.TestCase):
         #R035
         with self.assertRaises(ValidationError):
             ClassificationBatchRequest(updates=[])
+        write_one_mock.assert_not_called()
+
+    @patch("teller.teller_classification_api._write_one")
+    @patch("teller.teller_classification_api.get_session")
+    def test_batch_classification_rejects_excessive_batch_size(self, get_session_mock, write_one_mock):
+        #R045
+        with self.assertRaises(ValidationError):
+            ClassificationBatchRequest(
+                updates=[ClassificationMutation(transaction_id=f"txn_{idx}", nys_snw_category_id=1) for idx in range(251)]
+            )
         write_one_mock.assert_not_called()
 
     @patch("teller.teller_classification_api._write_one")
@@ -413,6 +477,7 @@ class ClassificationApiTests(unittest.TestCase):
             {"transaction_id": "txn_2", "nys_snw_category_id": None, "type": "user", "updated_at": datetime.now(timezone.utc)},
         ]
         response = endpoint(
+            request=self._authorized_request(),
             body=SimpleNamespace(
                 updates=[
                     SimpleNamespace(transaction_id="txn_1", nys_snw_category_id=1),
