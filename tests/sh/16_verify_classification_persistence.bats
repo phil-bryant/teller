@@ -99,7 +99,7 @@ EOF
 }
 
 @test "api json uses transaction and category" {
-  #R020
+  #R020 #R035
   : > "${CURL_LOG16}"
   : > "${PSQL_16}"
   write_psql16
@@ -107,6 +107,7 @@ EOF
   [ "$status" -eq 0 ]
   grep "txn1" "${CURL_LOG16}"
   grep "7" "${CURL_LOG16}"
+  grep "X-Teller-Write-Token" "${CURL_LOG16}"
 }
 
 @test "persists line matches expected format" {

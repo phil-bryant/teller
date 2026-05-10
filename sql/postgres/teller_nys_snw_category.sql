@@ -8,6 +8,28 @@ CREATE TABLE teller.nys_snw_category (
     level_4 TEXT,
     categorization TEXT,
     applicability TEXT,
+    CONSTRAINT nys_snw_category_non_empty_hierarchy_chk CHECK (
+        COALESCE(
+            NULLIF(BTRIM(level_1), ''),
+            NULLIF(BTRIM(level_1_name), ''),
+            NULLIF(BTRIM(level_2), ''),
+            NULLIF(BTRIM(level_2_name), ''),
+            NULLIF(BTRIM(level_3), ''),
+            NULLIF(BTRIM(level_4), ''),
+            NULLIF(BTRIM(categorization), ''),
+            NULLIF(BTRIM(applicability), '')
+        ) IS NOT NULL
+    ),
+    CONSTRAINT nys_snw_category_no_control_chars_chk CHECK (
+        (level_1 IS NULL OR level_1 !~ '[[:cntrl:]]')
+        AND (level_1_name IS NULL OR level_1_name !~ '[[:cntrl:]]')
+        AND (level_2 IS NULL OR level_2 !~ '[[:cntrl:]]')
+        AND (level_2_name IS NULL OR level_2_name !~ '[[:cntrl:]]')
+        AND (level_3 IS NULL OR level_3 !~ '[[:cntrl:]]')
+        AND (level_4 IS NULL OR level_4 !~ '[[:cntrl:]]')
+        AND (categorization IS NULL OR categorization !~ '[[:cntrl:]]')
+        AND (applicability IS NULL OR applicability !~ '[[:cntrl:]]')
+    ),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

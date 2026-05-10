@@ -4,12 +4,14 @@ enum APIError: Error, LocalizedError {
     case invalidResponse
     case requestFailed(String)
     case encodeFailed
+    case missingWriteToken
     case unsupportedOperation(String)
     var errorDescription: String? {
         switch self {
         case .invalidResponse: return "Invalid server response."
         case .requestFailed(let msg): return msg
         case .encodeFailed: return "Failed to encode request payload."
+        case .missingWriteToken: return "Missing classifier write token from 1psa item TELLER_CLASSIFIER_WRITE_TOKEN."
         case .unsupportedOperation(let operation): return "\(operation) is not supported by this API client."
         }
     }
@@ -48,9 +50,12 @@ extension ClassificationAPI {
 actor APIClient: ClassificationAPI {
     private let session: URLSession
     private let baseURL: URL
+    private let writeToken: String
     init(baseURL: URL = APIClient.defaultBaseURL(),
+         writeToken: String = APIClient.defaultWriteToken(),
          session: URLSession? = nil) {
         self.baseURL = baseURL
+        self.writeToken = writeToken
         self.session = session ?? APIClient.makeDefaultSession()
     }
 
@@ -103,6 +108,12 @@ actor APIClient: ClassificationAPI {
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if method != "GET" {
+            if writeToken.isEmpty {
+                throw APIError.missingWriteToken
+            }
+            req.setValue(writeToken, forHTTPHeaderField: "X-Teller-Write-Token")
+        }
         if let body { req.httpBody = body; req.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
@@ -136,5 +147,29 @@ actor APIClient: ClassificationAPI {
             return parsedURL
         }
         return URL(fileURLWithPath: "/")
+    }
+
+    private static func defaultWriteToken() -> String {
+        // #R045: Resolve write token exclusively from 1psa item.
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["1psa", "-p", "TELLER_CLASSIFIER_WRITE_TOKEN"]
+
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else {
+                return ""
+            }
+            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            return String(decoding: outputData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            return ""
+        }
     }
 }

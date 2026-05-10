@@ -90,6 +90,12 @@ Tests:
 - Stub gitleaks to return exit code `2` and verify explicit execution failure.
 - Stub gitleaks to return exit code `1` with findings and verify SAST gate failure when fail-on-high is enabled.
 
+R080  Statement: Resolve DAST write token exclusively from 1psa for mutating API probes.
+Design: Read `TELLER_CLASSIFIER_WRITE_TOKEN` via `1psa -p` inside DAST lane, fail fast if lookup fails/empty, and inject `X-Teller-Write-Token` into mutating fixture requests, contract checks, and Schemathesis headers.
+Tests:
+- Stub missing/empty 1psa token lookup and verify DAST lane fails with explicit credential error.
+- Run Schemathesis fixture path and verify mutating requests include `X-Teller-Write-Token`.
+
 ## Changelog
 
 - 2026-04-24: Consolidated security scanning policy and runtime behavior from `docs/security-scanning.md` into script-scoped requirements for `14_run_security_checks.sh`.
@@ -99,3 +105,4 @@ Tests:
 - 2026-05-02: Added R070 post-DAST category-integrity gate and removed Schemathesis category-path exclusions.
 - 2026-05-09: Re-scoped R065 from ClamAV-in-SAST to ShellCheck-in-SAST and moved AV behavior to `18_run_av_checks.sh`.
 - 2026-05-09: Added R075 to include gitleaks in SAST execution and centralized gating.
+- 2026-05-09: Added R080 for 1psa-only DAST write-token resolution and header injection.

@@ -27,3 +27,11 @@ src() {
   run grep "create_app" "$(src)"
   [ "$status" -eq 0 ]
 }
+
+@test "requires classifier write token lookup preflight" {
+  #R010
+  run grep "require_write_token" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "TELLER_CLASSIFIER_WRITE_TOKEN" "$(src)"
+  [ "$status" -eq 0 ]
+}

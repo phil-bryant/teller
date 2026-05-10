@@ -34,9 +34,15 @@ Tests:
 - Unset DB password and verify fallback 1psa lookup is used.
 
 R020  Statement: Post classification update request to classifier API.
-Design: Send JSON payload to `/v1/transactions/classifications` with provided IDs.
+Design: Send JSON payload to `/v1/transactions/classifications` with provided IDs and include `X-Teller-Write-Token` resolved from 1psa.
 Tests:
 - Verify request body includes provided transaction and category identifiers.
+- Verify request headers include `X-Teller-Write-Token`.
+
+R035  Statement: Resolve classifier write token from 1psa without environment fallback.
+Design: Always read token via `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN` and fail fast on missing/empty values before API mutation request.
+Tests:
+- Stub empty token lookup and verify script exits non-zero before curl mutation call.
 
 R025  Statement: Query latest persisted classification for the target transaction.
 Design: Execute `psql` query ordered by `updated_at DESC LIMIT 1`.
@@ -60,3 +66,4 @@ Tests:
 - 2026-04-21: Added explicit, actionable failure behavior when auto-resolve queries return no rows.
 - 2026-04-21: Added explicit `PASS:`/`FAIL:` result output with non-zero failures for API or persistence mismatch.
 - 2026-04-21: Restored detailed output (API response + persisted row) while keeping icon pass/fail status lines.
+- 2026-05-09: Added R035 and updated R020 for mandatory 1psa-only classifier write-token header usage.

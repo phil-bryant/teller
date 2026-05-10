@@ -85,6 +85,7 @@ copy_security_project_files() {
   echo 'x = 1' > "${FIXTURE_ROOT}/teller/safe_test.py"
   write_dast_13_stub "${FIXTURE_ROOT}"
   write_macos_ui_regression_stub "${FIXTURE_ROOT}"
+  stub_cmd 1psa "echo write-token"
 }
 
 install_passing_sast_stubs_in_venv() {
@@ -695,7 +696,7 @@ EOF
 }
 
 @test "DAST starts API, waits for health, completes when DAST tools minimal" {
-  #R035 #R070
+  #R035 #R070 #R080
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
