@@ -13,6 +13,7 @@ from teller.teller_classification_api import (
     create_app,
     CategoryMutation,
     ClassificationMutation,
+    SingleClassificationMutation,
     ClassificationBatchRequest,
 )
 
@@ -180,6 +181,11 @@ class ClassificationApiTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             CategoryMutation(level_1="   ", level_2_name="")
 
+    def test_category_mutation_openapi_schema_requires_non_empty_object(self):
+        #R045
+        schema = create_app().openapi()["components"]["schemas"]["CategoryMutation"]
+        self.assertEqual(schema.get("minProperties"), 1)
+
     def test_write_one_inserts_when_missing_existing_mapping(self):
         ts = datetime.now(tz=timezone.utc)
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(row=(1,)), _Result(row=None), _Result(row=(ts,))])
@@ -221,6 +227,16 @@ class ClassificationApiTests(unittest.TestCase):
         #R045
         with self.assertRaises(ValidationError):
             ClassificationMutation(transaction_id="txn with spaces", nys_snw_category_id=1)
+
+    def test_single_classification_mutation_rejects_transaction_id_field(self):
+        #R030
+        with self.assertRaises(ValidationError):
+            SingleClassificationMutation(transaction_id="txn_1", nys_snw_category_id=1)
+
+    def test_single_classification_openapi_schema_omits_transaction_id(self):
+        #R030
+        schema = create_app().openapi()["components"]["schemas"]["SingleClassificationMutation"]
+        self.assertNotIn("transaction_id", schema.get("properties", {}))
 
     @patch("teller.teller_classification_api.get_session")
     def test_categories_endpoint_returns_display_labels(self, get_session_mock):
@@ -433,19 +449,17 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
-    def test_single_classification_rejects_path_payload_mismatch(self, get_session_mock, write_one_mock):
+    def test_single_classification_uses_path_transaction_id(self, get_session_mock, write_one_mock):
         #R030
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/{transaction_id}/classification", "PUT")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
-        with self.assertRaises(HTTPException) as ctx:
-            endpoint(
-                request=self._authorized_request(),
-                transaction_id="txn_path",
-                body=ClassificationMutation(transaction_id="txn_body", nys_snw_category_id=12),
-            )
-        self.assertEqual(ctx.exception.status_code, 400)
-        write_one_mock.assert_not_called()
+        endpoint(
+            request=self._authorized_request(),
+            transaction_id="txn_path",
+            body=SingleClassificationMutation(nys_snw_category_id=12),
+        )
+        write_one_mock.assert_called_once_with(unittest.mock.ANY, "txn_path", 12)
 
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")

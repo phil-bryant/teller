@@ -171,6 +171,8 @@ Useful flags:
 - `RUN_DAST=true|false` (default `true`)
 - `RUN_SWIFT_SAST=true|false` (default `true`; runs security-focused SwiftLint rules on first-party `./macos-ui` Swift code)
 - `RUN_ZAP=true|false` (default `true`, requires local ZAP CLI executable, e.g. `ZAP.sh`)
+- `ZAP_HOME_DIR=/path` (default `${SECURITY_REPORT_DIR:-./.security-reports}/zap-home`; isolates ZAP state per repo to avoid global home-directory lock conflicts)
+- `ZAP_QUIET=true|false` (default `false`; when `false`, shows live ZAP quick-scan progress including attack phase output)
 - `RUN_MACOS_UI_DAST=true|false` (default `true`; runs macOS XCUITest smoke flows through a local ZAP proxy)
 - `MACOS_UI_DAST_ZAP_PROXY_HOST` / `MACOS_UI_DAST_ZAP_PROXY_PORT` (defaults `127.0.0.1` / `8090`)
 - `MACOS_UI_DAST_REUSE_EXISTING_API=true|false` (default `false`; reuse already-running classification API instead of starting one)
