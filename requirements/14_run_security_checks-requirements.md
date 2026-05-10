@@ -50,10 +50,11 @@ Tests:
 - Run with `RUN_TOKEN_CAPTURE_DAST=auto` and no application ID file and verify token-capture DAST is skipped.
 
 R045  Statement: Run Schemathesis and ZAP quick scans with configurable targets and high/critical gating.
-Design: Run Schemathesis against resolved OpenAPI URL (using positive-mode generation and runtime fixture examples for live IDs). Before Schemathesis, execute a deterministic contract check that creates and deletes a category (including second-delete 404 semantics) and persist its JSON/log artifacts. Keep category mutation paths (`/v1/categories` and `/v1/categories/{nys_snw_category_id}`) in Schemathesis coverage so fuzzing can surface unsafe mutation behavior. Run ZAP CLI quick scans against classification and optional token-capture targets, parse any generated ZAP JSON alerts, and fail when high/critical alerts exist and fail-on-high is enabled.
+Design: Run Schemathesis against resolved OpenAPI URL (using positive-mode generation and runtime fixture examples for live IDs). Fixture body examples must stay synchronized with the active API request models for category creation/update and single/batch classification writes so generated requests remain contract-accurate. Before Schemathesis, execute a deterministic contract check that creates and deletes a category (including second-delete 404 semantics) and persist its JSON/log artifacts. Keep category mutation paths (`/v1/categories` and `/v1/categories/{nys_snw_category_id}`) in Schemathesis coverage so fuzzing can surface unsafe mutation behavior. Resolve `ZAP_HOME_DIR` (default `${SECURITY_REPORT_DIR}/zap-home`) and pass it to all ZAP invocations via `-dir` so quick-scan and daemon lanes do not share global machine state. Run ZAP CLI quick scans against classification and optional token-capture targets, parse any generated ZAP JSON alerts, and fail when high/critical alerts exist and fail-on-high is enabled.
 Tests:
 - Configure `RUN_ZAP=true` with missing `ZAP_CLI_CMD` and verify explicit prerequisite failure.
 - Configure DAST with valid tooling and verify zap/schemathesis logs are written in the report directory without category-path exclusions.
+- Configure `ZAP_HOME_DIR` to a custom path and verify ZAP invocations use that directory.
 
 R050  Statement: Emit explicit completion status and artifact location for operators.
 Design: Print SAST/DAST progress markers, gate outcomes, and explicit lane completion lines (`Static Application Security Testing (SAST) checks completed.` and `Dynamic Application Security Testing (DAST) checks completed.`) plus final success output including resolved report directory path.
@@ -96,6 +97,11 @@ Tests:
 - Stub missing/empty 1psa token lookup and verify DAST lane fails with explicit credential error.
 - Run Schemathesis fixture path and verify mutating requests include `X-Teller-Write-Token`.
 
+R085  Statement: Keep ZAP quick-scan output visible by default.
+Design: Resolve `ZAP_QUIET` to `false` when unset, and only add ZAP's `-silent` flag when `ZAP_QUIET=true` is explicitly requested. This preserves live attack/progress output by default while still allowing opt-in quiet mode.
+Tests:
+- Run DAST with `ZAP_QUIET=false` and verify the ZAP quick-scan invocation does not include `-silent`.
+
 ## Changelog
 
 - 2026-04-24: Consolidated security scanning policy and runtime behavior from `docs/security-scanning.md` into script-scoped requirements for `14_run_security_checks.sh`.
@@ -106,3 +112,6 @@ Tests:
 - 2026-05-09: Re-scoped R065 from ClamAV-in-SAST to ShellCheck-in-SAST and moved AV behavior to `18_run_av_checks.sh`.
 - 2026-05-09: Added R075 to include gitleaks in SAST execution and centralized gating.
 - 2026-05-09: Added R080 for 1psa-only DAST write-token resolution and header injection.
+- 2026-05-10: Tightened R045 to require Schemathesis fixture examples remain aligned with live API request model shapes.
+- 2026-05-10: Added R085 to enforce visible ZAP quick-scan output unless `ZAP_QUIET=true`.
+- 2026-05-10: Added project-scoped `ZAP_HOME_DIR` behavior for ZAP quick-scan and daemon lanes.

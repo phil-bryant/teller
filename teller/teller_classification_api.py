@@ -151,7 +151,10 @@ class CategoryOption(BaseModel):
 
 
 class CategoryMutation(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={"minProperties": 1},
+    )
     level_1: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     level_1_name: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     level_2: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
@@ -224,6 +227,11 @@ class ClassificationMutation(BaseModel):
 class ClassificationBatchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     updates: List[ClassificationMutation] = Field(min_length=1, max_length=250)
+
+
+class SingleClassificationMutation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    nys_snw_category_id: Optional[int] = None
 
 
 class ClassificationWriteResponse(BaseModel):
@@ -519,18 +527,13 @@ def create_app() -> FastAPI:
                                         teller_category=row["teller_category"], classification=classification))
         return TransactionListResponse(total=total, items=items)
 
-    #R030: Enforce path/body transaction ID consistency.
+    #R030: Use path transaction ID as the source of truth for single writes.
     @app.put("/v1/transactions/{transaction_id}/classification", response_model=ClassificationWriteResponse, responses={
         400: {"model": ApiError, "description": "Malformed request body"},
         404: {"model": ApiError, "description": "Unknown transaction or category id"},
     })
-    def set_classification(request: Request, transaction_id: str, body: ClassificationMutation):
+    def set_classification(request: Request, transaction_id: str, body: SingleClassificationMutation):
         _require_write_access(request)
-        if body.transaction_id != transaction_id:
-            raise HTTPException(
-                status_code=400,
-                detail="transaction_id in request body must match path transaction_id",
-            )
         with get_session() as session:
             return _write_one(session, transaction_id, body.nys_snw_category_id)
 
