@@ -32,7 +32,7 @@ require_command() {
 }
 
 print_tool_header() {
-  #R055: Delimit each security tool execution with a boxed descriptor header.
+  # Delimit each security tool execution with a boxed descriptor header.
   local tool_name="$1"
   local explainer_line_1="$2"
   local explainer_line_2="$3"
@@ -110,7 +110,7 @@ run_zap_quick_scan() {
 }
 
 read_classifier_write_token() {
-  #R080: Resolve DAST write token only from 1psa.
+  # Resolve DAST write token only from 1psa.
   local write_token
   write_token="$(1psa -p "$WRITE_TOKEN_PSA_ITEM")"
   if [[ -z "$write_token" ]]; then
@@ -177,7 +177,7 @@ run_swift_sast() {
 }
 
 run_shellcheck_sast() {
-  #R065: Run ShellCheck against shell scripts and persist machine-readable findings.
+  # Run ShellCheck against shell scripts and persist machine-readable findings.
   local shellcheck_report="$1"
   local shellcheck_targets=()
 
@@ -212,7 +212,7 @@ run_shellcheck_sast() {
 }
 
 run_gitleaks_sast() {
-  #R075: Run gitleaks and preserve JSON findings for centralized secret-leak gating.
+  # Run gitleaks and preserve JSON findings for centralized secret-leak gating.
   local gitleaks_report="$1"
 
   require_command gitleaks
@@ -913,7 +913,7 @@ PY
   dast_write_token="$(read_classifier_write_token)"
   local zap_cli_cmd="${ZAP_CLI_CMD:-/Applications/ZAP.app/Contents/MacOS/ZAP.sh}"
   local zap_home_dir="${ZAP_HOME_DIR:-${report_dir_abs}/zap-home}"
-  #R085: Keep ZAP quick-scan output visible by default unless explicitly silenced.
+  # Keep ZAP quick-scan output visible by default unless explicitly silenced.
   local zap_quiet="${ZAP_QUIET:-false}"
   local macos_ui_dast_proxy_host="${MACOS_UI_DAST_ZAP_PROXY_HOST:-127.0.0.1}"
   local macos_ui_dast_proxy_port="${MACOS_UI_DAST_ZAP_PROXY_PORT:-8090}"
@@ -939,7 +939,7 @@ PY
   trap 'if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then kill "$token_capture_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then kill "$zap_proxy_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then kill "$classifier_api_pid" >/dev/null 2>&1 || true; fi' EXIT
   mkdir -p "$zap_home_dir"
 
-  #R035: Start local classification API automatically for DAST execution.
+  # Start local classification API automatically for DAST execution.
   if [[ "$reuse_existing_api" == "true" ]]; then
     echo "▶ Reusing existing classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
   else
@@ -950,7 +950,7 @@ PY
   fi
   wait_for_http "${base_url}/health" 45
 
-  #R045: Run Schemathesis and ZAP quick scans with configurable targets and gating.
+  # Run Schemathesis and ZAP quick scans with configurable targets and gating.
   if [[ "$run_schemathesis" == "true" ]]; then
     require_command schemathesis
     print_tool_header \
@@ -1011,7 +1011,7 @@ PY
       "${report_dir_abs}/zap-classification.log"
   fi
 
-  #R060: Support local macOS UI Dynamic Application Security Testing (DAST) via ZAP proxy mode.
+  # Support local macOS UI Dynamic Application Security Testing (DAST) via ZAP proxy mode.
   if [[ "$run_macos_ui_dast" == "true" ]]; then
     if [[ "$run_zap" != "true" ]]; then
       echo "❌ macOS UI Dynamic Application Security Testing (DAST) requires RUN_ZAP=true."
@@ -1068,7 +1068,7 @@ PY
     echo "ℹ️  macOS UI Dynamic Application Security Testing (DAST) skipped (set RUN_MACOS_UI_DAST=true to enable)."
   fi
 
-  #R040: Support optional token-capture DAST coverage with auto-detection.
+  # Support optional token-capture DAST coverage with auto-detection.
   if [[ "$run_token_capture_dast" == "auto" ]]; then
     if [[ -f "$HOME/.teller/application_id.txt" ]]; then
       run_token_capture_dast="true"
@@ -1125,7 +1125,7 @@ PY
     exit 1
   fi
 
-  #R070: Enforce post-DAST category table integrity invariants.
+  # Enforce post-DAST category table integrity invariants.
   run_category_integrity_checks "$report_dir_abs"
 
   echo "✅ Dynamic Application Security Testing (DAST) checks completed."
@@ -1183,7 +1183,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "Flags known insecure coding patterns and risky API usage." \
     "https://bandit.readthedocs.io/"
   echo "▶ Running Bandit"
-  #R025: Distinguish scanner findings from scanner execution failures.
+  # Distinguish scanner findings from scanner execution failures.
   set +e
   bandit -q -r ./teller -c ./.bandit -f json -o "${REPORT_DIR}/bandit.json"
   BANDIT_EXIT=$?
@@ -1220,11 +1220,11 @@ if [[ "$RUN_SAST" == "true" ]]; then
 
   run_gitleaks_sast "${REPORT_DIR}/gitleaks.json"
 
-  #R065: Execute ShellCheck within SAST lane and feed severity counts into centralized gating.
+  # Execute ShellCheck within SAST lane and feed severity counts into centralized gating.
   run_shellcheck_sast "${REPORT_DIR}/shellcheck.json"
   run_swift_sast "${REPORT_DIR}/swiftlint.json"
 
-  #R030: Produce consolidated SAST gate summary and enforce blocking policy.
+  # Produce consolidated SAST gate summary and enforce blocking policy.
   python3 - <<'PY' "${REPORT_DIR}" "${FAIL_ON_HIGH_CRITICAL}"
 import json
 import os
@@ -1338,5 +1338,5 @@ if [[ "$RUN_DAST" == "true" ]]; then
   run_dast_checks "$REPORT_DIR"
 fi
 
-#R050: Emit explicit completion status and artifact location for operators.
+# Emit explicit completion status and artifact location for operators.
 echo "✅ Security checks completed. Reports: ${REPORT_DIR}"

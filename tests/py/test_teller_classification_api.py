@@ -177,6 +177,7 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(session.commits, 1)
 
     def test_write_category_returns_conflict_for_duplicate_hierarchy(self):
+        #R050
         session = _IntegrityErrorSession(rows=[])
         with self.assertRaises(HTTPException) as ctx:
             _write_category(session, CategoryMutation(level_1="II.", categorization="Rent"))

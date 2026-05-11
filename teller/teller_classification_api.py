@@ -342,6 +342,7 @@ def _write_category(session, body: CategoryMutation, category_id: Optional[int] 
     except HTTPException:
         raise
     except IntegrityError:
+        #R050: Duplicate hierarchy writes surface as HTTP 409 conflict.
         raise HTTPException(status_code=409, detail="Category mutation conflicts with an existing hierarchy row")
     except (DataError, UnicodeEncodeError):
         raise HTTPException(status_code=400, detail="Invalid category payload for database constraints")

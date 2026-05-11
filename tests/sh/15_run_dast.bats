@@ -57,6 +57,7 @@ teardown() {
 }
 
 @test "prints DAST startup banner" {
+  #R001
   setup_shell_test
   copy_dast_project_files
   mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
@@ -69,6 +70,7 @@ teardown() {
 }
 
 @test "runs DAST lane when scanner integrations are disabled" {
+  #R005 #R010 #R015 #R020
   setup_shell_test
   copy_dast_project_files
   mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
