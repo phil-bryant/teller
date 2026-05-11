@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `17_verify_macos_crash_reporter.sh`.
+Applies to `18_verify_macos_crash_reporter.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` at script entry.
@@ -44,4 +44,4 @@ Tests:
 
 ## Changelog
 
-- 2026-05-07: Initial requirements for `17_verify_macos_crash_reporter.sh`.
+- 2026-05-07: Initial requirements for `18_verify_macos_crash_reporter.sh`.
