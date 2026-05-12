@@ -12,7 +12,8 @@ from teller.teller_classification_api import (
     _write_category,
     _write_one,
     create_app,
-    CategoryMutation,
+    CategoryCreateMutation,
+    CategoryUpdateMutation,
     ClassificationMutation,
     SingleClassificationMutation,
     ClassificationBatchRequest,
@@ -111,7 +112,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     def test_category_params_normalizes_whitespace(self):
         params = _category_params(
-            CategoryMutation(
+            CategoryCreateMutation(
                 level_1=" II. ",
                 level_1_name="",
                 level_2_name="  Housing  ",
@@ -119,7 +120,8 @@ class ClassificationApiTests(unittest.TestCase):
                 level_4="A.",
                 categorization=" Rent ",
                 applicability="N/A",
-            )
+            ),
+            include_unset=True,
         )
         self.assertEqual(params["level_1"], "II.")
         self.assertIsNone(params["level_1_name"])
@@ -142,11 +144,15 @@ class ClassificationApiTests(unittest.TestCase):
                         "level_4": None,
                         "categorization": "Rent",
                         "applicability": None,
+                        "is_seed": False,
                     }
                 ),
             ]
         )
-        response = _write_category(session, CategoryMutation(level_1="II.", level_1_name="EXPENSES", categorization="Rent"))
+        response = _write_category(
+            session,
+            CategoryCreateMutation(level_1="II.", level_1_name="EXPENSES", categorization="Rent"),
+        )
         self.assertEqual(response.nys_snw_category_id, 42)
         self.assertEqual(response.display_label, "EXPENSES > Rent")
         self.assertEqual(session.commits, 1)
@@ -155,6 +161,20 @@ class ClassificationApiTests(unittest.TestCase):
         session = _FakeSession(
             rows=[
                 _Result(row=(1,)),
+                _Result(
+                    row={
+                        "nys_snw_category_id": 9,
+                        "level_1": "II.",
+                        "level_1_name": "EXPENSES",
+                        "level_2": "(a)",
+                        "level_2_name": "Housing",
+                        "level_3": "2.",
+                        "level_4": None,
+                        "categorization": "Rent",
+                        "applicability": None,
+                        "is_seed": False,
+                    }
+                ),
                 _Result(),
                 _Result(
                     row={
@@ -167,11 +187,12 @@ class ClassificationApiTests(unittest.TestCase):
                         "level_4": None,
                         "categorization": "Mortgage",
                         "applicability": None,
+                        "is_seed": False,
                     }
                 ),
             ]
         )
-        response = _write_category(session, CategoryMutation(categorization="Mortgage"), category_id=9)
+        response = _write_category(session, CategoryUpdateMutation(categorization="Mortgage"), category_id=9)
         self.assertEqual(response.nys_snw_category_id, 9)
         self.assertEqual(response.display_label, "EXPENSES > Housing > 2. > Mortgage")
         self.assertEqual(session.commits, 1)
@@ -180,33 +201,60 @@ class ClassificationApiTests(unittest.TestCase):
         #R050
         session = _IntegrityErrorSession(rows=[])
         with self.assertRaises(HTTPException) as ctx:
-            _write_category(session, CategoryMutation(level_1="II.", categorization="Rent"))
+            _write_category(session, CategoryCreateMutation(level_1="II.", level_1_name="EXPENSES", categorization="Rent"))
         self.assertEqual(ctx.exception.status_code, 409)
 
-    def test_category_mutation_sanitizes_control_characters(self):
+    def test_category_mutation_rejects_control_characters(self):
         #R045
-        params = _category_params(CategoryMutation(level_1="EXPE\nNSES", categorization="Rent"))
-        self.assertEqual(params["level_1"], "EXPENSES")
+        with self.assertRaises(ValidationError):
+            CategoryCreateMutation(level_1_name="EXPENSES", level_2_name="House\nhold")
 
     def test_write_category_rejects_empty_normalized_payload(self):
         #R045
         session = _FakeSession(rows=[])
-        with self.assertRaises(HTTPException) as ctx:
-            _write_category(session, CategoryMutation(level_1="   ", level_2_name=""))
-        self.assertEqual(ctx.exception.status_code, 409)
+        with self.assertRaises(ValidationError):
+            _write_category(session, CategoryCreateMutation(level_1="   ", level_2_name=""))
 
     def test_category_mutation_rejects_null_field_values(self):
         #R045
         with self.assertRaises(ValidationError):
-            CategoryMutation(level_1=None)
+            CategoryUpdateMutation(level_1=None)
 
     def test_category_mutation_openapi_schema_requires_non_empty_object(self):
         #R045
-        schema = create_app().openapi()["components"]["schemas"]["CategoryMutation"]
-        self.assertEqual(schema.get("minProperties"), 1)
-        level_1_schema = schema.get("properties", {}).get("level_1", {})
+        schemas = create_app().openapi()["components"]["schemas"]
+        create_schema = schemas["CategoryCreateMutation"]
+        update_schema = schemas["CategoryUpdateMutation"]
+        self.assertEqual(create_schema.get("minProperties"), 1)
+        self.assertEqual(update_schema.get("minProperties"), 1)
+        level_1_schema = create_schema.get("properties", {}).get("level_1", {})
         self.assertEqual(level_1_schema.get("type"), "string")
-        self.assertEqual(level_1_schema.get("pattern"), r"^(?=.*\S)[^\x00-\x1F\x7F]+$")
+        self.assertEqual(level_1_schema.get("pattern"), r"^[^\x00-\x1F\x7F]*$")
+
+    def test_write_category_rejects_seed_row_updates(self):
+        session = _FakeSession(
+            rows=[
+                _Result(row=(1,)),
+                _Result(
+                    row={
+                        "nys_snw_category_id": 7,
+                        "level_1": "II.",
+                        "level_1_name": "EXPENSES",
+                        "level_2": "(a)",
+                        "level_2_name": "Housing",
+                        "level_3": "2.",
+                        "level_4": None,
+                        "categorization": "Rent",
+                        "applicability": None,
+                        "is_seed": True,
+                    }
+                ),
+            ]
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            _write_category(session, CategoryUpdateMutation(categorization="Mortgage"), category_id=7)
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("seed-protected", ctx.exception.detail)
 
     def test_write_one_inserts_when_missing_existing_mapping(self):
         ts = datetime.now(tz=timezone.utc)
@@ -345,12 +393,16 @@ class ClassificationApiTests(unittest.TestCase):
                         "level_4": None,
                         "categorization": "Pets",
                         "applicability": None,
+                        "is_seed": False,
                     }
                 ),
             ]
         )
         get_session_mock.return_value = _SessionContext(session)
-        body = endpoint(request=self._authorized_request(), body=CategoryMutation(level_1_name="EXPENSES", categorization="Pets"))
+        body = endpoint(
+            request=self._authorized_request(),
+            body=CategoryCreateMutation(level_1_name="EXPENSES", categorization="Pets"),
+        )
         self.assertEqual(body.nys_snw_category_id, 55)
         self.assertEqual(body.display_label, "EXPENSES > Pets")
 
@@ -361,7 +413,7 @@ class ClassificationApiTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/categories", "POST")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(request=SimpleNamespace(headers={}), body=CategoryMutation(level_1_name="EXPENSES"))
+            endpoint(request=SimpleNamespace(headers={}), body=CategoryCreateMutation(level_1_name="EXPENSES"))
         self.assertEqual(ctx.exception.status_code, 401)
 
     @patch("teller.teller_classification_api.get_session")
@@ -373,7 +425,7 @@ class ClassificationApiTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             endpoint(
                 request=SimpleNamespace(headers={"x-teller-write-token": "wrong-token"}),
-                body=CategoryMutation(level_1_name="EXPENSES"),
+                body=CategoryCreateMutation(level_1_name="EXPENSES"),
             )
         self.assertEqual(ctx.exception.status_code, 401)
 
@@ -384,14 +436,37 @@ class ClassificationApiTests(unittest.TestCase):
         session = _FakeSession(rows=[_Result(row=None)])
         get_session_mock.return_value = _SessionContext(session)
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(request=self._authorized_request(), nys_snw_category_id=999, body=CategoryMutation(categorization="X"))
+            endpoint(
+                request=self._authorized_request(),
+                nys_snw_category_id=999,
+                body=CategoryUpdateMutation(categorization="X"),
+            )
         self.assertEqual(ctx.exception.status_code, 404)
 
     @patch("teller.teller_classification_api.get_session")
     def test_delete_category_rejects_assigned_categories(self, get_session_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id:int}", "DELETE")
-        session = _FakeSession(rows=[_Result(row=(1,)), _Result(scalar=2)])
+        session = _FakeSession(
+            rows=[
+                _Result(row=(1,)),
+                _Result(
+                    row={
+                        "nys_snw_category_id": 4,
+                        "level_1": "II.",
+                        "level_1_name": "EXPENSES",
+                        "level_2": "(a)",
+                        "level_2_name": "Housing",
+                        "level_3": "2.",
+                        "level_4": None,
+                        "categorization": "Rent",
+                        "applicability": None,
+                        "is_seed": False,
+                    }
+                ),
+                _Result(scalar=2),
+            ]
+        )
         get_session_mock.return_value = _SessionContext(session)
         with self.assertRaises(HTTPException) as ctx:
             endpoint(request=self._authorized_request(), nys_snw_category_id=4)
@@ -402,12 +477,61 @@ class ClassificationApiTests(unittest.TestCase):
     def test_delete_category_succeeds_when_unassigned(self, get_session_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id:int}", "DELETE")
-        session = _FakeSession(rows=[_Result(row=(1,)), _Result(scalar=0), _Result()])
+        session = _FakeSession(
+            rows=[
+                _Result(row=(1,)),
+                _Result(
+                    row={
+                        "nys_snw_category_id": 4,
+                        "level_1": "II.",
+                        "level_1_name": "EXPENSES",
+                        "level_2": "(a)",
+                        "level_2_name": "Housing",
+                        "level_3": "2.",
+                        "level_4": None,
+                        "categorization": "Rent",
+                        "applicability": None,
+                        "is_seed": False,
+                    }
+                ),
+                _Result(scalar=0),
+                _Result(),
+            ]
+        )
         get_session_mock.return_value = _SessionContext(session)
         body = endpoint(request=self._authorized_request(), nys_snw_category_id=4)
         self.assertEqual(body.nys_snw_category_id, 4)
         self.assertTrue(body.deleted)
         self.assertEqual(session.commits, 1)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_delete_category_rejects_seed_rows(self, get_session_mock):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id:int}", "DELETE")
+        session = _FakeSession(
+            rows=[
+                _Result(row=(1,)),
+                _Result(
+                    row={
+                        "nys_snw_category_id": 2,
+                        "level_1": "II.",
+                        "level_1_name": "EXPENSES",
+                        "level_2": "(a)",
+                        "level_2_name": "Housing",
+                        "level_3": "2.",
+                        "level_4": None,
+                        "categorization": "Rent",
+                        "applicability": None,
+                        "is_seed": True,
+                    }
+                ),
+            ]
+        )
+        get_session_mock.return_value = _SessionContext(session)
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(request=self._authorized_request(), nys_snw_category_id=2)
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("seed-protected", ctx.exception.detail)
 
     @patch("teller.teller_classification_api.get_session")
     def test_transactions_endpoint_applies_filters_and_returns_total(self, get_session_mock):

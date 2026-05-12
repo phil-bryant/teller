@@ -86,3 +86,35 @@ teardown() {
   [[ "$output" == *"running DAST (Dynamic Application Security Testing)"* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
 }
+
+@test "category integrity gate asserts seed protection invariants" {
+  #R025
+  setup_shell_test
+  copy_dast_project_files
+  run /usr/bin/python3 - <<'PY' "${FIXTURE_ROOT}/15_run_dast.sh"
+import pathlib
+import sys
+
+script_path = pathlib.Path(sys.argv[1])
+script_text = script_path.read_text(encoding="utf-8")
+
+required_tokens = [
+    "missing_or_unflagged_seed_rows",
+    "seed_flag_outside_canonical_range",
+    "seed_row_count_drift",
+    "orphaned_transaction_category_links",
+]
+for token in required_tokens:
+    if token not in script_text:
+        raise SystemExit(f"missing invariant token: {token}")
+
+legacy_tokens = [
+    "unexpected_category_ids",
+    "missing_canonical_ids",
+]
+for token in legacy_tokens:
+    if token in script_text:
+        raise SystemExit(f"legacy invariant token still present: {token}")
+PY
+  [ "$status" -eq 0 ]
+}

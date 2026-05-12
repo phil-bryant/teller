@@ -8,6 +8,17 @@ CREATE TABLE teller.nys_snw_category (
     level_4 TEXT,
     categorization TEXT,
     applicability TEXT,
+    is_seed BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT nys_snw_category_text_length_chk CHECK (
+        (level_1 IS NULL OR CHAR_LENGTH(level_1) <= 120)
+        AND (level_1_name IS NULL OR CHAR_LENGTH(level_1_name) <= 120)
+        AND (level_2 IS NULL OR CHAR_LENGTH(level_2) <= 120)
+        AND (level_2_name IS NULL OR CHAR_LENGTH(level_2_name) <= 120)
+        AND (level_3 IS NULL OR CHAR_LENGTH(level_3) <= 120)
+        AND (level_4 IS NULL OR CHAR_LENGTH(level_4) <= 120)
+        AND (categorization IS NULL OR CHAR_LENGTH(categorization) <= 120)
+        AND (applicability IS NULL OR CHAR_LENGTH(applicability) <= 120)
+    ),
     CONSTRAINT nys_snw_category_non_empty_hierarchy_chk CHECK (
         COALESCE(
             NULLIF(BTRIM(level_1), ''),
@@ -36,6 +47,7 @@ CREATE TABLE teller.nys_snw_category (
 COMMENT ON TABLE teller.nys_snw_category IS 'NYS Statement of Net Worth category mapping table.';
 COMMENT ON COLUMN teller.nys_snw_category.categorization IS 'NYS SNW category label.';
 COMMENT ON COLUMN teller.nys_snw_category.applicability IS 'Applicability guidance from the source document.';
+COMMENT ON COLUMN teller.nys_snw_category.is_seed IS 'True for canonical taxonomy rows loaded from seed SQL.';
 CREATE UNIQUE INDEX nys_snw_category_unique_hierarchy_idx ON teller.nys_snw_category (
     level_1, level_1_name, level_2, level_2_name, level_3, COALESCE(level_4, ''), COALESCE(categorization, ''),
     COALESCE(applicability, '')
@@ -158,3 +170,38 @@ INSERT INTO teller.nys_snw_category (level_1, level_1_name, level_2, level_2_nam
     ('III.', 'GROSS INCOME INFORMATION:', '(b)', 'To the extent not already included in gross income in (a) above:', '10.', NULL, 'Pensions and retirement benefits', 'N/A'),
     ('III.', 'GROSS INCOME INFORMATION:', '(b)', 'To the extent not already included in gross income in (a) above:', '11.', NULL, 'Fellowships and stipends', 'N/A'),
     ('III.', 'GROSS INCOME INFORMATION:', '(b)', 'To the extent not already included in gross income in (a) above:', '12.', NULL, 'Annuity payments', 'N/A');
+
+UPDATE teller.nys_snw_category
+   SET is_seed = TRUE
+ WHERE nys_snw_category_id BETWEEN 1 AND 116;
+
+CREATE OR REPLACE FUNCTION teller.prevent_seed_category_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        IF OLD.is_seed THEN
+            RAISE EXCEPTION 'Seed category rows are immutable (id=%).', OLD.nys_snw_category_id
+                USING ERRCODE = 'check_violation';
+        END IF;
+        IF NEW.is_seed <> OLD.is_seed THEN
+            RAISE EXCEPTION 'Category seed provenance cannot be changed (id=%).', OLD.nys_snw_category_id
+                USING ERRCODE = 'check_violation';
+        END IF;
+        RETURN NEW;
+    ELSIF TG_OP = 'DELETE' THEN
+        IF OLD.is_seed THEN
+            RAISE EXCEPTION 'Seed category rows cannot be deleted (id=%).', OLD.nys_snw_category_id
+                USING ERRCODE = 'check_violation';
+        END IF;
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+CREATE TRIGGER nys_snw_category_seed_guard_trg
+BEFORE UPDATE OR DELETE ON teller.nys_snw_category
+FOR EACH ROW
+EXECUTE FUNCTION teller.prevent_seed_category_mutation();

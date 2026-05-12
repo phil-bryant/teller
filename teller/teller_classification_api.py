@@ -78,9 +78,14 @@ _CATEGORY_TEXT_FIELDS = (
     "categorization",
     "applicability",
 )
-_CATEGORY_TEXT_PATTERN = r"^(?=.*\S)[^\x00-\x1F\x7F]+$"
-
-
+_CATEGORY_SCHEMA_PROPERTIES = {
+    field_name: {
+        "type": "string",
+        "maxLength": 120,
+        "pattern": r"^[^\x00-\x1F\x7F]*$",
+    }
+    for field_name in _CATEGORY_TEXT_FIELDS
+}
 def _contains_control_characters(value: str) -> bool:
     return any(unicodedata.category(char).startswith("C") for char in value)
 
@@ -96,7 +101,7 @@ def _validate_text_field(field_name: str, value: Optional[str]) -> Optional[str]
 def _normalize_text(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
-    normalized = "".join(char for char in value if not unicodedata.category(char).startswith("C")).strip()
+    normalized = value.strip()
     return normalized if normalized else None
 
 
@@ -151,22 +156,8 @@ class CategoryOption(BaseModel):
     display_label: str
 
 
-class CategoryMutation(BaseModel):
-    _schema_properties = {
-        field_name: {
-            "type": "string",
-            "maxLength": 120,
-            "pattern": _CATEGORY_TEXT_PATTERN,
-        }
-        for field_name in _CATEGORY_TEXT_FIELDS
-    }
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "minProperties": 1,
-            "properties": _schema_properties,
-        },
-    )
+class CategoryMutationBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     level_1: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     level_1_name: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     level_2: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
@@ -175,6 +166,11 @@ class CategoryMutation(BaseModel):
     level_4: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     categorization: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
     applicability: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+
+    @field_validator(*_CATEGORY_TEXT_FIELDS)
+    @classmethod
+    def reject_invalid_text(cls, value: Optional[str], info):
+        return _validate_text_field(info.field_name, value)
 
     @model_validator(mode="before")
     @classmethod
@@ -186,6 +182,38 @@ class CategoryMutation(BaseModel):
             field_list = ", ".join(null_fields)
             raise ValueError(f"Null hierarchy values are not allowed: {field_list}")
         return values
+
+
+class CategoryCreateMutation(CategoryMutationBase):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "minProperties": 1,
+            "properties": _CATEGORY_SCHEMA_PROPERTIES,
+        },
+    )
+
+    @model_validator(mode="after")
+    def require_meaningful_content(self):
+        if all(_normalize_text(getattr(self, field_name)) is None for field_name in _CATEGORY_TEXT_FIELDS):
+            raise ValueError("Category create payload must include at least one non-empty hierarchy field")
+        return self
+
+
+class CategoryUpdateMutation(CategoryMutationBase):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "minProperties": 1,
+            "properties": _CATEGORY_SCHEMA_PROPERTIES,
+        },
+    )
+
+    @model_validator(mode="after")
+    def require_at_least_one_field(self):
+        if not self.model_fields_set:
+            raise ValueError("Category update payload must include at least one field")
+        return self
 
 class CategoryDeleteResponse(BaseModel):
     nys_snw_category_id: int
@@ -277,23 +305,15 @@ def _ensure_exists(session, table: str, column: str, value: object, error: str):
         raise HTTPException(status_code=404, detail=error)
 
 
-def _category_params(body: CategoryMutation) -> Dict[str, Optional[str]]:
-    return {
-        "level_1": _normalize_text(body.level_1),
-        "level_1_name": _normalize_text(body.level_1_name),
-        "level_2": _normalize_text(body.level_2),
-        "level_2_name": _normalize_text(body.level_2_name),
-        "level_3": _normalize_text(body.level_3),
-        "level_4": _normalize_text(body.level_4),
-        "categorization": _normalize_text(body.categorization),
-        "applicability": _normalize_text(body.applicability),
-    }
+def _category_params(body: CategoryMutationBase, *, include_unset: bool) -> Dict[str, Optional[str]]:
+    fields = _CATEGORY_TEXT_FIELDS if include_unset else sorted(body.model_fields_set.intersection(_CATEGORY_TEXT_FIELDS))
+    return {field_name: _normalize_text(getattr(body, field_name)) for field_name in fields}
 
 
 def _fetch_category(session, category_id: int) -> Dict[str, object]:
     row = session.execute(text("""
         SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name, level_3, level_4,
-               categorization, applicability
+               categorization, applicability, is_seed
           FROM teller.nys_snw_category
          WHERE nys_snw_category_id = :nys_snw_category_id
          LIMIT 1
@@ -303,12 +323,27 @@ def _fetch_category(session, category_id: int) -> Dict[str, object]:
     return dict(row)
 
 
-def _write_category(session, body: CategoryMutation, category_id: Optional[int] = None) -> CategoryOption:
-    params = _category_params(body)
-    if all(value is None for value in params.values()):
-        raise HTTPException(status_code=409, detail="Category mutation must include at least one non-empty hierarchy field")
+def _category_option_from_row(row: Dict[str, object]) -> CategoryOption:
+    category_data = {
+        "nys_snw_category_id": row["nys_snw_category_id"],
+        "level_1": row.get("level_1"),
+        "level_1_name": row.get("level_1_name"),
+        "level_2": row.get("level_2"),
+        "level_2_name": row.get("level_2_name"),
+        "level_3": row.get("level_3"),
+        "level_4": row.get("level_4"),
+        "categorization": row.get("categorization"),
+        "applicability": row.get("applicability"),
+    }
+    return CategoryOption(**category_data, display_label=_display_label(category_data))
+
+
+def _write_category(session, body: CategoryMutationBase, category_id: Optional[int] = None) -> CategoryOption:
     try:
         if category_id is None:
+            params = _category_params(body, include_unset=True)
+            if all(value is None for value in params.values()):
+                raise HTTPException(status_code=422, detail="Category create payload must include non-empty hierarchy text")
             created = session.execute(text("""
                 INSERT INTO teller.nys_snw_category (
                     level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability
@@ -319,9 +354,29 @@ def _write_category(session, body: CategoryMutation, category_id: Optional[int] 
             """), params).fetchone()
             session.commit()
             row = _fetch_category(session, created[0])
-            return CategoryOption(**row, display_label=_display_label(row))
+            return _category_option_from_row(row)
         _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", category_id,
                        f"Unknown nys_snw_category_id: {category_id}")
+        existing = _fetch_category(session, category_id)
+        if existing.get("is_seed"):
+            raise HTTPException(status_code=409, detail=f"Category {category_id} is seed-protected and cannot be modified")
+        patch_params = _category_params(body, include_unset=False)
+        if not patch_params:
+            raise HTTPException(status_code=422, detail="Category update payload must include at least one mutable field")
+        merged_params = {
+            "level_1": _normalize_text(existing.get("level_1")),
+            "level_1_name": _normalize_text(existing.get("level_1_name")),
+            "level_2": _normalize_text(existing.get("level_2")),
+            "level_2_name": _normalize_text(existing.get("level_2_name")),
+            "level_3": _normalize_text(existing.get("level_3")),
+            "level_4": _normalize_text(existing.get("level_4")),
+            "categorization": _normalize_text(existing.get("categorization")),
+            "applicability": _normalize_text(existing.get("applicability")),
+        }
+        merged_params.update(patch_params)
+        if all(value is None for value in merged_params.values()):
+            raise HTTPException(status_code=409, detail="Category mutation must include at least one non-empty hierarchy field")
+        params = dict(merged_params)
         params["nys_snw_category_id"] = category_id
         session.execute(text("""
             UPDATE teller.nys_snw_category
@@ -338,16 +393,16 @@ def _write_category(session, body: CategoryMutation, category_id: Optional[int] 
         """), params)
         session.commit()
         row = _fetch_category(session, category_id)
-        return CategoryOption(**row, display_label=_display_label(row))
+        return _category_option_from_row(row)
     except HTTPException:
         raise
     except IntegrityError:
         #R050: Duplicate hierarchy writes surface as HTTP 409 conflict.
         raise HTTPException(status_code=409, detail="Category mutation conflicts with an existing hierarchy row")
     except (DataError, UnicodeEncodeError):
-        raise HTTPException(status_code=400, detail="Invalid category payload for database constraints")
+        raise HTTPException(status_code=422, detail="Category payload violates database constraints")
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid category payload for database constraints")
+        raise HTTPException(status_code=422, detail="Category payload violates database constraints")
 
 
 #R025: Validate and apply transaction classification mutation.
@@ -417,19 +472,21 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/categories", response_model=CategoryOption, responses={
         400: {"model": ApiError, "description": "Invalid category payload"},
+        422: {"model": ApiError, "description": "Malformed category payload"},
         409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
     })
-    def create_category(request: Request, body: CategoryMutation):
+    def create_category(request: Request, body: CategoryCreateMutation):
         _require_write_access(request)
         with get_session() as session:
             return _write_category(session, body)
 
     @app.put("/v1/categories/{nys_snw_category_id:int}", response_model=CategoryOption, responses={
         400: {"model": ApiError, "description": "Invalid category payload"},
+        422: {"model": ApiError, "description": "Malformed category payload"},
         409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
         404: {"model": ApiError, "description": "Unknown category id"},
     })
-    def update_category(request: Request, nys_snw_category_id: int, body: CategoryMutation):
+    def update_category(request: Request, nys_snw_category_id: int, body: CategoryUpdateMutation):
         _require_write_access(request)
         with get_session() as session:
             return _write_category(session, body, category_id=nys_snw_category_id)
@@ -443,6 +500,12 @@ def create_app() -> FastAPI:
         with get_session() as session:
             _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", nys_snw_category_id,
                            f"Unknown nys_snw_category_id: {nys_snw_category_id}")
+            category_row = _fetch_category(session, nys_snw_category_id)
+            if category_row.get("is_seed"):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Category {nys_snw_category_id} is seed-protected and cannot be deleted.",
+                )
             assignment_count = session.execute(text("""
                 SELECT COUNT(*)::INT
                   FROM teller.transaction_nys_snw_category

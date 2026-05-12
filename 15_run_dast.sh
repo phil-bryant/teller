@@ -409,40 +409,14 @@ if engine is None:
     raise SystemExit(0)
 
 with engine.connect() as conn:
-    # Invariant 1: IDs should stay in canonical seed range.
-    unexpected_id_count = conn.exec_driver_sql(
-        """
-        SELECT COUNT(*)
-          FROM teller.nys_snw_category
-         WHERE nys_snw_category_id < 1 OR nys_snw_category_id > %(canonical_max_id)s
-        """,
-        {"canonical_max_id": canonical_max_id},
-    ).scalar_one()
-    unexpected_id_rows = conn.exec_driver_sql(
-        """
-        SELECT nys_snw_category_id, level_1, level_2, level_3, categorization
-          FROM teller.nys_snw_category
-         WHERE nys_snw_category_id < 1 OR nys_snw_category_id > %(canonical_max_id)s
-         ORDER BY nys_snw_category_id
-         LIMIT 20
-        """,
-        {"canonical_max_id": canonical_max_id},
-    ).fetchall()
-    append_invariant(
-        report,
-        "unexpected_category_ids",
-        f"Category IDs must remain within canonical seed range [1, {canonical_max_id}].",
-        unexpected_id_count,
-        [serialize_row(row, ["nys_snw_category_id", "level_1", "level_2", "level_3", "categorization"]) for row in unexpected_id_rows],
-    )
-
-    # Invariant 2: Canonical IDs should not be missing.
+    # Invariant 1: Canonical seed IDs must still exist and be marked seed.
     missing_id_count = conn.exec_driver_sql(
         """
         SELECT COUNT(*)
           FROM generate_series(1, %(canonical_max_id)s) AS expected_id
      LEFT JOIN teller.nys_snw_category c
             ON c.nys_snw_category_id = expected_id
+           AND c.is_seed = TRUE
          WHERE c.nys_snw_category_id IS NULL
         """,
         {"canonical_max_id": canonical_max_id},
@@ -453,6 +427,7 @@ with engine.connect() as conn:
           FROM generate_series(1, %(canonical_max_id)s) AS expected_id
      LEFT JOIN teller.nys_snw_category c
             ON c.nys_snw_category_id = expected_id
+           AND c.is_seed = TRUE
          WHERE c.nys_snw_category_id IS NULL
          ORDER BY expected_id
          LIMIT 20
@@ -461,13 +436,68 @@ with engine.connect() as conn:
     ).fetchall()
     append_invariant(
         report,
-        "missing_canonical_ids",
-        "Canonical seed IDs should be present after DAST.",
+        "missing_or_unflagged_seed_rows",
+        "Canonical seed IDs [1..N] must remain present and tagged with is_seed=true.",
         missing_id_count,
         [serialize_row(row, ["expected_id"]) for row in missing_id_rows],
     )
 
-    # Invariant 3: No control / non-printable chars in hierarchy text.
+    # Invariant 2: Seed marker cannot drift outside canonical range.
+    unexpected_seed_flag_count = conn.exec_driver_sql(
+        """
+        SELECT COUNT(*)
+          FROM teller.nys_snw_category
+         WHERE is_seed = TRUE
+           AND (nys_snw_category_id < 1 OR nys_snw_category_id > %(canonical_max_id)s)
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).scalar_one()
+    unexpected_seed_flag_rows = conn.exec_driver_sql(
+        """
+        SELECT nys_snw_category_id, level_1_name, categorization
+          FROM teller.nys_snw_category
+         WHERE is_seed = TRUE
+           AND (nys_snw_category_id < 1 OR nys_snw_category_id > %(canonical_max_id)s)
+         ORDER BY nys_snw_category_id
+         LIMIT 20
+        """,
+        {"canonical_max_id": canonical_max_id},
+    ).fetchall()
+    append_invariant(
+        report,
+        "seed_flag_outside_canonical_range",
+        "Rows marked as seed must remain within canonical seed ID range.",
+        unexpected_seed_flag_count,
+        [serialize_row(row, ["nys_snw_category_id", "level_1_name", "categorization"]) for row in unexpected_seed_flag_rows],
+    )
+
+    # Invariant 3: Canonical seed row count remains unchanged.
+    seed_count_drift = conn.exec_driver_sql(
+        """
+        SELECT ABS(COUNT(*) - %(canonical_seed_count)s)
+          FROM teller.nys_snw_category
+         WHERE is_seed = TRUE
+        """,
+        {"canonical_seed_count": seed_row_count},
+    ).scalar_one()
+    seed_count = conn.exec_driver_sql(
+        """
+        SELECT COUNT(*)
+          FROM teller.nys_snw_category
+         WHERE is_seed = TRUE
+        """
+    ).scalar_one()
+    append_invariant(
+        report,
+        "seed_row_count_drift",
+        f"Seed taxonomy row count must remain exactly {seed_row_count}.",
+        seed_count_drift,
+        [{"observed_seed_row_count": int(seed_count), "expected_seed_row_count": int(seed_row_count)}]
+        if seed_count_drift
+        else [],
+    )
+
+    # Invariant 4: No control / non-printable chars in hierarchy text.
     control_predicate = " OR ".join([f"{field} ~ '[[:cntrl:]]'" for field in TEXT_FIELDS])
     control_char_count = conn.exec_driver_sql(
         f"""
@@ -510,7 +540,7 @@ with engine.connect() as conn:
         ],
     )
 
-    # Invariant 4: Rows cannot be completely empty across hierarchy text fields.
+    # Invariant 5: Rows cannot be completely empty across hierarchy text fields.
     empty_predicate = " AND ".join([f"NULLIF(BTRIM(COALESCE({field}, '')), '') IS NULL" for field in TEXT_FIELDS])
     empty_row_count = conn.exec_driver_sql(
         f"""
@@ -536,7 +566,7 @@ with engine.connect() as conn:
         [serialize_row(row, ["nys_snw_category_id"]) for row in empty_row_samples],
     )
 
-    # Invariant 5: Referential sanity for transaction category mappings.
+    # Invariant 6: Referential sanity for transaction category mappings.
     orphaned_mapping_count = conn.exec_driver_sql(
         """
         SELECT COUNT(*)

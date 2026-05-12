@@ -57,6 +57,7 @@ def get_engine():
         port = os.environ.get("TELLER_DB_PORT", "5432")
         db = os.environ.get("TELLER_DB_NAME", "prod")
         user = os.environ.get("TELLER_DB_USER", "teller")
+        runtime_role = os.environ.get("TELLER_DB_ROLE", "teller_write").strip()
         _engine = create_engine("postgresql+psycopg2://", echo=False, connect_args={
             "host": host, "port": int(port), "dbname": db, "user": user, "password": password
         })
@@ -65,9 +66,13 @@ def get_engine():
         def set_search_path(dbapi_conn, connection_record):
             cursor = dbapi_conn.cursor()
             cursor.execute("SET search_path TO teller")
+            if runtime_role:
+                cursor.execute("SELECT quote_ident(%s)", (runtime_role,))
+                quoted_role = cursor.fetchone()[0]
+                cursor.execute(f"SET ROLE {quoted_role}")
             cursor.close()
 
-        log.info("Database engine created", host=host, port=port, db=db, user=user)
+        log.info("Database engine created", host=host, port=port, db=db, user=user, runtime_role=runtime_role or None)
     return _engine
 
 def get_session():
