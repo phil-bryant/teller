@@ -27,6 +27,10 @@ protocol ClassificationAPI: Sendable {
     func createCategory(_ category: CategoryMutationRequest) async throws -> CategoryOption
     func updateCategory(id: Int, category: CategoryMutationRequest) async throws -> CategoryOption
     func deleteCategory(id: Int) async throws -> CategoryDeleteResponse
+    func fetchMatchReview(state: String, onlyUnmoved: Bool, limit: Int, offset: Int) async throws -> MatchReviewListResponse
+    func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse
+    func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
+    func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse
 }
 
 extension ClassificationAPI {
@@ -44,6 +48,31 @@ extension ClassificationAPI {
     func deleteCategory(id: Int) async throws -> CategoryDeleteResponse {
         _ = id
         throw APIError.unsupportedOperation("Category deletion")
+    }
+
+    func fetchMatchReview(state: String, onlyUnmoved: Bool, limit: Int, offset: Int) async throws -> MatchReviewListResponse {
+        _ = state
+        _ = onlyUnmoved
+        _ = limit
+        _ = offset
+        throw APIError.unsupportedOperation("Match review listing")
+    }
+
+    func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+        _ = matchId
+        throw APIError.unsupportedOperation("Match confirmation")
+    }
+
+    func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        _ = matchId
+        _ = emailMessageId
+        _ = note
+        throw APIError.unsupportedOperation("Match override")
+    }
+
+    func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse {
+        _ = matchId
+        throw APIError.unsupportedOperation("Match no-email action")
     }
 }
 
@@ -97,6 +126,34 @@ actor APIClient: ClassificationAPI {
 
     func deleteCategory(id: Int) async throws -> CategoryDeleteResponse {
         try await send(path: "/v1/categories/\(id)", method: "DELETE")
+    }
+
+    func fetchMatchReview(state: String, onlyUnmoved: Bool, limit: Int, offset: Int) async throws -> MatchReviewListResponse {
+        guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/matchy/review"), resolvingAgainstBaseURL: false) else {
+            throw APIError.invalidResponse
+        }
+        comp.queryItems = [
+            URLQueryItem(name: "state", value: state),
+            URLQueryItem(name: "only_unmoved", value: onlyUnmoved ? "true" : "false"),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "offset", value: String(offset)),
+        ]
+        guard let url = comp.url else { throw APIError.invalidResponse }
+        return try await send(url: url)
+    }
+
+    func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+        try await send(path: "/v1/matchy/matches/\(matchId)/confirm", method: "PUT")
+    }
+
+    func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        let body = MatchOverrideRequest(email_message_id: emailMessageId, note: note)
+        guard let data = try? JSONEncoder().encode(body) else { throw APIError.encodeFailed }
+        return try await send(path: "/v1/matchy/matches/\(matchId)/override", method: "PUT", body: data)
+    }
+
+    func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse {
+        try await send(path: "/v1/matchy/matches/\(matchId)/no-email", method: "PUT")
     }
 
     private func send<T: Decodable>(path: String, method: String = "GET", body: Data? = nil) async throws -> T {

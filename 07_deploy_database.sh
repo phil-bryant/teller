@@ -86,6 +86,10 @@ run_psql_teller -f "${SQL_DIR}/teller_transaction_details.sql"
 run_psql_teller -f "${SQL_DIR}/teller_transaction.sql"
 run_psql_teller -f "${SQL_DIR}/teller_nys_snw_category.sql"
 run_psql_teller -f "${SQL_DIR}/teller_transaction_nys_snw_category.sql"
+run_psql_teller -f "${SQL_DIR}/teller_transaction_email_match_run.sql"
+run_psql_teller -f "${SQL_DIR}/teller_transaction_email_candidate.sql"
+run_psql_teller -f "${SQL_DIR}/teller_transaction_email_match.sql"
+run_psql_teller -f "${SQL_DIR}/teller_transaction_email_match_audit.sql"
 #R045: Ensure transaction classification FK cascades deletes from teller.transaction.
 run_psql_teller -c \
 "ALTER TABLE teller.transaction_nys_snw_category \

@@ -31,7 +31,9 @@ setup_06_fixture() {
     teller_account_details_links teller_account_details teller_account_balances_links \
     teller_account_balances teller_transaction_type teller_transaction_details_counterparty \
     teller_transaction_links teller_transaction_details teller_transaction \
-    teller_nys_snw_category teller_transaction_nys_snw_category create_triggers \
+    teller_nys_snw_category teller_transaction_nys_snw_category \
+    teller_transaction_email_match_run teller_transaction_email_candidate \
+    teller_transaction_email_match teller_transaction_email_match_audit create_triggers \
     teller_transaction_info_view create_audit; do
     echo "-- $f" > "${FIXTURE_ROOT}/sql/postgres/${f}.sql"
   done

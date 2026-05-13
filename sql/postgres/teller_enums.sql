@@ -33,3 +33,21 @@ CREATE TYPE teller.transaction_category AS ENUM (
     'software', 'sport', 'tax', 'transport', 'transportation', 'utilities'
 );
 COMMENT ON TYPE teller.transaction_category IS 'The category that the transaction belongs to. Teller uses the following values for categorization: accommodation, advertising, bar, charity, clothing, dining, education, electronics, entertainment, fuel, general, groceries, health, home, income, insurance, investment, loan, office, phone, service, shopping, software, sport, tax, transport, transportation, and utilities'; 
+
+CREATE TYPE teller.matchy_trigger_source AS ENUM ('auto', 'manual', 'retry');
+COMMENT ON TYPE teller.matchy_trigger_source IS 'Source that triggered a matchy matching run';
+
+CREATE TYPE teller.matchy_run_status AS ENUM ('succeeded', 'failed', 'no_candidates', 'needs_review');
+COMMENT ON TYPE teller.matchy_run_status IS 'Outcome status for a matchy run';
+
+CREATE TYPE teller.transaction_email_match_state AS ENUM (
+    'ai_no_match_found',
+    'ai_candidate_uncertain',
+    'ai_match_confident',
+    'human_confirmed_ai_match',
+    'human_overrode_ai_match'
+);
+COMMENT ON TYPE teller.transaction_email_match_state IS 'Lifecycle state for transaction-to-email matching';
+
+CREATE TYPE teller.transaction_email_match_selected_by AS ENUM ('ai', 'human');
+COMMENT ON TYPE teller.transaction_email_match_selected_by IS 'Actor that selected a transaction-email match row';

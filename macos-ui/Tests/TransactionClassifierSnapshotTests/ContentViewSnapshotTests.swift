@@ -7,6 +7,10 @@ import XCTest
 
 final class ContentViewSnapshotTests: XCTestCase {
     private static let isRecording = ProcessInfo.processInfo.environment["SNAPSHOT_RECORD"] == "1"
+    private static let snapshotRecordMode: SnapshotTestingConfiguration.Record = isRecording ? .all : .never
+    private static let volatileHexTokenPattern = #"\$[0-9a-f]{6,}"#
+    private static let memoryAddressPattern = #"0x[0-9a-f]+"#
+    private static let framePattern = #"f=\([^)]*\)"#
 
     @MainActor
     func testEmptyStateSnapshot() async {
@@ -84,10 +88,10 @@ final class ContentViewSnapshotTests: XCTestCase {
         view.layoutSubtreeIfNeeded()
 
         assertSnapshot(
-            of: view,
-            as: .recursiveDescription,
+            of: normalizeRecursiveDescription(snapshotRecursiveDescription(view)),
+            as: .lines,
             named: named,
-            record: Self.isRecording
+            record: Self.snapshotRecordMode
         )
     }
 
@@ -114,11 +118,40 @@ final class ContentViewSnapshotTests: XCTestCase {
         view.layoutSubtreeIfNeeded()
 
         assertSnapshot(
-            of: view,
-            as: .recursiveDescription,
+            of: normalizeRecursiveDescription(snapshotRecursiveDescription(view)),
+            as: .lines,
             named: named,
-            record: Self.isRecording
+            record: Self.snapshotRecordMode
         )
+    }
+
+    private func snapshotRecursiveDescription(_ view: NSView) -> String {
+        let selector = NSSelectorFromString("recursiveDescription")
+        guard view.responds(to: selector),
+              let unmanaged = view.perform(selector) else {
+            return String(describing: view)
+        }
+        return (unmanaged.takeUnretainedValue() as? String) ?? String(describing: view)
+    }
+
+    private func normalizeRecursiveDescription(_ snapshot: String) -> String {
+        var normalized = snapshot.replacingOccurrences(
+            of: Self.volatileHexTokenPattern,
+            with: "$hash",
+            options: .regularExpression
+        )
+        normalized = normalized.replacingOccurrences(
+            of: Self.memoryAddressPattern,
+            with: "0xaddr",
+            options: .regularExpression
+        )
+        // AppKit computes control widths differently across macOS/SwiftUI versions.
+        normalized = normalized.replacingOccurrences(
+            of: Self.framePattern,
+            with: "f=(...)",
+            options: .regularExpression
+        )
+        return normalized
     }
 }
 

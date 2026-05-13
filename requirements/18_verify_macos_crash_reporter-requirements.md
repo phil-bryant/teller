@@ -42,6 +42,12 @@ Design: On success, emit `✅` status plus resolved paths for `.plcrash` and `.j
 Tests:
 - Verify success output includes both artifact path lines.
 
+R040  Statement: Remain a standalone numbered entrypoint.
+Design: This script is invoked directly (or from ad-hoc automation), not from other repository-numbered control-plane scripts such as `05_run_unit_tests.sh` or `06_run_macos_ui_regression_tests.sh`. Those runners must not reference or execute crash-reporter verification.
+Tests:
+- Covered by static grep tests in `tests/sh/05_run_unit_tests.bats` and `tests/sh/06_run_macos_ui_regression_tests.bats`.
+
 ## Changelog
 
+- 2026-05-12: Added R040 documenting standalone use and forbidding chained invocation from `05_`/`06_` runners.
 - 2026-05-07: Initial requirements for `18_verify_macos_crash_reporter.sh`.

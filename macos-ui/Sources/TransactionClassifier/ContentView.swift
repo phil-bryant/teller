@@ -2,6 +2,7 @@ import SwiftUI
 
 private enum AppTab: Hashable {
     case classify
+    case matchReview
     case manageCategories
     case connect
 }
@@ -101,6 +102,12 @@ struct ContentView: View {
                 .tag(AppTab.manageCategories)
                 .accessibilityIdentifier("manage-categories-tab")
 
+            MatchReviewView(viewModel: viewModel)
+                .padding(12)
+                .tabItem { Label("Match Review", systemImage: "envelope.badge") }
+                .tag(AppTab.matchReview)
+                .accessibilityIdentifier("match-review-tab")
+
             ConnectView(viewModel: connectViewModel)
                 .padding(12)
                 .tabItem { Label("Connect", systemImage: "link.badge.plus") }
@@ -194,10 +201,65 @@ private func initialTab(startTab: String?, processInfo: ProcessInfo = .processIn
     switch normalized {
     case "connect":
         return .connect
+    case "match", "match-review":
+        return .matchReview
     case "manage", "manage-categories":
         return .manageCategories
     default:
         return .classify
+    }
+}
+
+private struct MatchReviewView: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Picker("State", selection: $viewModel.matchReviewStateFilter) {
+                    Text("All").tag("")
+                    Text("Needs review").tag("ai_candidate_uncertain")
+                    Text("No email").tag("ai_no_match_found")
+                    Text("AI confident").tag("ai_match_confident")
+                }
+                .frame(width: 220)
+                Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
+                Button("Refresh") { Task { await viewModel.loadMatchReview() } }
+            }
+            List(selection: $viewModel.selectedMatchId) {
+                ForEach(viewModel.matchReviewRows) { row in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(row.description).lineLimit(1)
+                        Text("txn: \(row.transaction_id) • email: \(row.email_message_id ?? "none")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("\(row.state) • confidence: \(row.ai_confidence.map { String(format: "%.2f", $0) } ?? "n/a")")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .tag(Optional(row.match_id))
+                }
+            }
+            HStack(spacing: 8) {
+                TextField("Override email message id", text: $viewModel.matchOverrideEmailMessageId)
+                    .textFieldStyle(.roundedBorder)
+                Button("Confirm") { Task { await viewModel.confirmSelectedMatch() } }
+                    .disabled(viewModel.selectedMatchId == nil)
+                Button("Override") { Task { await viewModel.overrideSelectedMatch() } }
+                    .disabled(viewModel.selectedMatchId == nil)
+                Button("Mark no-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
+                    .disabled(viewModel.selectedMatchId == nil)
+            }
+            if !viewModel.matchReviewErrorText.isEmpty {
+                Text(viewModel.matchReviewErrorText).font(.caption).foregroundStyle(.red)
+            } else {
+                Text(viewModel.matchReviewStatusText).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .task { await viewModel.loadMatchReview() }
+        .onChange(of: viewModel.matchReviewStateFilter) { _, _ in Task { await viewModel.loadMatchReview() } }
+        .onChange(of: viewModel.matchReviewOnlyUnmoved) { _, _ in Task { await viewModel.loadMatchReview() } }
     }
 }
 

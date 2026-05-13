@@ -72,6 +72,14 @@ final class ClassificationViewModel {
     var categoryEditorBusy = false
     var categoryEditorStatusText = "Select a category to edit, or create a new one."
     var categoryEditorErrorText = ""
+    var matchReviewRows: [MatchReviewRow] = []
+    var matchReviewTotal = 0
+    var matchReviewStateFilter = ""
+    var matchReviewOnlyUnmoved = true
+    var selectedMatchId: Int?
+    var matchOverrideEmailMessageId = ""
+    var matchReviewStatusText = "Ready"
+    var matchReviewErrorText = ""
     private let api: any ClassificationAPI
     private var suppressAutoApply = false
 
@@ -139,6 +147,72 @@ final class ClassificationViewModel {
         } catch {
             statusText = "Load failed"
             errorText = error.localizedDescription
+        }
+    }
+
+    func loadMatchReview() async {
+        busy = true
+        defer { busy = false }
+        do {
+            let response = try await api.fetchMatchReview(
+                state: matchReviewStateFilter,
+                onlyUnmoved: matchReviewOnlyUnmoved,
+                limit: pageSize,
+                offset: 0
+            )
+            matchReviewRows = response.items
+            matchReviewTotal = response.total
+            matchReviewStatusText = "Loaded \(response.items.count) of \(response.total) matches"
+            matchReviewErrorText = ""
+            if selectedMatchId == nil {
+                selectedMatchId = response.items.first?.match_id
+            }
+        } catch {
+            matchReviewErrorText = error.localizedDescription
+            matchReviewStatusText = "Match review load failed"
+        }
+    }
+
+    func confirmSelectedMatch() async {
+        guard let matchId = selectedMatchId else { return }
+        do {
+            _ = try await api.confirmMatch(matchId: matchId)
+            matchReviewStatusText = "Confirmed match \(matchId)"
+            await loadMatchReview()
+        } catch {
+            matchReviewErrorText = error.localizedDescription
+            matchReviewStatusText = "Match confirm failed"
+        }
+    }
+
+    func overrideSelectedMatch() async {
+        guard let matchId = selectedMatchId else { return }
+        let emailId = matchOverrideEmailMessageId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !emailId.isEmpty else {
+            matchReviewErrorText = "Override email message id is required."
+            return
+        }
+        do {
+            _ = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: "Overridden in Teller UI")
+            matchReviewStatusText = "Overrode match \(matchId)"
+            matchReviewErrorText = ""
+            await loadMatchReview()
+        } catch {
+            matchReviewErrorText = error.localizedDescription
+            matchReviewStatusText = "Match override failed"
+        }
+    }
+
+    func markSelectedMatchNoEmail() async {
+        guard let matchId = selectedMatchId else { return }
+        do {
+            _ = try await api.markMatchNoEmail(matchId: matchId)
+            matchReviewStatusText = "Marked match \(matchId) as no-email"
+            matchReviewErrorText = ""
+            await loadMatchReview()
+        } catch {
+            matchReviewErrorText = error.localizedDescription
+            matchReviewStatusText = "No-email action failed"
         }
     }
 

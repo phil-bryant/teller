@@ -448,3 +448,37 @@ POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./07_deploy_d
 - `could not connect to server on socket ...`
   - Cause: PostgreSQL is not running or listening on expected host/socket.
   - Fix: start PostgreSQL (for example via Homebrew service) and retry.
+
+## GLOBAL ARCHITECTURE: TELLER → MATCHY ← MAILCART
+```text
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                            SYSTEM LANDSCAPE                                           │
+│                                                                                                       │
+│  ┌────────────────────────────────┐      HTTP (search/move)       ┌────────────────────────────────┐  │
+│  │             MATCHY             │ ────────────────────────────► │            MAILCART            │  │
+│  │                                │ ◄──────────────────────────── │                                │  │
+│  │ - FastAPI service              │        message candidates     │ - Outlook/Graph integration    │  │
+│  │ - Runs transaction↔email match │                               │ - Search endpoint for emails   │  │
+│  │ - Combines scoring + AI ranker │                               │ - Move endpoint to folder      │  │
+│  │ - Writes run/candidate/match   │                               │   `matchy`                     │  │
+│  │   records to Teller DB         │                               └────────────────────────────────┘  │
+│  └───────────────┬────────────────┘                                                                   │
+│                  │ SQL read/write                                                                     │
+│                  ▼                                                                                    │
+│  ┌──────────────────────────────────────────────────────────┐                                         │
+│  │                      TELLER DB                           │                                         │
+│  │                                                          │                                         │
+│  │ - Source transactions: `teller.transaction`              │                                         │
+│  │ - Match run table: `teller.transaction_email_match_run`  │                                         │
+│  │ - Candidates table: `teller.transaction_email_candidate` │                                         │
+│  │ - Match table: `teller.transaction_email_match`          │                                         │
+│  └──────────────────────────────────────────────────────────┘                                         │
+│                                                                                                       │
+└───────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+TRIGGER FLOW
+┌─────────────────────────────┐      POST /v1/matchy/runs       ┌────────────────────────────┐
+│ Caller (manual/auto/retry)  │───────────────────────────────► │ Matchy API                 │
+│ (operator/job in ecosystem) │                                 │ validates ids + starts run │
+└───────────────────────────√─┘                                 └────────────────────────────┘
+```

@@ -115,3 +115,37 @@ struct ClassificationWriteResponse: Codable, Hashable {
     let type: String
     let updated_at: String
 }
+
+struct MatchReviewRow: Codable, Hashable, Identifiable {
+    let match_id: Int
+    let transaction_id: String
+    let email_message_id: String?
+    let state: String
+    let ai_confidence: Double?
+    let selected_by: String
+    let selected_at: String
+    let moved_to_matchy_at: String?
+    let description: String
+    let amount: Decimal
+    let date: String
+
+    var id: Int { match_id }
+}
+
+struct MatchReviewListResponse: Codable, Hashable {
+    let total: Int
+    let items: [MatchReviewRow]
+}
+
+struct MatchOverrideRequest: Codable, Hashable {
+    let email_message_id: String
+    let note: String?
+}
+
+struct MatchReviewActionResponse: Codable, Hashable {
+    let match_id: Int
+    let transaction_id: String
+    let state: String
+    let selected_by: String
+    let updated_at: String
+}

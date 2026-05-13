@@ -283,6 +283,38 @@ class CategoryCountsRow(BaseModel):
     assigned_transactions: int
 
 
+class MatchReviewRow(BaseModel):
+    match_id: int
+    transaction_id: str
+    email_message_id: Optional[str] = None
+    state: str
+    ai_confidence: Optional[float] = None
+    selected_by: str
+    selected_at: datetime
+    moved_to_matchy_at: Optional[datetime] = None
+    description: str
+    amount: Decimal
+    date: date
+
+
+class MatchReviewListResponse(BaseModel):
+    total: int
+    items: List[MatchReviewRow]
+
+
+class MatchReviewActionResponse(BaseModel):
+    match_id: int
+    transaction_id: str
+    state: str
+    selected_by: str
+    updated_at: datetime
+
+
+class MatchOverrideMutation(BaseModel):
+    email_message_id: Annotated[str, StringConstraints(min_length=1, max_length=400)]
+    note: Optional[Annotated[str, StringConstraints(max_length=800)]] = None
+
+
 #R005: Build hierarchical category display labels.
 def _display_label(row: Dict[str, object]) -> str:
     parts = [
@@ -447,6 +479,89 @@ def _write_one(session, transaction_id: str, nys_snw_category_id: Optional[int])
         transaction_id=transaction_id,
         nys_snw_category_id=nys_snw_category_id,
         updated_at=updated_at,
+    )
+
+
+def _read_match_row(session, match_id: int) -> Dict[str, Any]:
+    row = session.execute(text("""
+        SELECT m.match_id,
+               m.transaction_id,
+               m.email_message_id,
+               m.state::text AS state,
+               m.selected_by::text AS selected_by
+          FROM teller.transaction_email_match m
+         WHERE m.match_id = :match_id
+         LIMIT 1
+    """), {"match_id": match_id}).mappings().fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Unknown match_id: {match_id}")
+    return dict(row)
+
+
+def _insert_match_audit(session, match_id: int, from_state: Optional[str], to_state: str, actor: str, note: Optional[str]) -> None:
+    session.execute(text("""
+        INSERT INTO teller.transaction_email_match_audit (
+            match_id,
+            from_state,
+            to_state,
+            actor,
+            note
+        ) VALUES (
+            :match_id,
+            CAST(:from_state AS teller.transaction_email_match_state),
+            CAST(:to_state AS teller.transaction_email_match_state),
+            CAST(:actor AS teller.transaction_email_match_selected_by),
+            :note
+        )
+    """), {
+        "match_id": match_id,
+        "from_state": from_state,
+        "to_state": to_state,
+        "actor": actor,
+        "note": note,
+    })
+
+
+def _transition_match_state(
+    session,
+    match_id: int,
+    to_state: str,
+    actor: str,
+    note: Optional[str],
+    email_message_id: Optional[str] = None,
+    clear_email_message_id: bool = False,
+) -> MatchReviewActionResponse:
+    row = _read_match_row(session, match_id)
+    update_email_sql = ""
+    if clear_email_message_id:
+        update_email_sql = "email_message_id = NULL,"
+    elif email_message_id is not None:
+        update_email_sql = "email_message_id = :email_message_id,"
+    params = {
+        "match_id": match_id,
+        "to_state": to_state,
+        "actor": actor,
+    }
+    if email_message_id is not None:
+        params["email_message_id"] = email_message_id
+    updated = session.execute(text(f"""
+        UPDATE teller.transaction_email_match
+           SET {update_email_sql}
+               state = CAST(:to_state AS teller.transaction_email_match_state),
+               selected_by = CAST(:actor AS teller.transaction_email_match_selected_by),
+               selected_at = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE match_id = :match_id
+     RETURNING transaction_id, state::text AS state, selected_by::text AS selected_by, updated_at
+    """), params).mappings().fetchone()
+    _insert_match_audit(session, match_id, row["state"], to_state, actor, note)
+    session.commit()
+    return MatchReviewActionResponse(
+        match_id=match_id,
+        transaction_id=updated["transaction_id"],
+        state=updated["state"],
+        selected_by=updated["selected_by"],
+        updated_at=updated["updated_at"],
     )
 
 
@@ -624,5 +739,86 @@ def create_app() -> FastAPI:
         with get_session() as session:
             responses = [_write_one(session, item.transaction_id, item.nys_snw_category_id) for item in body.updates]
         return responses
+
+    @app.get("/v1/matchy/review", response_model=MatchReviewListResponse)
+    def list_matchy_review(
+        state: Literal["", "ai_no_match_found", "ai_candidate_uncertain", "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
+        only_unmoved: bool = Query(default=False),
+        limit: int = Query(default=100, ge=1, le=500),
+        offset: int = Query(default=0, ge=0, le=1_000_000),
+    ):
+        where_parts = ["m.active = TRUE"]
+        params: Dict[str, object] = {"limit": limit, "offset": offset}
+        if state:
+            where_parts.append("m.state::text = :state")
+            params["state"] = state
+        if only_unmoved:
+            where_parts.append("m.moved_to_matchy_at IS NULL")
+        where_sql = " AND ".join(where_parts)
+        with get_session() as session:
+            total = session.execute(text(f"""
+                SELECT COUNT(*)
+                  FROM teller.transaction_email_match m
+                 WHERE {where_sql}
+            """), params).scalar_one()
+            rows = session.execute(text(f"""
+                SELECT m.match_id,
+                       m.transaction_id,
+                       m.email_message_id,
+                       m.state::text AS state,
+                       m.ai_confidence,
+                       m.selected_by::text AS selected_by,
+                       m.selected_at,
+                       m.moved_to_matchy_at,
+                       t.description,
+                       t.amount,
+                       t.date
+                  FROM teller.transaction_email_match m
+                  JOIN teller.transaction t
+                    ON t.transaction_id = m.transaction_id
+                 WHERE {where_sql}
+              ORDER BY m.selected_at DESC, m.match_id DESC
+                 LIMIT :limit OFFSET :offset
+            """), params).mappings().all()
+        items = [MatchReviewRow(**row) for row in rows]
+        return MatchReviewListResponse(total=total, items=items)
+
+    @app.put("/v1/matchy/matches/{match_id:int}/confirm", response_model=MatchReviewActionResponse)
+    def confirm_match(request: Request, match_id: int):
+        _require_write_access(request)
+        with get_session() as session:
+            return _transition_match_state(
+                session=session,
+                match_id=match_id,
+                to_state="human_confirmed_ai_match",
+                actor="human",
+                note="Confirmed from Teller review UI",
+            )
+
+    @app.put("/v1/matchy/matches/{match_id:int}/override", response_model=MatchReviewActionResponse)
+    def override_match(request: Request, match_id: int, body: MatchOverrideMutation):
+        _require_write_access(request)
+        with get_session() as session:
+            return _transition_match_state(
+                session=session,
+                match_id=match_id,
+                to_state="human_overrode_ai_match",
+                actor="human",
+                note=body.note or "Overridden from Teller review UI",
+                email_message_id=body.email_message_id,
+            )
+
+    @app.put("/v1/matchy/matches/{match_id:int}/no-email", response_model=MatchReviewActionResponse)
+    def mark_match_as_no_email(request: Request, match_id: int):
+        _require_write_access(request)
+        with get_session() as session:
+            return _transition_match_state(
+                session=session,
+                match_id=match_id,
+                to_state="ai_no_match_found",
+                actor="human",
+                note="Marked no-email from Teller review UI",
+                clear_email_message_id=True,
+            )
 
     return app
