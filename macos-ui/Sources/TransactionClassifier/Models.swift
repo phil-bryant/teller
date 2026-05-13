@@ -130,6 +130,34 @@ struct MatchReviewRow: Codable, Hashable, Identifiable {
     let date: String
 
     var id: Int { match_id }
+
+    enum CodingKeys: String, CodingKey {
+        case match_id, transaction_id, email_message_id, state, ai_confidence, selected_by
+        case selected_at, moved_to_matchy_at, description, amount, date
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        match_id = try c.decode(Int.self, forKey: .match_id)
+        transaction_id = try c.decode(String.self, forKey: .transaction_id)
+        email_message_id = try c.decodeIfPresent(String.self, forKey: .email_message_id)
+        state = try c.decode(String.self, forKey: .state)
+        ai_confidence = try c.decodeIfPresent(Double.self, forKey: .ai_confidence)
+        selected_by = try c.decode(String.self, forKey: .selected_by)
+        selected_at = try c.decode(String.self, forKey: .selected_at)
+        moved_to_matchy_at = try c.decodeIfPresent(String.self, forKey: .moved_to_matchy_at)
+        description = try c.decode(String.self, forKey: .description)
+        date = try c.decode(String.self, forKey: .date)
+        if let value = try? c.decode(Decimal.self, forKey: .amount) {
+            amount = value
+            return
+        }
+        if let text = try? c.decode(String.self, forKey: .amount), let value = Decimal(string: text) {
+            amount = value
+            return
+        }
+        throw DecodingError.dataCorruptedError(forKey: .amount, in: c, debugDescription: "amount must be decimal string/number")
+    }
 }
 
 struct MatchReviewListResponse: Codable, Hashable {

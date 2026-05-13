@@ -47,7 +47,6 @@ struct TransactionClassifierApp: App {
 @MainActor
 private func bringAppToFront() {
     // Ensure terminal-launched runs behave as a normal foreground app.
-    NSApp.setActivationPolicy(.regular)
     NSApp.activate(ignoringOtherApps: true)
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
         NSApp.activate(ignoringOtherApps: true)

@@ -100,4 +100,6 @@ run_psql_teller -c \
 run_psql_teller -f "${SQL_DIR}/create_triggers.sql"
 run_psql_teller -f "${SQL_DIR}/teller_transaction_info_view.sql"
 run_psql_teller -f "${SQL_DIR}/create_audit.sql"
+#R055: Apply explicit reconcile/audit grants for runtime ingest role.
+run_psql_teller -f "${SQL_DIR}/grant_ingest_reconcile_privileges.sql"
 

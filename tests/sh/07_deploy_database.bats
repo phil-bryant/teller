@@ -34,7 +34,7 @@ setup_06_fixture() {
     teller_nys_snw_category teller_transaction_nys_snw_category \
     teller_transaction_email_match_run teller_transaction_email_candidate \
     teller_transaction_email_match teller_transaction_email_match_audit create_triggers \
-    teller_transaction_info_view create_audit; do
+    teller_transaction_info_view create_audit grant_ingest_reconcile_privileges; do
     echo "-- $f" > "${FIXTURE_ROOT}/sql/postgres/${f}.sql"
   done
   stub_cmd 1psa "echo fakesecret"
@@ -148,4 +148,16 @@ EOF
   run bash "${FIXTURE_ROOT}/07_deploy_database.sh"
   [ "$status" -eq 0 ]
   grep "CREATE EXTENSION IF NOT EXISTS pgtap" "${CALLS_LOG}"
+}
+
+@test "applies explicit ingest reconcile grants after audit setup" {
+  #R055
+  export PATH="${STUB_BIN}:/usr/bin:/bin"
+  run bash "${FIXTURE_ROOT}/07_deploy_database.sh"
+  [ "$status" -eq 0 ]
+  awk '
+    /create_audit\.sql/ { a = NR }
+    /grant_ingest_reconcile_privileges\.sql/ { g = NR }
+    END { exit (a > 0 && g > 0 && a < g) ? 0 : 1 }
+  ' "${CALLS_LOG}"
 }
