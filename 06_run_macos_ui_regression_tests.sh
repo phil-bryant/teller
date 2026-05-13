@@ -15,7 +15,7 @@ XCUITEST_PROJECT="${XCUITEST_PROJECT:-./macos-ui/TransactionClassifierUIAutomati
 XCUITEST_SCHEME="${XCUITEST_SCHEME:-TransactionClassifierUITestHost-CI}"
 XCUITEST_DESTINATION="${XCUITEST_DESTINATION:-platform=macOS}"
 XCUITEST_DERIVED_DATA_PATH="${XCUITEST_DERIVED_DATA_PATH:-./macos-ui/.derivedData-ui-tests}"
-#R050: Crash-reporter verification is standalone via 18_verify_macos_crash_reporter.sh.
+#R050: Crash-reporter verification remains a standalone lane (script 18).
 #R040: Support selecting specific XCUITests by numeric indices.
 XCUITEST_METHODS=(
   "testSearchFilterFindsFixtureRow"

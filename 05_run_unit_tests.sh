@@ -11,7 +11,7 @@ RUN_PYTHON_TESTS="${RUN_PYTHON_TESTS:-true}"
 RUN_SQL_TESTS="${RUN_SQL_TESTS:-true}"
 RUN_SWIFT_TESTS="${RUN_SWIFT_TESTS:-true}"
 RUN_MACOS_UI_REGRESSION_TESTS="${RUN_MACOS_UI_REGRESSION_TESTS:-false}"
-#R030: Keep crash-reporter verification isolated to 18_verify_macos_crash_reporter.sh.
+#R030: Keep crash-reporter verification isolated to dedicated script 18.
 BATS_FILTER="${BATS_FILTER:-}"
 SQL_TESTS_DIR="${SQL_TESTS_DIR:-./tests/sql}"
 SQL_TEST_DATABASE="${SQL_TEST_DATABASE:-${TELLER_DB_NAME:-${DB_NAME:-prod}}}"
