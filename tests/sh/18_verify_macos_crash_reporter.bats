@@ -6,6 +6,8 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "18_verify_macos_crash_reporter.sh"
+  copy_script_to_fixture "05_run_unit_tests.sh"
+  copy_script_to_fixture "06_run_macos_ui_regression_tests.sh"
   mkdir -p "${FIXTURE_ROOT}/macos-ui"
 }
 
@@ -62,4 +64,13 @@ EOF
   run env MACOS_UI_DIR="${FIXTURE_ROOT}/missing-ui" bash "${FIXTURE_ROOT}/18_verify_macos_crash_reporter.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"macOS UI package path not found"* ]]
+}
+
+@test "remains standalone and is not chained by numbered runners" {
+  #R040
+  run grep -E 'verify_macos_crash_reporter|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/05_run_unit_tests.sh"
+  [ "$status" -ne 0 ]
+
+  run grep -E 'verify_macos_crash_reporter|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/06_run_macos_ui_regression_tests.sh"
+  [ "$status" -ne 0 ]
 }

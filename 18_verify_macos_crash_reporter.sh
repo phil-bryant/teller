@@ -15,6 +15,7 @@ latest_plcrash=""
 latest_json=""
 baseline_plcrash=""
 baseline_json=""
+#R040: This script remains a standalone numbered entrypoint (not chained by other numbered runners).
 
 #R030: Fail clearly when required local tooling is unavailable.
 if ! command -v swift >/dev/null 2>&1; then
