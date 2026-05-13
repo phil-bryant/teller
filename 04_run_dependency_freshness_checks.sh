@@ -10,6 +10,7 @@ REPORT_DIR="${DEPENDENCY_REPORT_DIR:-./.security-reports}"
 RUN_TELLER_CANARY="${RUN_TELLER_CANARY:-true}"
 RUN_POSTGRES_FRESHNESS="${RUN_POSTGRES_FRESHNESS:-true}"
 FAIL_ON_MAJOR="${DEPENDENCY_FAIL_ON_MAJOR:-false}"
+FAIL_ON_DIRECT_OUTDATED="${DEPENDENCY_FAIL_ON_DIRECT_OUTDATED:-true}"
 POSTGRES_FAIL_ON_STALE="${POSTGRES_FAIL_ON_STALE:-false}"
 POSTGRES_CHECK_SERVER_VERSION="${POSTGRES_CHECK_SERVER_VERSION:-true}"
 POSTGRES_CHECK_CVES="${POSTGRES_CHECK_CVES:-true}"
@@ -42,16 +43,18 @@ fi
 
 echo "▶ Running dependency freshness checks with ${PROJECT_PYTHON}"
 #R010: Emit machine-readable and text freshness reports with optional major-version gate.
+DEPENDENCY_FRESHNESS_ARGS=(
+  ./scripts/check_dependency_freshness.py
+  --output-json "${REPORT_DIR}/dependency-freshness.json"
+  --output-text "${REPORT_DIR}/dependency-freshness.txt"
+)
 if [[ "$FAIL_ON_MAJOR" == "true" ]]; then
-  "$PROJECT_PYTHON" ./scripts/check_dependency_freshness.py \
-    --output-json "${REPORT_DIR}/dependency-freshness.json" \
-    --output-text "${REPORT_DIR}/dependency-freshness.txt" \
-    --fail-on-major
-else
-  "$PROJECT_PYTHON" ./scripts/check_dependency_freshness.py \
-    --output-json "${REPORT_DIR}/dependency-freshness.json" \
-    --output-text "${REPORT_DIR}/dependency-freshness.txt"
+  DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-major)
 fi
+if [[ "$FAIL_ON_DIRECT_OUTDATED" == "true" ]]; then
+  DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-direct-outdated)
+fi
+"$PROJECT_PYTHON" "${DEPENDENCY_FRESHNESS_ARGS[@]}"
 
 if [[ "$RUN_TELLER_CANARY" == "true" ]]; then
   #R015: Run optional Teller API compatibility/drift canary checks.

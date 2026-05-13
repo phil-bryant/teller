@@ -15,11 +15,13 @@ Tests:
 - Run with active virtualenv and verify selected interpreter path is printed.
 - Set `DEPENDENCY_CHECK_PYTHON` to a bad path and verify script exits non-zero.
 
-R010  Statement: Produce dependency freshness artifacts with optional major-update gating.
-Design: Execute `scripts/check_dependency_freshness.py` and always write `dependency-freshness.json` and `dependency-freshness.txt` to resolved report directory; pass `--fail-on-major` when `DEPENDENCY_FAIL_ON_MAJOR=true`.
+R010  Statement: Produce dependency freshness artifacts and fail when direct requirements are stale.
+Design: Execute `scripts/check_dependency_freshness.py` and always write `dependency-freshness.json` and `dependency-freshness.txt` to resolved report directory; pass `--fail-on-direct-outdated` by default (unless `DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=false`) and pass `--fail-on-major` when `DEPENDENCY_FAIL_ON_MAJOR=true`.
 Tests:
 - Run default lane and verify both freshness artifacts are generated.
-- Enable `DEPENDENCY_FAIL_ON_MAJOR=true` and verify non-zero exit when major upgrades exist.
+- Verify default invocation includes direct-requirements failure gating.
+- Set `DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=false` and verify direct-requirements failure gating is omitted.
+- Enable `DEPENDENCY_FAIL_ON_MAJOR=true` and verify major-update failure gating is enabled.
 
 R015  Statement: Support optional Teller API drift canary checks.
 Design: Execute `scripts/check_teller_api_drift.py` only when `RUN_TELLER_CANARY=true` and write drift artifacts to report directory.
@@ -44,3 +46,4 @@ Tests:
 - 2026-04-26: Initial requirements for `04_run_dependency_freshness_checks.sh`.
 - 2026-04-26: Added optional PostgreSQL freshness requirements and test coverage.
 - 2026-04-26: Added CVE policy/snapshot integration requirements for PostgreSQL freshness checks.
+- 2026-05-12: Updated R010 to fail by default when direct `requirements.txt` entries are outdated.

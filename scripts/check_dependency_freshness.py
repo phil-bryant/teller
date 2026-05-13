@@ -206,6 +206,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Exit non-zero when major updates are detected.",
     )
+    parser.add_argument(
+        "--fail-on-direct-outdated",
+        action="store_true",
+        help="Exit non-zero when outdated packages are listed in requirements.txt.",
+    )
     return parser.parse_args()
 
 
@@ -233,6 +238,8 @@ def main() -> int:
     print(text_report, end="")
 
     if args.fail_on_major and report["summary"]["major_updates"] > 0:
+        return 1
+    if args.fail_on_direct_outdated and report["summary"]["direct_requirements_outdated"] > 0:
         return 1
     return 0
 
