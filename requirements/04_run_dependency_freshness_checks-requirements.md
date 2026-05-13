@@ -36,10 +36,11 @@ Tests:
 - Run with `RUN_POSTGRES_FRESHNESS=false` and verify PostgreSQL freshness script is skipped.
 
 R025  Statement: Evaluate PostgreSQL freshness against local CVE policy/snapshot data.
-Design: Default `04_run_dependency_freshness_checks.sh` behavior passes CVE evaluation flags and repository policy/snapshot paths to `scripts/check_postgres_freshness.py`, refreshes snapshot data from PostgreSQL security advisories, and evaluates both client/server versions. Support disabling CVE checks via `RUN_POSTGRES_FRESHNESS` or `POSTGRES_CHECK_CVES=false`.
+Design: Default `04_run_dependency_freshness_checks.sh` behavior passes CVE evaluation flags and repository policy/snapshot paths to `scripts/check_postgres_freshness.py`, refreshes snapshot data from PostgreSQL security advisories, and evaluates both client/server versions. Snapshot refresh writes `postgres-cve-snapshot.json` only when advisory payload content changes (not when only `generated_at` changes). Support disabling CVE checks via `RUN_POSTGRES_FRESHNESS` or `POSTGRES_CHECK_CVES=false`.
 Tests:
 - Run default lane and verify CVE policy/snapshot flags are passed to PostgreSQL freshness script.
 - Run with `POSTGRES_CHECK_CVES=false` and verify CVE flags are not passed.
+- Refresh snapshot data where only `generated_at` changes and verify snapshot file is not rewritten.
 
 ## Changelog
 
@@ -47,3 +48,4 @@ Tests:
 - 2026-04-26: Added optional PostgreSQL freshness requirements and test coverage.
 - 2026-04-26: Added CVE policy/snapshot integration requirements for PostgreSQL freshness checks.
 - 2026-05-12: Updated R010 to fail by default when direct `requirements.txt` entries are outdated.
+- 2026-05-12: Updated R025 snapshot refresh behavior to avoid rewrites when only `generated_at` changes.

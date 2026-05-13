@@ -156,6 +156,19 @@ def read_json_file(path_value: str | None) -> dict[str, Any] | None:
     return payload
 
 
+def should_write_refreshed_snapshot(
+    existing_snapshot: dict[str, Any] | None,
+    refreshed_snapshot: dict[str, Any] | None,
+) -> bool:
+    if not isinstance(refreshed_snapshot, dict):
+        return False
+    if not isinstance(existing_snapshot, dict):
+        return True
+    existing_payload = {key: value for key, value in existing_snapshot.items() if key != "generated_at"}
+    refreshed_payload = {key: value for key, value in refreshed_snapshot.items() if key != "generated_at"}
+    return existing_payload != refreshed_payload
+
+
 def component_to_scope(component_text: str) -> str:
     lowered = component_text.lower()
     if "client" in lowered:
@@ -319,7 +332,9 @@ def evaluate_cves(
             if args.cve_snapshot:
                 snapshot_path = Path(args.cve_snapshot)
                 snapshot_path.parent.mkdir(parents=True, exist_ok=True)
-                snapshot_path.write_text(json.dumps(snapshot, indent=2) + "\n", encoding="utf-8")
+                existing_snapshot = read_json_file(args.cve_snapshot)
+                if should_write_refreshed_snapshot(existing_snapshot, snapshot):
+                    snapshot_path.write_text(json.dumps(snapshot, indent=2) + "\n", encoding="utf-8")
         except Exception as exc:  # pragma: no cover - network can fail for many reasons
             result["warnings"].append(f"Failed to refresh CVE snapshot from postgresql.org: {exc}")
     if snapshot is None:
