@@ -5,7 +5,7 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "06_run_macos_ui_regression_tests.sh"
+  copy_script_to_fixture "10_run_macos_ui_regression_tests.sh"
   mkdir -p "${FIXTURE_ROOT}/macos-ui"
 }
 
@@ -30,7 +30,7 @@ EOF
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=true RUN_XCUITESTS=true \
-    ./06_run_macos_ui_regression_tests.sh"
+    ./10_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 1 ]
 }
 
@@ -52,7 +52,7 @@ EOF
   run bash -c "cd '${TEST_TMPDIR}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=true RUN_XCUITESTS=true \
-    ${FIXTURE_ROOT}/06_run_macos_ui_regression_tests.sh"
+    ${FIXTURE_ROOT}/10_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$(grep -F -- '--package-path ./macos-ui' "${CALLS_LOG}" | head -1)" != "" ]]
 }
@@ -74,14 +74,14 @@ EOF
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=true RUN_XCUITESTS=false \
-    ./06_run_macos_ui_regression_tests.sh"
+    ./10_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 0 ]
   grep -F "ContentViewSnapshotTests" "${CALLS_LOG}"
   : > "${CALLS_LOG}"
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=true SNAPSHOT_RECORD=true RUN_XCUITESTS=false \
-    ./06_run_macos_ui_regression_tests.sh"
+    ./10_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 0 ]
   grep -F "ContentViewSnapshotTests" "${CALLS_LOG}"
 }
@@ -104,7 +104,7 @@ EOF
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true \
     XCUITEST_PROJECT=./nope/TransactionClassifier.xcodeproj \
-    ./06_run_macos_ui_regression_tests.sh"
+    ./10_run_macos_ui_regression_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"XCUITest project not found"* ]]
 }
@@ -126,7 +126,7 @@ EOF
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=true RUN_XCUITESTS=false \
-    ./06_run_macos_ui_regression_tests.sh"
+    ./10_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 0 ]
   if grep -q "xcodebuild" "${CALLS_LOG}"; then
     return 1
@@ -153,7 +153,7 @@ EOF
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     unset RUN_SNAPSHOT_TESTS RUN_XCUITESTS && \
-    ./06_run_macos_ui_regression_tests.sh"
+    ./10_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 0 ]
   grep "swift" "${CALLS_LOG}"
   grep "xcodebuild" "${CALLS_LOG}"
@@ -181,7 +181,7 @@ EOF
     XCUITEST_SCHEME=CustomScheme \
     XCUITEST_DESTINATION=platform=macOS,arch=arm64 \
     XCUITEST_DERIVED_DATA_PATH=./macos-ui/.dd-ui \
-    ./06_run_macos_ui_regression_tests.sh"
+    ./10_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 0 ]
   grep -F -- "-project" "${CALLS_LOG}" | grep -F "macos-ui/proj.xcodeproj"
   grep -F "CustomScheme" "${CALLS_LOG}"
@@ -208,7 +208,7 @@ EOF
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true \
-    ./06_run_macos_ui_regression_tests.sh 1,3,5-6"
+    ./10_run_macos_ui_regression_tests.sh 1,3,5-6"
   [ "$status" -eq 0 ]
 
   grep -F "testSearchFilterFindsFixtureRow" "${CALLS_LOG}"
@@ -224,7 +224,7 @@ EOF
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true \
-    ./06_run_macos_ui_regression_tests.sh 13"
+    ./10_run_macos_ui_regression_tests.sh 13"
   [ "$status" -eq 0 ]
   grep -F "testHelpMenuListsAllHotkeys" "${CALLS_LOG}"
 }
@@ -248,7 +248,7 @@ EOF
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true \
-    ./06_run_macos_ui_regression_tests.sh 99"
+    ./10_run_macos_ui_regression_tests.sh 99"
   [ "$status" -ne 0 ]
   [[ "$output" == *"Unknown UI regression test number"* ]]
 
@@ -259,6 +259,6 @@ EOF
 
 @test "does not invoke macOS crash reporter verification script" {
   #R050
-  run grep -E 'verify_macos_crash_reporter|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/06_run_macos_ui_regression_tests.sh"
+  run grep -E 'verify_macos_crash_reporter|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/10_run_macos_ui_regression_tests.sh"
   [ "$status" -ne 0 ]
 }

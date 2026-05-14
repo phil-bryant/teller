@@ -144,5 +144,5 @@ fi
 
 if [[ "$RUN_MACOS_UI_REGRESSION_TESTS" == "true" ]]; then
   echo "▶ Running macOS UI regression test lane..."
-  ./06_run_macos_ui_regression_tests.sh
+  ./10_run_macos_ui_regression_tests.sh
 fi

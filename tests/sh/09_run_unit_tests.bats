@@ -5,7 +5,7 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "05_run_unit_tests.sh"
+  copy_script_to_fixture "09_run_unit_tests.sh"
 }
 
 teardown() {
@@ -25,7 +25,7 @@ EOF
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
   mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
-  run bash -c "cd '${TEST_TMPDIR}' && RUN_SHELL_TESTS=false RUN_SWIFT_TESTS=false '${FIXTURE_ROOT}/05_run_unit_tests.sh'"
+  run bash -c "cd '${TEST_TMPDIR}' && RUN_SHELL_TESTS=false RUN_SWIFT_TESTS=false '${FIXTURE_ROOT}/09_run_unit_tests.sh'"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"python3 cwd=${FIXTURE_ROOT} args=-m unittest discover tests/py"* ]]
@@ -38,7 +38,7 @@ EOF
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
   mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
-  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SHELL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SHELL_TESTS=true RUN_SWIFT_TESTS=false ./09_run_unit_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"bats is required"* ]]
 }
@@ -55,7 +55,7 @@ EOF
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
   mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
-  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SHELL_TESTS=true RUN_PYTHON_TESTS=false RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SHELL_TESTS=true RUN_PYTHON_TESTS=false RUN_SWIFT_TESTS=false ./09_run_unit_tests.sh"
   [ "$status" -eq 0 ]
 }
 
@@ -84,7 +84,7 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw ./09_run_unit_tests.sh"
   [ "$status" -eq 0 ]
 }
 
@@ -105,7 +105,7 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./09_run_unit_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pg_prove is required for pgTAP SQL unit tests"* ]]
 }
@@ -135,7 +135,7 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./09_run_unit_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"pg_prove_home --dbname prod ./tests/sql/smoke.sql"* ]]
@@ -159,7 +159,7 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./09_run_unit_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"failed to query 'prod' for pgtap extension availability"* ]]
   [[ "$output" == *"connection failed"* ]]
@@ -183,7 +183,7 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && TELLER_DB_PASSWORD=pw RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./09_run_unit_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pgtap extension is required in database"* ]]
 }
@@ -214,7 +214,7 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false ./09_run_unit_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"1psa -p localhost_postgres_teller"* ]]
@@ -237,7 +237,7 @@ EOF
 SELECT 1;
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SQL_TESTS=false RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SQL_TESTS=false RUN_SWIFT_TESTS=false ./09_run_unit_tests.sh"
   [ "$status" -eq 0 ]
 }
 
@@ -254,7 +254,7 @@ EOF
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
   mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
-  run bash -c "cd '${FIXTURE_ROOT}' && ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && ./09_run_unit_tests.sh"
   [ "$status" -eq 0 ]
 }
 
@@ -270,12 +270,12 @@ EOF
   mkdir -p "${FIXTURE_ROOT}/tests/sh"
   mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests"
 
-  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SWIFT_TESTS=false ./05_run_unit_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SWIFT_TESTS=false ./09_run_unit_tests.sh"
   [ "$status" -eq 0 ]
 }
 
 @test "does not invoke macOS crash reporter verification script" {
   #R030
-  run grep -E 'verify_macos_crash_reporter|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/05_run_unit_tests.sh"
+  run grep -E 'verify_macos_crash_reporter|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/09_run_unit_tests.sh"
   [ "$status" -ne 0 ]
 }

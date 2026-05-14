@@ -58,6 +58,12 @@ def main():
   if "pg_trigger" in sql and "transaction_nys_snw_category" in sql and "update_updated_at" in sql:
     print("t", end="")
     return
+  if "information_schema.columns" in sql and "LEFT JOIN actual" in sql and "update_updated_at" in sql:
+    if os.environ.get("TRIGGER_GAPS") == "1":
+      print("transaction")
+    else:
+      print("", end="")
+    return
   print("t", end="")
 
 if __name__ == "__main__":
@@ -139,10 +145,20 @@ EOF
 }
 
 @test "emits a single pass line for successful verification" {
-  #R030 #R035
+  #R030 #R035 #R040 #R045
   : > "${PSQL_LOG}"
   make_psql_happy
   run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/08_verify_deploy_database.sh"
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | grep -c "✅ PASS:")" -eq 1 ]
+}
+
+@test "fails when updated_at coverage has gaps" {
+  #R040 #R045
+  : > "${PSQL_LOG}"
+  make_psql_happy
+  run env TELLER_DB_PASSWORD=pw TRIGGER_GAPS=1 zsh "${FIXTURE_ROOT}/08_verify_deploy_database.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"missing updated_at trigger coverage: transaction"* ]]
+  [[ "$output" == *"❌ FAIL:"* ]]
 }

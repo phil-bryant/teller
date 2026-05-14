@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `19_run_av_checks.sh`.
+Applies to `05_run_av_checks.sh`.
 
 R001  Statement: Run in strict shell mode and execute from repository root.
 Design: Use `set -euo pipefail`, resolve script directory from `${BASH_SOURCE[0]}`, and `cd` into that directory.
@@ -48,4 +48,4 @@ Tests:
 
 ## Changelog
 
-- 2026-05-09: Added standalone AV lane requirements for `19_run_av_checks.sh` after splitting ClamAV out of `14_run_security_checks.sh`.
+- 2026-05-09: Added standalone AV lane requirements for `05_run_av_checks.sh` after splitting ClamAV out of `14_run_security_checks.sh`.

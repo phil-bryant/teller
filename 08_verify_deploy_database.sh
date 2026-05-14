@@ -187,6 +187,52 @@ if [[ "$(db_scalar "
   record_failure "missing updated_at trigger on teller.transaction_nys_snw_category"
 fi
 
+#R040: Verify every teller table with updated_at is covered by teller.update_updated_at.
+missing_updated_at_coverage="$(
+  db_lines "
+    WITH expected AS (
+      SELECT tables.table_name
+      FROM information_schema.tables tables
+      JOIN information_schema.columns columns
+        ON columns.table_schema = tables.table_schema
+       AND columns.table_name = tables.table_name
+      WHERE tables.table_schema = 'teller'
+        AND tables.table_type = 'BASE TABLE'
+        AND columns.column_name = 'updated_at'
+    ),
+    actual AS (
+      SELECT DISTINCT rel.relname AS table_name
+      FROM pg_trigger trg
+      JOIN pg_class rel
+        ON rel.oid = trg.tgrelid
+      JOIN pg_namespace rel_ns
+        ON rel_ns.oid = rel.relnamespace
+      JOIN pg_proc proc
+        ON proc.oid = trg.tgfoid
+      JOIN pg_namespace proc_ns
+        ON proc_ns.oid = proc.pronamespace
+      WHERE rel_ns.nspname = 'teller'
+        AND proc_ns.nspname = 'teller'
+        AND proc.proname = 'update_updated_at'
+        AND trg.tgisinternal = false
+        AND trg.tgenabled <> 'D'
+    )
+    SELECT expected.table_name
+    FROM expected
+    LEFT JOIN actual
+      ON actual.table_name = expected.table_name
+    WHERE actual.table_name IS NULL
+    ORDER BY expected.table_name;
+  "
+)"
+if [[ -n "$missing_updated_at_coverage" ]]; then
+  #R045: Surface all missing table names as explicit verification failures.
+  while IFS= read -r table_name; do
+    [[ -n "$table_name" ]] || continue
+    record_failure "missing updated_at trigger coverage: ${table_name}"
+  done <<< "$missing_updated_at_coverage"
+fi
+
 #R035: Print explicit pass/fail verification result.
 if (( ${#failures[@]} > 0 )); then
   echo "❌ FAIL: Database deployment verification failed."
@@ -196,4 +242,4 @@ if (( ${#failures[@]} > 0 )); then
   exit 1
 fi
 
-echo "✅ PASS: Database deployment verified (roles, schema, core relations, FK cascade, trigger wiring)."
+echo "✅ PASS: Database deployment verified (roles, schema, core relations, FK cascade, and updated_at trigger coverage)."

@@ -59,7 +59,7 @@ class TellerAPIClient:
         repaired = False
         if enrollment_id:
             try:
-                launcher = Path(__file__).resolve().parent / "15_run_classification_macos-ui.sh"
+                launcher = Path(__file__).resolve().parent / "17_run_classification_macos-ui.sh"
                 if not launcher.is_file():
                     raise OSError(f"Missing launcher: {launcher}")
                 if not os.access(launcher, os.X_OK):
@@ -274,7 +274,7 @@ def main():
         if exc.code:
             print(f"Error code: {exc.code}")
         if exc.code.startswith("enrollment.disconnected"):
-            print("Auto-repair failed. Run ./15_run_classification_macos-ui.sh and use the Connect tab to repair.")
+            print("Auto-repair failed. Run ./17_run_classification_macos-ui.sh and use the Connect tab to repair.")
         sys.exit(1)
 
 if __name__ == "__main__":

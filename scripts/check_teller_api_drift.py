@@ -131,9 +131,9 @@ def run_fallback_checks() -> dict[str, Any]:
         )
 
     source_files = [
-        Path("10_configure_teller_io.sh"),
-        Path("15_run_classification_macos-ui.sh"),
-        Path("11_fetch_teller_api_data.py"),
+        Path("18_configure_teller_io.sh"),
+        Path("17_run_classification_macos-ui.sh"),
+        Path("12_fetch_teller_api_data.py"),
     ]
     endpoint_markers = ["/institutions", "/accounts", "/identity"]
     for source_path in source_files:

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `06_run_macos_ui_regression_tests.sh`.
+Applies to `10_run_macos_ui_regression_tests.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` in the script entrypoint.
@@ -49,22 +49,22 @@ Tests:
 R040  Statement: Allow selecting specific UI regression tests by numeric selector argument.
 Design: Accept an optional positional selector argument with forms `N`, comma-separated lists (`N,M`), and ranges (`N-M`) mapped to an ordered list of known UI regression tests.
 Tests:
-- Run `06_run_macos_ui_regression_tests.sh 1,3,5-6` and verify only matching `-only-testing` entries are passed to `xcodebuild test`.
+- Run `10_run_macos_ui_regression_tests.sh 1,3,5-6` and verify only matching `-only-testing` entries are passed to `xcodebuild test`.
 
 R045  Statement: Fail fast when selectors reference non-existent test numbers.
 Design: Validate each parsed selector index against the known UI regression test list and exit non-zero with an explicit error before invoking `xcodebuild` when out of range.
 Tests:
-- Run `06_run_macos_ui_regression_tests.sh 99` and verify the script exits non-zero with an unknown-test-number error and does not call `xcodebuild`.
+- Run `10_run_macos_ui_regression_tests.sh 99` and verify the script exits non-zero with an unknown-test-number error and does not call `xcodebuild`.
 
 R050  Statement: Do not chain macOS crash-reporter verification from this UI regression runner.
-Design: `06_run_macos_ui_regression_tests.sh` must not invoke `./18_verify_macos_crash_reporter.sh`, reference `verify_macos_crash_reporter`, or define `RUN_CRASH_REPORTER_SMOKE_TEST`. Run PLCrashReporter verification via `./18_verify_macos_crash_reporter.sh` as a separate step when needed.
+Design: `10_run_macos_ui_regression_tests.sh` must not invoke `./11_verify_macos_crash_reporter.sh`, reference `verify_macos_crash_reporter`, or define `RUN_CRASH_REPORTER_SMOKE_TEST`. Run PLCrashReporter verification via `./11_verify_macos_crash_reporter.sh` as a separate step when needed.
 Tests:
 - Grep the script text and verify it contains no `verify_macos_crash_reporter` substring and no `CRASH_REPORTER_SMOKE` token.
 
 ## Changelog
 
-- 2026-05-12: Replaced optional crash-reporter lane with R050 isolation requirement; verification is standalone `18_verify_macos_crash_reporter.sh`.
-- 2026-04-24: Initial requirements for `06_run_macos_ui_regression_tests.sh`.
+- 2026-05-12: Replaced optional crash-reporter lane with R050 isolation requirement; verification is standalone `11_verify_macos_crash_reporter.sh`.
+- 2026-04-24: Initial requirements for `10_run_macos_ui_regression_tests.sh`.
 - 2026-04-24: Folded gate rollout guidance from `macos-ui/UI_REGRESSION_ROLLOUT.md` into script-scoped requirements.
 - 2026-05-02: Added optional numeric XCUITest selectors and strict out-of-range validation requirements.
 - 2026-05-07: Added optional PLCrashReporter smoke-verification lane (later removed; see 2026-05-12).

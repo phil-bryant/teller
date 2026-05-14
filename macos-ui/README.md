@@ -9,7 +9,7 @@ This app now also includes a native **Connect** tab for local Teller enrollment 
 From repo root:
 
 ```zsh
-./13_run_classification_api.py
+./15_run_classification_api.py
 ```
 
 Defaults to `http://127.0.0.1:8787`. Override with:
@@ -42,7 +42,7 @@ Connect is now owned in-process by the app (local file-backed service + native W
 From repo root, the recommended launcher is:
 
 ```zsh
-./15_run_classification_macos-ui.sh
+./17_run_classification_macos-ui.sh
 ```
 
 That command launches this macOS app; open the Connect tab to manage local enrollments.
@@ -83,19 +83,19 @@ On the second launch, the app should detect and persist the pending crash report
 
 From repo root:
 
-- `./05_run_unit_tests.sh` (API/unit tests)
-- `./06_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
-- `RUN_SAST=false RUN_MACOS_UI_DAST=true ./14_run_security_checks.sh` (local OWASP ZAP-backed DAST for UI-driven API traffic)
-- `./18_run_av_checks.sh` (standalone ClamAV antivirus lane)
-- `./16_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./16_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
+- `./09_run_unit_tests.sh` (API/unit tests)
+- `./10_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
+- `RUN_SAST=false RUN_MACOS_UI_DAST=true ./16_run_dast.sh` (local OWASP ZAP-backed DAST for UI-driven API traffic)
+- `./05_run_av_checks.sh` (standalone ClamAV antivirus lane)
+- `./13_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./13_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
 
 ## 5) Automated UI regression testing
 
 Run from repo root:
 
 ```zsh
-./06_run_macos_ui_regression_tests.sh
+./10_run_macos_ui_regression_tests.sh
 ```
 
 Available gates/flags:
@@ -119,4 +119,4 @@ Snapshot tests live in `Tests/TransactionClassifierSnapshotTests` and validate k
 
 XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` and cover keyboard-first critical paths (`Cmd+]`, `Cmd+Z`), category apply flows, search filtering, and load-more behavior in deterministic fixture mode.
 
-Rollout guidance and gating behavior are captured in `../requirements/06_run_macos_ui_regression_tests-requirements.md`.
+Rollout guidance and gating behavior are captured in `../requirements/10_run_macos_ui_regression_tests-requirements.md`.

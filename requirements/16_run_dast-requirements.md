@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `15_run_dast.sh`.
+Applies to `16_run_dast.sh`.
 
 R001  Statement: Print an explicit DAST startup banner.
 Design: Emit `running DAST (Dynamic Application Security Testing)` at script startup before scanner orchestration begins.
@@ -31,4 +31,4 @@ Tests:
 
 ## Changelog
 
-- 2026-05-10: Split former combined security lane into `14_run_sast.sh` and `15_run_dast.sh`.
+- 2026-05-10: Split former combined security lane into `06_run_sast.sh` and `16_run_dast.sh`.

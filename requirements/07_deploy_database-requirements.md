@@ -75,8 +75,14 @@ Design: Run `CREATE EXTENSION IF NOT EXISTS pgtap;` as postgres against `prod` a
 Tests:
 - Verify deploy invokes SQL that creates `pgtap` extension in `prod`.
 
+R055  Statement: Apply ingest-role grants required for reconcile and audit workflows.
+Design: Execute `grant_ingest_reconcile_privileges.sql` during deploy after schema objects and audit/view/trigger assets are in place.
+Tests:
+- Verify deploy invokes `grant_ingest_reconcile_privileges.sql` against `prod` as teller role.
+
 ## Changelog
 
+- 2026-05-13: Added R055 for ingest reconcile/audit grant application during deploy.
 - 2026-04-24: Added R006-R008 for fail-fast `psql` options and wrapper function coverage.
 - 2026-04-26: Added R050 to create `pgtap` extension in `prod` during deploy bootstrap.
 - 2026-04-21: Added R040 trigger-order requirement to ensure full updated_at coverage.

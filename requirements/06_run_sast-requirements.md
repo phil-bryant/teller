@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `14_run_sast.sh`.
+Applies to `06_run_sast.sh`.
 
 R001  Statement: Print an explicit SAST startup banner.
 Design: Emit `running SAST (Static Application Security Testing)` at script startup before scanner orchestration begins.
@@ -32,4 +32,4 @@ Tests:
 
 ## Changelog
 
-- 2026-05-10: Split former combined security lane into `14_run_sast.sh` and `15_run_dast.sh`.
+- 2026-05-10: Split former combined security lane into `06_run_sast.sh` and `16_run_dast.sh`.

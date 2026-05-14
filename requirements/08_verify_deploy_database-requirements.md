@@ -39,12 +39,23 @@ Design: Assert `teller.update_updated_at` exists and that `teller.transaction_ny
 Tests:
 - Drop function or trigger and verify script fails with explicit trigger diagnostic.
 
+R040  Statement: Detect tables missing updated_at trigger coverage.
+Design: Compare all `teller` base tables that include `updated_at` against enabled non-internal triggers using `teller.update_updated_at`.
+Tests:
+- Remove one trigger in a test DB and verify the table appears in failure output.
+
+R045  Statement: Exit non-zero when updated_at trigger coverage gaps are detected.
+Design: Treat any missing table rows from the coverage query as failure and print each table with a clear `missing updated_at trigger coverage:` diagnostic.
+Tests:
+- Verify output includes each missing table and exits non-zero when query returns uncovered tables.
+
 R035  Statement: Print explicit pass/fail verification result.
-Design: Print one `✅ PASS:` line only when all checks pass; otherwise print `❌ FAIL:` header, list each failed check, and exit non-zero.
+Design: Print one `✅ PASS:` line only when all checks pass (including updated_at coverage); otherwise print `❌ FAIL:` header, list each failed check, and exit non-zero.
 Tests:
 - Verify all-pass run emits a single `✅ PASS:` line.
 - Verify any failed check emits `❌ FAIL:` details and exits non-zero.
 
 ## Changelog
 
+- 2026-05-14: Combined updated_at coverage verification into `08_verify_deploy_database.sh` (absorbed former `09` lane behavior).
 - 2026-04-22: Initial requirements for `08_verify_deploy_database.sh`.

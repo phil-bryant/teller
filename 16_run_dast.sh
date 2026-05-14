@@ -975,7 +975,7 @@ PY
   else
     echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
     TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
-      "$dast_app_python" "./13_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
+      "$dast_app_python" "./15_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
     classifier_api_pid="$!"
   fi
   wait_for_http "${base_url}/health" 45
@@ -1068,7 +1068,7 @@ PY
     RUN_XCUITESTS=true \
     TELLER_CLASSIFIER_API_URL="$base_url" \
     TELLER_CLASSIFIER_HTTP_PROXY="$macos_ui_dast_proxy_url" \
-      ./06_run_macos_ui_regression_tests.sh | tee "${report_dir_abs}/macos-ui-dast-xcuitest.log"
+      ./10_run_macos_ui_regression_tests.sh | tee "${report_dir_abs}/macos-ui-dast-xcuitest.log"
 
     if curl -fsS "$zap_alerts_api_url" > "${report_dir_abs}/zap-macos-ui.json"; then
       if [[ ! -s "${report_dir_abs}/zap-macos-ui.json" ]]; then

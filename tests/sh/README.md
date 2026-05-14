@@ -10,7 +10,7 @@ This directory contains `bats-core` unit tests for repository shell scripts.
   - Requirement IDs: `R005`, `R010`, `R012`, `R020`, `R025`, `R035`, `R040`, `R050`
 - `02_create_venv.bats` -> `02_create_venv.sh`
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R035`, `R040`
-- `10_configure_teller_io.bats` -> `10_configure_teller_io.sh`
+- `18_configure_teller_io.bats` -> `18_configure_teller_io.sh`
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R035`, `R040`
 - `99_restore_database.bats` -> `99_restore_database.sh`
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R040`, `R045`, `R070`
@@ -21,12 +21,12 @@ This directory contains `bats-core` unit tests for repository shell scripts.
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R035`
 - `98_destroy_database.bats` -> `98_destroy_database.sh`
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`
-- `05_run_unit_tests.bats` -> `05_run_unit_tests.sh`
+- `09_run_unit_tests.bats` -> `09_run_unit_tests.sh`
   - Requirement IDs: `R001`, `R005`, `R010`, `R015`, `R020`
-- `14_run_transaction_classification_macos-ui.bats` -> `15_run_classification_macos-ui.sh`
+- `17_run_classification_macos-ui.bats` -> `17_run_classification_macos-ui.sh`
   - Wrapper contract test (forwarding and package-path composition)
 
 ## Notes
 
 - Tests avoid live network and database dependencies by using command stubs.
-- Integration scripts (`05`, `06`, `08`, `15`) remain out of unit scope by design.
+- Integration scripts (`05`, `06`, `08`, `16`) remain out of unit scope by design.

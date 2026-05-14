@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `05_run_unit_tests.sh`.
+Applies to `09_run_unit_tests.sh`.
 
 R001  Statement: Run project unit test suites from the repository root.
 Design: Resolve script directory and `cd` into it before invoking shell/Python/Swift test commands.
@@ -45,14 +45,14 @@ Tests:
 - Disable SQL tests and verify runner skips SQL invocation.
 
 R030  Statement: Do not chain other numbered verification scripts from this runner.
-Design: `05_run_unit_tests.sh` must not invoke `./18_verify_macos_crash_reporter.sh`, reference `verify_macos_crash_reporter`, or define `RUN_MACOS_CRASH_REPORTER_SMOKE_TEST`. Run that verification as its own numbered entrypoint when needed.
+Design: `09_run_unit_tests.sh` must not invoke `./11_verify_macos_crash_reporter.sh`, reference `verify_macos_crash_reporter`, or define `RUN_MACOS_CRASH_REPORTER_SMOKE_TEST`. Run that verification as its own numbered entrypoint when needed.
 Tests:
 - Grep the script text and verify it contains no `verify_macos_crash_reporter` substring and no `CRASH_REPORTER_SMOKE` token.
 
 ## Changelog
 
-- 2026-05-12: Replaced opt-in crash-reporter lane with R030 isolation requirement; verification is standalone `18_verify_macos_crash_reporter.sh`.
+- 2026-05-12: Replaced opt-in crash-reporter lane with R030 isolation requirement; verification is standalone `11_verify_macos_crash_reporter.sh`.
 - 2026-05-07: Added R030 for optional PLCrashReporter smoke lane (later removed; see 2026-05-12).
 - 2026-04-26: Added R025 to run SQL unit tests from `tests/sql`.
 - 2026-04-23: Added R020 to run Swift package tests from `./macos-ui`.
-- 2026-04-23: Initial requirements for `05_run_unit_tests.sh`.
+- 2026-04-23: Initial requirements for `09_run_unit_tests.sh`.

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `18_verify_macos_crash_reporter.sh`.
+Applies to `11_verify_macos_crash_reporter.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` at script entry.
@@ -43,11 +43,11 @@ Tests:
 - Verify success output includes both artifact path lines.
 
 R040  Statement: Remain a standalone numbered entrypoint.
-Design: This script is invoked directly (or from ad-hoc automation), not from other repository-numbered control-plane scripts such as `05_run_unit_tests.sh` or `06_run_macos_ui_regression_tests.sh`. Those runners must not reference or execute crash-reporter verification.
+Design: This script is invoked directly (or from ad-hoc automation), not from other repository-numbered control-plane scripts such as `09_run_unit_tests.sh` or `10_run_macos_ui_regression_tests.sh`. Those runners must not reference or execute crash-reporter verification.
 Tests:
-- Covered by static grep tests in `tests/sh/05_run_unit_tests.bats` and `tests/sh/06_run_macos_ui_regression_tests.bats`.
+- Covered by static grep tests in `tests/sh/09_run_unit_tests.bats` and `tests/sh/10_run_macos_ui_regression_tests.bats`.
 
 ## Changelog
 
 - 2026-05-12: Added R040 documenting standalone use and forbidding chained invocation from `05_`/`06_` runners.
-- 2026-05-07: Initial requirements for `18_verify_macos_crash_reporter.sh`.
+- 2026-05-07: Initial requirements for `11_verify_macos_crash_reporter.sh`.

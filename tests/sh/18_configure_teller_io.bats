@@ -5,7 +5,7 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "10_configure_teller_io.sh"
+  copy_script_to_fixture "18_configure_teller_io.sh"
 }
 
 teardown() {
@@ -44,7 +44,7 @@ EOF
     TELLER_APPLICATION_ID=app_test \
     TELLER_CERT_PATH="$cert_src" \
     TELLER_KEY_PATH="$key_src" \
-    bash "${FIXTURE_ROOT}/10_configure_teller_io.sh"
+    bash "${FIXTURE_ROOT}/18_configure_teller_io.sh"
   [ "$status" -eq 0 ]
   [ -d "${HOME}/.teller" ]
   [ "$(file_mode "${HOME}/.teller")" = "700" ]
@@ -76,7 +76,7 @@ EOF
   stub_cmd jq "echo 0"
   stub_cmd git "exit 0"
 
-  run env CONFIGURE_TELLER_EXAMPLES=false TELLER_APPLICATION_ID=app_new bash "${FIXTURE_ROOT}/10_configure_teller_io.sh"
+  run env CONFIGURE_TELLER_EXAMPLES=false TELLER_APPLICATION_ID=app_new bash "${FIXTURE_ROOT}/18_configure_teller_io.sh"
   [ "$status" -eq 0 ]
   value="$(<"${HOME}/.teller/application_id.txt")"
   [ "$value" = "app_existing" ]
@@ -85,7 +85,7 @@ EOF
 @test "fails when examples directory exists but is not a git repo" {
   #R010
   mkdir -p "${TEST_TMPDIR}/bad_examples"
-  run env TELLER_EXAMPLES_DIR="${TEST_TMPDIR}/bad_examples" bash "${FIXTURE_ROOT}/10_configure_teller_io.sh"
+  run env TELLER_EXAMPLES_DIR="${TEST_TMPDIR}/bad_examples" bash "${FIXTURE_ROOT}/18_configure_teller_io.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"exists but is not a git repository"* ]]
 }
