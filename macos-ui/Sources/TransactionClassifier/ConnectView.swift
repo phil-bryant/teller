@@ -42,6 +42,60 @@ struct ConnectView: View {
             .frame(minWidth: 360, idealWidth: 420, maxWidth: 460)
 
             VStack(alignment: .leading, spacing: 10) {
+                GroupBox("Step 18: Teller Setup (Native)") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            TextField("application id (app_...)", text: $viewModel.setupApplicationID)
+                                .textFieldStyle(.roundedBorder)
+                                .accessibilityIdentifier("connect-setup-application-id-field")
+                            Button("Save App ID") {
+                                Task { await viewModel.saveSetupApplicationID() }
+                            }
+                            .disabled(viewModel.setupBusy)
+                            .accessibilityIdentifier("connect-setup-save-app-id-button")
+                        }
+
+                        HStack(spacing: 8) {
+                            Button("Save Token for Setup") {
+                                Task { await viewModel.saveSetupAuthToken() }
+                            }
+                            .disabled(viewModel.setupBusy || viewModel.manualToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .accessibilityIdentifier("connect-setup-save-token-button")
+                            Button("Run Teller Smoke Check") {
+                                Task { await viewModel.runSetupSmokeCheck() }
+                            }
+                            .disabled(viewModel.setupBusy)
+                            .accessibilityIdentifier("connect-setup-smoke-button")
+                            Button("Refresh Setup") {
+                                Task { await viewModel.refreshSetupOnly() }
+                            }
+                            .disabled(viewModel.setupBusy)
+                            .accessibilityIdentifier("connect-setup-refresh-button")
+                        }
+
+                        if let snapshot = viewModel.setupSnapshot {
+                            Text("~/.teller: \(snapshot.tellerDirectory)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text("app_id=\(snapshot.hasApplicationID ? "yes" : "no") • cert=\(snapshot.hasCertificate ? "yes" : "no") • key=\(snapshot.hasPrivateKey ? "yes" : "no") • token=\(snapshot.hasAuthToken ? "yes" : "no")")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if !viewModel.setupErrorText.isEmpty {
+                            Text(viewModel.setupErrorText)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .accessibilityIdentifier("connect-setup-error")
+                        } else {
+                            Text(viewModel.setupStatusText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("connect-setup-status")
+                        }
+                    }
+                }
+
                 Text("Connect via Native WebView").font(.headline)
                 SecureField("access token", text: $viewModel.manualToken)
                     .textFieldStyle(.roundedBorder)

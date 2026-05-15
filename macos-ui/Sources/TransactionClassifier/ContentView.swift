@@ -199,7 +199,7 @@ struct ContentView: View {
 private func initialTab(startTab: String?, processInfo: ProcessInfo = .processInfo) -> AppTab {
     let normalized = startTab?.lowercased() ?? processInfo.environment["TELLER_MACOS_START_TAB"]?.lowercased()
     switch normalized {
-    case "connect":
+    case "connect", "setup", "teller-setup":
         return .connect
     case "match", "match-review":
         return .matchReview

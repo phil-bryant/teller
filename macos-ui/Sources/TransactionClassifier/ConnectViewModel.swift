@@ -20,11 +20,21 @@ final class ConnectViewModel {
     var busy = false
     var showingDeleteConfirmation = false
     var lastSavedTokenPath = ""
+    var setupSnapshot: TellerSetupSnapshot?
+    var setupStatusText = "Setup status unavailable."
+    var setupErrorText = ""
+    var setupApplicationID = ""
+    var setupBusy = false
 
     private let api: any ConnectAPI
+    private let setupAPI: any TellerSetupAPI
 
-    init(api: any ConnectAPI = ConnectAPIClient()) {
+    init(
+        api: any ConnectAPI = ConnectAPIClient(),
+        setupAPI: any TellerSetupAPI = TellerSetupService()
+    ) {
         self.api = api
+        self.setupAPI = setupAPI
     }
 
     var selectedContext: ConnectContext? {
@@ -44,10 +54,79 @@ final class ConnectViewModel {
                 selectedContextKey = contexts.first?.key
             }
             updateStatusFromServer(status)
+            try await refreshSetupStatus()
             errorText = ""
         } catch {
             errorText = error.localizedDescription
             statusText = "Connect service unavailable."
+        }
+    }
+
+    func refreshSetupOnly() async {
+        setupBusy = true
+        defer { setupBusy = false }
+        do {
+            try await refreshSetupStatus()
+        } catch {
+            setupErrorText = error.localizedDescription
+            setupStatusText = "Setup status unavailable."
+        }
+    }
+
+    func saveSetupApplicationID() async {
+        let normalized = setupApplicationID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            setupErrorText = "Application ID is required."
+            return
+        }
+        setupBusy = true
+        defer { setupBusy = false }
+        do {
+            let path = try await setupAPI.saveApplicationID(normalized)
+            setupStatusText = "Saved application ID at \(path)."
+            setupErrorText = ""
+            try await refreshSetupStatus()
+        } catch {
+            setupErrorText = error.localizedDescription
+            setupStatusText = "Saving application ID failed."
+        }
+    }
+
+    func saveSetupAuthToken() async {
+        let token = manualToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else {
+            setupErrorText = "Access token is required."
+            return
+        }
+        setupBusy = true
+        defer { setupBusy = false }
+        do {
+            let path = try await setupAPI.saveAuthToken(token)
+            setupStatusText = "Saved auth token at \(path)."
+            setupErrorText = ""
+            manualToken = ""
+            try await refreshSetupStatus()
+            await refreshContexts()
+        } catch {
+            setupErrorText = error.localizedDescription
+            setupStatusText = "Saving auth token failed."
+        }
+    }
+
+    func runSetupSmokeCheck() async {
+        setupBusy = true
+        defer { setupBusy = false }
+        do {
+            let result = try await setupAPI.runSmokeCheck()
+            let institutionsCount = result.institutionsCount.map(String.init) ?? "unknown"
+            let accountsText = result.accountsHTTPStatus.map { "accounts=\($0)" } ?? "accounts=skipped"
+            let warningText = result.warningText.isEmpty ? "" : " \(result.warningText)"
+            setupStatusText = "Smoke check passed (institutions=\(result.institutionsHTTPStatus), count=\(institutionsCount), \(accountsText)).\(warningText)"
+            setupErrorText = ""
+            try await refreshSetupStatus()
+        } catch {
+            setupErrorText = error.localizedDescription
+            setupStatusText = "Smoke check failed."
         }
     }
 
@@ -200,5 +279,16 @@ final class ConnectViewModel {
         } else {
             statusText = "Ready to manage local enrollments."
         }
+    }
+
+    private func refreshSetupStatus() async throws {
+        let snapshot = try await setupAPI.loadSnapshot()
+        setupSnapshot = snapshot
+        if setupApplicationID.isEmpty && snapshot.hasApplicationID {
+            setupApplicationID = "configured"
+        }
+        let readiness = snapshot.isReadyForInstitutionsSmoke ? "ready" : "incomplete"
+        setupStatusText = "Step 18 setup is \(readiness)."
+        setupErrorText = ""
     }
 }

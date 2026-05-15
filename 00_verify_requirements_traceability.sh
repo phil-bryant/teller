@@ -98,18 +98,16 @@ for path in sorted(set(matches)):
 PY
 }
 
-extract_ui_required_ids() {
-    local requirements_file="$1" out_file="$2"
-    awk '
-        {
-            line = tolower($0)
-            if (match(line, /^r[0-9]{3}(-[0-9]{3})*[[:space:]]+statement:/)) {
-                rid = toupper($1)
-                if (line ~ /ui[[:space:]-]*test/ || line ~ /xcuitest/ || line ~ /xctest[[:space:]-]*ui/ || line ~ /ui[[:space:]-]*mode/) {
-                    print rid
+extract_ui_required_ids()
+{   local requirements_file="$1" out_file="$2"
+    awk '{  line = tolower($0)
+            if (match(line, /^r[0-9]{3}(-[0-9]{3})*[[:space:]]+statement:/))
+            {   rid = toupper($1)
+                if (line ~ /ui[[:space:]-]*test/ || line ~ /xcuitest/ || line ~ /xctest[[:space:]-]*ui/ || line ~ /ui[[:space:]-]*mode/)
+                {   print rid
                 }
             }
-        }
+         }
     ' "$requirements_file" | sort -u > "$out_file"
 }
 

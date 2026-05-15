@@ -131,7 +131,8 @@ def run_fallback_checks() -> dict[str, Any]:
         )
 
     source_files = [
-        Path("18_configure_teller_io.sh"),
+        Path("macos-ui/Sources/TransactionClassifier/TellerSetupService.swift"),
+        Path("macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift"),
         Path("17_run_classification_macos-ui.sh"),
         Path("12_fetch_teller_api_data.py"),
     ]

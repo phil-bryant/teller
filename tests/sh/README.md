@@ -10,8 +10,6 @@ This directory contains `bats-core` unit tests for repository shell scripts.
   - Requirement IDs: `R005`, `R010`, `R012`, `R020`, `R025`, `R035`, `R040`, `R050`
 - `02_create_venv.bats` -> `02_create_venv.sh`
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R035`, `R040`
-- `18_configure_teller_io.bats` -> `18_configure_teller_io.sh`
-  - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R035`, `R040`
 - `99_restore_database.bats` -> `99_restore_database.sh`
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R040`, `R045`, `R070`
 
