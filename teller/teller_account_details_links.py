@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from sqlalchemy import String, ForeignKey, BigInteger
+from sqlalchemy import String, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 from .teller_object import TellerObject
 

@@ -9,6 +9,7 @@ from unittest.mock import patch
 from teller.teller_classification_api import (
     _category_params,
     _display_label,
+    _transition_match_state,
     _write_category,
     _write_one,
     create_app,
@@ -647,6 +648,125 @@ class ClassificationApiTests(unittest.TestCase):
         )
         self.assertEqual(len(response), 2)
         self.assertEqual(write_one_mock.call_count, 2)
+
+    @patch("teller.teller_classification_api._insert_match_audit")
+    @patch("teller.teller_classification_api._read_match_row")
+    def test_transition_match_state_clears_email_with_expression_update(self, read_match_row_mock, insert_audit_mock):
+        read_match_row_mock.return_value = {"state": "ai_match_confident"}
+        session = _FakeSession(
+            rows=[
+                _Result(
+                    row={
+                        "transaction_id": "txn_1",
+                        "state": "ai_no_match_found",
+                        "selected_by": "human",
+                        "updated_at": datetime.now(timezone.utc),
+                    }
+                )
+            ]
+        )
+
+        response = _transition_match_state(
+            session=session,
+            match_id=7,
+            to_state="ai_no_match_found",
+            actor="human",
+            note="no email found",
+            clear_email_message_id=True,
+        )
+
+        self.assertEqual(response.transaction_id, "txn_1")
+        self.assertEqual(response.state, "ai_no_match_found")
+        self.assertEqual(response.selected_by, "human")
+        self.assertEqual(session.commits, 1)
+        update_sql, update_params = session.calls[0]
+        self.assertIn("UPDATE teller.transaction_email_match", update_sql)
+        self.assertIn("email_message_id", update_sql)
+        self.assertNotIn("email_message_id", update_params)
+        insert_audit_mock.assert_called_once()
+
+    @patch("teller.teller_classification_api._insert_match_audit")
+    @patch("teller.teller_classification_api._read_match_row")
+    def test_transition_match_state_sets_email_with_expression_update(self, read_match_row_mock, insert_audit_mock):
+        read_match_row_mock.return_value = {"state": "ai_candidate_uncertain"}
+        session = _FakeSession(
+            rows=[
+                _Result(
+                    row={
+                        "transaction_id": "txn_2",
+                        "state": "human_overrode_ai_match",
+                        "selected_by": "human",
+                        "updated_at": datetime.now(timezone.utc),
+                    }
+                )
+            ]
+        )
+
+        response = _transition_match_state(
+            session=session,
+            match_id=8,
+            to_state="human_overrode_ai_match",
+            actor="human",
+            note="manual override",
+            email_message_id="msg_123",
+        )
+
+        self.assertEqual(response.transaction_id, "txn_2")
+        self.assertEqual(response.state, "human_overrode_ai_match")
+        self.assertEqual(session.commits, 1)
+        update_sql, update_params = session.calls[0]
+        self.assertIn("UPDATE teller.transaction_email_match", update_sql)
+        self.assertIn("email_message_id", update_sql)
+        self.assertEqual(update_params["email_message_id"], "msg_123")
+        insert_audit_mock.assert_called_once()
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_matchy_review_applies_filter_predicates_with_expression_queries(self, get_session_mock):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/review", "GET")
+        session = _FakeSession(
+            rows=[
+                _Result(scalar=1),
+                _Result(
+                    rows=[
+                        {
+                            "match_id": 19,
+                            "transaction_id": "txn_9",
+                            "email_message_id": "msg_9",
+                            "state": "ai_match_confident",
+                            "ai_confidence": 0.88,
+                            "selected_by": "ai",
+                            "selected_at": datetime.now(timezone.utc),
+                            "moved_to_matchy_at": None,
+                            "description": "Lunch",
+                            "amount": "12.34",
+                            "date": "2026-01-02",
+                        }
+                    ]
+                ),
+            ]
+        )
+        get_session_mock.return_value = _SessionContext(session)
+
+        response = endpoint(
+            state="ai_match_confident",
+            only_unmoved=True,
+            limit=10,
+            offset=3,
+        )
+
+        self.assertEqual(response.total, 1)
+        self.assertEqual(len(response.items), 1)
+        count_sql, count_params = session.calls[0]
+        rows_sql, rows_params = session.calls[1]
+        self.assertIn("FROM teller.transaction_email_match", count_sql)
+        self.assertIn("moved_to_matchy_at IS NULL", count_sql)
+        self.assertNotIn("{where_sql}", count_sql)
+        self.assertIn("JOIN teller.transaction", rows_sql)
+        self.assertIn("ORDER BY teller.transaction_email_match.selected_at DESC", rows_sql)
+        self.assertEqual(count_params["state"], "ai_match_confident")
+        self.assertEqual(rows_params["limit"], 10)
+        self.assertEqual(rows_params["offset"], 3)
 
 if __name__ == "__main__":
     unittest.main()

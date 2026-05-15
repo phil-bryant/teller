@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from sqlalchemy import String, Enum, ForeignKey, DateTime, BigInteger
+from sqlalchemy import String, Enum, ForeignKey, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .teller_object import TellerObject
-from .teller_base import Base
 from .teller_institution import TellerInstitution
 from .teller_account_links import TellerAccountLinks
 from .teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccountStatus

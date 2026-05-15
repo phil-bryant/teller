@@ -1,5 +1,11 @@
 #! /usr/bin/env python3
-import argparse, hashlib, logging, os, re, subprocess, tempfile
+import argparse
+import hashlib
+import logging
+import os
+import re
+import subprocess
+import tempfile
 from datetime import date
 from decimal import Decimal
 from pathlib import Path

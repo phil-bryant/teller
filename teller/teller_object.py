@@ -1,6 +1,6 @@
 from dataclasses import dataclass, fields
-from sqlalchemy.orm import DeclarativeBase, declared_attr, mapped_column, Mapped
-from sqlalchemy import MetaData, DateTime
+from sqlalchemy.orm import declared_attr, mapped_column, Mapped
+from sqlalchemy import DateTime
 from typing import ClassVar
 from datetime import datetime
 import typing

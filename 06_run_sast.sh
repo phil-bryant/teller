@@ -55,7 +55,16 @@ ensure_security_venv() {
 
   local security_pip="${SECURITY_VENV_DIR}/bin/pip"
   local security_semgrep="${SECURITY_VENV_DIR}/bin/semgrep"
-  if [[ ! -x "$security_semgrep" ]]; then
+  local security_ruff="${SECURITY_VENV_DIR}/bin/ruff"
+  local needs_toolchain="false"
+  if [[ "$RUN_SAST" == "true" ]]; then
+    if [[ ! -x "$security_semgrep" || ! -x "$security_ruff" ]]; then
+      needs_toolchain="true"
+    fi
+  elif [[ ! -x "$security_semgrep" ]]; then
+    needs_toolchain="true"
+  fi
+  if [[ "$needs_toolchain" == "true" ]]; then
     echo "▶ Installing security toolchain into ${SECURITY_VENV_DIR}"
     "$security_pip" install --upgrade pip
     "$security_pip" install -r requirements-security.txt
@@ -211,26 +220,65 @@ run_shellcheck_sast() {
   fi
 }
 
+run_ruff_sast() {
+  #R025: Include Ruff lint scan in SAST reports and summary accounting.
+  # Run Ruff static analysis against Python sources and persist JSON findings.
+  local ruff_report="$1"
+
+  require_command ruff
+  print_tool_header \
+    "Ruff" \
+    "Fast Python linter for static quality and security-related code checks." \
+    "Runs repository lint rules and emits machine-readable JSON findings." \
+    "https://docs.astral.sh/ruff/"
+  echo "▶ Running Ruff"
+  set +e
+  ruff check \
+    --output-format json \
+    . > "$ruff_report"
+  RUFF_EXIT=$?
+  set -e
+  if [[ "$RUFF_EXIT" -gt 1 ]]; then
+    echo "❌ Ruff failed to execute."
+    exit 1
+  fi
+  if [[ "$RUFF_EXIT" -eq 1 ]]; then
+    echo "⚠️  Ruff reported findings; continuing to centralized SAST gating."
+  fi
+}
+
 run_gitleaks_sast() {
   # Run gitleaks and preserve JSON findings for centralized secret-leak gating.
   local gitleaks_report="$1"
+  local gitleaks_source_dir
+  gitleaks_source_dir="$(mktemp -d)"
 
   require_command gitleaks
+  require_command git
   print_tool_header \
     "gitleaks" \
     "Detects hardcoded secrets and credential patterns in tracked files." \
     "Runs repository-focused leak detection and emits JSON findings." \
     "https://github.com/gitleaks/gitleaks"
+  # Scan only git-tracked files to avoid scanner output/cache feedback loops.
+  while IFS= read -r -d '' tracked_file; do
+    if [[ ! -f "$tracked_file" ]]; then
+      continue
+    fi
+    mkdir -p "${gitleaks_source_dir}/$(dirname "$tracked_file")"
+    cp "$tracked_file" "${gitleaks_source_dir}/${tracked_file}"
+  done < <(git ls-files -z)
   echo "▶ Running gitleaks"
   set +e
   gitleaks detect \
-    --source . \
+    --source "$gitleaks_source_dir" \
     --no-git \
     --gitleaks-ignore-path ".gitleaksignore" \
     --report-format json \
     --report-path "$gitleaks_report"
   GITLEAKS_EXIT=$?
   set -e
+  rm -rf "$gitleaks_source_dir"
   if [[ "$GITLEAKS_EXIT" -gt 1 ]]; then
     echo "❌ gitleaks failed to execute."
     exit 1
@@ -1160,6 +1208,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   require_command bandit
   require_command pip-audit
   require_command detect-secrets
+  require_command ruff
   require_command shellcheck
   require_command gitleaks
 
@@ -1215,8 +1264,10 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "https://github.com/Yelp/detect-secrets"
   echo "▶ Running detect-secrets"
   detect-secrets scan --all-files --force-use-all-plugins \
-    --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/|^requirements/)' \
+    --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^\.ruff_cache/|^__pycache__/|^\.pytest_cache/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/|^requirements/)' \
     > "${REPORT_DIR}/detect-secrets.json"
+
+  run_ruff_sast "${REPORT_DIR}/ruff.json"
 
   run_gitleaks_sast "${REPORT_DIR}/gitleaks.json"
 
@@ -1238,11 +1289,12 @@ semgrep_path = report_dir / "semgrep.json"
 bandit_path = report_dir / "bandit.json"
 pip_audit_path = report_dir / "pip-audit.json"
 secrets_path = report_dir / "detect-secrets.json"
+ruff_path = report_dir / "ruff.json"
 swiftlint_path = report_dir / "swiftlint.json"
 shellcheck_path = report_dir / "shellcheck.json"
 gitleaks_path = report_dir / "gitleaks.json"
 
-for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, swiftlint_path, shellcheck_path, gitleaks_path]:
+for required in [semgrep_path, bandit_path, pip_audit_path, secrets_path, ruff_path, swiftlint_path, shellcheck_path, gitleaks_path]:
     if not required.exists():
         print(f"Missing report file: {required}")
         sys.exit(1)
@@ -1280,6 +1332,13 @@ for findings in secret_results.values():
     if isinstance(findings, list):
         secret_findings += len(findings)
 
+with ruff_path.open("r", encoding="utf-8") as fh:
+    ruff = json.load(fh)
+ruff_results = ruff if isinstance(ruff, list) else []
+#R030: Enforce Ruff findings as blocking equivalents in SAST policy totals.
+ruff_total = len(ruff_results)
+ruff_high = ruff_total
+
 with swiftlint_path.open("r", encoding="utf-8") as fh:
     swiftlint = json.load(fh)
 swiftlint_results = swiftlint if isinstance(swiftlint, list) else []
@@ -1301,7 +1360,7 @@ elif isinstance(gitleaks, dict) and isinstance(gitleaks.get("findings"), list):
 else:
     gitleaks_findings = 0
 
-high_critical_total = semgrep_high + bandit_high + secret_findings + swiftlint_high + shellcheck_high + gitleaks_findings
+high_critical_total = semgrep_high + bandit_high + secret_findings + ruff_high + swiftlint_high + shellcheck_high + gitleaks_findings
 
 summary = {
     "semgrep_total": semgrep_total,
@@ -1310,6 +1369,8 @@ summary = {
     "bandit_high_critical": bandit_high,
     "pip_audit_vulnerabilities": dep_vulns,
     "detect_secrets_findings": secret_findings,
+    "ruff_total": ruff_total,
+    "ruff_high_critical": ruff_high,
     "shellcheck_total": shellcheck_total,
     "shellcheck_high_critical": shellcheck_high,
     "gitleaks_findings": gitleaks_findings,

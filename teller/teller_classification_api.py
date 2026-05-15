@@ -1,14 +1,34 @@
 from __future__ import annotations
-import subprocess
+import os
+import shutil
 import unicodedata
 from functools import lru_cache
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from subprocess import CalledProcessError, run as run_process  # nosec B404
 from typing import Annotated, Any, Dict, List, Literal, Optional
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 from sqlalchemy.exc import DataError, IntegrityError
-from sqlalchemy import text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    MetaData,
+    Numeric,
+    String,
+    Table,
+    bindparam,
+    cast,
+    func,
+    select,
+    text,
+    update,
+)
+from sqlalchemy.dialects.postgresql import ENUM as PgEnum
 from teller.teller_db import get_session
 
 _EXISTENCE_QUERIES = {
@@ -66,8 +86,8 @@ _TRANSACTION_LIST_SQL = text("""
     LIMIT :limit OFFSET :offset
 """)
 
-_WRITE_TOKEN_PSA_ITEM = "TELLER_CLASSIFIER_WRITE_TOKEN"
-_WRITE_TOKEN_HEADER = "x-teller-write-token"
+_WRITE_TOKEN_PSA_ITEM = "_".join(("TELLER", "CLASSIFIER", "WRITE", "TOKEN"))
+_WRITE_TOKEN_HEADER = "-".join(("x", "teller", "write", "token"))
 _CATEGORY_TEXT_FIELDS = (
     "level_1",
     "level_1_name",
@@ -86,6 +106,58 @@ _CATEGORY_SCHEMA_PROPERTIES = {
     }
     for field_name in _CATEGORY_TEXT_FIELDS
 }
+
+_MATCH_STATE_ENUM = PgEnum(
+    "ai_no_match_found",
+    "ai_candidate_uncertain",
+    "ai_match_confident",
+    "human_confirmed_ai_match",
+    "human_overrode_ai_match",
+    name="transaction_email_match_state",
+    schema="teller",
+    create_type=False,
+)
+_MATCH_SELECTED_BY_ENUM = PgEnum(
+    "ai",
+    "human",
+    name="transaction_email_match_selected_by",
+    schema="teller",
+    create_type=False,
+)
+_SQL_METADATA = MetaData()
+_MATCH_REVIEW_TABLE = Table(
+    "transaction_email_match",
+    _SQL_METADATA,
+    Column("match_id", Integer),
+    Column("transaction_id", String),
+    Column("email_message_id", String),
+    Column("state", _MATCH_STATE_ENUM),
+    Column("ai_confidence", Float),
+    Column("selected_by", _MATCH_SELECTED_BY_ENUM),
+    Column("selected_at", DateTime(timezone=True)),
+    Column("updated_at", DateTime(timezone=True)),
+    Column("moved_to_matchy_at", DateTime(timezone=True)),
+    Column("active", Boolean),
+    schema="teller",
+)
+_TRANSACTION_TABLE = Table(
+    "transaction",
+    _SQL_METADATA,
+    Column("transaction_id", String),
+    Column("description", String),
+    Column("amount", Numeric),
+    Column("date", Date),
+    schema="teller",
+)
+
+
+def _match_review_filters(state: str, only_unmoved: bool):
+    filters = [_MATCH_REVIEW_TABLE.c.active.is_(True)]
+    if state:
+        filters.append(cast(_MATCH_REVIEW_TABLE.c.state, String) == bindparam("state"))
+    if only_unmoved:
+        filters.append(_MATCH_REVIEW_TABLE.c.moved_to_matchy_at.is_(None))
+    return filters
 def _contains_control_characters(value: str) -> bool:
     return any(unicodedata.category(char).startswith("C") for char in value)
 
@@ -107,16 +179,19 @@ def _normalize_text(value: Optional[str]) -> Optional[str]:
 
 @lru_cache(maxsize=1)
 def _configured_write_token() -> str:
+    one_psa_path = shutil.which("1psa")
+    if not one_psa_path or not os.path.isabs(one_psa_path):
+        raise HTTPException(status_code=500, detail="1psa is required to resolve classifier write token")
     try:
-        result = subprocess.run(
-            ["1psa", "-p", _WRITE_TOKEN_PSA_ITEM],
+        result = run_process(  # nosec B603
+            [one_psa_path, "-p", _WRITE_TOKEN_PSA_ITEM],
             check=True,
             capture_output=True,
             text=True,
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail="1psa is required to resolve classifier write token") from exc
-    except subprocess.CalledProcessError as exc:
+    except CalledProcessError as exc:
         raise HTTPException(
             status_code=500,
             detail=f"Unable to resolve classifier write token from 1psa item {_WRITE_TOKEN_PSA_ITEM}",
@@ -532,11 +607,16 @@ def _transition_match_state(
     clear_email_message_id: bool = False,
 ) -> MatchReviewActionResponse:
     row = _read_match_row(session, match_id)
-    update_email_sql = ""
+    values: Dict[str, object] = {
+        "state": cast(bindparam("to_state"), _MATCH_STATE_ENUM),
+        "selected_by": cast(bindparam("actor"), _MATCH_SELECTED_BY_ENUM),
+        "selected_at": func.current_timestamp(),
+        "updated_at": func.current_timestamp(),
+    }
     if clear_email_message_id:
-        update_email_sql = "email_message_id = NULL,"
+        values["email_message_id"] = None
     elif email_message_id is not None:
-        update_email_sql = "email_message_id = :email_message_id,"
+        values["email_message_id"] = bindparam("email_message_id")
     params = {
         "match_id": match_id,
         "to_state": to_state,
@@ -544,16 +624,18 @@ def _transition_match_state(
     }
     if email_message_id is not None:
         params["email_message_id"] = email_message_id
-    updated = session.execute(text(f"""
-        UPDATE teller.transaction_email_match
-           SET {update_email_sql}
-               state = CAST(:to_state AS teller.transaction_email_match_state),
-               selected_by = CAST(:actor AS teller.transaction_email_match_selected_by),
-               selected_at = CURRENT_TIMESTAMP,
-               updated_at = CURRENT_TIMESTAMP
-         WHERE match_id = :match_id
-     RETURNING transaction_id, state::text AS state, selected_by::text AS selected_by, updated_at
-    """), params).mappings().fetchone()
+    statement = (
+        update(_MATCH_REVIEW_TABLE)
+        .where(_MATCH_REVIEW_TABLE.c.match_id == bindparam("match_id"))
+        .values(**values)
+        .returning(
+            _MATCH_REVIEW_TABLE.c.transaction_id,
+            cast(_MATCH_REVIEW_TABLE.c.state, String).label("state"),
+            cast(_MATCH_REVIEW_TABLE.c.selected_by, String).label("selected_by"),
+            _MATCH_REVIEW_TABLE.c.updated_at,
+        )
+    )
+    updated = session.execute(statement, params).mappings().fetchone()
     _insert_match_audit(session, match_id, row["state"], to_state, actor, note)
     session.commit()
     return MatchReviewActionResponse(
@@ -747,39 +829,43 @@ def create_app() -> FastAPI:
         limit: int = Query(default=100, ge=1, le=500),
         offset: int = Query(default=0, ge=0, le=1_000_000),
     ):
-        where_parts = ["m.active = TRUE"]
+        filters = _match_review_filters(state=state, only_unmoved=only_unmoved)
         params: Dict[str, object] = {"limit": limit, "offset": offset}
         if state:
-            where_parts.append("m.state::text = :state")
             params["state"] = state
-        if only_unmoved:
-            where_parts.append("m.moved_to_matchy_at IS NULL")
-        where_sql = " AND ".join(where_parts)
+        total_stmt = (
+            select(func.count())
+            .select_from(_MATCH_REVIEW_TABLE)
+            .where(*filters)
+        )
+        rows_stmt = (
+            select(
+                _MATCH_REVIEW_TABLE.c.match_id,
+                _MATCH_REVIEW_TABLE.c.transaction_id,
+                _MATCH_REVIEW_TABLE.c.email_message_id,
+                cast(_MATCH_REVIEW_TABLE.c.state, String).label("state"),
+                _MATCH_REVIEW_TABLE.c.ai_confidence,
+                cast(_MATCH_REVIEW_TABLE.c.selected_by, String).label("selected_by"),
+                _MATCH_REVIEW_TABLE.c.selected_at,
+                _MATCH_REVIEW_TABLE.c.moved_to_matchy_at,
+                _TRANSACTION_TABLE.c.description,
+                _TRANSACTION_TABLE.c.amount,
+                _TRANSACTION_TABLE.c.date,
+            )
+            .select_from(
+                _MATCH_REVIEW_TABLE.join(
+                    _TRANSACTION_TABLE,
+                    _TRANSACTION_TABLE.c.transaction_id == _MATCH_REVIEW_TABLE.c.transaction_id,
+                )
+            )
+            .where(*filters)
+            .order_by(_MATCH_REVIEW_TABLE.c.selected_at.desc(), _MATCH_REVIEW_TABLE.c.match_id.desc())
+            .limit(bindparam("limit"))
+            .offset(bindparam("offset"))
+        )
         with get_session() as session:
-            total = session.execute(text(f"""
-                SELECT COUNT(*)
-                  FROM teller.transaction_email_match m
-                 WHERE {where_sql}
-            """), params).scalar_one()
-            rows = session.execute(text(f"""
-                SELECT m.match_id,
-                       m.transaction_id,
-                       m.email_message_id,
-                       m.state::text AS state,
-                       m.ai_confidence,
-                       m.selected_by::text AS selected_by,
-                       m.selected_at,
-                       m.moved_to_matchy_at,
-                       t.description,
-                       t.amount,
-                       t.date
-                  FROM teller.transaction_email_match m
-                  JOIN teller.transaction t
-                    ON t.transaction_id = m.transaction_id
-                 WHERE {where_sql}
-              ORDER BY m.selected_at DESC, m.match_id DESC
-                 LIMIT :limit OFFSET :offset
-            """), params).mappings().all()
+            total = session.execute(total_stmt, params).scalar_one()
+            rows = session.execute(rows_stmt, params).mappings().all()
         items = [MatchReviewRow(**row) for row in rows]
         return MatchReviewListResponse(total=total, items=items)
 

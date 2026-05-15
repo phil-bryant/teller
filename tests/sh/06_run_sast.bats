@@ -65,6 +65,11 @@ if [[ "$1" == "-m" && "$2" == "venv" ]]; then
   chmod +x "$vpath/bin/gitleaks"
   {
     echo "#!/bin/bash"
+    echo "echo ruff; exit 0"
+  } > "$vpath/bin/ruff"
+  chmod +x "$vpath/bin/ruff"
+  {
+    echo "#!/bin/bash"
     echo "echo pip; exit 0"
   } > "$vpath/bin/pip"
   chmod +x "$vpath/bin/pip"
@@ -141,12 +146,20 @@ EOF
   chmod +x "${vbin}/pip-audit"
   cat > "${vbin}/detect-secrets" <<'EOF'
 #!/usr/bin/env bash
+echo "detect-secrets $*" >> "${CALLS_LOG}"
 echo '{"results":{}}'
 exit 0
 EOF
   chmod +x "${vbin}/detect-secrets"
+  cat > "${vbin}/ruff" <<'EOF'
+#!/usr/bin/env bash
+printf '%s' '[]'
+exit 0
+EOF
+  chmod +x "${vbin}/ruff"
   cat > "${vbin}/gitleaks" <<'EOF'
 #!/usr/bin/env bash
+echo "gitleaks $*" >> "${CALLS_LOG}"
 report=""
 set -- "$@"
 while [ $# -gt 0 ]; do
@@ -196,6 +209,23 @@ install_pip_audit_exit_2() {
 exit 2
 EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/pip-audit"
+}
+
+install_ruff_exit_2() {
+  cat > "${FIXTURE_ROOT}/.security-venv/bin/ruff" <<'EOF'
+#!/usr/bin/env bash
+exit 2
+EOF
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/ruff"
+}
+
+install_ruff_findings() {
+  cat > "${FIXTURE_ROOT}/.security-venv/bin/ruff" <<'EOF'
+#!/usr/bin/env bash
+printf '%s' '[{"code":"F401","filename":"./teller/safe_test.py","location":{"row":1,"column":1},"message":"unused import"}]'
+exit 1
+EOF
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/ruff"
 }
 
 install_gitleaks_exit_2() {
@@ -525,7 +555,7 @@ EOS
 }
 
 @test "SAST produces JSON reports and sast summary" {
-  #R020 #R065
+  #R020 #R025 #R030 #R065
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -533,12 +563,16 @@ EOS
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/06_run_sast.sh"
   [ "$status" -eq 0 ]
-  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" gitleaks.json shellcheck.json swiftlint.json sast-summary.json; do
+  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" ruff.json gitleaks.json shellcheck.json swiftlint.json sast-summary.json; do
     [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
   done
+  ruff_total="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("ruff_total",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
+  ruff_high="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("ruff_high_critical",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
   shellcheck_total="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_total",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
   shellcheck_high="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_high_critical",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
   gitleaks_findings="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("gitleaks_findings",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
+  [ "$ruff_total" = "0" ]
+  [ "$ruff_high" = "0" ]
   [ "$shellcheck_total" = "0" ]
   [ "$shellcheck_high" = "0" ]
   [ "$gitleaks_findings" = "0" ]
@@ -547,7 +581,7 @@ EOS
 }
 
 @test "SAST prints boxed tool headers with explainers and official URLs" {
-  #R055 #R065
+  #R025 #R055 #R065
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -565,10 +599,38 @@ EOS
   [[ "$output" == *"URL: https://github.com/pypa/pip-audit"* ]]
   [[ "$output" == *"Security Tool: detect-secrets"* ]]
   [[ "$output" == *"URL: https://github.com/Yelp/detect-secrets"* ]]
+  [[ "$output" == *"Security Tool: Ruff"* ]]
+  [[ "$output" == *"URL: https://docs.astral.sh/ruff/"* ]]
   [[ "$output" == *"Security Tool: gitleaks"* ]]
   [[ "$output" == *"URL: https://github.com/gitleaks/gitleaks"* ]]
   [[ "$output" == *"Security Tool: ShellCheck"* ]]
   [[ "$output" == *"URL: https://www.shellcheck.net/"* ]]
+}
+
+@test "detect-secrets scan excludes Ruff cache artifacts" {
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"detect-secrets scan --all-files --force-use-all-plugins --exclude-files"* ]]
+  [[ "$calls" == *".ruff_cache/"* ]]
+}
+
+@test "gitleaks scans tracked-file snapshot source instead of repo root" {
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"gitleaks detect --source /"* ]]
+  [[ "$calls" != *"gitleaks detect --source . --no-git"* ]]
 }
 
 @test "Swift SAST runs SwiftLint when Swift sources are present" {
@@ -630,6 +692,33 @@ EOF
     bash "${FIXTURE_ROOT}/06_run_sast.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pip-audit failed to execute."* ]]
+}
+
+@test "ruff exit code 2 is an execution failure" {
+  #R025
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  install_ruff_exit_2
+  run env RUN_DAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Ruff failed to execute."* ]]
+}
+
+@test "ruff findings fail SAST gate when fail-on-high is enabled" {
+  #R030
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  install_ruff_findings
+  run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Ruff reported findings"* ]]
+  [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
 }
 
 @test "gitleaks exit code 2 is an execution failure" {
