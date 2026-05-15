@@ -34,13 +34,13 @@ Tests:
 - Unset DB password and verify fallback 1psa lookup is used.
 
 R020  Statement: Post classification update request to classifier API.
-Design: Send JSON payload to `/v1/transactions/classifications` with provided IDs and include `X-Teller-Write-Token` resolved from 1psa.
+Design: Send JSON payload to `/v1/transactions/classifications` with provided IDs and include `X-Teller-Write-Token` resolved from env or 1psa fallback.
 Tests:
 - Verify request body includes provided transaction and category identifiers.
 - Verify request headers include `X-Teller-Write-Token`.
 
-R035  Statement: Resolve classifier write token from 1psa without environment fallback.
-Design: Always read token via `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN` and fail fast on missing/empty values before API mutation request.
+R035  Statement: Resolve classifier write token from env or 1psa fallback.
+Design: Use `TELLER_CLASSIFIER_WRITE_TOKEN` when set, otherwise read token via `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, and fail fast on missing/empty values before API mutation request.
 Tests:
 - Stub empty token lookup and verify script exits non-zero before curl mutation call.
 

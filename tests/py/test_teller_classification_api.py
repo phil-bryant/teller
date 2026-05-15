@@ -232,6 +232,35 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(level_1_schema.get("type"), "string")
         self.assertEqual(level_1_schema.get("pattern"), r"^[^\x00-\x1F\x7F]*$")
 
+    def test_category_mutations_reject_empty_json_body(self):
+        #R045
+        with self.assertRaises(ValidationError):
+            CategoryCreateMutation.model_validate({})
+        with self.assertRaises(ValidationError):
+            CategoryUpdateMutation.model_validate({})
+
+    def test_category_operation_openapi_request_body_requires_non_empty_object(self):
+        #R045
+        schema = create_app().openapi()
+        category_put_path = "/v1/categories/{nys_snw_category_id}"
+        if category_put_path not in schema["paths"]:
+            category_put_path = "/v1/categories/{nys_snw_category_id:int}"
+
+        def _extract_category_schema(path: str, method: str):
+            operation = schema["paths"][path][method]
+            body_schema = operation["requestBody"]["content"]["application/json"]["schema"]
+            self.assertEqual(body_schema.get("minProperties"), 1)
+            refs = body_schema.get("allOf", [])
+            self.assertTrue(refs)
+            ref = refs[0]["$ref"]
+            ref_name = ref.rsplit("/", 1)[1]
+            return schema["components"]["schemas"][ref_name]
+
+        create_schema = _extract_category_schema("/v1/categories", "post")
+        update_schema = _extract_category_schema(category_put_path, "put")
+        self.assertEqual(create_schema.get("minProperties"), 1)
+        self.assertEqual(update_schema.get("minProperties"), 1)
+
     def test_write_category_rejects_seed_row_updates(self):
         session = _FakeSession(
             rows=[
@@ -767,6 +796,45 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(count_params["state"], "ai_match_confident")
         self.assertEqual(rows_params["limit"], 10)
         self.assertEqual(rows_params["offset"], 3)
+
+    def test_matchy_mutation_openapi_documents_not_found_responses(self):
+        #R055
+        schema = create_app().openapi()
+        endpoints = [
+            ("/v1/matchy/matches/{match_id}/confirm", "put"),
+            ("/v1/matchy/matches/{match_id}/override", "put"),
+            ("/v1/matchy/matches/{match_id}/no-email", "put"),
+        ]
+        for path, method in endpoints:
+            responses = schema["paths"][path][method]["responses"]
+            self.assertIn("404", responses, f"Missing 404 for {method.upper()} {path}")
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_matchy_mutation_endpoints_return_404_for_unknown_match_ids(self, get_session_mock):
+        #R055
+        app = create_app()
+        get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
+        unknown_err = HTTPException(status_code=404, detail="Unknown match_id: 999")
+        with patch("teller.teller_classification_api._read_match_row", side_effect=unknown_err):
+            confirm_endpoint = self._route_endpoint(app, "/v1/matchy/matches/{match_id:int}/confirm", "PUT")
+            no_email_endpoint = self._route_endpoint(app, "/v1/matchy/matches/{match_id:int}/no-email", "PUT")
+            override_endpoint = self._route_endpoint(app, "/v1/matchy/matches/{match_id:int}/override", "PUT")
+
+            with self.assertRaises(HTTPException) as confirm_ctx:
+                confirm_endpoint(request=self._authorized_request(), match_id=999)
+            self.assertEqual(confirm_ctx.exception.status_code, 404)
+
+            with self.assertRaises(HTTPException) as no_email_ctx:
+                no_email_endpoint(request=self._authorized_request(), match_id=999)
+            self.assertEqual(no_email_ctx.exception.status_code, 404)
+
+            with self.assertRaises(HTTPException) as override_ctx:
+                override_endpoint(
+                    request=self._authorized_request(),
+                    match_id=999,
+                    body=SimpleNamespace(email_message_id="m_1", note="manual"),
+                )
+            self.assertEqual(override_ctx.exception.status_code, 404)
 
 if __name__ == "__main__":
     unittest.main()

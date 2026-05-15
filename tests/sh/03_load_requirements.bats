@@ -97,3 +97,13 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"PASS (locked-policy)"* ]]
 }
+
+@test "requirements pin wheel-based psycopg2 dependency" {
+  #R035
+  local req_file
+  req_file="$(repo_root)/requirements.txt"
+  run grep -E '^psycopg2-binary$' "$req_file"
+  [ "$status" -eq 0 ]
+  run grep -E '^psycopg2$' "$req_file"
+  [ "$status" -ne 0 ]
+}

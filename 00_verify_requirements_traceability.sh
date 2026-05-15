@@ -33,6 +33,62 @@ extract_source_ids() {
     }' "$source_file" | sort -u > "$out_file"
 }
 
+extract_scoped_source_ids() {
+    local source_file="$1" out_file="$2"
+    awk '{
+        while (match($0, /#R[0-9]{3}(-[0-9]{3})*:[[:space:]]*[[:alnum:]_]/)) {
+            token = substr($0, RSTART, RLENGTH)
+            sub(/^#/, "", token)
+            sub(/:.*/, "", token)
+            print token
+            $0 = substr($0, RSTART + RLENGTH)
+        }
+    }' "$source_file" | sort -u > "$out_file"
+}
+
+detect_header_bundle_tags() {
+    local source_file="$1"
+    awk '
+        NR <= 40 {
+            total = 0
+            scoped = 0
+            line = $0
+            while (match(line, /#R[0-9]{3}(-[0-9]{3})*/)) {
+                total += 1
+                line = substr(line, RSTART + RLENGTH)
+            }
+            line_scoped = $0
+            while (match(line_scoped, /#R[0-9]{3}(-[0-9]{3})*:/)) {
+                scoped += 1
+                line_scoped = substr(line_scoped, RSTART + RLENGTH)
+            }
+            if (total >= 3 && scoped == 0) {
+                print NR ":" $0
+                found = 1
+                exit 0
+            }
+        }
+        END { exit found ? 0 : 1 }
+    ' "$source_file"
+}
+
+verify_scoped_traceability_comments() {
+    local requirements_file="$1" source_file="$2"
+    local req_ids_file scoped_ids_file missing_scoped_ids_file
+    req_ids_file="$(mktemp)"
+    scoped_ids_file="$(mktemp)"
+    missing_scoped_ids_file="$(mktemp)"
+    extract_requirement_ids "$requirements_file" "$req_ids_file"
+    extract_scoped_source_ids "$source_file" "$scoped_ids_file"
+    comm -23 "$req_ids_file" "$scoped_ids_file" > "$missing_scoped_ids_file"
+    if [ ! -s "$missing_scoped_ids_file" ]; then
+        return 0
+    fi
+    echo "❌ Missing scoped #R comments (#Rxxx:) for requirement IDs:"
+    sed 's/^/  - /' "$missing_scoped_ids_file"
+    return 1
+}
+
 extract_test_ids() {
     local test_file="$1" out_file="$2"
     extract_source_ids "$test_file" "$out_file"
@@ -402,7 +458,20 @@ verify_single_pair() {
         verify_locked_exception "$requirements_file" "$source_file"
         return $?
     fi
-    verify_strict_pair "$requirements_file" "$source_file"
+    local header_bundle_line
+    header_bundle_line="$(detect_header_bundle_tags "$source_file" || true)"
+    if [ -n "$header_bundle_line" ]; then
+        #R070: Reject header-level bundled tags as anti-cheat pattern.
+        echo "❌ FAIL (anti-cheat): header-level bundled #R tags detected in ${source_file}:"
+        echo "  - ${header_bundle_line}"
+        echo "  - Use scoped comments like '#R020: behavior' above each implementation block."
+        return 1
+    fi
+    if ! verify_strict_pair "$requirements_file" "$source_file"; then
+        return 1
+    fi
+    #R070: Require scoped traceability comments (#Rxxx:) in source blocks.
+    verify_scoped_traceability_comments "$requirements_file" "$source_file"
 }
 
 verify_single_pair_with_tests() {

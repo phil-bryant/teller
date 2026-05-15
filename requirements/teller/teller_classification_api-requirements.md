@@ -68,9 +68,16 @@ Design: Category create/update writes translate unique-index integrity violation
 Tests:
 - Trigger duplicate category hierarchy writes and verify HTTP 409 response.
 
+R055  Statement: Document match-review mutation not-found behavior in OpenAPI.
+Design: Match-review mutation endpoints (`/v1/matchy/matches/{match_id}/confirm`, `/override`, `/no-email`) preserve runtime 404 behavior for unknown match IDs and publish `404` ApiError responses in operation contracts.
+Tests:
+- Inspect OpenAPI operation responses for the three endpoints and verify `404` is documented.
+- Trigger unknown `match_id` transitions and verify runtime 404 behavior remains unchanged.
+
 ## Changelog
 
 - 2026-04-22: Initial reverse-engineered requirements for `teller/teller_classification_api.py`.
 - 2026-05-09: Added R040/R045 for 1psa-backed write-token auth and stricter mutation payload validation.
 - 2026-05-10: Updated R030 single-write contract to path-only transaction identity and tightened R045 OpenAPI schema parity for category mutation payloads.
 - 2026-05-10: Added R050 to map duplicate category hierarchy integrity violations to HTTP 409 conflict responses.
+- 2026-05-15: Added R055 to require OpenAPI 404 documentation parity for match-review mutation endpoints.

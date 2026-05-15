@@ -82,11 +82,19 @@ Tests:
 - Provide only model-lane tags for a UI-classified ID and verify failure until UI-lane tag is present.
 - Provide either model or UI tagged coverage for non-UI IDs and verify pass.
 
+R070  Statement: Reject anti-cheat header bundles and require scoped source comments.
+Design: Fail when source files use bundled top-of-file `#R###` sets and require scoped implementation comments in the form `#R###:` so each requirement ID is anchored to a concrete code block.
+Tests:
+- Provide bundled header tags near the top of file and verify explicit anti-cheat failure output.
+- Provide unscoped `#R###` tags and verify scoped-comment failure output.
+- Provide scoped `#R###:` comments and verify pass output.
+
 ## Changelog
 
 - 2026-04-24: Added numbered script coverage enforcement for `NN_` script/requirements parity.
 - 2026-04-24: Added `NN_` requirements-to-source prefix alignment enforcement.
 - 2026-04-25: Added requirement-to-test traceability enforcement with contextual Swift UI lane policy.
+- 2026-05-15: Added anti-cheat and scoped source comment enforcement for requirement IDs.
 - 2026-04-20: Updated verifier requirements to require discovery of all `requirements/*.md` files and all referenced source files.
 - 2026-04-20: Merged `12_verify_prereq_traceability.sh` and `13_verify_traceability_batch.sh` into `verify_requirements_traceability.sh`.
 - 2026-04-19: Initial reverse-engineered requirements for `12_verify_prereq_traceability.sh`.

@@ -45,6 +45,13 @@ Tests:
 - Verify locked marker exists in script file.
 - Verify batch traceability check reports `03` as policy exception, not failure.
 
+R035  Statement: Keep PostgreSQL driver dependency wheel-based for portable venv installs.
+Design: `requirements.txt` must use `psycopg2-binary` so dependency loading does not require host-specific `libpq` paths.
+Tests:
+- Verify `requirements.txt` contains `psycopg2-binary`.
+- Verify `requirements.txt` does not contain plain `psycopg2` package entry.
+
 ## Changelog
 
 - 2026-04-19: Initial reverse-engineered requirements for locked `03_load_requirements.sh`.
+- 2026-05-15: Added R035 to require wheel-based psycopg2 dependency in `requirements.txt`.

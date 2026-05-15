@@ -1,10 +1,12 @@
 import SwiftUI
 import WebKit
 
-// #R001 #R005 #R010 #R015 #R020 #R025
-// ConnectView requirement tags are mapped to UI behavior in this file and its view model:
-// - #R001 contexts list + refresh, #R005 connect/reconnect/add/delete actions,
-// - #R010 delete confirmation dialog, #R015 WebView bridge flow, #R020 manual-save entry points, #R025 initial load task.
+// #R001: Context list and refresh UI behavior.
+// #R005: Connect/reconnect/add/delete action UI behavior.
+// #R010: Delete confirmation dialog behavior.
+// #R015: WebView session bridge behavior.
+// #R020: Manual-save entry-point behavior.
+// #R025: Initial load task behavior.
 
 struct ConnectView: View {
     @Bindable var viewModel: ConnectViewModel

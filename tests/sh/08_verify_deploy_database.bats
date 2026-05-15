@@ -52,7 +52,7 @@ def main():
     else:
       print("t", end="")
     return
-  if "update_updated_at" in sql and "pg_proc" in sql and "teller" in sql:
+  if "update_updated_at" in sql and "pg_proc" in sql and "teller" in sql and "EXISTS" in sql and "information_schema.columns" not in sql:
     print("t", end="")
     return
   if "pg_trigger" in sql and "transaction_nys_snw_category" in sql and "update_updated_at" in sql:

@@ -1,9 +1,12 @@
 import Foundation
 
-// #R001 #R005 #R010 #R015 #R020 #R025 #R030
-// ConnectAPIClient requirement tags are mapped to behavior below:
-// - #R001 context discovery, #R005 add flow suffixing, #R010 reconnect targeting,
-// - #R015 trash-based deletion, #R020 start-session validation, #R025 permissions, #R030 best-effort inference.
+// #R001: Context discovery and status reporting behavior.
+// #R005: Add-flow suffixing and local path generation behavior.
+// #R010: Reconnect targeting behavior for existing contexts.
+// #R015: Trash-based deletion behavior for enrollment artifacts.
+// #R020: Start-session validation behavior.
+// #R025: Permission checks and secure-write behavior.
+// #R030: Best-effort institution inference behavior.
 
 protocol ConnectAPI: Sendable {
     func fetchStatus() async throws -> ConnectStatusResponse

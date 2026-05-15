@@ -28,8 +28,11 @@ DB_PASSWORD="${TELLER_DB_PASSWORD:-}"
 if [[ -z "$DB_PASSWORD" ]]; then
   DB_PASSWORD="$(1psa -p "${TELLER_PSA_ITEM:-localhost_postgres_teller}")"
 fi
-WRITE_TOKEN="$(1psa -p TELLER_CLASSIFIER_WRITE_TOKEN)"
-#R035: Resolve classifier write token via 1psa only.
+WRITE_TOKEN="${TELLER_CLASSIFIER_WRITE_TOKEN:-}"
+#R035: Resolve classifier write token from env when provided, otherwise use 1psa.
+if [[ -z "$WRITE_TOKEN" ]]; then
+  WRITE_TOKEN="$(1psa -p TELLER_CLASSIFIER_WRITE_TOKEN)"
+fi
 if [[ -z "$WRITE_TOKEN" ]]; then
   echo "Failed to read classifier write token from 1psa item: TELLER_CLASSIFIER_WRITE_TOKEN" >&2
   exit 1

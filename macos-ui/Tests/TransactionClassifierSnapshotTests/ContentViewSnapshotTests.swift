@@ -11,6 +11,11 @@ final class ContentViewSnapshotTests: XCTestCase {
     private static let volatileHexTokenPattern = #"\$[0-9a-f]{6,}"#
     private static let memoryAddressPattern = #"0x[0-9a-f]+"#
     private static let framePattern = #"f=\([^)]*\)"#
+    private static let connectVolatileHierarchyMarkers = [
+        "SwiftUI.KeyViewProxy",
+        "SwiftUI._NSGraphicsView",
+        "_FocusRingView",
+    ]
 
     @MainActor
     func testEmptyStateSnapshot() async {
@@ -79,7 +84,10 @@ final class ContentViewSnapshotTests: XCTestCase {
         let view = NSHostingView(
             rootView: ContentView(
                 viewModel: viewModel,
-                connectViewModel: ConnectViewModel(api: SnapshotFixtureConnectAPI()),
+                connectViewModel: ConnectViewModel(
+                    api: SnapshotFixtureConnectAPI(),
+                    setupAPI: SnapshotFixtureSetupAPI()
+                ),
                 autoLoadOnAppear: false
             )
                 .frame(width: 1120, height: 720)
@@ -101,7 +109,10 @@ final class ContentViewSnapshotTests: XCTestCase {
         classificationViewModel.onlyUnclassified = false
         await classificationViewModel.loadAll()
 
-        let connectViewModel = ConnectViewModel(api: SnapshotFixtureConnectAPI())
+        let connectViewModel = ConnectViewModel(
+            api: SnapshotFixtureConnectAPI(),
+            setupAPI: SnapshotFixtureSetupAPI()
+        )
         await connectViewModel.loadAll()
         configure(connectViewModel)
 
@@ -118,7 +129,10 @@ final class ContentViewSnapshotTests: XCTestCase {
         view.layoutSubtreeIfNeeded()
 
         assertSnapshot(
-            of: normalizeRecursiveDescription(snapshotRecursiveDescription(view)),
+            of: normalizeRecursiveDescription(
+                snapshotRecursiveDescription(view),
+                stripConnectVolatileInternals: true
+            ),
             as: .lines,
             named: named,
             record: Self.snapshotRecordMode
@@ -134,7 +148,10 @@ final class ContentViewSnapshotTests: XCTestCase {
         return (unmanaged.takeUnretainedValue() as? String) ?? String(describing: view)
     }
 
-    private func normalizeRecursiveDescription(_ snapshot: String) -> String {
+    private func normalizeRecursiveDescription(
+        _ snapshot: String,
+        stripConnectVolatileInternals: Bool = false
+    ) -> String {
         var normalized = snapshot.replacingOccurrences(
             of: Self.volatileHexTokenPattern,
             with: "$hash",
@@ -151,7 +168,21 @@ final class ContentViewSnapshotTests: XCTestCase {
             with: "f=(...)",
             options: .regularExpression
         )
-        return normalized
+        guard stripConnectVolatileInternals else {
+            return normalized
+        }
+        return stripVolatileHierarchyLines(from: normalized)
+    }
+
+    private func stripVolatileHierarchyLines(from snapshot: String) -> String {
+        snapshot
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { line in
+                !Self.connectVolatileHierarchyMarkers.contains { marker in
+                    line.contains(marker)
+                }
+            }
+            .joined(separator: "\n")
     }
 }
 
@@ -214,6 +245,43 @@ actor SnapshotFixtureConnectAPI: ConnectAPI {
             applicationId: "app_snapshot",
             environment: "development",
             enrollmentId: ""
+        )
+    }
+}
+
+actor SnapshotFixtureSetupAPI: TellerSetupAPI {
+    private let snapshot = TellerSetupSnapshot(
+        tellerDirectory: "/tmp/.teller",
+        applicationIDPath: "/tmp/.teller/application_id.txt",
+        certificatePath: "/tmp/.teller/certificate.pem",
+        privateKeyPath: "/tmp/.teller/private_key.pem",
+        authTokenPath: "/tmp/.teller/auth_token.json",
+        hasApplicationID: true,
+        hasCertificate: true,
+        hasPrivateKey: true,
+        hasAuthToken: true
+    )
+
+    func loadSnapshot() async throws -> TellerSetupSnapshot {
+        snapshot
+    }
+
+    func saveApplicationID(_ applicationID: String) async throws -> String {
+        _ = applicationID
+        return snapshot.applicationIDPath
+    }
+
+    func saveAuthToken(_ token: String) async throws -> String {
+        _ = token
+        return snapshot.authTokenPath
+    }
+
+    func runSmokeCheck() async throws -> TellerSmokeCheckResult {
+        TellerSmokeCheckResult(
+            institutionsHTTPStatus: 200,
+            institutionsCount: 12,
+            accountsHTTPStatus: 200,
+            warningText: ""
         )
     }
 }

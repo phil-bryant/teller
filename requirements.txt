@@ -4,7 +4,7 @@ python-dotenv==1.2.2
 requests==2.34.2
 urllib3==2.7.0
 structlog==25.5.0
-psycopg2
+psycopg2-binary
 sqlalchemy==2.0.49
 starlette==1.0.0
 idna==3.15

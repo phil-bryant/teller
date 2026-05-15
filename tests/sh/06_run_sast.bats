@@ -195,6 +195,44 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
 }
 
+install_sast_gate_fail_semgrep_warning() {
+  cat > "${FIXTURE_ROOT}/.security-venv/bin/semgrep" <<'EOF'
+#!/usr/bin/env bash
+out=""
+set -- "$@"
+while [ $# -gt 0 ]; do
+  if [[ "$1" == -o || "$1" == --output ]]; then
+    out="$2"
+    shift 2
+    continue
+  fi
+  shift
+done
+printf '%s' '{"results":[{"check_id":"r-warning","path":"f.py","start":{"line":7},"end":{"line":7},"extra":{"message":"warning finding","severity":"WARNING"}}]}' > "$out"
+exit 0
+EOF
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+}
+
+install_bandit_medium_finding() {
+  cat > "${FIXTURE_ROOT}/.security-venv/bin/bandit" <<'EOF'
+#!/usr/bin/env bash
+out=""
+set -- "$@"
+while [ $# -gt 0 ]; do
+  if [[ "$1" == -o ]]; then
+    out="$2"
+    shift 2
+    continue
+  fi
+  shift
+done
+printf '%s' '{"results":[{"issue_severity":"MEDIUM","issue_text":"medium risk call"}]}' > "$out"
+exit 1
+EOF
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/bandit"
+}
+
 install_bandit_exit_2() {
   cat > "${FIXTURE_ROOT}/.security-venv/bin/bandit" <<'EOF'
 #!/usr/bin/env bash
@@ -207,6 +245,25 @@ install_pip_audit_exit_2() {
   cat > "${FIXTURE_ROOT}/.security-venv/bin/pip-audit" <<'EOF'
 #!/usr/bin/env bash
 exit 2
+EOF
+  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/pip-audit"
+}
+
+install_pip_audit_vulnerability() {
+  cat > "${FIXTURE_ROOT}/.security-venv/bin/pip-audit" <<'EOF'
+#!/usr/bin/env bash
+out=""
+set -- "$@"
+while [ $# -gt 0 ]; do
+  if [[ "$1" == --output ]]; then
+    out="$2"
+    shift 2
+    continue
+  fi
+  shift
+done
+printf '%s' '[{"name":"example-pkg","version":"1.0.0","vulns":[{"id":"PYSEC-2026-001","fix_versions":["1.0.1"]}]}]' > "$out"
+exit 1
 EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/pip-audit"
 }
@@ -326,6 +383,16 @@ EOF
   chmod +x "${STUB_BIN}/swiftlint"
 }
 
+stub_swiftlint_warning() {
+  cat > "${STUB_BIN}/swiftlint" <<'EOF'
+#!/usr/bin/env bash
+echo "swiftlint $*" >> "${CALLS_LOG}"
+printf '%s' '[{"rule_id":"force_unwrapping","severity":"Warning","reason":"force unwrap in security-sensitive code"}]'
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swiftlint"
+}
+
 stub_swiftlint_exit_2() {
   cat > "${STUB_BIN}/swiftlint" <<'EOF'
 #!/usr/bin/env bash
@@ -350,6 +417,16 @@ stub_shellcheck_error_findings() {
 #!/usr/bin/env bash
 echo "shellcheck $*" >> "${CALLS_LOG}"
 printf '%s' '[{"file":"./06_run_sast.sh","line":1,"level":"error","code":2086,"message":"Double quote to prevent globbing"}]'
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/shellcheck"
+}
+
+stub_shellcheck_warning_findings() {
+  cat > "${STUB_BIN}/shellcheck" <<'EOF'
+#!/usr/bin/env bash
+echo "shellcheck $*" >> "${CALLS_LOG}"
+printf '%s' '[{"file":"./06_run_sast.sh","line":1,"level":"warning","code":2154,"message":"variable referenced but not assigned"}]'
 exit 1
 EOF
   chmod +x "${STUB_BIN}/shellcheck"
@@ -607,6 +684,84 @@ EOS
   [[ "$output" == *"URL: https://www.shellcheck.net/"* ]]
 }
 
+@test "Semgrep prints detailed status when output is unsuppressed" {
+  #R045 #R047
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Semgrep detailed status: exit_code=0;"* ]]
+  [[ "$output" == *"report=./.security-reports/semgrep.json"* ]]
+}
+
+@test "Bandit prints detailed status when output is unsuppressed" {
+  #R050
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Bandit detailed status: exit_code=0;"* ]]
+  [[ "$output" == *"report=./.security-reports/bandit.json"* ]]
+}
+
+@test "pip-audit prints detailed status when output is unsuppressed" {
+  #R055
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"pip-audit detailed status: exit_code=0;"* ]]
+  [[ "$output" == *"report=./.security-reports/pip-audit.json"* ]]
+}
+
+@test "detect-secrets prints detailed status when output is unsuppressed" {
+  #R060
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"detect-secrets detailed status: exit_code=0;"* ]]
+  [[ "$output" == *"report=./.security-reports/detect-secrets.json"* ]]
+}
+
+@test "Ruff prints detailed status when output is unsuppressed" {
+  #R065
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Ruff detailed status: exit_code=0;"* ]]
+  [[ "$output" == *"report=./.security-reports/ruff.json"* ]]
+}
+
+@test "ShellCheck prints detailed status when output is unsuppressed" {
+  #R070
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ShellCheck detailed status: exit_code=0;"* ]]
+  [[ "$output" == *"report=./.security-reports/shellcheck.json"* ]]
+}
+
 @test "detect-secrets scan excludes Ruff cache artifacts" {
   setup_shell_test
   copy_security_project_files
@@ -707,14 +862,14 @@ EOF
   [[ "$output" == *"Ruff failed to execute."* ]]
 }
 
-@test "ruff findings fail SAST gate when fail-on-high is enabled" {
+@test "ruff findings fail SAST gate when medium-or-higher policy is enabled" {
   #R030
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   install_ruff_findings
-  run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
+  run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
     bash "${FIXTURE_ROOT}/06_run_sast.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Ruff reported findings"* ]]
@@ -734,31 +889,100 @@ EOF
   [[ "$output" == *"gitleaks failed to execute."* ]]
 }
 
-@test "SAST gate fails on high or critical per summary" {
+@test "SAST gate fails on semgrep error findings" {
   #R030
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   install_sast_gate_fail_semgrep
-  run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
+  run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
     bash "${FIXTURE_ROOT}/06_run_sast.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
 }
 
-@test "gitleaks findings fail SAST gate when fail-on-high is enabled" {
+@test "financial policy blocks Semgrep warning findings" {
+  #R090
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  install_sast_gate_fail_semgrep_warning
+  run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Semgrep findings (1)"* ]]
+  [[ "$output" == *"[WARNING] r-warning @ f.py:7"* ]]
+  [[ "$output" == *"Medium-or-higher findings detected."* ]]
+}
+
+@test "financial policy medium-or-higher gate defaults to enabled" {
+  #R090
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  install_sast_gate_fail_semgrep_warning
+  run env RUN_DAST=false \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Medium-or-higher findings detected."* ]]
+}
+
+@test "financial policy blocks Bandit medium findings" {
+  #R090
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  install_bandit_medium_finding
+  run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Bandit detailed status: exit_code=1; findings=1"* ]]
+  [[ "$output" == *"Medium-or-higher findings detected."* ]]
+}
+
+@test "financial policy blocks pip-audit vulnerabilities" {
+  #R090
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  install_pip_audit_vulnerability
+  run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"pip-audit detailed status: exit_code=1; vulnerabilities=1"* ]]
+  [[ "$output" == *"Medium-or-higher findings detected."* ]]
+}
+
+@test "gitleaks findings fail SAST gate when medium-or-higher policy is enabled" {
   #R075 #R030
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   install_gitleaks_findings
-  run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
+  run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
     bash "${FIXTURE_ROOT}/06_run_sast.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"gitleaks reported findings"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
+}
+
+@test "financial policy blocks ShellCheck warning findings" {
+  #R090
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_warning_findings
+  run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ShellCheck reported findings"* ]]
+  [[ "$output" == *"Medium-or-higher findings detected."* ]]
 }
 
 @test "ShellCheck exit code 2 is an execution failure" {
@@ -773,17 +997,35 @@ EOF
   [[ "$output" == *"ShellCheck failed to execute."* ]]
 }
 
-@test "ShellCheck error findings fail SAST gate when fail-on-high is enabled" {
+@test "ShellCheck error findings fail SAST gate when medium-or-higher policy is enabled" {
   #R065 #R030
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
   stub_shellcheck_error_findings
-  run env RUN_DAST=false SECURITY_FAIL_ON_HIGH_CRITICAL=true \
+  run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
     bash "${FIXTURE_ROOT}/06_run_sast.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"ShellCheck reported findings"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
+}
+
+@test "financial policy blocks SwiftLint warning findings" {
+  #R090
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
+  cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
+import Foundation
+EOF
+  stub_swiftlint_warning
+  run env RUN_DAST=false RUN_SWIFT_SAST=true SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
+    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Running SwiftLint (security-focused rules)"* ]]
+  [[ "$output" == *"Medium-or-higher findings detected."* ]]
 }
 
 @test "DAST starts API, waits for health, completes when DAST tools minimal" {

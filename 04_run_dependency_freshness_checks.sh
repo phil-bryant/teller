@@ -25,6 +25,10 @@ POSTGRES_SERVER_PSA_FIELD="${POSTGRES_SERVER_PSA_FIELD:-password}"
 mkdir -p "$REPORT_DIR"
 
 PROJECT_PYTHON="${DEPENDENCY_CHECK_PYTHON:-}"
+PROJECT_PYTHON_EXPLICIT=false
+if [[ -n "${DEPENDENCY_CHECK_PYTHON:-}" ]]; then
+  PROJECT_PYTHON_EXPLICIT=true
+fi
 #R005: Prefer active virtualenv interpreter, then local teller-venv, then system python.
 if [[ -z "$PROJECT_PYTHON" ]]; then
   if [[ -n "${VIRTUAL_ENV:-}" ]] && [[ -x "${VIRTUAL_ENV}/bin/python" ]]; then
@@ -39,6 +43,13 @@ fi
 if [[ ! -x "$PROJECT_PYTHON" ]] && [[ "$PROJECT_PYTHON" != "python3" ]]; then
   echo "❌ Project python not executable: $PROJECT_PYTHON"
   exit 1
+fi
+
+if [[ "$PROJECT_PYTHON_EXPLICIT" != "true" ]]; then
+  if ! "$PROJECT_PYTHON" -c "import site" >/dev/null 2>&1; then
+    echo "⚠️ Selected interpreter '$PROJECT_PYTHON' is not usable; falling back to python3"
+    PROJECT_PYTHON="python3"
+  fi
 fi
 
 echo "▶ Running dependency freshness checks with ${PROJECT_PYTHON}"

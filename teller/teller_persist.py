@@ -1,6 +1,14 @@
 """Persistence helpers for Teller ingestion workflows.
 
-#R001 #R005 #R010 #R015 #R020 #R025 #R030 #R035 #R040
+#R001: Shared SQL execution and persistence helper behavior.
+#R005: Idempotent account upsert orchestration behavior.
+#R010: Identity graph upsert and linkage behavior.
+#R015: Transaction typing and amount normalization behavior.
+#R020: Transaction upsert lifecycle behavior.
+#R025: Balance upsert and account-balance synchronization behavior.
+#R030: Canonical transaction reconciliation behavior.
+#R035: Stale graph cleanup behavior.
+#R040: Commit/rollback persistence boundary behavior.
 """
 
 from decimal import Decimal

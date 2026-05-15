@@ -1,13 +1,11 @@
 import Foundation
 
-// #R001 #R005 #R010 #R015 #R020 #R025
-// TellerSetupService requirement tags are mapped to behavior below:
-// - #R001 local Teller file inventory/readiness,
-// - #R005 secure application-id write path,
-// - #R010 secure auth-token write path,
-// - #R015 strict permission enforcement for setup files,
-// - #R020 institutions/accounts smoke checks with mTLS,
-// - #R025 smoke warnings and status formatting.
+// #R001: Local Teller file inventory and readiness behavior.
+// #R005: Secure application-id write behavior.
+// #R010: Secure auth-token write behavior.
+// #R015: Strict setup-file permission enforcement behavior.
+// #R020: Institutions/accounts mTLS smoke-check behavior.
+// #R025: Smoke warning and status formatting behavior.
 
 struct TellerSetupSnapshot: Sendable {
     let tellerDirectory: String
@@ -33,10 +31,10 @@ struct TellerSmokeCheckResult: Sendable {
 }
 
 protocol TellerSetupAPI: Sendable {
-    func loadSnapshot() throws -> TellerSetupSnapshot
-    func saveApplicationID(_ applicationID: String) throws -> String
-    func saveAuthToken(_ token: String) throws -> String
-    func runSmokeCheck() throws -> TellerSmokeCheckResult
+    func loadSnapshot() async throws -> TellerSetupSnapshot
+    func saveApplicationID(_ applicationID: String) async throws -> String
+    func saveAuthToken(_ token: String) async throws -> String
+    func runSmokeCheck() async throws -> TellerSmokeCheckResult
 }
 
 actor TellerSetupService: TellerSetupAPI {
@@ -60,7 +58,7 @@ actor TellerSetupService: TellerSetupAPI {
         self.curlExecutable = curlExecutable
     }
 
-    func loadSnapshot() throws -> TellerSetupSnapshot {
+    func loadSnapshot() async throws -> TellerSetupSnapshot {
         let hasApplicationID = hasNonEmptyFile(applicationIDFile)
         let hasCertificate = hasNonEmptyFile(certificateFile)
         let hasPrivateKey = hasNonEmptyFile(privateKeyFile)
@@ -78,7 +76,7 @@ actor TellerSetupService: TellerSetupAPI {
         )
     }
 
-    func saveApplicationID(_ applicationID: String) throws -> String {
+    func saveApplicationID(_ applicationID: String) async throws -> String {
         let normalized = applicationID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else {
             throw ConnectServiceError.validation("Application ID is required.")
@@ -87,7 +85,7 @@ actor TellerSetupService: TellerSetupAPI {
         return applicationIDFile.path
     }
 
-    func saveAuthToken(_ token: String) throws -> String {
+    func saveAuthToken(_ token: String) async throws -> String {
         let normalized = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else {
             throw ConnectServiceError.validation("Access token is required.")
@@ -99,8 +97,8 @@ actor TellerSetupService: TellerSetupAPI {
         return authTokenFile.path
     }
 
-    func runSmokeCheck() throws -> TellerSmokeCheckResult {
-        let snapshot = try loadSnapshot()
+    func runSmokeCheck() async throws -> TellerSmokeCheckResult {
+        let snapshot = try await loadSnapshot()
         guard snapshot.hasApplicationID else {
             throw ConnectServiceError.validation("Missing application id at \(snapshot.applicationIDPath).")
         }

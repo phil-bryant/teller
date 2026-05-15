@@ -667,22 +667,56 @@ def create_app() -> FastAPI:
             """)).mappings().all()
         return [CategoryOption(**row, display_label=_display_label(row)) for row in rows]
 
-    @app.post("/v1/categories", response_model=CategoryOption, responses={
-        400: {"model": ApiError, "description": "Invalid category payload"},
-        422: {"model": ApiError, "description": "Malformed category payload"},
-        409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
-    })
+    @app.post(
+        "/v1/categories",
+        response_model=CategoryOption,
+        responses={
+            400: {"model": ApiError, "description": "Invalid category payload"},
+            422: {"model": ApiError, "description": "Malformed category payload"},
+            409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
+        },
+        openapi_extra={
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "allOf": [{"$ref": "#/components/schemas/CategoryCreateMutation"}],
+                            "minProperties": 1,
+                        }
+                    }
+                },
+            }
+        },
+    )
     def create_category(request: Request, body: CategoryCreateMutation):
         _require_write_access(request)
         with get_session() as session:
             return _write_category(session, body)
 
-    @app.put("/v1/categories/{nys_snw_category_id:int}", response_model=CategoryOption, responses={
-        400: {"model": ApiError, "description": "Invalid category payload"},
-        422: {"model": ApiError, "description": "Malformed category payload"},
-        409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
-        404: {"model": ApiError, "description": "Unknown category id"},
-    })
+    @app.put(
+        "/v1/categories/{nys_snw_category_id:int}",
+        response_model=CategoryOption,
+        responses={
+            400: {"model": ApiError, "description": "Invalid category payload"},
+            422: {"model": ApiError, "description": "Malformed category payload"},
+            409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
+            404: {"model": ApiError, "description": "Unknown category id"},
+        },
+        openapi_extra={
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "allOf": [{"$ref": "#/components/schemas/CategoryUpdateMutation"}],
+                            "minProperties": 1,
+                        }
+                    }
+                },
+            }
+        },
+    )
     def update_category(request: Request, nys_snw_category_id: int, body: CategoryUpdateMutation):
         _require_write_access(request)
         with get_session() as session:
@@ -869,7 +903,14 @@ def create_app() -> FastAPI:
         items = [MatchReviewRow(**row) for row in rows]
         return MatchReviewListResponse(total=total, items=items)
 
-    @app.put("/v1/matchy/matches/{match_id:int}/confirm", response_model=MatchReviewActionResponse)
+    #R055: Document not-found parity for match-review mutation endpoints.
+    @app.put(
+        "/v1/matchy/matches/{match_id:int}/confirm",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown match id"},
+        },
+    )
     def confirm_match(request: Request, match_id: int):
         _require_write_access(request)
         with get_session() as session:
@@ -881,7 +922,13 @@ def create_app() -> FastAPI:
                 note="Confirmed from Teller review UI",
             )
 
-    @app.put("/v1/matchy/matches/{match_id:int}/override", response_model=MatchReviewActionResponse)
+    @app.put(
+        "/v1/matchy/matches/{match_id:int}/override",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown match id"},
+        },
+    )
     def override_match(request: Request, match_id: int, body: MatchOverrideMutation):
         _require_write_access(request)
         with get_session() as session:
@@ -894,7 +941,13 @@ def create_app() -> FastAPI:
                 email_message_id=body.email_message_id,
             )
 
-    @app.put("/v1/matchy/matches/{match_id:int}/no-email", response_model=MatchReviewActionResponse)
+    @app.put(
+        "/v1/matchy/matches/{match_id:int}/no-email",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown match id"},
+        },
+    )
     def mark_match_as_no_email(request: Request, match_id: int):
         _require_write_access(request)
         with get_session() as session:

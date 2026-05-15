@@ -1,10 +1,12 @@
 import Foundation
 import Observation
 
-// #R001 #R005 #R010 #R015 #R020 #R025
-// ConnectViewModel requirement tags are mapped to state-management behavior:
-// - #R001 load/refresh context hydration, #R005 action handlers, #R010 confirmed deletion mutation,
-// - #R015 session lifecycle callbacks, #R020 manual token save validation, #R025 initial load/status/error propagation.
+// #R001: Context load and refresh hydration behavior.
+// #R005: Connect action-handler behavior.
+// #R010: Confirmed deletion mutation behavior.
+// #R015: Session lifecycle callback behavior.
+// #R020: Manual token-save validation behavior.
+// #R025: Initial load, status, and error propagation behavior.
 
 @MainActor
 @Observable

@@ -13,8 +13,12 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
-import requests
+try:
+    import requests
+except ModuleNotFoundError:  # pragma: no cover - dependency availability varies by runtime
+    requests = None
 
 
 SEVERITY_ORDER = {
@@ -24,6 +28,10 @@ SEVERITY_ORDER = {
     "high": 3,
     "critical": 4,
 }
+
+POSTGRES_SECURITY_BASE_URL = "https://www.postgresql.org/support/security"
+POSTGRES_SECURITY_HOST = "www.postgresql.org"
+HTTP_USER_AGENT = "teller-postgres-cve-check/1.0"
 
 
 def parse_semver(value: str | None) -> tuple[int, int, int] | None:
@@ -201,13 +209,34 @@ def extract_major(version: str | None) -> str | None:
     return str(parsed[0])
 
 
-def fetch_url_text(url: str) -> str:
-    response = requests.get(
-        url,
-        headers={"User-Agent": "teller-postgres-cve-check/1.0"},
-        timeout=20,
-    )
-    response.raise_for_status()
+def validate_postgresql_major(major: str) -> str:
+    trimmed = major.strip()
+    if not re.fullmatch(r"[1-9][0-9]?", trimmed):
+        raise ValueError(f"Invalid PostgreSQL major version for CVE fetch: {major!r}")
+    return trimmed
+
+
+def fetch_postgresql_security_page(major: str) -> str:
+    if requests is None:
+        raise RuntimeError("requests is required to refresh PostgreSQL CVE snapshots.")
+    normalized_major = validate_postgresql_major(major)
+    page_url = f"{POSTGRES_SECURITY_BASE_URL}/{normalized_major}/"
+    try:
+        response = requests.get(
+            page_url,
+            headers={"User-Agent": HTTP_USER_AGENT},
+            timeout=20,
+            allow_redirects=False,
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        raise RuntimeError(f"Network error fetching {page_url}: {exc}") from exc
+
+    resolved_url = str(getattr(response, "url", page_url))
+    parsed = urlsplit(resolved_url)
+    if parsed.scheme.lower() != "https" or parsed.netloc.lower() != POSTGRES_SECURITY_HOST:
+        raise RuntimeError(f"Unexpected CVE source URL host/scheme: {resolved_url}")
+
     response.encoding = response.encoding or "utf-8"
     return response.text
 
@@ -216,8 +245,9 @@ def fetch_postgresql_cve_snapshot(majors: set[str]) -> dict[str, Any]:
     cves: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str]] = set()
     for major in sorted(majors):
-        page_url = f"https://www.postgresql.org/support/security/{major}/"
-        html_text = fetch_url_text(page_url)
+        normalized_major = validate_postgresql_major(major)
+        page_url = f"{POSTGRES_SECURITY_BASE_URL}/{normalized_major}/"
+        html_text = fetch_postgresql_security_page(normalized_major)
         for row_match in re.finditer(r"<tr>(.*?)</tr>", html_text, flags=re.S | re.I):
             row_html = row_match.group(1)
             if "CVE-" not in row_html:
@@ -231,7 +261,7 @@ def fetch_postgresql_cve_snapshot(majors: set[str]) -> dict[str, Any]:
                 continue
             cve_id = cve_match.group(0).upper()
             component_scope = component_to_scope(strip_html(component_cell))
-            fixed_versions = re.findall(rf"\b{re.escape(major)}\.\d+\b", strip_html(fixed_cell))
+            fixed_versions = re.findall(rf"\b{re.escape(normalized_major)}\.\d+\b", strip_html(fixed_cell))
             if not fixed_versions:
                 continue
             fixed_version = fixed_versions[0]
@@ -252,7 +282,7 @@ def fetch_postgresql_cve_snapshot(majors: set[str]) -> dict[str, Any]:
                     "affected": [
                         {
                             "component": component_scope,
-                            "ranges": [f">={major}.0,<{fixed_version}"],
+                            "ranges": [f">={normalized_major}.0,<{fixed_version}"],
                             "fixed_versions": [fixed_version],
                         }
                     ],
@@ -447,8 +477,17 @@ def evaluate_cves(
     return result
 
 
-def run_command(args: list[str]) -> tuple[int, str]:
-    result = subprocess.run(args, capture_output=True, text=True, check=False)
+def run_command(args: list[str], timeout_seconds: int = 10) -> tuple[int, str]:
+    try:
+        result = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired:
+        return 124, f"Command timed out after {timeout_seconds}s: {' '.join(args)}"
     output = (result.stdout or "").strip()
     if not output and result.stderr:
         output = result.stderr.strip()

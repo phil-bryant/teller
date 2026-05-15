@@ -11,16 +11,27 @@ RUN_SAST="${RUN_SAST:-true}"
 RUN_DAST="${RUN_DAST:-false}"
 RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 #R015: Support configurable execution lanes and report destination.
-FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
+#R090: Default financial-app policy blocks medium-or-higher security findings.
+FAIL_ON_MEDIUM_OR_HIGHER="${SECURITY_FAIL_ON_MEDIUM_OR_HIGHER:-${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
 WRITE_TOKEN_PSA_ITEM="TELLER_CLASSIFIER_WRITE_TOKEN"
 
 mkdir -p "$REPORT_DIR"
 
+python_interpreter_usable() {
+  local candidate="$1"
+  [[ -x "$candidate" ]] || return 1
+  "$candidate" -c "import site" >/dev/null 2>&1
+}
+
 #R001: Prefer project venv when available.
-if [[ -d "./teller-venv" ]]; then
+if [[ -d "./teller-venv" ]] && [[ -f "./teller-venv/bin/activate" ]]; then
+  if ! python_interpreter_usable "./teller-venv/bin/python"; then
+    echo "⚠️  Skipping teller-venv activation because its interpreter is not usable."
+  else
   # shellcheck disable=SC1091
-  source "./teller-venv/bin/activate"
+    source "./teller-venv/bin/activate"
+  fi
 fi
 
 require_command() {
@@ -29,6 +40,79 @@ require_command() {
     echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r requirements-security.txt"
     exit 1
   fi
+}
+
+count_report_findings() {
+  local mode="$1"
+  local report_path="$2"
+  python3 - <<'PY' "$mode" "$report_path"
+import json
+import sys
+
+mode = sys.argv[1]
+path = sys.argv[2]
+
+with open(path, "r", encoding="utf-8") as fh:
+    payload = json.load(fh)
+
+count = 0
+if mode == "semgrep":
+    count = len(payload.get("results", [])) if isinstance(payload, dict) else 0
+elif mode == "bandit":
+    count = len(payload.get("results", [])) if isinstance(payload, dict) else 0
+elif mode == "pip-audit":
+    if isinstance(payload, list):
+        count = sum(len(item.get("vulns", [])) for item in payload if isinstance(item, dict))
+    elif isinstance(payload, dict) and isinstance(payload.get("dependencies"), list):
+        count = sum(len(dep.get("vulns", [])) for dep in payload.get("dependencies", []) if isinstance(dep, dict))
+    elif isinstance(payload, dict):
+        count = len(payload.get("vulns", [])) if isinstance(payload.get("vulns", []), list) else 0
+elif mode == "detect-secrets":
+    if isinstance(payload, dict) and isinstance(payload.get("results"), dict):
+        count = sum(len(v) for v in payload.get("results", {}).values() if isinstance(v, list))
+elif mode == "ruff":
+    count = len(payload) if isinstance(payload, list) else 0
+elif mode == "shellcheck":
+    count = len(payload) if isinstance(payload, list) else 0
+
+print(count)
+PY
+}
+
+print_semgrep_findings() {
+  local report_path="$1"
+  python3 - <<'PY' "$report_path"
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+if not path.exists():
+    print(f"⚠️  Semgrep findings unavailable: report missing at {path}")
+    raise SystemExit(0)
+
+try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+except Exception as exc:
+    print(f"⚠️  Semgrep findings unavailable: unable to parse {path}: {exc}")
+    raise SystemExit(0)
+
+results = payload.get("results", []) if isinstance(payload, dict) else []
+if not results:
+    print("✅ Semgrep findings: none")
+    raise SystemExit(0)
+
+print(f"⚠️  Semgrep findings ({len(results)}):")
+for item in results:
+    extra = item.get("extra", {}) if isinstance(item, dict) else {}
+    severity = str(extra.get("severity", "UNKNOWN"))
+    check_id = str(item.get("check_id", "unknown-rule"))
+    file_path = str(item.get("path", "unknown-path"))
+    line = item.get("start", {}).get("line", "?")
+    message = str(extra.get("message", "no message")).replace("\n", " ").strip()
+    print(f"  - [{severity}] {check_id} @ {file_path}:{line}")
+    print(f"    {message}")
+PY
 }
 
 print_tool_header() {
@@ -69,6 +153,14 @@ ensure_security_venv() {
     "$security_pip" install --upgrade pip
     "$security_pip" install -r requirements-security.txt
   fi
+}
+
+security_toolchain_usable() {
+  local security_semgrep="${SECURITY_VENV_DIR}/bin/semgrep"
+  if [[ ! -x "$security_semgrep" ]]; then
+    return 1
+  fi
+  "$security_semgrep" --version >/dev/null 2>&1
 }
 
 wait_for_http() {
@@ -218,6 +310,10 @@ run_shellcheck_sast() {
   if [[ "$SHELLCHECK_EXIT" -eq 1 ]]; then
     echo "⚠️  ShellCheck reported findings; continuing to centralized SAST gating."
   fi
+  #R070: Emit detailed ShellCheck status when output is unsuppressed.
+  local shellcheck_findings
+  shellcheck_findings="$(count_report_findings "shellcheck" "$shellcheck_report")"
+  echo "ℹ️  ShellCheck detailed status: exit_code=${SHELLCHECK_EXIT}; findings=${shellcheck_findings}; report=${shellcheck_report}"
 }
 
 run_ruff_sast() {
@@ -245,16 +341,22 @@ run_ruff_sast() {
   if [[ "$RUFF_EXIT" -eq 1 ]]; then
     echo "⚠️  Ruff reported findings; continuing to centralized SAST gating."
   fi
+  #R065: Emit detailed Ruff status when output is unsuppressed.
+  local ruff_findings
+  ruff_findings="$(count_report_findings "ruff" "$ruff_report")"
+  echo "ℹ️  Ruff detailed status: exit_code=${RUFF_EXIT}; findings=${ruff_findings}; report=${ruff_report}"
 }
 
 run_gitleaks_sast() {
+  #R040: Run gitleaks against a git-tracked working-tree snapshot source.
   # Run gitleaks and preserve JSON findings for centralized secret-leak gating.
   local gitleaks_report="$1"
   local gitleaks_source_dir
-  gitleaks_source_dir="$(mktemp -d)"
+  gitleaks_source_dir="$(mktemp -d "${REPORT_DIR}/gitleaks-source.XXXXXX")"
 
   require_command gitleaks
   require_command git
+  #R035: Exclude generated scanner/cache artifacts from detect-secrets input.
   print_tool_header \
     "gitleaks" \
     "Detects hardcoded secrets and credential patterns in tracked files." \
@@ -263,6 +365,9 @@ run_gitleaks_sast() {
   # Scan only git-tracked files to avoid scanner output/cache feedback loops.
   while IFS= read -r -d '' tracked_file; do
     if [[ ! -f "$tracked_file" ]]; then
+      continue
+    fi
+    if [[ "$tracked_file" == .cursor/* || "$tracked_file" == .cursor* ]]; then
       continue
     fi
     mkdir -p "${gitleaks_source_dir}/$(dirname "$tracked_file")"
@@ -1180,14 +1285,18 @@ PY
 )
 
 ensure_security_venv
-export PATH="${SECURITY_VENV_DIR}/bin:${PATH}"
+if security_toolchain_usable; then
+  export PATH="${SECURITY_VENV_DIR}/bin:${PATH}"
+else
+  echo "⚠️  Security venv toolchain is not executable in this environment; using system-installed security tools."
+fi
 
 #R010: Ensure pip-audit inspects project dependencies, not security toolchain env.
 configure_pip_audit_python() {
   local project_python=""
-  if [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV}/bin/python3" ]]; then
+  if [[ -n "${VIRTUAL_ENV:-}" ]] && python_interpreter_usable "${VIRTUAL_ENV}/bin/python3"; then
     project_python="${VIRTUAL_ENV}/bin/python3"
-  elif [[ -x "./teller-venv/bin/python3" ]]; then
+  elif python_interpreter_usable "./teller-venv/bin/python3"; then
     project_python="./teller-venv/bin/python3"
   fi
 
@@ -1218,13 +1327,42 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "Combines community and repo custom rules across tracked source files." \
     "https://semgrep.dev/docs/"
   echo "▶ Running Semgrep"
-  semgrep scan \
+  SEMGREP_HOME_DIR="${SEMGREP_HOME_DIR:-${REPORT_DIR}/.semgrep-home}"
+  mkdir -p "$SEMGREP_HOME_DIR"
+  semgrep_stderr_log="${REPORT_DIR}/semgrep.stderr.log"
+  set +e
+  HOME="$SEMGREP_HOME_DIR" semgrep scan \
     --config "p/security-audit" \
     --config "p/python" \
     --config ".semgrep.yml" \
     --json \
     --output "${REPORT_DIR}/semgrep.json" \
-    .
+    . 2>"$semgrep_stderr_log"
+  SEMGREP_EXIT=$?
+  set -e
+  if [[ "$SEMGREP_EXIT" -gt 1 ]]; then
+    echo "⚠️  Semgrep remote config fetch failed; retrying with local .semgrep.yml only."
+    set +e
+    HOME="$SEMGREP_HOME_DIR" semgrep scan \
+      --config ".semgrep.yml" \
+      --json \
+      --output "${REPORT_DIR}/semgrep.json" \
+      . 2>>"$semgrep_stderr_log"
+    SEMGREP_EXIT=$?
+    set -e
+  fi
+  if [[ "$SEMGREP_EXIT" -gt 1 ]]; then
+    echo "❌ Semgrep failed to execute."
+    exit 1
+  fi
+  if [[ "$SEMGREP_EXIT" -eq 1 ]]; then
+    echo "⚠️  Semgrep reported findings; continuing to centralized SAST gating."
+  fi
+  #R045: Emit detailed Semgrep status when output is unsuppressed.
+  #R047: Keep Semgrep output unsuppressed by avoiding quiet-mode flags.
+  semgrep_findings="$(count_report_findings "semgrep" "${REPORT_DIR}/semgrep.json")"
+  echo "ℹ️  Semgrep detailed status: exit_code=${SEMGREP_EXIT}; findings=${semgrep_findings}; report=${REPORT_DIR}/semgrep.json; stderr_log=${semgrep_stderr_log}"
+  print_semgrep_findings "${REPORT_DIR}/semgrep.json"
 
   print_tool_header \
     "Bandit" \
@@ -1234,13 +1372,16 @@ if [[ "$RUN_SAST" == "true" ]]; then
   echo "▶ Running Bandit"
   # Distinguish scanner findings from scanner execution failures.
   set +e
-  bandit -q -r ./teller -c ./.bandit -f json -o "${REPORT_DIR}/bandit.json"
+  bandit -r ./teller -c ./.bandit -f json -o "${REPORT_DIR}/bandit.json"
   BANDIT_EXIT=$?
   set -e
   if [[ "$BANDIT_EXIT" -gt 1 ]]; then
     echo "❌ Bandit failed to execute."
     exit 1
   fi
+  #R050: Emit detailed Bandit status when output is unsuppressed.
+  bandit_findings="$(count_report_findings "bandit" "${REPORT_DIR}/bandit.json")"
+  echo "ℹ️  Bandit detailed status: exit_code=${BANDIT_EXIT}; findings=${bandit_findings}; report=${REPORT_DIR}/bandit.json"
 
   print_tool_header \
     "pip-audit" \
@@ -1256,6 +1397,9 @@ if [[ "$RUN_SAST" == "true" ]]; then
     echo "❌ pip-audit failed to execute."
     exit 1
   fi
+  #R055: Emit detailed pip-audit status when output is unsuppressed.
+  pip_audit_findings="$(count_report_findings "pip-audit" "${REPORT_DIR}/pip-audit.json")"
+  echo "ℹ️  pip-audit detailed status: exit_code=${PIP_AUDIT_EXIT}; vulnerabilities=${pip_audit_findings}; report=${REPORT_DIR}/pip-audit.json"
 
   print_tool_header \
     "detect-secrets" \
@@ -1263,9 +1407,19 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "Helps catch accidentally committed credentials before release." \
     "https://github.com/Yelp/detect-secrets"
   echo "▶ Running detect-secrets"
+  set +e
   detect-secrets scan --all-files --force-use-all-plugins \
     --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^\.ruff_cache/|^__pycache__/|^\.pytest_cache/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/|^requirements/)' \
     > "${REPORT_DIR}/detect-secrets.json"
+  DETECT_SECRETS_EXIT=$?
+  set -e
+  if [[ "$DETECT_SECRETS_EXIT" -ne 0 ]]; then
+    echo "❌ detect-secrets failed to execute."
+    exit 1
+  fi
+  #R060: Emit detailed detect-secrets status when output is unsuppressed.
+  detect_secrets_findings="$(count_report_findings "detect-secrets" "${REPORT_DIR}/detect-secrets.json")"
+  echo "ℹ️  detect-secrets detailed status: exit_code=${DETECT_SECRETS_EXIT}; findings=${detect_secrets_findings}; report=${REPORT_DIR}/detect-secrets.json"
 
   run_ruff_sast "${REPORT_DIR}/ruff.json"
 
@@ -1276,14 +1430,13 @@ if [[ "$RUN_SAST" == "true" ]]; then
   run_swift_sast "${REPORT_DIR}/swiftlint.json"
 
   # Produce consolidated SAST gate summary and enforce blocking policy.
-  python3 - <<'PY' "${REPORT_DIR}" "${FAIL_ON_HIGH_CRITICAL}"
+  python3 - <<'PY' "${REPORT_DIR}" "${FAIL_ON_MEDIUM_OR_HIGHER}"
 import json
-import os
 import sys
 from pathlib import Path
 
 report_dir = Path(sys.argv[1])
-fail_on_high = sys.argv[2].lower() == "true"
+fail_on_medium_or_higher = sys.argv[2].lower() == "true"
 
 semgrep_path = report_dir / "semgrep.json"
 bandit_path = report_dir / "bandit.json"
@@ -1304,11 +1457,21 @@ with semgrep_path.open("r", encoding="utf-8") as fh:
 semgrep_results = semgrep.get("results", []) if isinstance(semgrep, dict) else []
 semgrep_high = sum(1 for item in semgrep_results if item.get("extra", {}).get("severity") == "ERROR")
 semgrep_total = len(semgrep_results)
+semgrep_medium_or_higher = sum(
+    1
+    for item in semgrep_results
+    if str(item.get("extra", {}).get("severity", "")).upper() in {"WARNING", "ERROR", "CRITICAL"}
+)
 
 with bandit_path.open("r", encoding="utf-8") as fh:
     bandit = json.load(fh)
 bandit_results = bandit.get("results", []) if isinstance(bandit, dict) else []
 bandit_high = sum(1 for item in bandit_results if item.get("issue_severity") == "HIGH")
+bandit_medium_or_higher = sum(
+    1
+    for item in bandit_results
+    if str(item.get("issue_severity", "")).upper() in {"MEDIUM", "HIGH"}
+)
 bandit_total = len(bandit_results)
 
 with pip_audit_path.open("r", encoding="utf-8") as fh:
@@ -1338,17 +1501,24 @@ ruff_results = ruff if isinstance(ruff, list) else []
 #R030: Enforce Ruff findings as blocking equivalents in SAST policy totals.
 ruff_total = len(ruff_results)
 ruff_high = ruff_total
+ruff_medium_or_higher = ruff_total
 
 with swiftlint_path.open("r", encoding="utf-8") as fh:
     swiftlint = json.load(fh)
 swiftlint_results = swiftlint if isinstance(swiftlint, list) else []
 swiftlint_high = sum(1 for item in swiftlint_results if str(item.get("severity", "")).lower() == "error")
+swiftlint_medium_or_higher = sum(
+    1 for item in swiftlint_results if str(item.get("severity", "")).lower() in {"warning", "error"}
+)
 swiftlint_total = len(swiftlint_results)
 
 with shellcheck_path.open("r", encoding="utf-8") as fh:
     shellcheck = json.load(fh)
 shellcheck_results = shellcheck if isinstance(shellcheck, list) else []
 shellcheck_high = sum(1 for item in shellcheck_results if str(item.get("level", "")).lower() == "error")
+shellcheck_medium_or_higher = sum(
+    1 for item in shellcheck_results if str(item.get("level", "")).lower() in {"warning", "error"}
+)
 shellcheck_total = len(shellcheck_results)
 
 with gitleaks_path.open("r", encoding="utf-8") as fh:
@@ -1360,24 +1530,42 @@ elif isinstance(gitleaks, dict) and isinstance(gitleaks.get("findings"), list):
 else:
     gitleaks_findings = 0
 
-high_critical_total = semgrep_high + bandit_high + secret_findings + ruff_high + swiftlint_high + shellcheck_high + gitleaks_findings
+medium_or_higher_total = (
+    semgrep_medium_or_higher
+    + bandit_medium_or_higher
+    + dep_vulns
+    + secret_findings
+    + ruff_medium_or_higher
+    + swiftlint_medium_or_higher
+    + shellcheck_medium_or_higher
+    + gitleaks_findings
+)
+# Backward-compatible field retained for existing report consumers.
+high_critical_total = medium_or_higher_total
 
 summary = {
     "semgrep_total": semgrep_total,
     "semgrep_high_critical": semgrep_high,
+    "semgrep_medium_or_higher": semgrep_medium_or_higher,
     "bandit_total": bandit_total,
     "bandit_high_critical": bandit_high,
+    "bandit_medium_or_higher": bandit_medium_or_higher,
     "pip_audit_vulnerabilities": dep_vulns,
     "detect_secrets_findings": secret_findings,
     "ruff_total": ruff_total,
     "ruff_high_critical": ruff_high,
+    "ruff_medium_or_higher": ruff_medium_or_higher,
     "shellcheck_total": shellcheck_total,
     "shellcheck_high_critical": shellcheck_high,
+    "shellcheck_medium_or_higher": shellcheck_medium_or_higher,
     "gitleaks_findings": gitleaks_findings,
     "swiftlint_total": swiftlint_total,
     "swiftlint_high_critical": swiftlint_high,
+    "swiftlint_medium_or_higher": swiftlint_medium_or_higher,
+    "medium_or_higher_total": medium_or_higher_total,
     "high_critical_total": high_critical_total,
-    "gate_failed": fail_on_high and high_critical_total > 0,
+    "gate_policy": "financial-app-medium-or-higher-blocking",
+    "gate_failed": fail_on_medium_or_higher and medium_or_higher_total > 0,
 }
 
 summary_path = report_dir / "sast-summary.json"
@@ -1388,8 +1576,8 @@ with summary_path.open("w", encoding="utf-8") as fh:
 print("Static Application Security Testing (SAST) summary")
 print(json.dumps(summary, indent=2))
 
-if fail_on_high and high_critical_total > 0:
-    print("❌ Static Application Security Testing (SAST) gate failed: High/Critical findings detected.")
+if fail_on_medium_or_higher and medium_or_higher_total > 0:
+    print("❌ Static Application Security Testing (SAST) gate failed: Medium-or-higher findings detected.")
     sys.exit(1)
 PY
   echo "✅ Static Application Security Testing (SAST) checks completed."

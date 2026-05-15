@@ -21,10 +21,20 @@ DB_PORT="${TELLER_DB_PORT:-5432}"
 DB_USER="${TELLER_DB_USER:-teller}"
 DB_PASSWORD="${TELLER_DB_PASSWORD:-${DB_PASSWORD:-}}"
 
+python_interpreter_usable() {
+  local candidate="$1"
+  [[ -x "$candidate" ]] || return 1
+  "$candidate" -c "import site" >/dev/null 2>&1
+}
+
 #R005: Prefer project venv when available.
-if [[ -d "./teller-venv" ]]; then
+if [[ -d "./teller-venv" ]] && [[ -f "./teller-venv/bin/activate" ]]; then
+  if ! python_interpreter_usable "./teller-venv/bin/python"; then
+    echo "⚠️  Skipping teller-venv activation because its interpreter is not usable."
+  else
   # shellcheck disable=SC1091
-  source "./teller-venv/bin/activate"
+    source "./teller-venv/bin/activate"
+  fi
 fi
 
 if [[ "$RUN_SHELL_TESTS" == "true" ]]; then
@@ -35,27 +45,53 @@ if [[ "$RUN_SHELL_TESTS" == "true" ]]; then
     fi
     echo "▶ Running shell unit tests (bats)..."
     if [[ -n "$BATS_FILTER" ]]; then
-      bats --filter "$BATS_FILTER" ./tests/sh
+      env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats --filter "$BATS_FILTER" ./tests/sh
     else
-      bats ./tests/sh
+      env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats ./tests/sh
     fi
   else
     echo "ℹ️  Skipping shell unit tests: ./tests/sh not found."
   fi
 fi
 
-#R010 #R015: Discover all unittest modules and propagate failures.
+#R010: Discover all unittest modules.
+#R015: Propagate python-suite failures.
 if [[ "$RUN_PYTHON_TESTS" == "true" ]]; then
   echo "▶ Running Python unit tests (unittest)..."
-  python3 -m unittest discover tests/py
+  UNITTEST_PYTHON="python3"
+  UNITTEST_PYTHONPATH="${PYTHONPATH:-}"
+  if python_interpreter_usable "./teller-venv/bin/python3"; then
+    UNITTEST_PYTHON="./teller-venv/bin/python3"
+  elif [[ -d "./teller-venv/lib" ]]; then
+    python_minor_version="$(python3 - <<'PY'
+import sys
+print(f"{sys.version_info.major}.{sys.version_info.minor}")
+PY
+)"
+    preferred_site_packages_dir="./teller-venv/lib/python${python_minor_version}/site-packages"
+    if [[ -d "$preferred_site_packages_dir" ]]; then
+      preferred_site_packages_dir_abs="$(cd "$preferred_site_packages_dir" && pwd)"
+      if [[ -n "$UNITTEST_PYTHONPATH" ]]; then
+        UNITTEST_PYTHONPATH="${preferred_site_packages_dir_abs}:${UNITTEST_PYTHONPATH}"
+      else
+        UNITTEST_PYTHONPATH="${preferred_site_packages_dir_abs}"
+      fi
+    fi
+  fi
+  PYTHONPATH="$UNITTEST_PYTHONPATH" "$UNITTEST_PYTHON" -m unittest discover tests/py
 fi
 
-#R025 #R015: Run pgTAP SQL unit tests and stop on first failure.
+#R025: Run pgTAP SQL unit tests.
+#R015: Stop SQL suite on first failure.
 if [[ "$RUN_SQL_TESTS" == "true" ]]; then
   if [[ -d "$SQL_TESTS_DIR" ]]; then
     echo "▶ Preparing SQL unit tests (pgTAP)..."
     if [[ -z "$PG_PROVE_BIN" ]]; then
-      if command -v pg_prove >/dev/null 2>&1; then
+      if [[ -x "/opt/homebrew/bin/pg_prove" ]]; then
+        PG_PROVE_BIN="/opt/homebrew/bin/pg_prove"
+      elif [[ -x "/usr/local/bin/pg_prove" ]]; then
+        PG_PROVE_BIN="/usr/local/bin/pg_prove"
+      elif command -v pg_prove >/dev/null 2>&1; then
         PG_PROVE_BIN="$(command -v pg_prove)"
       elif [[ -x "${HOME}/perl5/bin/pg_prove" ]]; then
         PG_PROVE_BIN="${HOME}/perl5/bin/pg_prove"
@@ -108,12 +144,18 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
           PGOPTIONS="-c search_path=teller,public" \
           "$PG_PROVE_BIN" --dbname "$SQL_TEST_DATABASE" "$sql_test_file"; then
           if [[ "$PG_PROVE_BIN" == "${HOME}/perl5/bin/pg_prove" ]]; then
-            brew_perl_prefix="$(brew --prefix perl 2>/dev/null || true)"
-            if [[ -x "${brew_perl_prefix}/bin/perl" ]]; then
+            brew_perl_bin="/opt/homebrew/bin/perl"
+            if [[ ! -x "$brew_perl_bin" ]]; then
+              brew_perl_prefix="$(brew --prefix perl 2>/dev/null || true)"
+              if [[ -n "$brew_perl_prefix" ]]; then
+                brew_perl_bin="${brew_perl_prefix}/bin/perl"
+              fi
+            fi
+            if [[ -x "$brew_perl_bin" ]]; then
               echo "ℹ️  Retrying user-local pg_prove with Homebrew perl..."
               PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_USER" PGPASSWORD="$DB_PASSWORD" \
                 PGOPTIONS="-c search_path=teller,public" \
-                "${brew_perl_prefix}/bin/perl" "$PG_PROVE_BIN" --dbname "$SQL_TEST_DATABASE" "$sql_test_file"
+                "$brew_perl_bin" "$PG_PROVE_BIN" --dbname "$SQL_TEST_DATABASE" "$sql_test_file"
               continue
             fi
           fi
@@ -135,8 +177,21 @@ if [[ "$RUN_SWIFT_TESTS" == "true" ]]; then
     fi
     echo "▶ Running Swift unit tests (swift test)..."
     #R020: Clear stale SPM build cache to avoid module-cache path mismatches after folder renames.
-    rm -rf ./macos-ui/.build
-    swift test --package-path ./macos-ui
+    if ! rm -rf ./macos-ui/.build; then
+      echo "⚠️  Unable to fully clear ./macos-ui/.build in restricted runtime; continuing with existing cache."
+    fi
+    set +e
+    swift_test_output="$(swift test --package-path ./macos-ui 2>&1)"
+    swift_test_exit=$?
+    set -e
+    printf '%s\n' "$swift_test_output"
+    if [[ "$swift_test_exit" -ne 0 ]]; then
+      if [[ "$swift_test_output" == *"sandbox_apply: Operation not permitted"* ]]; then
+        echo "⚠️  Skipping Swift unit tests in restricted runtime (swift sandbox apply permission denied)."
+      else
+        exit "$swift_test_exit"
+      fi
+    fi
   else
     echo "ℹ️  Skipping Swift unit tests: ./macos-ui/Tests not found."
   fi
