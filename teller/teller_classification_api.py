@@ -101,11 +101,13 @@ _CATEGORY_TEXT_FIELDS = (
 _CATEGORY_SCHEMA_PROPERTIES = {
     field_name: {
         "type": "string",
+        "minLength": 1,
         "maxLength": 120,
-        "pattern": r"^[^\x00-\x1F\x7F]*$",
+        "pattern": r"^[\x20-\x7E]*[\x21-\x7E][\x20-\x7E]*$",
     }
     for field_name in _CATEGORY_TEXT_FIELDS
 }
+_CATEGORY_SCHEMA_REQUIRE_ONE = [{"required": [field_name]} for field_name in _CATEGORY_TEXT_FIELDS]
 
 _MATCH_STATE_ENUM = PgEnum(
     "ai_no_match_found",
@@ -264,6 +266,7 @@ class CategoryCreateMutation(CategoryMutationBase):
         extra="forbid",
         json_schema_extra={
             "minProperties": 1,
+            "anyOf": _CATEGORY_SCHEMA_REQUIRE_ONE,
             "properties": _CATEGORY_SCHEMA_PROPERTIES,
         },
     )
@@ -280,6 +283,7 @@ class CategoryUpdateMutation(CategoryMutationBase):
         extra="forbid",
         json_schema_extra={
             "minProperties": 1,
+            "anyOf": _CATEGORY_SCHEMA_REQUIRE_ONE,
             "properties": _CATEGORY_SCHEMA_PROPERTIES,
         },
     )
@@ -386,8 +390,19 @@ class MatchReviewActionResponse(BaseModel):
 
 
 class MatchOverrideMutation(BaseModel):
-    email_message_id: Annotated[str, StringConstraints(min_length=1, max_length=400)]
-    note: Optional[Annotated[str, StringConstraints(max_length=800)]] = None
+    model_config = ConfigDict(extra="forbid")
+    email_message_id: Annotated[str, StringConstraints(min_length=1, max_length=400, pattern=r"^[\x20-\x7E]+$")]
+    note: Optional[Annotated[str, StringConstraints(max_length=800, pattern=r"^[\x20-\x7E]*$")]] = None
+
+    @field_validator("email_message_id")
+    @classmethod
+    def validate_email_message_id(cls, value: str):
+        return _validate_text_field("email_message_id", value)
+
+    @field_validator("note")
+    @classmethod
+    def validate_note(cls, value: Optional[str]):
+        return _validate_text_field("note", value)
 
 
 #R005: Build hierarchical category display labels.
@@ -618,7 +633,7 @@ def _transition_match_state(
     elif email_message_id is not None:
         values["email_message_id"] = bindparam("email_message_id")
     params = {
-        "match_id": match_id,
+        "target_match_id": match_id,
         "to_state": to_state,
         "actor": actor,
     }
@@ -626,7 +641,7 @@ def _transition_match_state(
         params["email_message_id"] = email_message_id
     statement = (
         update(_MATCH_REVIEW_TABLE)
-        .where(_MATCH_REVIEW_TABLE.c.match_id == bindparam("match_id"))
+        .where(_MATCH_REVIEW_TABLE.c.match_id == bindparam("target_match_id"))
         .values(**values)
         .returning(
             _MATCH_REVIEW_TABLE.c.transaction_id,
@@ -635,9 +650,18 @@ def _transition_match_state(
             _MATCH_REVIEW_TABLE.c.updated_at,
         )
     )
-    updated = session.execute(statement, params).mappings().fetchone()
-    _insert_match_audit(session, match_id, row["state"], to_state, actor, note)
-    session.commit()
+    try:
+        updated = session.execute(statement, params).mappings().fetchone()
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Unknown match_id: {match_id}")
+        _insert_match_audit(session, match_id, row["state"], to_state, actor, note)
+        session.commit()
+    except HTTPException:
+        raise
+    except (IntegrityError, DataError):
+        if hasattr(session, "rollback"):
+            session.rollback()
+        raise HTTPException(status_code=409, detail="Match state transition conflicts with current state")
     return MatchReviewActionResponse(
         match_id=match_id,
         transaction_id=updated["transaction_id"],
@@ -675,19 +699,6 @@ def create_app() -> FastAPI:
             422: {"model": ApiError, "description": "Malformed category payload"},
             409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
         },
-        openapi_extra={
-            "requestBody": {
-                "required": True,
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "allOf": [{"$ref": "#/components/schemas/CategoryCreateMutation"}],
-                            "minProperties": 1,
-                        }
-                    }
-                },
-            }
-        },
     )
     def create_category(request: Request, body: CategoryCreateMutation):
         _require_write_access(request)
@@ -702,19 +713,6 @@ def create_app() -> FastAPI:
             422: {"model": ApiError, "description": "Malformed category payload"},
             409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
             404: {"model": ApiError, "description": "Unknown category id"},
-        },
-        openapi_extra={
-            "requestBody": {
-                "required": True,
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "allOf": [{"$ref": "#/components/schemas/CategoryUpdateMutation"}],
-                            "minProperties": 1,
-                        }
-                    }
-                },
-            }
         },
     )
     def update_category(request: Request, nys_snw_category_id: int, body: CategoryUpdateMutation):
@@ -909,6 +907,7 @@ def create_app() -> FastAPI:
         response_model=MatchReviewActionResponse,
         responses={
             404: {"model": ApiError, "description": "Unknown match id"},
+            409: {"model": ApiError, "description": "Match state transition conflicts with current state"},
         },
     )
     def confirm_match(request: Request, match_id: int):
@@ -927,6 +926,7 @@ def create_app() -> FastAPI:
         response_model=MatchReviewActionResponse,
         responses={
             404: {"model": ApiError, "description": "Unknown match id"},
+            409: {"model": ApiError, "description": "Match state transition conflicts with current state"},
         },
     )
     def override_match(request: Request, match_id: int, body: MatchOverrideMutation):
@@ -946,6 +946,7 @@ def create_app() -> FastAPI:
         response_model=MatchReviewActionResponse,
         responses={
             404: {"model": ApiError, "description": "Unknown match id"},
+            409: {"model": ApiError, "description": "Match state transition conflicts with current state"},
         },
     )
     def mark_match_as_no_email(request: Request, match_id: int):

@@ -230,7 +230,8 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(update_schema.get("minProperties"), 1)
         level_1_schema = create_schema.get("properties", {}).get("level_1", {})
         self.assertEqual(level_1_schema.get("type"), "string")
-        self.assertEqual(level_1_schema.get("pattern"), r"^[^\x00-\x1F\x7F]*$")
+        self.assertEqual(level_1_schema.get("minLength"), 1)
+        self.assertEqual(level_1_schema.get("pattern"), r"^[\x20-\x7E]*[\x21-\x7E][\x20-\x7E]*$")
 
     def test_category_mutations_reject_empty_json_body(self):
         #R045
@@ -249,10 +250,11 @@ class ClassificationApiTests(unittest.TestCase):
         def _extract_category_schema(path: str, method: str):
             operation = schema["paths"][path][method]
             body_schema = operation["requestBody"]["content"]["application/json"]["schema"]
-            self.assertEqual(body_schema.get("minProperties"), 1)
-            refs = body_schema.get("allOf", [])
-            self.assertTrue(refs)
-            ref = refs[0]["$ref"]
+            ref = body_schema.get("$ref")
+            if ref is None:
+                refs = body_schema.get("allOf", [])
+                self.assertTrue(refs)
+                ref = refs[0]["$ref"]
             ref_name = ref.rsplit("/", 1)[1]
             return schema["components"]["schemas"][ref_name]
 
@@ -749,6 +751,23 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(update_params["email_message_id"], "msg_123")
         insert_audit_mock.assert_called_once()
 
+    @patch("teller.teller_classification_api._read_match_row")
+    def test_transition_match_state_returns_409_on_constraint_violation(self, read_match_row_mock):
+        read_match_row_mock.return_value = {"state": "ai_match_confident"}
+        session = _IntegrityErrorSession(rows=[])
+
+        with self.assertRaises(HTTPException) as ctx:
+            _transition_match_state(
+                session=session,
+                match_id=11,
+                to_state="human_confirmed_ai_match",
+                actor="human",
+                note="confirm after no-email",
+            )
+
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("conflicts with current state", str(ctx.exception.detail))
+
     @patch("teller.teller_classification_api.get_session")
     def test_matchy_review_applies_filter_predicates_with_expression_queries(self, get_session_mock):
         app = create_app()
@@ -808,6 +827,7 @@ class ClassificationApiTests(unittest.TestCase):
         for path, method in endpoints:
             responses = schema["paths"][path][method]["responses"]
             self.assertIn("404", responses, f"Missing 404 for {method.upper()} {path}")
+            self.assertIn("409", responses, f"Missing 409 for {method.upper()} {path}")
 
     @patch("teller.teller_classification_api.get_session")
     def test_matchy_mutation_endpoints_return_404_for_unknown_match_ids(self, get_session_mock):

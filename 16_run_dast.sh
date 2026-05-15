@@ -166,6 +166,8 @@ run_zap_quick_scan() {
   local target_url="$4"
   local html_report="$5"
   local log_report="$6"
+  local proxy_host="$7"
+  local proxy_port="$8"
   print_tool_header \
     "OWASP ZAP" \
     "Dynamic scan of live HTTP endpoints for common web vulnerabilities." \
@@ -173,11 +175,14 @@ run_zap_quick_scan() {
     "https://www.zaproxy.org/"
   echo "▶ Running OWASP ZAP quick scan (CLI) against ${target_url}"
   echo "▶ ZAP home directory: ${zap_home_dir}"
+  echo "▶ ZAP quick-scan proxy: ${proxy_host}:${proxy_port}"
   local zap_exit=0
   set +e
   if [[ "$zap_quiet" == "true" ]]; then
     "$zap_cli_cmd" -cmd \
       -dir "$zap_home_dir" \
+      -host "$proxy_host" \
+      -port "$proxy_port" \
       -quickurl "$target_url" \
       -quickout "$html_report" \
       -quickprogress \
@@ -186,6 +191,8 @@ run_zap_quick_scan() {
   else
     "$zap_cli_cmd" -cmd \
       -dir "$zap_home_dir" \
+      -host "$proxy_host" \
+      -port "$proxy_port" \
       -quickurl "$target_url" \
       -quickout "$html_report" \
       -quickprogress 2>&1 | tee "$log_report"
@@ -738,13 +745,14 @@ PY
     local source_base_url="$2"
     local output_schema_path="$3"
     local write_token="$4"
-    python3 - <<'PY' "$source_openapi_url" "$source_base_url" "$output_schema_path" "$write_token"
+    local matchy_seed_path="${5:-}"
+    python3 - <<'PY' "$source_openapi_url" "$source_base_url" "$output_schema_path" "$write_token" "$matchy_seed_path"
 import json
 import sys
 import urllib.parse
 import urllib.request
 
-openapi_url, base_url, out_path, write_token = sys.argv[1:5]
+openapi_url, base_url, out_path, write_token, matchy_seed_path = sys.argv[1:6]
 
 def fetch_json(url: str):
     with urllib.request.urlopen(url, timeout=20) as resp:
@@ -768,6 +776,24 @@ schema = fetch_json(openapi_url)
 category_id = None
 transaction_id = None
 delete_seed_ids = []
+match_ids = []
+match_override_email = None
+
+if matchy_seed_path:
+    try:
+        with open(matchy_seed_path, "r", encoding="utf-8") as fh:
+            seed_payload = json.load(fh)
+        if isinstance(seed_payload, dict):
+            seeded_match_ids = seed_payload.get("match_ids", [])
+            if isinstance(seeded_match_ids, list):
+                for value in seeded_match_ids:
+                    if isinstance(value, int):
+                        match_ids.append(value)
+            seeded_override_email = seed_payload.get("override_email_message_id")
+            if isinstance(seeded_override_email, str) and seeded_override_email:
+                match_override_email = seeded_override_email
+    except Exception:
+        pass
 
 try:
     categories = fetch_json(f"{base_url}/v1/categories")
@@ -827,6 +853,22 @@ try:
 except Exception:
     pass
 
+if not match_ids:
+    try:
+        review_payload = fetch_json(f"{base_url}/v1/matchy/review?limit=25&offset=0")
+        review_items = review_payload.get("items", []) if isinstance(review_payload, dict) else []
+        for item in review_items:
+            if not isinstance(item, dict):
+                continue
+            match_id_value = item.get("match_id")
+            if isinstance(match_id_value, int):
+                match_ids.append(match_id_value)
+                email_value = item.get("email_message_id")
+                if match_override_email is None and isinstance(email_value, str) and email_value:
+                    match_override_email = email_value
+    except Exception:
+        pass
+
 paths = schema.get("paths", {})
 
 def set_path_param_example(path: str, method: str, param_name: str, value):
@@ -875,6 +917,21 @@ if transaction_id is not None and category_id is not None:
         {"updates": [{"transaction_id": transaction_id, "nys_snw_category_id": category_id}]},
     )
 
+if match_ids:
+    set_path_param_enum("/v1/matchy/matches/{match_id}/confirm", "put", "match_id", match_ids)
+    set_path_param_enum("/v1/matchy/matches/{match_id}/no-email", "put", "match_id", match_ids)
+    set_path_param_enum("/v1/matchy/matches/{match_id}/override", "put", "match_id", match_ids)
+
+if match_ids:
+    set_json_body_example(
+        "/v1/matchy/matches/{match_id}/override",
+        "put",
+        {
+            "email_message_id": match_override_email or "schemathesis-seeded-override@example.invalid",
+            "note": "Schemathesis seeded override",
+        },
+    )
+
 with open(out_path, "w", encoding="utf-8") as fh:
     json.dump(schema, fh)
     fh.write("\n")
@@ -886,10 +943,116 @@ print(
             "seeded_category_id": category_id,
             "seeded_transaction_id": transaction_id,
             "delete_seed_ids": delete_seed_ids,
+            "match_ids": match_ids,
+            "match_override_email": match_override_email,
         }
     )
 )
 PY
+  }
+
+  seed_matchy_data_for_schemathesis() {
+    local output_json_path="$1"
+    set +e
+    PYTHONPATH="${dast_integrity_pythonpath}" "$dast_app_python" - <<'PY' "$output_json_path"
+import json
+import pathlib
+import sys
+import uuid
+
+from sqlalchemy import text
+
+output_path = pathlib.Path(sys.argv[1])
+payload = {
+    "status": "skipped",
+    "match_ids": [],
+    "override_email_message_id": None,
+}
+
+try:
+    from teller.teller_db import get_engine
+except Exception as exc:
+    payload["reason"] = f"db_import_failed: {exc}"
+else:
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            existing = conn.execute(
+                text(
+                    """
+                    SELECT match_id, email_message_id
+                      FROM teller.transaction_email_match
+                     WHERE active = TRUE
+                     ORDER BY updated_at DESC NULLS LAST, match_id DESC
+                     LIMIT 8
+                    """
+                )
+            ).fetchall()
+            if existing:
+                payload["status"] = "existing"
+                payload["match_ids"] = [int(row[0]) for row in existing if row and row[0] is not None]
+                for row in existing:
+                    email_value = row[1]
+                    if isinstance(email_value, str) and email_value:
+                        payload["override_email_message_id"] = email_value
+                        break
+            else:
+                tx_row = conn.execute(
+                    text(
+                        """
+                        SELECT transaction_id
+                          FROM teller.transaction
+                         WHERE status = 'posted'
+                         ORDER BY date DESC NULLS LAST, transaction_id DESC
+                         LIMIT 1
+                        """
+                    )
+                ).fetchone()
+                if tx_row and tx_row[0]:
+                    seeded_email = f"schemathesis-seed-{uuid.uuid4().hex}@example.invalid"
+                    seeded = conn.execute(
+                        text(
+                            """
+                            INSERT INTO teller.transaction_email_match (
+                                transaction_id,
+                                email_message_id,
+                                state,
+                                selected_by,
+                                active
+                            ) VALUES (
+                                :transaction_id,
+                                :email_message_id,
+                                CAST('ai_match_confident' AS teller.transaction_email_match_state),
+                                CAST('ai' AS teller.transaction_email_match_selected_by),
+                                TRUE
+                            )
+                            RETURNING match_id
+                            """
+                        ),
+                        {
+                            "transaction_id": tx_row[0],
+                            "email_message_id": seeded_email,
+                        },
+                    ).fetchone()
+                    if seeded and seeded[0] is not None:
+                        payload["status"] = "seeded"
+                        payload["match_ids"] = [int(seeded[0])]
+                        payload["override_email_message_id"] = seeded_email
+                else:
+                    payload["reason"] = "no_posted_transactions_available"
+    except Exception as exc:
+        payload["status"] = "skipped"
+        payload["reason"] = f"db_seed_failed: {exc}"
+
+output_path.parent.mkdir(parents=True, exist_ok=True)
+with output_path.open("w", encoding="utf-8") as fh:
+    json.dump(payload, fh)
+    fh.write("\n")
+print(json.dumps(payload))
+PY
+    local seed_exit=$?
+    set -e
+    return "$seed_exit"
   }
 
   run_delete_category_contract_check() {
@@ -1036,8 +1199,8 @@ PY
 
   local base_host="${DAST_BASE_HOST:-127.0.0.1}"
   local base_port="${DAST_BASE_PORT:-8787}"
-  local base_url="${DAST_BASE_URL:-http://${base_host}:${base_port}}"
-  local openapi_url="${DAST_OPENAPI_URL:-${base_url}/openapi.json}"
+  local base_url="${DAST_BASE_URL:-}"
+  local openapi_url="${DAST_OPENAPI_URL:-}"
 
   local run_schemathesis="${RUN_SCHEMATHESIS:-true}"
   local run_zap="${RUN_ZAP:-true}"
@@ -1054,6 +1217,8 @@ PY
   local zap_daemon_home_dir="${ZAP_DAEMON_HOME_DIR:-${zap_home_root}/daemon}"
   # Keep ZAP quick-scan output visible by default unless explicitly silenced.
   local zap_quiet="${ZAP_QUIET:-false}"
+  local zap_quick_proxy_host="${ZAP_QUICK_PROXY_HOST:-127.0.0.1}"
+  local zap_quick_proxy_port="${ZAP_QUICK_PROXY_PORT:-8091}"
   local macos_ui_dast_proxy_host="${MACOS_UI_DAST_ZAP_PROXY_HOST:-127.0.0.1}"
   local macos_ui_dast_proxy_port="${MACOS_UI_DAST_ZAP_PROXY_PORT:-8090}"
   local macos_ui_dast_proxy_url=""
@@ -1066,7 +1231,7 @@ PY
 
   local schemathesis_seed="${SCHEMATHESIS_SEED:-424242}"
   local schemathesis_max_examples="${SCHEMATHESIS_MAX_EXAMPLES:-25}"
-  local zap_classification_target="${ZAP_CLASSIFICATION_TARGET:-${base_url}/health}"
+  local zap_classification_target="${ZAP_CLASSIFICATION_TARGET:-}"
 
   if ! python_interpreter_usable "$dast_app_python"; then
     dast_app_python="python3"
@@ -1083,6 +1248,35 @@ PY
         fi
       fi
     done
+  fi
+
+  if [[ "$reuse_existing_api" != "true" ]]; then
+    if ! [[ "$base_port" =~ ^[0-9]+$ ]]; then
+      echo "❌ DAST_BASE_PORT must be numeric; received: ${base_port}"
+      exit 1
+    fi
+    local requested_base_port="$base_port"
+    local api_port_status
+    api_port_status="$(is_tcp_port_in_use "$base_host" "$requested_base_port")"
+    if [[ "$api_port_status" == "used" ]]; then
+      local resolved_base_port=""
+      if ! resolved_base_port="$(find_available_tcp_port "$base_host" "$requested_base_port" 100)"; then
+        echo "❌ Unable to find an available API port near ${requested_base_port} on ${base_host}."
+        exit 1
+      fi
+      base_port="$resolved_base_port"
+      echo "⚠️  DAST_BASE_PORT ${requested_base_port} is already in use; auto-selected ${base_port} to avoid stale API reuse."
+    fi
+  fi
+
+  if [[ -z "${DAST_BASE_URL:-}" ]]; then
+    base_url="http://${base_host}:${base_port}"
+  fi
+  if [[ -z "${DAST_OPENAPI_URL:-}" ]]; then
+    openapi_url="${base_url}/openapi.json"
+  fi
+  if [[ -z "${ZAP_CLASSIFICATION_TARGET:-}" ]]; then
+    zap_classification_target="${base_url}/health"
   fi
 
   local classifier_api_pid=""
@@ -1114,7 +1308,13 @@ PY
     echo "▶ Running Schemathesis against ${openapi_url}"
     local schemathesis_location="$openapi_url"
     local schemathesis_openapi_fixture="${report_dir_abs}/schemathesis-openapi.json"
-    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" "$dast_write_token" \
+    local schemathesis_matchy_seed="${report_dir_abs}/schemathesis-matchy-seed.json"
+    if seed_matchy_data_for_schemathesis "$schemathesis_matchy_seed" > "${report_dir_abs}/schemathesis-matchy-seed.log"; then
+      echo "▶ Schemathesis matchy seed prepared at ${schemathesis_matchy_seed}"
+    else
+      echo "⚠️  Schemathesis matchy seed preparation failed; proceeding with live data only."
+    fi
+    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" "$dast_write_token" "$schemathesis_matchy_seed" \
       > "${report_dir_abs}/schemathesis-fixture.json"; then
       schemathesis_location="$schemathesis_openapi_fixture"
       echo "▶ Schemathesis fixture prepared at ${schemathesis_location}"
@@ -1155,13 +1355,31 @@ PY
       echo "Install prerequisites with ./01_install_prerequisites.sh or set ZAP_CLI_CMD."
       exit 1
     fi
+    if ! [[ "$zap_quick_proxy_port" =~ ^[0-9]+$ ]]; then
+      echo "❌ ZAP_QUICK_PROXY_PORT must be numeric; received: ${zap_quick_proxy_port}"
+      exit 1
+    fi
+    local requested_quick_port="$zap_quick_proxy_port"
+    local quick_port_status
+    quick_port_status="$(is_tcp_port_in_use "$zap_quick_proxy_host" "$requested_quick_port")"
+    if [[ "$quick_port_status" == "used" ]]; then
+      local resolved_quick_port=""
+      if ! resolved_quick_port="$(find_available_tcp_port "$zap_quick_proxy_host" "$requested_quick_port" 100)"; then
+        echo "❌ Unable to find an available ZAP quick-scan proxy port near ${requested_quick_port} on ${zap_quick_proxy_host}."
+        exit 1
+      fi
+      zap_quick_proxy_port="$resolved_quick_port"
+      echo "⚠️  ZAP_QUICK_PROXY_PORT ${requested_quick_port} is already in use; auto-selected ${zap_quick_proxy_port}."
+    fi
     run_zap_quick_scan \
       "$zap_cli_cmd" \
       "$zap_quick_home_dir" \
       "$zap_quiet" \
       "$zap_classification_target" \
       "${report_dir_abs}/zap-classification.html" \
-      "${report_dir_abs}/zap-classification.log"
+      "${report_dir_abs}/zap-classification.log" \
+      "$zap_quick_proxy_host" \
+      "$zap_quick_proxy_port"
   fi
 
   # Support local macOS UI Dynamic Application Security Testing (DAST) via ZAP proxy mode.
