@@ -4,7 +4,7 @@ load "helpers/common.bash"
 
 write_dast_13_stub() {
   local root="$1"
-  cat > "${root}/15_run_classification_api.py" <<'PYS'
+  cat > "${root}/14_run_classification_api.py" <<'PYS'
 #!/usr/bin/env python3
 import http.server
 import os
@@ -29,7 +29,7 @@ if __name__ == "__main__":
   with socketserver.TCPServer((host, port), H) as s:
     s.serve_forever()
 PYS
-  chmod +x "${root}/15_run_classification_api.py"
+  chmod +x "${root}/14_run_classification_api.py"
 }
 
 copy_dast_project_files() {

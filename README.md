@@ -20,9 +20,9 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `10_run_macos_ui_regression_tests.sh` (recommended pre-merge gate; can also be run via `RUN_MACOS_UI_REGRESSION_TESTS=true ./09_run_unit_tests.sh`)
 - `11_verify_macos_crash_reporter.sh`
 - `12_fetch_teller_api_data.py`
-- `13_verify_classification_persistence.sh`
-- `14_backfill_bank_statements.py`
-- `15_run_classification_api.py`
+- `13_backfill_bank_statements.py`
+- `14_run_classification_api.py`
+- `15_verify_classification_persistence.sh`
 - `16_run_dast.sh`
 - `17_run_classification_macos-ui.sh`
 - `18_configure_teller_io.sh`
@@ -51,9 +51,9 @@ source ./teller-venv/bin/activate
 ./10_run_macos_ui_regression_tests.sh
 ./11_verify_macos_crash_reporter.sh
 ./12_fetch_teller_api_data.py
-./13_verify_classification_persistence.sh
-./14_backfill_bank_statements.py
-./15_run_classification_api.py
+./13_backfill_bank_statements.py
+./14_run_classification_api.py
+./15_verify_classification_persistence.sh
 ./16_run_dast.sh
 ./17_run_classification_macos-ui.sh
 ./18_configure_teller_io.sh
@@ -82,7 +82,7 @@ Verifies every requirement ID in `requirements/*.md` is mapped to matching `#R..
 Optional single-pair mode:
 
 ```bash
-./00_verify_requirements_traceability.sh requirements/13_verify_classification_persistence-requirements.md 13_verify_classification_persistence.sh
+./00_verify_requirements_traceability.sh requirements/15_verify_classification_persistence-requirements.md 15_verify_classification_persistence.sh
 ```
 
 ### 2) Unit Tests
@@ -128,19 +128,19 @@ This checks API-to-database persistence by writing one classification via API an
 1. Start the API in one terminal:
 
 ```bash
-./15_run_classification_api.py
+./14_run_classification_api.py
 ```
 
 2. Run the verifier in another terminal:
 
 ```bash
-./13_verify_classification_persistence.sh
+./15_verify_classification_persistence.sh
 ```
 
 Strict/CI-style mode requiring explicit IDs:
 
 ```bash
-TXN_ID=txn_xxx CATEGORY_ID=123 ./13_verify_classification_persistence.sh --require-env-ids
+TXN_ID=txn_xxx CATEGORY_ID=123 ./15_verify_classification_persistence.sh --require-env-ids
 ```
 
 ### 4) Built-In Smoke Verifications in Setup Scripts
@@ -324,18 +324,18 @@ Active secret and credential sources are:
   - Runs Teller API smoke tests (`/institutions`, optionally `/accounts`).
 - `12_fetch_teller_api_data.py`
   - Runs Teller API client operations.
-- `14_backfill_bank_statements.py`
+- `13_backfill_bank_statements.py`
   - Backfills statements data.
-- `15_run_classification_api.py`
+- `14_run_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
+- `15_verify_classification_persistence.sh`
+  - End-to-end check: writes one classification via API then confirms DB persistence.
+  - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `16_run_dast.sh`
   - Runs DAST checks (Schemathesis + OWASP ZAP quick scan and related hardening checks) against running/local API targets.
 - `17_run_classification_macos-ui.sh`
   - Runs the local macOS UI app wrapper (`swift run TransactionClassifier`) from the repo root.
   - Connect tab hosts native Teller Connect enrollment/reconnect/add/delete (WebView-backed, no standalone localhost server).
-- `13_verify_classification_persistence.sh`
-  - End-to-end check: writes one classification via API then confirms DB persistence.
-  - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
   - Also captures matching cluster globals (roles/grants) for reliable restores.

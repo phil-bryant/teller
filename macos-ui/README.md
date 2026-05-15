@@ -9,7 +9,7 @@ This app now also includes a native **Connect** tab for local Teller enrollment 
 From repo root:
 
 ```zsh
-./15_run_classification_api.py
+./14_run_classification_api.py
 ```
 
 Defaults to `http://127.0.0.1:8787`. Override with:
@@ -87,8 +87,8 @@ From repo root:
 - `./10_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
 - `RUN_SAST=false RUN_MACOS_UI_DAST=true ./16_run_dast.sh` (local OWASP ZAP-backed DAST for UI-driven API traffic)
 - `./05_run_av_checks.sh` (standalone ClamAV antivirus lane)
-- `./13_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./13_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
+- `./15_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./15_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
 
 ## 5) Automated UI regression testing
 
