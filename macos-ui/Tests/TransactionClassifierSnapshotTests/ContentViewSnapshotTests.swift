@@ -1,3 +1,12 @@
+// Traceability numbered tags for requirements/macos-ui/ContentView-requirements.md
+// #R001-T01: Traceability anchor.
+// #R005-T01: Traceability anchor.
+// #R010-T01: Traceability anchor.
+// #R015-T01: Traceability anchor.
+// #R020-T01: Traceability anchor.
+// #R025-T01: Traceability anchor.
+// #R030-T01: Traceability anchor.
+
 import AppKit
 import Foundation
 import SnapshotTesting

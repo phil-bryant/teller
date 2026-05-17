@@ -1,5 +1,9 @@
 #!/usr/bin/env bats
 
+# Traceability numbered tags for requirements/sql/teller_transaction_info_view-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 setup() {

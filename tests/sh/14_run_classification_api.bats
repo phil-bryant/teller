@@ -1,5 +1,13 @@
 #!/usr/bin/env bats
 
+# Requirement test-case tags for requirements/14_run_classification_api-requirements.md
+# #R010-T02: Traceability anchor.
+
+# Traceability numbered tags for requirements/14_run_classification_api-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 teardown() {

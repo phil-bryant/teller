@@ -7,53 +7,53 @@ Applies to `08_verify_deploy_database.sh`.
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `zsh` shebang and `set -euo pipefail`.
 Tests:
-- Cause a command failure and verify script exits non-zero.
+- R001-T01: Cause a command failure and verify script exits non-zero.
 
 R005  Statement: Support configurable database connection defaults.
 Design: Read `TELLER_DB_HOST`, `TELLER_DB_PORT`, `TELLER_DB_NAME`, and `TELLER_DB_USER` with localhost defaults.
 Tests:
-- Override DB host/user env vars and verify `psql` receives the overrides.
+- R005-T01: Override DB host/user env vars and verify `psql` receives the overrides.
 
 R010  Statement: Resolve DB password from environment or 1psa fallback.
 Design: Use `TELLER_DB_PASSWORD` when set, otherwise resolve from `TELLER_PSA_ITEM`.
 Tests:
-- Unset `TELLER_DB_PASSWORD` and verify fallback credential lookup path is used.
+- R010-T01: Unset `TELLER_DB_PASSWORD` and verify fallback credential lookup path is used.
 
 R015  Statement: Refuse verification when DB password resolves empty.
 Design: Validate resolved password before running checks, print `❌ FAIL:` with a clear reason, and exit non-zero.
 Tests:
-- Force empty password and verify output starts with `❌ FAIL:` and script exits non-zero.
+- R015-T01: Force empty password and verify output starts with `❌ FAIL:` and script exits non-zero.
 
 R020  Statement: Verify required deployed database objects exist.
 Design: Check for required roles/schema/core relations deployed by `07_deploy_database.sh` and report missing objects.
 Tests:
-- Drop or rename one required object in a test DB and verify it appears in failure output.
+- R020-T01: Drop or rename one required object in a test DB and verify it appears in failure output.
 
 R025  Statement: Verify transaction classification FK cascades deletes.
 Design: Assert `teller.transaction_nys_snw_category(transaction_id)` references `teller.transaction(transaction_id)` with `ON DELETE CASCADE`.
 Tests:
-- Alter FK without cascade and verify script fails with explicit FK diagnostic.
+- R025-T01: Alter FK without cascade and verify script fails with explicit FK diagnostic.
 
 R030  Statement: Verify updated_at trigger wiring after deploy.
 Design: Assert `teller.update_updated_at` exists and that `teller.transaction_nys_snw_category` has a non-internal trigger calling it.
 Tests:
-- Drop function or trigger and verify script fails with explicit trigger diagnostic.
+- R030-T01: Drop function or trigger and verify script fails with explicit trigger diagnostic.
 
 R040  Statement: Detect tables missing updated_at trigger coverage.
 Design: Compare all `teller` base tables that include `updated_at` against enabled non-internal triggers using `teller.update_updated_at`.
 Tests:
-- Remove one trigger in a test DB and verify the table appears in failure output.
+- R040-T01: Remove one trigger in a test DB and verify the table appears in failure output.
 
 R045  Statement: Exit non-zero when updated_at trigger coverage gaps are detected.
 Design: Treat any missing table rows from the coverage query as failure and print each table with a clear `missing updated_at trigger coverage:` diagnostic.
 Tests:
-- Verify output includes each missing table and exits non-zero when query returns uncovered tables.
+- R045-T01: Verify output includes each missing table and exits non-zero when query returns uncovered tables.
 
 R035  Statement: Print explicit pass/fail verification result.
 Design: Print one `✅ PASS:` line only when all checks pass (including updated_at coverage); otherwise print `❌ FAIL:` header, list each failed check, and exit non-zero.
 Tests:
-- Verify all-pass run emits a single `✅ PASS:` line.
-- Verify any failed check emits `❌ FAIL:` details and exits non-zero.
+- R035-T01: Verify all-pass run emits a single `✅ PASS:` line.
+- R035-T02: Verify any failed check emits `❌ FAIL:` details and exits non-zero.
 
 ## Changelog
 

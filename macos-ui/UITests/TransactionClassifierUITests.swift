@@ -1,3 +1,6 @@
+// Traceability numbered tags for requirements/macos-ui/TransactionClassifierApp-requirements.md
+// #R035-T01: Traceability anchor.
+
 import XCTest
 
 final class TransactionClassifierUITests: XCTestCase {

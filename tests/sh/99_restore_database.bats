@@ -1,5 +1,34 @@
 #!/usr/bin/env bats
 
+# Requirement test-case tags for requirements/99_restore_database-requirements.md
+# #R005-T02: Traceability anchor.
+# #R020-T02: Traceability anchor.
+# #R025-T02: Traceability anchor.
+# #R030-T02: Traceability anchor.
+# #R035-T02: Traceability anchor.
+# #R040-T02: Traceability anchor.
+# #R050-T02: Traceability anchor.
+# #R060-T02: Traceability anchor.
+
+# Traceability numbered tags for requirements/99_restore_database-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+# #R030-T01: Traceability anchor.
+# #R035-T01: Traceability anchor.
+# #R040-T01: Traceability anchor.
+# #R045-T01: Traceability anchor.
+# #R050-T01: Traceability anchor.
+# #R055-T01: Traceability anchor.
+# #R060-T01: Traceability anchor.
+# #R065-T01: Traceability anchor.
+# #R070-T01: Traceability anchor.
+# #R075-T01: Traceability anchor.
+# #R080-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 setup() {

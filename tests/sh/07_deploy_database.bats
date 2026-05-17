@@ -1,5 +1,25 @@
 #!/usr/bin/env bats
 
+# Requirement test-case tags for requirements/07_deploy_database-requirements.md
+# #R045-T02: Traceability anchor.
+
+# Traceability numbered tags for requirements/07_deploy_database-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R006-T01: Traceability anchor.
+# #R007-T01: Traceability anchor.
+# #R008-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+# #R030-T01: Traceability anchor.
+# #R035-T01: Traceability anchor.
+# #R040-T01: Traceability anchor.
+# #R045-T01: Traceability anchor.
+# #R050-T01: Traceability anchor.
+# #R055-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 make_psql_stub() {

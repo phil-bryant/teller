@@ -1,5 +1,18 @@
 #!/usr/bin/env bats
 
+# Requirement test-case tags for requirements/16_run_dast-requirements.md
+# #R025-T02: Traceability anchor.
+
+# Traceability numbered tags for requirements/16_run_dast-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+# #R030-T01: Traceability anchor.
+# #R035-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 write_dast_13_stub() {

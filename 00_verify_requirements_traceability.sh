@@ -106,7 +106,7 @@ extract_source_files_from_requirements() {
             while (match(line, /`[^`]+`/)) {
                 token = substr(line, RSTART + 1, RLENGTH - 2)
                 sub(/^\.\//, "", token)
-                if (token ~ /^[A-Za-z0-9._\/-]+\.(sh|py|swift|sql)$/) {
+                if (token ~ /^[A-Za-z0-9._\/-]+\.(sh|py|swift|sql|c|cc|cpp|cxx|m|mm|h|hpp)$/ || token == "Makefile" || token == ".gitignore") {
                     print token
                 }
                 line = substr(line, RSTART + RLENGTH)
@@ -137,7 +137,8 @@ import sys
 
 search_root = sys.argv[1]
 stem = sys.argv[2]
-allowed_exts = {"sh", "py", "swift", "sql"}
+allowed_exts = {"sh", "py", "swift", "sql", "c", "cc", "cpp", "cxx", "m", "mm", "h", "hpp"}
+allowed_stems = {"Makefile", ".gitignore"}
 matches = []
 
 if os.path.isdir(search_root):
@@ -147,6 +148,8 @@ if os.path.isdir(search_root):
             if not dot:
                 continue
             if base == stem and ext in allowed_exts:
+                matches.append(os.path.join(root, name))
+            if name == stem and name in allowed_stems:
                 matches.append(os.path.join(root, name))
 
 for path in sorted(set(matches)):
@@ -180,10 +183,16 @@ ui_tests_file = sys.argv[4]
 
 repo_root = os.getcwd()
 if os.path.isabs(requirements_file):
+    normalized_requirements = os.path.realpath(requirements_file)
+    marker = f"{os.sep}requirements{os.sep}"
+    if marker in normalized_requirements:
+        inferred_root = normalized_requirements.split(marker, 1)[0]
+        if inferred_root and os.path.isdir(inferred_root):
+            repo_root = inferred_root
     try:
-        requirements_file = os.path.relpath(requirements_file, repo_root)
+        requirements_file = os.path.relpath(normalized_requirements, repo_root)
     except ValueError:
-        pass
+        requirements_file = normalized_requirements
 
 seen_default = set()
 seen_ui = set()
@@ -225,6 +234,12 @@ if os.path.isfile(source_list_file):
             if value:
                 source_files.append(value)
 
+requirements_base = os.path.basename(requirements_file)
+requirements_stem = requirements_base
+if requirements_stem.endswith("-requirements.md"):
+    requirements_stem = requirements_stem[:-len("-requirements.md")]
+add_path(f"tests/sh/{requirements_stem}.bats", "default")
+
 for source_file in source_files:
     if os.path.isabs(source_file):
         try:
@@ -237,13 +252,19 @@ for source_file in source_files:
     source_norm = source_file.replace("\\", "/")
     if ext == ".sh":
         add_path(f"tests/sh/{stem}.bats", "default")
+    if base == "Makefile":
+        add_path("tests/sh/Makefile.bats", "default")
     if ext == ".py":
         if source_norm.startswith("teller/"):
             add_path(f"tests/py/test_{stem}.py", "default")
         elif source_norm.startswith(tuple(f"{n:02d}_" for n in range(100))):
             add_path(f"tests/sh/{stem}.bats", "default")
+        else:
+            add_path(f"tests/py/test_{stem}.py", "default")
     if ext == ".sql":
         add_path(f"tests/sh/{stem}.bats", "default")
+        add_path(f"tests/sql/{stem}.sql", "default")
+        add_path(f"tests/sql/test_{stem}.sql", "default")
     if ext == ".swift" and source_norm.startswith("macos-ui/Sources/"):
         collect_swift_lane("macos-ui/Tests", "default", stem=stem)
         collect_swift_lane("macos-ui/UITests", "ui", stem=stem)
@@ -299,6 +320,199 @@ discover_combined_tests_for_requirements() {
     ui_tests_file="$(mktemp)"
     discover_test_files_for_requirements "$requirements_file" "$source_list_file" "$default_tests_file" "$ui_tests_file"
     cat "$default_tests_file" "$ui_tests_file" | sort -u > "$combined_tests_file"
+}
+
+extract_numbered_test_ids() {
+    local test_file="$1" out_file="$2"
+    awk '{
+        while (match($0, /#R[0-9]{3}(-[0-9]{3})*-T[0-9]{2}/)) {
+            tag = substr($0, RSTART + 1, RLENGTH - 1)
+            print tag
+            $0 = substr($0, RSTART + RLENGTH)
+        }
+    }' "$test_file" | sort -u > "$out_file"
+}
+
+collect_numbered_test_ids_from_list() {
+    local test_list_file="$1" out_file="$2"
+    local test_file tmp_ids
+    tmp_ids="$(mktemp)"
+    : > "$tmp_ids"
+    if [ ! -s "$test_list_file" ]; then
+        : > "$out_file"
+        return 0
+    fi
+    while IFS= read -r test_file; do
+        [ -n "$test_file" ] || continue
+        [ -f "$test_file" ] || continue
+        local one_file_ids
+        one_file_ids="$(mktemp)"
+        extract_numbered_test_ids "$test_file" "$one_file_ids"
+        cat "$one_file_ids" >> "$tmp_ids"
+    done < "$test_list_file"
+    sort -u "$tmp_ids" > "$out_file"
+}
+
+extract_numbered_requirement_test_ids() {
+    local requirements_file="$1" out_file="$2"
+    python3 - "$requirements_file" "$out_file" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+requirements_file = Path(sys.argv[1])
+out_file = Path(sys.argv[2])
+
+req_line_re = re.compile(r'^(R\d{3}(?:-\d{3})*)\s+Statement:')
+numbered_test_re = re.compile(r'^-\s+(R\d{3}(?:-\d{3})*)-T(\d{2})\s*:')
+
+current_requirement_id = None
+in_tests = False
+ids = set()
+
+for raw_line in requirements_file.read_text(encoding="utf-8").splitlines():
+    stripped = raw_line.strip()
+    req_match = req_line_re.match(stripped)
+    if req_match:
+        current_requirement_id = req_match.group(1)
+        in_tests = False
+        continue
+    if stripped == "Tests:":
+        in_tests = True
+        continue
+    if in_tests and stripped.startswith("- "):
+        match = numbered_test_re.match(stripped)
+        if match and current_requirement_id and match.group(1) == current_requirement_id:
+            ids.add(f"{match.group(1)}-T{match.group(2)}")
+        continue
+    if in_tests and stripped and not stripped.startswith("- "):
+        in_tests = False
+
+with out_file.open("w", encoding="utf-8") as handle:
+    for item in sorted(ids):
+        handle.write(f"{item}\n")
+PY
+}
+
+verify_requirements_numbered_test_bullets() {
+    local requirements_file="$1"
+    python3 - "$requirements_file" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+requirements_file = Path(sys.argv[1])
+lines = requirements_file.read_text(encoding="utf-8").splitlines()
+
+req_line_re = re.compile(r'^(R\d{3}(?:-\d{3})*)\s+Statement:')
+numbered_test_re = re.compile(r'^-\s+(R\d{3}(?:-\d{3})*)-T(\d{2})\s*:')
+
+current_requirement_id = None
+in_tests = False
+seen_numbers = {}
+issues = []
+
+for idx, raw_line in enumerate(lines, start=1):
+    stripped = raw_line.strip()
+    req_match = req_line_re.match(stripped)
+    if req_match:
+        current_requirement_id = req_match.group(1)
+        in_tests = False
+        seen_numbers.setdefault(current_requirement_id, [])
+        continue
+    if stripped == "Tests:":
+        in_tests = True
+        continue
+    if in_tests and stripped.startswith("- "):
+        match = numbered_test_re.match(stripped)
+        if not match:
+            expected = ""
+            if current_requirement_id:
+                next_number = len(seen_numbers.get(current_requirement_id, [])) + 1
+                expected = f" (expected prefix: {current_requirement_id}-T{next_number:02d})"
+            issues.append(f"{requirements_file}:{idx}: unnumbered/invalid test bullet under Tests:{expected}")
+            continue
+        bullet_requirement_id = match.group(1)
+        bullet_test_number = int(match.group(2))
+        if current_requirement_id and bullet_requirement_id != current_requirement_id:
+            issues.append(
+                f"{requirements_file}:{idx}: test bullet {bullet_requirement_id}-T{bullet_test_number:02d} does not match requirement {current_requirement_id}"
+            )
+            continue
+        if current_requirement_id:
+            seen_numbers[current_requirement_id].append(bullet_test_number)
+        continue
+    if in_tests and stripped and not stripped.startswith("- "):
+        in_tests = False
+
+if issues:
+    for issue in issues:
+        print(issue)
+    raise SystemExit(1)
+PY
+}
+
+#R090: Enforce numbered test tags (#Rxxx-T##) in discovered test files for each requirement ID.
+verify_numbered_test_traceability() {
+    local requirements_file="$1" source_list_file="$2"
+    if [ "${STRICT_TRACEABILITY_NUMBERED_TAGS:-true}" = "false" ]; then
+        echo "ℹ️  Numbered test-tag enforcement skipped for ${requirements_file} (set STRICT_TRACEABILITY_NUMBERED_TAGS=true to re-enable)."
+        return 0
+    fi
+    local req_ids_file req_numbered_test_ids_file combined_tests_file numbered_test_ids_file scoped_test_ids_file missing_file extra_file missing_req_testcase_ids_file
+    req_ids_file="$(mktemp)"
+    req_numbered_test_ids_file="$(mktemp)"
+    combined_tests_file="$(mktemp)"
+    numbered_test_ids_file="$(mktemp)"
+    scoped_test_ids_file="$(mktemp)"
+    missing_file="$(mktemp)"
+    extra_file="$(mktemp)"
+    missing_req_testcase_ids_file="$(mktemp)"
+    extract_requirement_ids "$requirements_file" "$req_ids_file"
+    extract_numbered_requirement_test_ids "$requirements_file" "$req_numbered_test_ids_file"
+    discover_combined_tests_for_requirements "$requirements_file" "$source_list_file" "$combined_tests_file"
+    collect_numbered_test_ids_from_list "$combined_tests_file" "$numbered_test_ids_file"
+    : > "$missing_req_testcase_ids_file"
+    while IFS= read -r req_id; do
+        [ -n "$req_id" ] || continue
+        if awk -v id="$req_id" 'index($0, id "-T") == 1 { found=1 } END { exit found ? 0 : 1 }' "$req_numbered_test_ids_file"; then
+            continue
+        fi
+        printf "%s\n" "$req_id" >> "$missing_req_testcase_ids_file"
+    done < "$req_ids_file"
+    sort -u "$missing_req_testcase_ids_file" -o "$missing_req_testcase_ids_file"
+    if [ -s "$missing_req_testcase_ids_file" ]; then
+        echo "❌ FAIL (numbered-test-tags): missing Rxxx-T## entries in ${requirements_file} for requirement IDs:"
+        sed 's/^/  - /' "$missing_req_testcase_ids_file"
+        return 1
+    fi
+
+    awk '
+        NR == FNR { req[$1] = 1; next }
+        {
+            split($0, parts, "-T")
+            req_id = parts[1]
+            if (req_id in req) {
+                print $0
+            }
+        }
+    ' "$req_ids_file" "$numbered_test_ids_file" | sort -u > "$scoped_test_ids_file"
+    comm -23 "$req_numbered_test_ids_file" "$scoped_test_ids_file" > "$missing_file"
+    comm -13 "$req_numbered_test_ids_file" "$scoped_test_ids_file" > "$extra_file"
+    if [ ! -s "$missing_file" ] && [ ! -s "$extra_file" ]; then
+        echo "✅ PASS (numbered-test-tags): ${requirements_file}"
+        return 0
+    fi
+    echo "❌ FAIL (numbered-test-tags): requirements/tests #Rxxx-T## are not 1:1 for ${requirements_file}:"
+    if [ -s "$missing_file" ]; then
+        echo "  Missing in tests (present in requirements):"
+        sed 's/^/    - /' "$missing_file"
+    fi
+    if [ -s "$extra_file" ]; then
+        echo "  Missing in requirements (present in tests):"
+        sed 's/^/    - /' "$extra_file"
+    fi
+    return 1
 }
 
 collect_ids_from_test_list() {
@@ -378,6 +592,22 @@ is_locked_source_file() {
         /^[[:space:]]*##[[:space:]]*DO_NOT_MODIFY_THIS_FILE[[:space:]]*$/ { b = 1 }
         END { exit (a && b) ? 0 : 1 }
     ' "$source_file"
+}
+
+is_requirements_only_mode() {
+    local requirements_file="$1"
+    awk '
+        /^## Scope$/ { in_scope = 1; next }
+        /^## / && in_scope { in_scope = 0 }
+        /^R[0-9]{3}(-[0-9]{3})*/ && in_scope { in_scope = 0 }
+        in_scope {
+            line = tolower($0)
+            if (line ~ /^[[:space:]]*requirements-only mode:[[:space:]]*true[[:space:]]*\.?[[:space:]]*$/) {
+                found = 1
+            }
+        }
+        END { exit found ? 0 : 1 }
+    ' "$requirements_file"
 }
 
 verify_locked_exception() {
@@ -477,6 +707,11 @@ verify_single_pair() {
 verify_single_pair_with_tests() {
     local requirements_file="$1" source_file="$2"
     local source_list_file combined_tests_file tests_inline status=0
+    if is_requirements_only_mode "$requirements_file"; then
+        #R075: Skip source/test traceability for explicit requirements-only docs.
+        echo "✅ PASS (requirements-only): ${requirements_file} (source/test traceability skipped)"
+        return 0
+    fi
     source_list_file="$(mktemp)"
     combined_tests_file="$(mktemp)"
     printf "%s\n" "$source_file" > "$source_list_file"
@@ -487,10 +722,23 @@ verify_single_pair_with_tests() {
     echo "- requirements: $requirements_file"
     echo "- source: $source_file"
     echo "- tests: $tests_inline"
+    if is_locked_source_file "$source_file"; then
+        # Locked sources use policy-based verification and are excluded from automatic test-tag pairing.
+        verify_single_pair "$requirements_file" "$source_file" 0
+        return $?
+    fi
     if ! verify_single_pair "$requirements_file" "$source_file" 0; then
         status=1
     fi
     if ! verify_requirements_test_traceability "$requirements_file" "$source_list_file"; then
+        status=1
+    fi
+    if ! verify_requirements_numbered_test_bullets "$requirements_file"; then
+        echo "❌ FAIL (requirements-numbered-tests): ${requirements_file} contains malformed test bullets."
+        status=1
+    fi
+    #R090: Enforce numbered test tags for each requirement ID.
+    if ! verify_numbered_test_traceability "$requirements_file" "$source_list_file"; then
         status=1
     fi
     [ "$status" -eq 0 ]
@@ -498,8 +746,15 @@ verify_single_pair_with_tests() {
 
 verify_requirements_file_sources() {
     local requirements_file="$1"
-    local source_list_file source_file found_source=0 file_fail=0
+    local source_list_file source_file found_source=0 file_fail=0 enforceable_source_list_file
+    if is_requirements_only_mode "$requirements_file"; then
+        #R075: Skip source/test traceability for explicit requirements-only docs.
+        echo "✅ PASS (requirements-only): ${requirements_file} (source/test traceability skipped)"
+        return 0
+    fi
     source_list_file="$(mktemp)"
+    enforceable_source_list_file="$(mktemp)"
+    : > "$enforceable_source_list_file"
     #R010: Resolve source files referenced by each requirements document.
     extract_source_files_from_requirements "$requirements_file" "$source_list_file"
     if [ ! -s "$source_list_file" ]; then
@@ -520,6 +775,9 @@ verify_requirements_file_sources() {
             file_fail=1
             continue
         fi
+        if ! is_locked_source_file "$source_file"; then
+            printf "%s\n" "$source_file" >> "$enforceable_source_list_file"
+        fi
         local one_source_file one_source_tests_file one_source_tests_inline
         one_source_file="$(mktemp)"
         one_source_tests_file="$(mktemp)"
@@ -538,8 +796,20 @@ verify_requirements_file_sources() {
             file_fail=1
         fi
     done < "$source_list_file"
-    if ! verify_requirements_test_traceability "$requirements_file" "$source_list_file"; then
-        file_fail=1
+    if [ -s "$enforceable_source_list_file" ]; then
+        if ! verify_requirements_test_traceability "$requirements_file" "$enforceable_source_list_file"; then
+            file_fail=1
+        fi
+        if ! verify_requirements_numbered_test_bullets "$requirements_file"; then
+            echo "❌ FAIL (requirements-numbered-tests): ${requirements_file} contains malformed test bullets."
+            file_fail=1
+        fi
+        #R090: Enforce numbered test tags for each requirement ID.
+        if ! verify_numbered_test_traceability "$requirements_file" "$enforceable_source_list_file"; then
+            file_fail=1
+        fi
+    else
+        echo "✅ PASS (locked-source-test-skip): ${requirements_file} (all mapped sources are policy-locked)"
     fi
     if [ "$found_source" -eq 0 ]; then
         echo "❌ FAIL: ${requirements_file} has no source files to verify."
@@ -573,6 +843,10 @@ verify_all_requirements() {
     verify_numbered_script_requirements_coverage || fail=$((fail + 1))
     #R045: Enforce numbered requirements docs map to same-numbered numbered scripts.
     verify_numbered_requirement_scope_alignment || fail=$((fail + 1))
+    #R080: Enforce numbered script-to-test coverage completeness for Teller stack scripts.
+    verify_numbered_script_test_coverage || fail=$((fail + 1))
+    #R085: Enforce repository software-to-requirements coverage completeness.
+    verify_repository_source_requirements_coverage || fail=$((fail + 1))
     echo ""
     echo "Summary: total=${total} pass=${pass} fail=${fail}"
     if [ "$fail" -eq 0 ]; then
@@ -653,6 +927,150 @@ verify_numbered_requirement_scope_alignment() {
         echo "✅ PASS: numbered requirements scope alignment complete (NN requirements map to NN scripts)."
         return 0
     fi
+    return 1
+}
+
+verify_numbered_script_test_coverage() {
+    if [ "${STRICT_TRACEABILITY_FULL_COVERAGE:-true}" = "false" ]; then
+        echo "ℹ️  Numbered script test-coverage check skipped (set STRICT_TRACEABILITY_FULL_COVERAGE=true to re-enable)."
+        return 0
+    fi
+    local script_file stem missing
+    missing="false"
+    for script_file in [0-9][0-9]_*.sh [0-9][0-9]_*.py; do
+        [ -e "$script_file" ] || continue
+        stem="${script_file%.*}"
+        if [ -f "tests/sh/${stem}.bats" ]; then
+            continue
+        fi
+        if [ "$missing" = "false" ]; then
+            echo "❌ FAIL: numbered scripts missing companion shell tests:"
+        fi
+        echo "  - ${script_file} (expected tests/sh/${stem}.bats)"
+        missing="true"
+    done
+    if [ "$missing" = "false" ]; then
+        echo "✅ PASS: numbered script test coverage complete (every numbered script has tests/sh/NN_*.bats)."
+        return 0
+    fi
+    return 1
+}
+
+list_repository_software_files() {
+    local out_file="$1" excluded_path="${2:-}"
+    python3 - "$out_file" "$excluded_path" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+out_path = Path(sys.argv[1])
+excluded_path = sys.argv[2].strip()
+repo_root = Path.cwd().resolve()
+excluded_real = ""
+if excluded_path:
+    excluded_real = str(Path(excluded_path).resolve())
+allowed_exts = {".sh", ".py", ".swift", ".sql", ".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".h", ".hpp"}
+excluded_dirs = {
+    ".git",
+    ".cursor",
+    "requirements",
+    "tests",
+    "Tests",
+    "bin",
+    "backups",
+    ".security-reports",
+    ".gocache",
+    ".gomodcache",
+    ".build",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "site-packages",
+    ".ruff_cache",
+    ".hypothesis",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".tox",
+    "node_modules",
+    ".gradle",
+    "Pods",
+    ".swiftpm",
+    "teller-venv",
+    ".security-venv",
+    ".derivedData-ui-tests",
+}
+excluded_dir_prefixes = (".derivedData",)
+excluded_relative_paths = {"storage/schema.sql"}
+excluded_relative_prefixes = (
+    "storage/sql/",
+    "archive/",
+    "macos-ui/",
+    "scripts/",
+    "sql/postgres/",
+    "teller/",
+    "teller-connect-ui/",
+)
+files = set()
+for root, dirs, filenames in os.walk(repo_root):
+    dirs[:] = [
+        d for d in dirs
+        if d not in excluded_dirs and not any(d.startswith(prefix) for prefix in excluded_dir_prefixes)
+    ]
+    for filename in filenames:
+        path = Path(root) / filename
+        if excluded_real and str(path.resolve()) == excluded_real:
+            continue
+        if path.suffix.lower() in allowed_exts:
+            rel = path.relative_to(repo_root).as_posix()
+            if rel in excluded_relative_paths:
+                continue
+            if any(rel.startswith(prefix) for prefix in excluded_relative_prefixes):
+                continue
+            files.add(rel)
+with out_path.open("w", encoding="utf-8") as handle:
+    for rel in sorted(files):
+        handle.write(f"{rel}\n")
+PY
+}
+
+verify_repository_source_requirements_coverage() {
+    if [ "${STRICT_TRACEABILITY_FULL_COVERAGE:-true}" = "false" ]; then
+        echo "ℹ️  Repository software coverage check skipped (set STRICT_TRACEABILITY_FULL_COVERAGE=true to re-enable)."
+        return 0
+    fi
+    local all_sources_file covered_sources_file uncovered_sources_file req_file source_file
+    all_sources_file="$(mktemp)"
+    covered_sources_file="$(mktemp)"
+    uncovered_sources_file="$(mktemp)"
+    #R085: Auto-detect repository software files missing requirements coverage.
+    list_repository_software_files "$all_sources_file" "$0"
+    : > "$covered_sources_file"
+    while IFS= read -r req_file; do
+        [ -n "$req_file" ] || continue
+        local source_list_file
+        source_list_file="$(mktemp)"
+        if is_requirements_only_mode "$req_file"; then
+            continue
+        fi
+        extract_source_files_from_requirements "$req_file" "$source_list_file"
+        if [ ! -s "$source_list_file" ]; then
+            extract_source_files_from_analogous_tree "$req_file" "$source_list_file"
+        fi
+        while IFS= read -r source_file; do
+            [ -n "$source_file" ] || continue
+            if [ -f "$source_file" ]; then
+                printf "%s\n" "$source_file" >> "$covered_sources_file"
+            fi
+        done < "$source_list_file"
+    done < <(list_requirements_files)
+    sort -u "$covered_sources_file" -o "$covered_sources_file"
+    comm -23 "$all_sources_file" "$covered_sources_file" > "$uncovered_sources_file"
+    if [ ! -s "$uncovered_sources_file" ]; then
+        echo "✅ PASS: repository software files are covered by requirements docs."
+        return 0
+    fi
+    echo "❌ FAIL: repository software files missing requirements coverage:"
+    sed 's/^/  - /' "$uncovered_sources_file"
     return 1
 }
 

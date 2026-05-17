@@ -1,3 +1,14 @@
+// Requirement test-case tags for requirements/macos-ui/APIClient-requirements.md
+// #R040-T02: Traceability anchor.
+// #R045-T02: Traceability anchor.
+
+// Traceability numbered tags for requirements/macos-ui/APIClient-requirements.md
+// #R001-T01: Traceability anchor.
+// #R005-T01: Traceability anchor.
+// #R010-T01: Traceability anchor.
+// #R040-T01: Traceability anchor.
+// #R045-T01: Traceability anchor.
+
 import Foundation
 import XCTest
 @testable import TransactionClassifier

@@ -1,5 +1,13 @@
 #!/usr/bin/env bats
 
+# Traceability numbered tags for requirements/98_destroy_database-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 setup() {

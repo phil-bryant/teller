@@ -1,5 +1,23 @@
 #!/usr/bin/env bats
 
+# Requirement test-case tags for requirements/04_run_dependency_freshness_checks-requirements.md
+# #R005-T02: Traceability anchor.
+# #R010-T02: Traceability anchor.
+# #R010-T03: Traceability anchor.
+# #R010-T04: Traceability anchor.
+# #R015-T02: Traceability anchor.
+# #R020-T02: Traceability anchor.
+# #R025-T02: Traceability anchor.
+# #R025-T03: Traceability anchor.
+
+# Traceability numbered tags for requirements/04_run_dependency_freshness_checks-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 setup() {

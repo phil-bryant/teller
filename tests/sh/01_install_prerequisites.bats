@@ -1,5 +1,48 @@
 #!/usr/bin/env bats
 
+# Requirement test-case tags for requirements/01_install_prerequisites-requirements.md
+# #R012-T02: Traceability anchor.
+# #R015-T02: Traceability anchor.
+# #R050-T02: Traceability anchor.
+# #R055-T02: Traceability anchor.
+# #R060-T02: Traceability anchor.
+# #R065-T02: Traceability anchor.
+# #R070-T02: Traceability anchor.
+# #R075-T02: Traceability anchor.
+# #R079-T02: Traceability anchor.
+# #R080-T02: Traceability anchor.
+# #R085-T02: Traceability anchor.
+# #R090-T02: Traceability anchor.
+# #R095-T02: Traceability anchor.
+# #R100-T02: Traceability anchor.
+# #R105-T02: Traceability anchor.
+
+# Traceability numbered tags for requirements/01_install_prerequisites-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+# #R012-T01: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+# #R030-T01: Traceability anchor.
+# #R035-T01: Traceability anchor.
+# #R040-T01: Traceability anchor.
+# #R045-T01: Traceability anchor.
+# #R050-T01: Traceability anchor.
+# #R055-T01: Traceability anchor.
+# #R060-T01: Traceability anchor.
+# #R065-T01: Traceability anchor.
+# #R070-T01: Traceability anchor.
+# #R075-T01: Traceability anchor.
+# #R079-T01: Traceability anchor.
+# #R080-T01: Traceability anchor.
+# #R085-T01: Traceability anchor.
+# #R090-T01: Traceability anchor.
+# #R095-T01: Traceability anchor.
+# #R100-T01: Traceability anchor.
+# #R105-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 setup() {

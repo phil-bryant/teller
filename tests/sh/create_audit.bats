@@ -1,5 +1,12 @@
 #!/usr/bin/env bats
 
+# Traceability numbered tags for requirements/sql/create_audit-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 setup() {

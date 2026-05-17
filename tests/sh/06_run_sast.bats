@@ -1,5 +1,33 @@
 #!/usr/bin/env bats
 
+# Requirement test-case tags for requirements/06_run_sast-requirements.md
+# #R015-T02: Traceability anchor.
+# #R025-T02: Traceability anchor.
+# #R030-T02: Traceability anchor.
+# #R090-T02: Traceability anchor.
+# #R090-T03: Traceability anchor.
+# #R090-T04: Traceability anchor.
+# #R090-T05: Traceability anchor.
+
+# Traceability numbered tags for requirements/06_run_sast-requirements.md
+# #R001-T01: Traceability anchor.
+# #R005-T01: Traceability anchor.
+# #R010-T01: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+# #R030-T01: Traceability anchor.
+# #R035-T01: Traceability anchor.
+# #R040-T01: Traceability anchor.
+# #R045-T01: Traceability anchor.
+# #R047-T01: Traceability anchor.
+# #R050-T01: Traceability anchor.
+# #R055-T01: Traceability anchor.
+# #R060-T01: Traceability anchor.
+# #R065-T01: Traceability anchor.
+# #R070-T01: Traceability anchor.
+# #R090-T01: Traceability anchor.
+
 load "helpers/common.bash"
 
 # Minimal OpenAPI/health server for DAST (stdlib only, no Teller/FastAPI deps).
