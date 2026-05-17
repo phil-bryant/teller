@@ -8,7 +8,7 @@ cd "$SCRIPT_DIR"
 
 MACOS_UI_DIR="${MACOS_UI_DIR:-./macos-ui}"
 CRASH_REPORT_DIR="${CRASH_REPORT_DIR:-${HOME}/Library/Application Support/TransactionClassifier/CrashReports}"
-STARTUP_WAIT_SECONDS="${STARTUP_WAIT_SECONDS:-2}"
+STARTUP_WAIT_SECONDS="${STARTUP_WAIT_SECONDS:-4}"
 LAUNCH_LOG="$(mktemp)"
 MARKER_FILE="$(mktemp)"
 latest_plcrash=""
@@ -127,6 +127,13 @@ fi
 
 if ! artifacts_are_fresh; then
   echo "❌ latest crash artifacts are not newer than this verification run."
+  echo "ℹ️  waited ${STARTUP_WAIT_SECONDS}s for relaunch persistence."
+  if [[ -n "$latest_plcrash" ]]; then
+    echo "ℹ️  latest .plcrash artifact: ${latest_plcrash}"
+  fi
+  if [[ -n "$latest_json" ]]; then
+    echo "ℹ️  latest .json artifact: ${latest_json}"
+  fi
   echo "---- launch output ----"
   cat "$LAUNCH_LOG"
   echo "-----------------------"
