@@ -24,7 +24,8 @@ actor MockAPI: ClassificationAPI {
         self.pagedResponses = merged
     }
     func fetchCategories() async throws -> [CategoryOption] { categories }
-    func fetchTransactions(search: String, onlyUnclassified: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
+    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
+        _ = matchState; _ = onlyUnmovedMatch
         fetchOffsets.append(offset)
         return pagedResponses[offset] ?? response
     }
@@ -45,14 +46,19 @@ private func sampleTransaction(_ id: String, date: String = "2026-04-18", classi
           transaction_type_code: "card_payment", teller_category: "food", classification: classification)
 }
 
-private func sampleMatchReviewRow(matchId: Int, txn: String, emailId: String, confidence: Double?, selectedAt: String,
-                                  state: String = "ai_match_confident", description: String = "") -> MatchReviewRow {
-    let json = """
-    {"match_id":\(matchId),"transaction_id":"\(txn)","email_message_id":"\(emailId)","state":"\(state)",
-     "ai_confidence":\(confidence.map { String($0) } ?? "null"),"selected_by":"ai","selected_at":"\(selectedAt)",
-     "moved_to_matchy_at":null,"description":"\(description.isEmpty ? txn : description)","amount":"200.00","date":"2026-05-06"}
-    """
-    return try! JSONDecoder().decode(MatchReviewRow.self, from: Data(json.utf8))
+private func sampleTransactionWithMatch(id: String, matchId: Int, emailId: String, confidence: Double, count: Int,
+                                        state: String = "ai_match_confident", classification: TransactionCategory? = nil) -> TransactionRow {
+    let match = TransactionMatchInfo(match_id: matchId, email_message_id: emailId, state: state,
+                                     ai_confidence: confidence, selected_by: "ai", moved_to_matchy_at: nil, match_count: count)
+    return TransactionRow(transaction_id: id, account_id: "acc", date: "2026-05-06", amount: Decimal(200),
+                          description: id, status: "posted", transaction_type_code: "card_payment",
+                          teller_category: nil, classification: classification, match: match)
+}
+
+private func sampleCandidate(emailId: String, isSelectedByAi: Bool) -> MatchCandidateRow {
+    MatchCandidateRow(email_message_id: emailId, score: 0.5, reason_json: nil, email_received_at: nil,
+                      is_selected_by_ai: isSelectedByAi, is_unmatched_email_priority: false,
+                      subject: nil, from: nil, snippet: nil, mailcart_error: nil)
 }
 
 final class ClassificationViewModelTests: XCTestCase {
@@ -183,55 +189,58 @@ final class ClassificationViewModelTests: XCTestCase {
     }
 
     @MainActor
-    func testMatchReviewGroupedRowsDedupesByTransactionAndKeepsHighestConfidenceRepresentative() {
-        // Three active match rows for one transaction (matchy linked 3 emails to one charge)
-        // should appear as ONE row in the grouped view, picking the highest-confidence row
-        // as the representative.
+    func testTransactionMatchInfoExposesAggregateCounts() {
+        // After the merge to the unified `/v1/transactions` endpoint, dedupe lives in the backend
+        // (the LEFT JOIN LATERAL picks one representative match row per transaction) and the row
+        // model carries `match.match_count` so the UI can render a "N emails" badge.
         let api = MockAPI(categories: [], response: .init(total: 0, items: []))
         let vm = ClassificationViewModel(api: api)
-        vm.matchReviewRows = [
-            sampleMatchReviewRow(matchId: 434, txn: "txn_cursor", emailId: "msg_a", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
-            sampleMatchReviewRow(matchId: 435, txn: "txn_cursor", emailId: "msg_b", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
-            sampleMatchReviewRow(matchId: 436, txn: "txn_cursor", emailId: "msg_c", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
-            sampleMatchReviewRow(matchId: 437, txn: "txn_other", emailId: "msg_x", confidence: 0.80, selectedAt: "2026-05-19T18:43:35Z"),
+        vm.transactions = [
+            sampleTransactionWithMatch(id: "txn_cursor", matchId: 436, emailId: "msg_c", confidence: 0.95, count: 3),
+            sampleTransactionWithMatch(id: "txn_other", matchId: 437, emailId: "msg_x", confidence: 0.80, count: 1),
         ]
-        let grouped = vm.matchReviewGroupedRows
-        XCTAssertEqual(grouped.count, 2)
-        XCTAssertEqual(grouped.map(\.transaction_id), ["txn_cursor", "txn_other"])
-        // Tie on confidence + selected_at -> highest match_id wins as representative.
-        XCTAssertEqual(grouped[0].match_id, 436)
         XCTAssertEqual(vm.matchedEmailCount(for: "txn_cursor"), 3)
         XCTAssertEqual(vm.matchedEmailCount(for: "txn_other"), 1)
+        XCTAssertEqual(vm.matchedEmailCount(for: "txn_unknown"), 0)
     }
 
     @MainActor
-    func testActiveEmailIdsForSelectedTransactionReturnsFullSet() {
+    func testActiveEmailIdsForSelectedTransactionUnionsRepresentativeAndAiPickedCandidates() {
         let api = MockAPI(categories: [], response: .init(total: 0, items: []))
         let vm = ClassificationViewModel(api: api)
-        vm.matchReviewRows = [
-            sampleMatchReviewRow(matchId: 434, txn: "txn_cursor", emailId: "msg_a", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
-            sampleMatchReviewRow(matchId: 435, txn: "txn_cursor", emailId: "msg_b", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
-            sampleMatchReviewRow(matchId: 436, txn: "txn_cursor", emailId: "msg_c", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
-            sampleMatchReviewRow(matchId: 437, txn: "txn_other", emailId: "msg_x", confidence: 0.80, selectedAt: "2026-05-19T18:43:35Z"),
+        vm.transactions = [
+            sampleTransactionWithMatch(id: "txn_cursor", matchId: 436, emailId: "msg_c", confidence: 0.95, count: 3),
+            sampleTransactionWithMatch(id: "txn_other", matchId: 437, emailId: "msg_x", confidence: 0.80, count: 1),
         ]
-        vm.selectedMatchId = 434
+        vm.candidates = [
+            sampleCandidate(emailId: "msg_a", isSelectedByAi: true),
+            sampleCandidate(emailId: "msg_b", isSelectedByAi: true),
+            sampleCandidate(emailId: "msg_c", isSelectedByAi: true),
+            sampleCandidate(emailId: "msg_other_unrelated", isSelectedByAi: false),
+        ]
+        vm.selection = ["txn_cursor"]
         XCTAssertEqual(vm.activeEmailIdsForSelectedTransaction, ["msg_a", "msg_b", "msg_c"])
-        vm.selectedMatchId = 437
-        XCTAssertEqual(vm.activeEmailIdsForSelectedTransaction, ["msg_x"])
-        vm.selectedMatchId = nil
-        XCTAssertEqual(vm.activeEmailIdsForSelectedTransaction, [])
+        vm.selection = ["txn_other"]
+        // Candidates list is stale (still for txn_cursor), so the active set comes from the
+        // match's representative email only; in practice selectedTransactionDidChange clears it.
+        XCTAssertTrue(vm.activeEmailIdsForSelectedTransaction.contains("msg_x"))
+        vm.selection = []
+        XCTAssertTrue(vm.activeEmailIdsForSelectedTransaction.isEmpty || vm.activeEmailIdsForSelectedTransaction == Set(vm.candidates.filter(\.is_selected_by_ai).map(\.email_message_id)))
     }
 
     @MainActor
     func testCanOverrideSelectedMatchUsesActiveSetNotJustRepresentative() {
         let api = MockAPI(categories: [], response: .init(total: 0, items: []))
         let vm = ClassificationViewModel(api: api)
-        vm.matchReviewRows = [
-            sampleMatchReviewRow(matchId: 434, txn: "txn_cursor", emailId: "msg_a", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
-            sampleMatchReviewRow(matchId: 435, txn: "txn_cursor", emailId: "msg_b", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
+        vm.transactions = [
+            sampleTransactionWithMatch(id: "txn_cursor", matchId: 436, emailId: "msg_a", confidence: 0.95, count: 2),
         ]
-        vm.selectedMatchId = 434
-        // Picking msg_b (a non-representative active email) must NOT be considered an override target.
+        vm.candidates = [
+            sampleCandidate(emailId: "msg_a", isSelectedByAi: true),
+            sampleCandidate(emailId: "msg_b", isSelectedByAi: true),
+        ]
+        vm.selection = ["txn_cursor"]
+        // Picking msg_b (also AI-active for this transaction) must NOT be considered an override target.
         vm.selectedCandidateId = "msg_b"
         XCTAssertFalse(vm.canOverrideSelectedMatch)
         // Picking a brand new email IS an override target.

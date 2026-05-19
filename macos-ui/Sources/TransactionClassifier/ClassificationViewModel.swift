@@ -72,11 +72,8 @@ final class ClassificationViewModel {
     var categoryEditorBusy = false
     var categoryEditorStatusText = "Select a category to edit, or create a new one."
     var categoryEditorErrorText = ""
-    var matchReviewRows: [MatchReviewRow] = []
-    var matchReviewTotal = 0
     var matchReviewStateFilter = ""
-    var matchReviewOnlyUnmoved = true
-    var selectedMatchId: Int?
+    var matchReviewOnlyUnmoved = false
     var matchOverrideEmailMessageId = ""
     var matchReviewStatusText = "Ready"
     var matchReviewErrorText = ""
@@ -114,7 +111,14 @@ final class ClassificationViewModel {
         busy = true; defer { busy = false }
         do {
             async let cats = api.fetchCategories()
-            async let txs = api.fetchTransactions(search: searchText, onlyUnclassified: onlyUnclassified, limit: pageSize, offset: 0)
+            async let txs = api.fetchTransactions(
+                search: searchText,
+                onlyUnclassified: onlyUnclassified,
+                matchState: matchReviewStateFilter,
+                onlyUnmovedMatch: matchReviewOnlyUnmoved,
+                limit: pageSize,
+                offset: 0
+            )
             let fetchedCategories = try await cats
             setCategories(fetchedCategories)
             let response = try await txs
@@ -123,6 +127,7 @@ final class ClassificationViewModel {
             syncPickerToSelection()
             statusText = loadStatusText(for: transactions)
             errorText = ""
+            await selectedTransactionDidChange()
         } catch { errorText = error.localizedDescription; statusText = "Load failed" }
     }
 
@@ -152,6 +157,8 @@ final class ClassificationViewModel {
             let response = try await api.fetchTransactions(
                 search: searchText,
                 onlyUnclassified: onlyUnclassified,
+                matchState: matchReviewStateFilter,
+                onlyUnmovedMatch: matchReviewOnlyUnmoved,
                 limit: pageSize,
                 offset: transactions.count
             )
@@ -165,55 +172,37 @@ final class ClassificationViewModel {
         }
     }
 
-    var selectedMatchRow: MatchReviewRow? { matchReviewRows.first { $0.match_id == selectedMatchId } }
-
-    /// Match-review rows deduped by `transaction_id`. Each transaction appears at most once;
-    /// the chosen "representative" row is the highest-confidence active row for that transaction
-    /// (ties broken by most-recent `selected_at`, then by `match_id`). Original row order is
-    /// preserved otherwise.
-    /// This stops a single transaction with N AI-linked emails (matchy can correctly tie multiple
-    /// emails to one charge, per the AI prompt's "1 transaction may map to multiple emails" rule)
-    /// from rendering as N apparent transactions in the left pane.
-    var matchReviewGroupedRows: [MatchReviewRow] {
-        var representatives: [String: MatchReviewRow] = [:]
-        var orderedIds: [String] = []
-        for row in matchReviewRows {
-            if let existing = representatives[row.transaction_id] {
-                if Self.isBetterRepresentative(row, than: existing) {
-                    representatives[row.transaction_id] = row
-                }
-            } else {
-                representatives[row.transaction_id] = row
-                orderedIds.append(row.transaction_id)
-            }
-        }
-        return orderedIds.compactMap { representatives[$0] }
+    /// The single transaction the user is currently viewing (the "primary" of any multi-selection).
+    /// Drives the candidates pane, email pane, classification picker, and match actions.
+    var primaryTransaction: TransactionRow? {
+        if let firstId = selection.first { return transactions.first { $0.transaction_id == firstId } }
+        return nil
     }
 
-    private static func isBetterRepresentative(_ candidate: MatchReviewRow, than current: MatchReviewRow) -> Bool {
-        let candidateConfidence = candidate.ai_confidence ?? -1
-        let currentConfidence = current.ai_confidence ?? -1
-        if candidateConfidence != currentConfidence { return candidateConfidence > currentConfidence }
-        if candidate.selected_at != current.selected_at { return candidate.selected_at > current.selected_at }
-        return candidate.match_id > current.match_id
-    }
+    var selectedTransactionMatch: TransactionMatchInfo? { primaryTransaction?.match }
 
-    /// How many active match rows exist for the given transaction. Used by the left pane to render
-    /// "N emails" hints when matchy linked multiple emails to one transaction.
+    /// Compatibility shim: the old viewmodel exposed `selectedMatchRow` as a `MatchReviewRow`.
+    /// The unified pipeline keys off transactions, but the actions that update a match still need
+    /// a match_id, so expose it here for backward compatibility with the existing call sites.
+    var selectedMatchId: Int? { selectedTransactionMatch?.match_id }
+    var selectedMatchEmailMessageId: String? { selectedTransactionMatch?.email_message_id }
+
+    /// How many active match rows exist for this transaction (1 normally; >1 when matchy linked
+    /// multiple emails to one charge per the AI prompt's "1 transaction may map to multiple emails").
     func matchedEmailCount(for transactionId: String) -> Int {
-        matchReviewRows.reduce(0) { $0 + ($1.transaction_id == transactionId ? 1 : 0) }
+        transactions.first { $0.transaction_id == transactionId }?.match?.match_count ?? 0
     }
 
-    /// All `email_message_id`s currently active for the selected transaction. The candidates pane
-    /// uses this set to mark every AI-picked candidate as "active" (not just the one representative
-    /// match_id's email).
+    /// All `email_message_id`s currently active for the primary transaction. Currently we only
+    /// know the representative email + count; full set is the candidate-set "AI pick" rows from
+    /// `candidates` (server marks them via `is_selected_by_ai`).
     var activeEmailIdsForSelectedTransaction: Set<String> {
-        guard let row = selectedMatchRow else { return [] }
         var result = Set<String>()
-        for matchRow in matchReviewRows where matchRow.transaction_id == row.transaction_id {
-            if let emailId = matchRow.email_message_id, !emailId.isEmpty {
-                result.insert(emailId)
-            }
+        if let emailId = selectedMatchEmailMessageId, !emailId.isEmpty {
+            result.insert(emailId)
+        }
+        for candidate in candidates where candidate.is_selected_by_ai {
+            result.insert(candidate.email_message_id)
         }
         return result
     }
@@ -229,35 +218,10 @@ final class ClassificationViewModel {
         return !activeEmailIdsForSelectedTransaction.contains(candidateId)
     }
 
-    func loadMatchReview() async {
-        busy = true
-        defer { busy = false }
-        do {
-            let response = try await api.fetchMatchReview(
-                state: matchReviewStateFilter,
-                onlyUnmoved: matchReviewOnlyUnmoved,
-                limit: pageSize,
-                offset: 0
-            )
-            matchReviewRows = response.items
-            matchReviewTotal = response.total
-            matchReviewStatusText = "Loaded \(response.items.count) of \(response.total) matches"
-            matchReviewErrorText = ""
-            if let currentId = selectedMatchId, !response.items.contains(where: { $0.match_id == currentId }) {
-                selectedMatchId = nil
-            }
-            if selectedMatchId == nil {
-                selectedMatchId = response.items.first?.match_id
-            }
-            await selectedMatchDidChange()
-        } catch {
-            matchReviewErrorText = error.localizedDescription
-            matchReviewStatusText = "Match review load failed"
-        }
-    }
-
-    func selectedMatchDidChange() async {
-        guard let row = selectedMatchRow else {
+    /// Triggered whenever the primary selected transaction changes. Loads the candidate set + email
+    /// for the primary transaction so the right pane stays in sync with the left pane.
+    func selectedTransactionDidChange() async {
+        guard let row = primaryTransaction else {
             candidates = []
             selectedCandidateId = nil
             selectedEmail = nil
@@ -265,11 +229,11 @@ final class ClassificationViewModel {
             return
         }
         if lastLoadedCandidatesTransactionId == row.transaction_id { return }
-        await loadCandidatesForSelectedMatch()
+        await loadCandidatesForPrimaryTransaction()
     }
 
-    func loadCandidatesForSelectedMatch() async {
-        guard let row = selectedMatchRow else { return }
+    func loadCandidatesForPrimaryTransaction() async {
+        guard let row = primaryTransaction else { return }
         candidatesBusy = true
         candidatesErrorText = ""
         defer { candidatesBusy = false }
@@ -277,7 +241,8 @@ final class ClassificationViewModel {
             let rows = try await api.fetchCandidates(transactionId: row.transaction_id)
             candidates = rows
             lastLoadedCandidatesTransactionId = row.transaction_id
-            let preferred = rows.first(where: { $0.email_message_id == row.email_message_id })?.email_message_id
+            let activeEmailId = row.match?.email_message_id
+            let preferred = rows.first(where: { $0.email_message_id == activeEmailId })?.email_message_id
                 ?? rows.first(where: { $0.is_selected_by_ai })?.email_message_id
                 ?? rows.first?.email_message_id
             selectedCandidateId = preferred
@@ -342,7 +307,9 @@ final class ClassificationViewModel {
         do {
             _ = try await api.confirmMatch(matchId: matchId)
             matchReviewStatusText = "Confirmed match \(matchId)"
-            await loadMatchReview()
+            matchReviewErrorText = ""
+            lastLoadedCandidatesTransactionId = nil
+            await loadAll()
         } catch {
             matchReviewErrorText = error.localizedDescription
             matchReviewStatusText = "Match confirm failed"
@@ -364,7 +331,7 @@ final class ClassificationViewModel {
             matchOverrideEmailMessageId = ""
             matchOverrideNote = ""
             lastLoadedCandidatesTransactionId = nil
-            await loadMatchReview()
+            await loadAll()
         } catch {
             matchReviewErrorText = error.localizedDescription
             matchReviewStatusText = "Match override failed"
@@ -378,14 +345,17 @@ final class ClassificationViewModel {
             matchReviewStatusText = "Marked match \(matchId) as no-email"
             matchReviewErrorText = ""
             lastLoadedCandidatesTransactionId = nil
-            await loadMatchReview()
+            await loadAll()
         } catch {
             matchReviewErrorText = error.localizedDescription
             matchReviewStatusText = "No-email action failed"
         }
     }
 
-    func selectionDidChange() { syncPickerToSelection() }
+    func selectionDidChange() {
+        syncPickerToSelection()
+        Task { await selectedTransactionDidChange() }
+    }
 
     func selectedCategoryDidChange() async {
         // #R005: Only send updates for rows whose selected category actually changes.

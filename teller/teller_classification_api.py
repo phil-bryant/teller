@@ -42,6 +42,9 @@ _EXISTENCE_QUERIES = {
     """),
 }
 
+#R070: `/v1/transactions` joins the latest active email-match row (one representative per transaction)
+#R070: + a count of total active match rows so the unified Match & Classify UI can show classification
+#R070: AND match status on each row in a single round-trip.
 _TRANSACTION_COUNT_SQL = text("""
     SELECT COUNT(*)
       FROM teller.transaction tt
@@ -56,10 +59,21 @@ _TRANSACTION_COUNT_SQL = text("""
            LIMIT 1
       ) m ON TRUE
       LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
+      LEFT JOIN LATERAL (
+          SELECT tem.match_id, tem.state::text AS state, tem.selected_by::text AS selected_by,
+                 tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence
+            FROM teller.transaction_email_match tem
+           WHERE tem.transaction_id = tt.transaction_id
+             AND tem.active = TRUE
+           ORDER BY tem.ai_confidence DESC NULLS LAST, tem.selected_at DESC, tem.match_id DESC
+           LIMIT 1
+      ) tem ON TRUE
      WHERE tt.status = 'posted'
        AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
        AND (:status = '' OR tt.status::text = :status)
        AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
+       AND (:match_state = '' OR tem.state = :match_state)
+       AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
 """)
 
 _TRANSACTION_LIST_SQL = text("""
@@ -67,7 +81,12 @@ _TRANSACTION_LIST_SQL = text("""
            tt.date, tt.amount, tt.description, tt.status,
            ttt.code AS transaction_type_code, ttd.category AS teller_category,
            m.nys_snw_category_id, nsc.level_1, nsc.level_1_name, nsc.level_2, nsc.level_2_name,
-           nsc.level_3, nsc.level_4, nsc.categorization
+           nsc.level_3, nsc.level_4, nsc.categorization,
+           tem.match_id, tem.state AS match_state, tem.selected_by AS match_selected_by,
+           tem.email_message_id AS match_email_message_id, tem.moved_to_matchy_at,
+           tem.ai_confidence AS match_ai_confidence,
+           (SELECT COUNT(*) FROM teller.transaction_email_match
+             WHERE transaction_id = tt.transaction_id AND active = TRUE)::INT AS match_count
       FROM teller.transaction tt
       LEFT JOIN teller.account ta USING (account_id)
       LEFT JOIN teller.transaction_type ttt USING (transaction_type_id)
@@ -80,10 +99,21 @@ _TRANSACTION_LIST_SQL = text("""
            LIMIT 1
       ) m ON TRUE
       LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
+      LEFT JOIN LATERAL (
+          SELECT tem.match_id, tem.state::text AS state, tem.selected_by::text AS selected_by,
+                 tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence
+            FROM teller.transaction_email_match tem
+           WHERE tem.transaction_id = tt.transaction_id
+             AND tem.active = TRUE
+           ORDER BY tem.ai_confidence DESC NULLS LAST, tem.selected_at DESC, tem.match_id DESC
+           LIMIT 1
+      ) tem ON TRUE
      WHERE tt.status = 'posted'
        AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
        AND (:status = '' OR tt.status::text = :status)
        AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
+       AND (:match_state = '' OR tem.state = :match_state)
+       AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
     ORDER BY tt.date DESC, tt.transaction_id DESC
     LIMIT :limit OFFSET :offset
 """)
@@ -331,6 +361,18 @@ class TransactionCategory(BaseModel):
     display_label: str
 
 
+class TransactionMatchInfo(BaseModel):
+    #R070: Active-match summary attached to each transaction row so the unified Match & Classify UI
+    #R070: can render both classification and match badges from one /v1/transactions response.
+    match_id: int
+    email_message_id: Optional[str] = None
+    state: str
+    ai_confidence: Optional[float] = None
+    selected_by: str
+    moved_to_matchy_at: Optional[datetime] = None
+    match_count: int = 1
+
+
 class TransactionRow(BaseModel):
     transaction_id: str
     account_id: str
@@ -343,6 +385,7 @@ class TransactionRow(BaseModel):
     transaction_type_code: Optional[str] = None
     teller_category: Optional[str] = None
     classification: Optional[TransactionCategory] = None
+    match: Optional[TransactionMatchInfo] = None
 
 
 class TransactionListResponse(BaseModel):
@@ -858,10 +901,15 @@ def create_app() -> FastAPI:
         search: str = Query(default="", min_length=0, max_length=120, pattern=r"^[\x20-\x7E]*$"),
         status: Literal["", "posted", "pending"] = Query(default=""),
         only_unclassified: bool = Query(default=False),
+        match_state: Literal["", "ai_no_match_found", "ai_candidate_uncertain", "ai_match_confident",
+                              "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
+        only_unmoved_match: bool = Query(default=False),
         limit: int = Query(default=150, ge=1, le=500),
         offset: int = Query(default=0, ge=0, le=1_000_000),
     ):
-        allowed_query_params = {"search", "status", "only_unclassified", "limit", "offset"}
+        allowed_query_params = {
+            "search", "status", "only_unclassified", "match_state", "only_unmoved_match", "limit", "offset",
+        }
         unknown_params = sorted(set(request.query_params.keys()) - allowed_query_params)
         if unknown_params:
             raise HTTPException(status_code=400, detail=f"Unknown query parameters: {', '.join(unknown_params)}")
@@ -882,6 +930,8 @@ def create_app() -> FastAPI:
             "search_pattern": f"%{search}%" if search else "",
             "status": status,
             "only_unclassified": only_unclassified,
+            "match_state": match_state,
+            "only_unmoved_match": only_unmoved_match,
             "limit": limit,
             "offset": offset,
         }
@@ -903,11 +953,23 @@ def create_app() -> FastAPI:
                     nys_snw_category_id=row["nys_snw_category_id"],
                     display_label=_display_label(row),
                 )
+            match_info = None
+            if row.get("match_id") is not None:
+                match_info = TransactionMatchInfo(
+                    match_id=int(row["match_id"]),
+                    email_message_id=row.get("match_email_message_id"),
+                    state=str(row["match_state"]),
+                    ai_confidence=float(row["match_ai_confidence"]) if row.get("match_ai_confidence") is not None else None,
+                    selected_by=str(row["match_selected_by"]),
+                    moved_to_matchy_at=row.get("moved_to_matchy_at"),
+                    match_count=int(row.get("match_count") or 1),
+                )
             items.append(TransactionRow(transaction_id=row["transaction_id"], account_id=row["account_id"],
                                         institution_id=row["institution_id"], account_last_four=row["account_last_four"],
                                         date=row["date"], amount=row["amount"], description=row["description"],
                                         status=row["status"], transaction_type_code=row["transaction_type_code"],
-                                        teller_category=row["teller_category"], classification=classification))
+                                        teller_category=row["teller_category"], classification=classification,
+                                        match=match_info))
         return TransactionListResponse(total=total, items=items)
 
     #R030: Use path transaction ID as the source of truth for single writes.
@@ -1124,23 +1186,38 @@ def _validate_email_message_id(email_message_id: str) -> None:
         raise HTTPException(status_code=400, detail="Invalid email_message_id")
 
 
+_MAILCART_ENRICHMENT_WORKERS = 16
+
+
 def _enrich_candidates_with_mailcart(candidate_rows: List[Dict[str, Any]]) -> List[MatchCandidateRow]:
     #R060: Best-effort fan-out enrichment; per-id Mailcart failures degrade to mailcart_error rather than 502.
+    #R060: Fan out the Mailcart fetches across a small thread pool so the candidates pane populates in
+    #R060: roughly one round-trip-time per batch instead of N sequential round-trips. Order of the input
+    #R060: candidate list is preserved in the returned list.
     try:
         client = get_mailcart_client()
     except HTTPException as exc:
         if exc.status_code == 503:
             return [_candidate_row_with_error(row, exc.detail) for row in candidate_rows]
         raise
-    enriched: List[MatchCandidateRow] = []
-    for row in candidate_rows:
+    if not candidate_rows:
+        return []
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _fetch_one(index_and_row):
+        index, row = index_and_row
         try:
             metadata = client.get_message(row["email_message_id"])
         except MailcartError as exc:
-            enriched.append(_candidate_row_with_error(row, exc.message))
-            continue
-        enriched.append(_candidate_row_from_db_and_metadata(row, metadata))
-    return enriched
+            return index, _candidate_row_with_error(row, exc.message)
+        return index, _candidate_row_from_db_and_metadata(row, metadata)
+
+    worker_count = min(_MAILCART_ENRICHMENT_WORKERS, max(1, len(candidate_rows)))
+    enriched: List[MatchCandidateRow | None] = [None] * len(candidate_rows)
+    with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="mailcart-enrich") as pool:
+        for index, candidate in pool.map(_fetch_one, enumerate(candidate_rows)):
+            enriched[index] = candidate
+    return [item for item in enriched if item is not None]
 
 
 def _candidate_row_from_db_and_metadata(row: Dict[str, Any], metadata: Dict[str, Any]) -> MatchCandidateRow:

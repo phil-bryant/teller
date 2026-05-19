@@ -89,6 +89,12 @@ Tests:
 - R061-T02: Simulate Mailcart 404 for the id and verify classifier surfaces 404.
 - R061-T03: Provide Mailcart's real per-message envelope (`{message_id, sender, recipients, preview, html_body, text_body, body_text}`) and verify the mapping onto the UI-facing shape.
 
+R070  Statement: `/v1/transactions` returns each row's active email-match summary so the unified Match & Classify UI can render classification AND match badges in a single round-trip.
+Design: The transactions list/count SQL joins `teller.transaction_email_match WHERE active = TRUE` via `LEFT JOIN LATERAL`, picking the highest-confidence row (ties broken by `selected_at DESC, match_id DESC`) as the representative for the transaction, and exposes a `match` field on `TransactionRow` containing `{match_id, email_message_id, state, ai_confidence, selected_by, moved_to_matchy_at, match_count}`. `match_count` is the total number of active match rows for the transaction (>1 when matchy linked multiple emails to one charge). Two new query parameters are introduced: `match_state` (Literal over the five `transaction_email_match_state` values, default `""`) filters to a specific match state, and `only_unmoved_match` (bool, default `false`) excludes transactions whose representative match has already been moved to the matchy folder. Transactions with no active match row pass these filters unchanged (i.e., `tem.match_id IS NULL` is allowed by both filters) so the UI can also classify unmatched transactions.
+Tests:
+- R070-T01: Stub a transaction with multiple active match rows and verify the response carries the highest-confidence representative + `match_count > 1`.
+- R070-T02: Set `match_state="ai_match_confident"` and verify the SQL filters by that state while still allowing transactions with no active match row.
+
 R062  Statement: Proxy free-form Mailcart search for ad-hoc candidate discovery.
 Design: `/v1/matchy/messages/search` accepts a printable-ASCII `query` (1-200 chars) and `limit` (1-100, default 25), proxies to Mailcart `/v1/messages/search?query=...&limit=...`, and returns `{query, items: [{email_message_id, subject, from, received_at, snippet}]}` (mapped from Mailcart's `{messages: [{message_id, sender, preview, received_at, body_text}]}` envelope). Upstream payloads missing a `messages` array (or legacy `items` array) surface as 502.
 Tests:
@@ -104,3 +110,4 @@ Tests:
 - 2026-05-15: Added R055 to require OpenAPI 404 documentation parity for match-review mutation endpoints.
 - 2026-05-18: Added R060/R061/R062 for the Match Review three-pane UI: per-transaction candidate listing with Mailcart-enriched metadata, message-body proxy, and free-form Mailcart search proxy.
 - 2026-05-19: Realigned R060/R061/R062 with the real Mailcart contract (`/v1/messages/search` returning `{messages: [...]}`; `/v1/messages/{id}` newly added in Mailcart R035) and switched config to the shared `MAILCART_SERVICE_BASE_URL`/`MAILCART_SERVICE_TOKEN` env vars used by matchy.
+- 2026-05-19: Added R070 unified transactions endpoint extension (LEFT JOIN match info + `match_state` / `only_unmoved_match` filters) for the merged Match & Classify UI.

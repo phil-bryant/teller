@@ -42,6 +42,16 @@ struct TransactionCategory: Codable, Hashable {
     let display_label: String
 }
 
+struct TransactionMatchInfo: Codable, Hashable {
+    let match_id: Int
+    let email_message_id: String?
+    let state: String
+    let ai_confidence: Double?
+    let selected_by: String
+    let moved_to_matchy_at: String?
+    let match_count: Int
+}
+
 struct TransactionRow: Codable, Identifiable, Hashable {
     let transaction_id: String
     let account_id: String
@@ -54,16 +64,17 @@ struct TransactionRow: Codable, Identifiable, Hashable {
     let transaction_type_code: String?
     let teller_category: String?
     var classification: TransactionCategory?
+    var match: TransactionMatchInfo?
     var id: String { transaction_id }
 
     enum CodingKeys: String, CodingKey {
         case transaction_id, account_id, institution_id, account_last_four, date, amount, description, status
-        case transaction_type_code, teller_category, classification
+        case transaction_type_code, teller_category, classification, match
     }
 
     init(transaction_id: String, account_id: String, institution_id: String? = nil, account_last_four: String? = nil,
          date: String, amount: Decimal, description: String, status: String, transaction_type_code: String?,
-         teller_category: String?, classification: TransactionCategory?) {
+         teller_category: String?, classification: TransactionCategory?, match: TransactionMatchInfo? = nil) {
         self.transaction_id = transaction_id
         self.account_id = account_id
         self.institution_id = institution_id
@@ -75,6 +86,7 @@ struct TransactionRow: Codable, Identifiable, Hashable {
         self.transaction_type_code = transaction_type_code
         self.teller_category = teller_category
         self.classification = classification
+        self.match = match
     }
 
     init(from decoder: Decoder) throws {
@@ -89,6 +101,7 @@ struct TransactionRow: Codable, Identifiable, Hashable {
         transaction_type_code = try c.decodeIfPresent(String.self, forKey: .transaction_type_code)
         teller_category = try c.decodeIfPresent(String.self, forKey: .teller_category)
         classification = try c.decodeIfPresent(TransactionCategory.self, forKey: .classification)
+        match = try c.decodeIfPresent(TransactionMatchInfo.self, forKey: .match)
         if let value = try? c.decode(Decimal.self, forKey: .amount) { amount = value; return }
         if let text = try? c.decode(String.self, forKey: .amount), let value = Decimal(string: text) { amount = value; return }
         throw DecodingError.dataCorruptedError(forKey: .amount, in: c, debugDescription: "amount must be decimal string/number")

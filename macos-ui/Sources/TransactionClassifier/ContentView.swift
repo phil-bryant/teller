@@ -2,8 +2,7 @@ import SwiftUI
 import WebKit
 
 private enum AppTab: Hashable {
-    case classify
-    case matchReview
+    case matchAndClassify
     case manageCategories
     case connect
 }
@@ -29,85 +28,20 @@ struct ContentView: View {
     }
 
     var body: some View {
+        // #R001: Render transaction triage UI as an HSplitView with 3 panes (Transactions /
+        // #R001: Candidates / Classification + Email) inside the unified Match & Classify tab.
         TabView(selection: $selectedTab) {
-            // #R001: Render split-view transaction browsing with list and detail panes.
-            NavigationSplitView {
-                VStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        // #R005: Provide search/filter controls and manual refresh in the list header.
-                        TextField("Search description / transaction id", text: $viewModel.searchText)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($searchFocused)
-                            .onSubmit { Task { await viewModel.loadAll() } }
-                            .accessibilityIdentifier("search-field")
-                        Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
-                            .accessibilityIdentifier("only-unclassified-toggle")
-                        Button("Refresh") { Task { await viewModel.loadAll() } }
-                            .accessibilityIdentifier("refresh-button")
-                    }
-                    // SwiftUI's ScrollViewReader does not reliably scroll `List` on macOS 14
-                    // (Apple Developer Forum #758880), so the transaction list is a
-                    // ScrollView + LazyVStack bound to `.scrollPosition(id:anchor:)` which gives
-                    // us a reliable programmatic scroll-to-target handle for #R025.
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            ForEach(Array(viewModel.transactions.enumerated()), id: \.element.transaction_id) { idx, row in
-                                transactionRowView(row: row, alternating: idx % 2 == 1)
-                                    .id(row.transaction_id)
-                            }
-                        }
-                        .scrollTargetLayout()
-                    }
-                    .scrollPosition(id: $scrollTargetId, anchor: .center)
-                    .accessibilityIdentifier("transaction-list")
-                    .overlay(alignment: .topTrailing) {
-                        if viewModel.busy {
-                            ProgressView().controlSize(.small).padding(8)
-                        }
-                    }
-                    // #R025: Scroll the newly-selected row into view when selection changes (e.g., Next Unclassified).
-                    .onChange(of: viewModel.selection) { _, newValue in
-                        guard let target = newValue.first else { return }
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            scrollTargetId = target
-                        }
-                    }
-                }
-                // #R020: Toggling the Unclassified filter in either direction automatically reloads the list.
-                .onChange(of: viewModel.onlyUnclassified) { _, _ in
-                    Task { await viewModel.loadAll() }
-                }
+            MatchAndClassifyView(viewModel: viewModel, scrollTargetId: $scrollTargetId, searchFocused: $searchFocused)
                 .padding(12)
-                .frame(minWidth: 360, idealWidth: 420)
-                .navigationSplitViewColumnWidth(min: 340, ideal: 420, max: 560)
-            } detail: {
-                DetailPane(viewModel: viewModel)
-                    .padding(12)
-                    .overlay(alignment: .top) {
-                        if !viewModel.errorText.isEmpty {
-                            Text(viewModel.errorText)
-                                .foregroundStyle(.red)
-                                .font(.caption)
-                                .padding(.top, 4)
-                                .accessibilityIdentifier("error-banner")
-                        }
-                    }
-            }
-            .tabItem { Label("Classify", systemImage: "slider.horizontal.3") }
-            .tag(AppTab.classify)
-            .accessibilityIdentifier("classify-tab")
+                .tabItem { Label("Match & Classify", systemImage: "envelope.badge.shield.half.filled") }
+                .tag(AppTab.matchAndClassify)
+                .accessibilityIdentifier("match-and-classify-tab")
 
             CategoryManagerView(viewModel: viewModel)
                 .padding(12)
                 .tabItem { Label("Manage Categories", systemImage: "square.and.pencil") }
                 .tag(AppTab.manageCategories)
                 .accessibilityIdentifier("manage-categories-tab")
-
-            MatchReviewView(viewModel: viewModel)
-                .padding(12)
-                .tabItem { Label("Match Review", systemImage: "envelope.badge") }
-                .tag(AppTab.matchReview)
-                .accessibilityIdentifier("match-review-tab")
 
             ConnectView(viewModel: connectViewModel)
                 .padding(12)
@@ -137,64 +71,6 @@ struct ContentView: View {
         .accessibilityIdentifier("content-root")
     }
 
-    @ViewBuilder
-    private func transactionRowView(row: TransactionRow, alternating: Bool) -> some View {
-        let classificationLabel = row.classification?.display_label ?? "Unclassified"
-        let classificationColor: Color = row.classification == nil ? .secondary : .blue
-        let accountContext = [row.institution_id, row.account_last_four]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " • ")
-        let isSelected = viewModel.selection.contains(row.transaction_id)
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(row.description).lineLimit(1).font(.body.weight(.medium))
-                    .accessibilityIdentifier("transaction-description-\(row.transaction_id)")
-                Spacer()
-                Text(row.amount as NSNumber, formatter: amountFormatter).monospacedDigit().foregroundStyle(.primary)
-                    .accessibilityIdentifier("transaction-amount-\(row.transaction_id)")
-            }
-            HStack {
-                Text(row.date).foregroundStyle(.secondary).lineLimit(1)
-                Text("• \(row.status)\(accountContext.isEmpty ? "" : " • \(accountContext)")")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                SaveStateDot(state: viewModel.rowState[row.transaction_id] ?? .idle)
-            }.font(.caption)
-            Text(classificationLabel).font(.caption).lineLimit(1).foregroundStyle(classificationColor)
-                .accessibilityIdentifier("transaction-classification-\(row.transaction_id)")
-        }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(rowBackground(isSelected: isSelected, alternating: alternating))
-        .contentShape(Rectangle())
-        .accessibilityIdentifier("transaction-row-\(row.transaction_id)")
-        .onTapGesture {
-            // Preserve multi-select semantics via Cmd+click, otherwise replace selection.
-            if NSEvent.modifierFlags.contains(.command) {
-                if viewModel.selection.contains(row.transaction_id) {
-                    viewModel.selection.remove(row.transaction_id)
-                } else {
-                    viewModel.selection.insert(row.transaction_id)
-                }
-            } else {
-                viewModel.selection = [row.transaction_id]
-            }
-        }
-    }
-
-    private func rowBackground(isSelected: Bool, alternating: Bool) -> some View {
-        Group {
-            if isSelected {
-                Color.accentColor.opacity(0.25)
-            } else if alternating {
-                Color.primary.opacity(0.04)
-            } else {
-                Color.clear
-            }
-        }
-    }
 }
 
 private func initialTab(startTab: String?, processInfo: ProcessInfo = .processInfo) -> AppTab {
@@ -202,81 +78,108 @@ private func initialTab(startTab: String?, processInfo: ProcessInfo = .processIn
     switch normalized {
     case "connect", "setup", "teller-setup":
         return .connect
-    case "match", "match-review":
-        return .matchReview
     case "manage", "manage-categories":
         return .manageCategories
+    case "classify", "match", "match-review", "match-and-classify":
+        return .matchAndClassify
     default:
-        return .classify
+        return .matchAndClassify
     }
 }
 
-private struct MatchReviewView: View {
+private struct MatchAndClassifyView: View {
     @Bindable var viewModel: ClassificationViewModel
+    @Binding var scrollTargetId: String?
+    @FocusState.Binding var searchFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            MatchReviewToolbar(viewModel: viewModel)
+            MatchAndClassifyToolbar(viewModel: viewModel, searchFocused: $searchFocused)
             HSplitView {
-                MatchTransactionsPane(viewModel: viewModel)
-                    .frame(minWidth: 300, idealWidth: 360)
+                MatchAndClassifyTransactionsPane(viewModel: viewModel, scrollTargetId: $scrollTargetId)
+                    .frame(minWidth: 240, idealWidth: 320)
                 CandidatesPane(viewModel: viewModel)
-                    .frame(minWidth: 320, idealWidth: 400)
-                EmailDetailPane(viewModel: viewModel)
-                    .frame(minWidth: 360, idealWidth: 540)
+                    .frame(minWidth: 220, idealWidth: 320)
+                ClassifyAndEmailPane(viewModel: viewModel)
+                    .frame(minWidth: 320, idealWidth: 420)
             }
-            .accessibilityIdentifier("match-review-split")
+            .accessibilityIdentifier("match-and-classify-split")
             HStack(spacing: 8) {
-                if !viewModel.matchReviewErrorText.isEmpty {
+                if !viewModel.errorText.isEmpty {
+                    Text(viewModel.errorText)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("error-banner")
+                } else if !viewModel.matchReviewErrorText.isEmpty {
                     Text(viewModel.matchReviewErrorText)
                         .font(.caption)
                         .foregroundStyle(.red)
                         .accessibilityIdentifier("match-review-error")
-                } else {
+                } else if !viewModel.matchReviewStatusText.isEmpty && viewModel.matchReviewStatusText != "Ready" {
                     Text(viewModel.matchReviewStatusText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("match-review-status")
+                } else {
+                    Text(viewModel.statusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("status-text")
                 }
                 Spacer()
+                Button("Load more") { Task { await viewModel.loadMore() } }
+                    .disabled(!viewModel.canLoadMore || viewModel.busy)
+                    .accessibilityIdentifier("load-more-button")
             }
         }
-        .task { await viewModel.loadMatchReview() }
-        .onChange(of: viewModel.matchReviewStateFilter) { _, _ in Task { await viewModel.loadMatchReview() } }
-        .onChange(of: viewModel.matchReviewOnlyUnmoved) { _, _ in Task { await viewModel.loadMatchReview() } }
-        .onChange(of: viewModel.selectedMatchId) { _, _ in Task { await viewModel.selectedMatchDidChange() } }
+        .onChange(of: viewModel.matchReviewStateFilter) { _, _ in Task { await viewModel.loadAll() } }
+        .onChange(of: viewModel.matchReviewOnlyUnmoved) { _, _ in Task { await viewModel.loadAll() } }
+        // #R020: Toggling the Unclassified filter in either direction automatically reloads the list.
+        .onChange(of: viewModel.onlyUnclassified) { _, _ in Task { await viewModel.loadAll() } }
         .onChange(of: viewModel.selectedCandidateId) { _, _ in Task { await viewModel.selectedCandidateDidChange() } }
         .onChange(of: viewModel.mailcartSearchQuery) { _, _ in Task { await viewModel.searchMailcartIfNeeded() } }
     }
 }
 
-private struct MatchReviewToolbar: View {
+private struct MatchAndClassifyToolbar: View {
     @Bindable var viewModel: ClassificationViewModel
+    @FocusState.Binding var searchFocused: Bool
 
     var body: some View {
+        // #R005: Provide search/filter controls (text search, unclassified toggle, match-state picker,
+        // #R005: only-unmoved match toggle) plus a manual Refresh action in the list header.
         HStack(spacing: 8) {
-            Picker("State", selection: $viewModel.matchReviewStateFilter) {
-                Text("All").tag("")
+            TextField("Search description / transaction id", text: $viewModel.searchText)
+                .textFieldStyle(.roundedBorder)
+                .focused($searchFocused)
+                .onSubmit { Task { await viewModel.loadAll() } }
+                .accessibilityIdentifier("search-field")
+            Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
+                .accessibilityIdentifier("only-unclassified-toggle")
+            Picker("Match", selection: $viewModel.matchReviewStateFilter) {
+                Text("All matches").tag("")
                 Text("Needs review").tag("ai_candidate_uncertain")
-                Text("No email").tag("ai_no_match_found")
+                Text("No email (AI)").tag("ai_no_match_found")
                 Text("AI confident").tag("ai_match_confident")
+                Text("Confirmed").tag("human_confirmed_ai_match")
+                Text("Overridden").tag("human_overrode_ai_match")
             }
-            .frame(width: 240)
+            .frame(width: 220)
             .accessibilityIdentifier("match-review-state-picker")
             Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
                 .accessibilityIdentifier("match-review-only-unmoved-toggle")
             Spacer()
-            Button("Refresh") { Task { await viewModel.loadMatchReview() } }
-                .accessibilityIdentifier("match-review-refresh-button")
+            Button("Refresh") { Task { await viewModel.loadAll() } }
+                .accessibilityIdentifier("refresh-button")
         }
     }
 }
 
-private struct MatchTransactionsPane: View {
+private struct MatchAndClassifyTransactionsPane: View {
     @Bindable var viewModel: ClassificationViewModel
+    @Binding var scrollTargetId: String?
 
     var body: some View {
-        let groupedRows = viewModel.matchReviewGroupedRows
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Text("Transactions")
@@ -285,67 +188,119 @@ private struct MatchTransactionsPane: View {
                 if viewModel.busy {
                     ProgressView().controlSize(.small)
                 }
-                // Show "<unique transactions> / <total matches>" so the user can see at a glance when
-                // matchy linked multiple emails to one transaction (groupedRows.count < matchReviewRows.count).
-                Text("\(groupedRows.count) / \(viewModel.matchReviewTotal)")
+                Text("\(viewModel.transactions.count) / \(viewModel.totalTransactions)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            List(selection: $viewModel.selectedMatchId) {
-                ForEach(groupedRows) { row in
-                    MatchTransactionRowView(
-                        row: row,
-                        matchedEmailCount: viewModel.matchedEmailCount(for: row.transaction_id)
-                    )
-                    .tag(Optional(row.match_id))
-                    .accessibilityIdentifier("match-transaction-row-\(row.match_id)")
+            // SwiftUI's ScrollViewReader does not reliably scroll `List` on macOS 14
+            // (Apple Developer Forum #758880), so the transaction list is a
+            // ScrollView + LazyVStack bound to `.scrollPosition(id:anchor:)` which gives
+            // us a reliable programmatic scroll-to-target handle for #R025.
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(viewModel.transactions.enumerated()), id: \.element.transaction_id) { idx, row in
+                        UnifiedTransactionRowView(
+                            row: row,
+                            isSelected: viewModel.selection.contains(row.transaction_id),
+                            saveState: viewModel.rowState[row.transaction_id] ?? .idle,
+                            alternating: idx % 2 == 1
+                        )
+                        .id(row.transaction_id)
+                        .accessibilityIdentifier("transaction-row-\(row.transaction_id)")
+                        .onTapGesture {
+                            if NSEvent.modifierFlags.contains(.command) {
+                                if viewModel.selection.contains(row.transaction_id) {
+                                    viewModel.selection.remove(row.transaction_id)
+                                } else {
+                                    viewModel.selection.insert(row.transaction_id)
+                                }
+                            } else {
+                                viewModel.selection = [row.transaction_id]
+                            }
+                        }
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollPosition(id: $scrollTargetId, anchor: .center)
+            .accessibilityIdentifier("transaction-list")
+            // #R025: Programmatic selection changes scroll the newly-selected row into view (e.g.,
+            // #R025: when the user triggers Next Unclassified via Cmd+]).
+            .onChange(of: viewModel.selection) { _, newValue in
+                guard let target = newValue.first else { return }
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    scrollTargetId = target
                 }
             }
-            .accessibilityIdentifier("match-review-transactions-list")
         }
         .padding(8)
     }
 }
 
-private struct MatchTransactionRowView: View {
-    let row: MatchReviewRow
-    let matchedEmailCount: Int
+/// Each transaction row in the unified Match & Classify left pane carries badges for both its
+/// classification status AND its email-match status, plus the "N emails" hint when matchy linked
+/// multiple emails to one charge.
+private struct UnifiedTransactionRowView: View {
+    let row: TransactionRow
+    let isSelected: Bool
+    let saveState: SaveState
+    let alternating: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(row.description)
-                    .font(.body.weight(.medium))
-                    .lineLimit(1)
+                Text(row.description).lineLimit(1).font(.body.weight(.medium))
+                    .accessibilityIdentifier("transaction-description-\(row.transaction_id)")
                 Spacer()
-                Text(row.amount as NSNumber, formatter: amountFormatter)
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
+                Text(row.amount as NSNumber, formatter: amountFormatter).monospacedDigit()
+                    .accessibilityIdentifier("transaction-amount-\(row.transaction_id)")
             }
-            HStack(spacing: 8) {
-                Text(row.date)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                StateBadge(state: row.state)
-                if let confidence = row.ai_confidence {
-                    ConfidencePill(confidence: confidence)
-                }
-                if matchedEmailCount > 1 {
-                    EmailCountBadge(count: matchedEmailCount)
+            HStack(spacing: 6) {
+                Text(row.date).foregroundStyle(.secondary).lineLimit(1)
+                if let match = row.match {
+                    StateBadge(state: match.state)
+                    if let confidence = match.ai_confidence {
+                        ConfidencePill(confidence: confidence)
+                    }
+                    if match.match_count > 1 {
+                        EmailCountBadge(count: match.match_count)
+                    }
+                } else {
+                    Text("no match yet")
+                        .font(.caption2)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.gray.opacity(0.15))
+                        .clipShape(Capsule())
                 }
                 Spacer()
-                if row.moved_to_matchy_at != nil {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .help("Moved to matchy folder")
-                }
+                SaveStateDot(state: saveState)
+            }.font(.caption)
+            HStack(spacing: 6) {
+                Text(row.classification?.display_label ?? "Unclassified")
+                    .font(.caption)
+                    .foregroundStyle(row.classification == nil ? Color.secondary : Color.blue)
+                    .lineLimit(1)
+                    .accessibilityIdentifier("transaction-classification-\(row.transaction_id)")
+                Spacer()
             }
             Text("txn \(row.transaction_id)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(rowBackground)
+        .contentShape(Rectangle())
+    }
+
+    private var rowBackground: some View {
+        Group {
+            if isSelected { Color.accentColor.opacity(0.25) }
+            else if alternating { Color.primary.opacity(0.04) }
+            else { Color.clear }
+        }
     }
 }
 
@@ -406,13 +361,14 @@ private struct ConfidencePill: View {
     let confidence: Double
 
     var body: some View {
-        Text(String(format: "%.0f%%", confidence * 100))
+        Text(String(format: "AI %.0f%%", confidence * 100))
             .font(.caption2.monospacedDigit())
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(Color.accentColor.opacity(0.16))
             .foregroundStyle(.primary)
             .clipShape(Capsule())
+            .help("Claude's self-reported confidence in its selected match (ai_confidence)")
     }
 }
 
@@ -523,9 +479,10 @@ private struct CandidateRowView: View {
                 }
             }
             HStack(spacing: 6) {
-                Text(String(format: "score %.2f", candidate.score))
+                Text(String(format: "rank %.2f", candidate.score))
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .help("Matchy's deterministic rank score (merchant + amount + date + time-proximity heuristics). Separate from the AI's confidence — the AI uses this as one signal among many, then decides which candidate(s) to actually match.")
                 if candidate.is_unmatched_email_priority {
                     Text("priority")
                         .font(.caption2)
@@ -585,23 +542,92 @@ private struct SearchHitRowView: View {
     }
 }
 
-private struct EmailDetailPane: View {
+/// Right pane: classification typeahead at the top (the workflow's terminal goal), email body in
+/// the middle (the evidence that informs the classification decision), match actions at the bottom.
+/// The user's stated workflow: read the email to figure out the category, pick a category,
+/// then optionally confirm/override/no-email the email match.
+private struct ClassifyAndEmailPane: View {
     @Bindable var viewModel: ClassificationViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            ClassifySection(viewModel: viewModel)
+            Divider()
+            EmailSection(viewModel: viewModel)
+            Divider()
+            MatchActionsBar(viewModel: viewModel)
+        }
+        .padding(8)
+    }
+}
+
+private struct ClassifySection: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    var body: some View {
+        // #R015: The classification picker drives apply/clear actions for the currently selected
+        // #R015: transaction(s) so the user can classify directly from the same pane that shows
+        // #R015: the email evidence.
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Email")
-                    .font(.headline)
+                Text("Classify").font(.headline)
                 Spacer()
-                if viewModel.emailBusy {
-                    ProgressView().controlSize(.small)
+                Text("\(viewModel.selection.count) selected")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("selection-count")
+            }
+            CategoryTypeaheadField(
+                selectedCategoryId: $viewModel.selectedCategoryId,
+                categories: viewModel.categories,
+                hasSelection: !viewModel.selection.isEmpty,
+                showsMixedSelection: viewModel.selectionHasMixedCategories
+            ) { _ in
+                await viewModel.selectedCategoryDidChange()
+            }
+            HStack(spacing: 8) {
+                Button("Apply to Selected") { Task { await viewModel.saveSelection() } }
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .disabled(viewModel.selection.isEmpty || viewModel.selectedCategoryId == nil)
+                    .accessibilityIdentifier("apply-selected-button")
+                Button("Clear") { Task { await viewModel.clearSelectionClassification() } }
+                    .disabled(viewModel.selection.isEmpty)
+                    .accessibilityIdentifier("clear-selection-button")
+                Spacer()
+                // #R030: The currently-selected transaction's identifier is surfaced so the user can
+                // #R030: confirm which transaction they're editing (the per-row badges already show
+                // #R030: the id in the left pane).
+                if let selected = viewModel.primaryTransaction {
+                    if let klass = selected.classification {
+                        Text("Current: \(klass.display_label)")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                            .lineLimit(1)
+                            .accessibilityIdentifier("selected-assigned-category")
+                    }
+                    Text("Transaction \(selected.transaction_id)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .accessibilityIdentifier("selected-transaction-header")
                 }
+            }
+        }
+    }
+}
+
+private struct EmailSection: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Email").font(.headline)
+                Spacer()
+                if viewModel.emailBusy { ProgressView().controlSize(.small) }
             }
             if !viewModel.emailErrorText.isEmpty {
                 Text(viewModel.emailErrorText)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(.caption).foregroundStyle(.red)
                     .accessibilityIdentifier("email-error")
             }
             if let email = viewModel.selectedEmail {
@@ -609,16 +635,23 @@ private struct EmailDetailPane: View {
                 Divider()
                 EmailBodyContent(email: email)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
+            } else if viewModel.selection.count > 1 {
+                ContentUnavailableView("Multi-select \(viewModel.selection.count) transactions",
+                                       systemImage: "rectangle.stack.fill",
+                                       description: Text("Pick a category above to apply it to all selected transactions; clear selection to view email evidence per transaction."))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if viewModel.primaryTransaction != nil {
                 ContentUnavailableView("Select an email to view body",
                                        systemImage: "envelope",
                                        description: Text("Pick a candidate or search result from the middle pane."))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView("Select a transaction",
+                                       systemImage: "square.grid.2x2",
+                                       description: Text("Pick a transaction from the left pane to see its email candidates and classify it."))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            Divider()
-            MatchActionsBar(viewModel: viewModel)
         }
-        .padding(8)
     }
 }
 
@@ -742,69 +775,6 @@ private func formattedDateString(_ raw: String) -> String {
         return display.string(from: date)
     }
     return raw
-}
-
-private struct DetailPane: View {
-    @Bindable var viewModel: ClassificationViewModel
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Selection").font(.headline)
-            Text("\(viewModel.selection.count) transaction(s)").foregroundStyle(.secondary)
-                .accessibilityIdentifier("selection-count")
-            CategoryTypeaheadField(
-                selectedCategoryId: $viewModel.selectedCategoryId,
-                categories: viewModel.categories,
-                hasSelection: !viewModel.selection.isEmpty,
-                showsMixedSelection: viewModel.selectionHasMixedCategories
-            ) { _ in
-                await viewModel.selectedCategoryDidChange()
-            }
-            HStack(spacing: 8) {
-                // #R015: Allow apply/clear actions from detail pane for selected rows.
-                Button("Apply to Selected") { Task { await viewModel.saveSelection() } }
-                    .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(viewModel.selection.isEmpty || viewModel.selectedCategoryId == nil)
-                    .accessibilityIdentifier("apply-selected-button")
-                Button("Clear Classification") { Task { await viewModel.clearSelectionClassification() } }
-                    .disabled(viewModel.selection.isEmpty)
-                    .accessibilityIdentifier("clear-selection-button")
-            }
-            Divider()
-            if let selected = viewModel.selectedRows.first {
-                // #R030: Detail pane header includes the selected transaction's identifier.
-                Text("Transaction \(selected.transaction_id)").font(.headline)
-                    .accessibilityIdentifier("selected-transaction-header")
-                Text(selected.description)
-                    .accessibilityIdentifier("selected-transaction-description")
-                Text("Teller Category: \(selected.teller_category ?? "n/a")")
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("selected-teller-category")
-                if let klass = selected.classification {
-                    Text("Assigned: \(klass.display_label)")
-                        .foregroundStyle(.blue)
-                        .accessibilityIdentifier("selected-assigned-category")
-                } else {
-                    Text("Assigned: none")
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("selected-assigned-category")
-                }
-            } else {
-                ContentUnavailableView("Select a transaction", systemImage: "square.grid.2x2")
-                    .accessibilityIdentifier("selection-empty")
-            }
-            Spacer()
-            HStack(spacing: 8) {
-                Text(viewModel.statusText).foregroundStyle(.secondary).font(.caption)
-                    .accessibilityIdentifier("status-text")
-                Spacer()
-                Button("Load more") { Task { await viewModel.loadMore() } }
-                    .disabled(!viewModel.canLoadMore || viewModel.busy)
-                    .accessibilityIdentifier("load-more-button")
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("detail-pane")
-    }
 }
 
 private struct CategoryManagerView: View {

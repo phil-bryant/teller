@@ -133,7 +133,7 @@ final class APIClientTests: XCTestCase {
         }
 
         let client = makeClient()
-        let response = try await client.fetchTransactions(search: "coffee", onlyUnclassified: true, limit: 25, offset: 50)
+        let response = try await client.fetchTransactions(search: "coffee", onlyUnclassified: true, matchState: "", onlyUnmovedMatch: false, limit: 25, offset: 50)
         XCTAssertEqual(response.total, 1)
         XCTAssertEqual(response.items.first?.transaction_id, "txn_1")
     }

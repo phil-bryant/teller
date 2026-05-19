@@ -32,6 +32,8 @@
 # #R061-T03: Traceability anchor.
 # #R062-T01: Traceability anchor.
 # #R062-T02: Traceability anchor.
+# #R070-T01: Traceability anchor.
+# #R070-T02: Traceability anchor.
 
 import unittest
 from datetime import datetime, timezone
@@ -1205,6 +1207,83 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertIn("/v1/matchy/transactions/{transaction_id}/candidates", route_paths)
         self.assertIn("/v1/matchy/messages/{email_message_id}", route_paths)
         self.assertIn("/v1/matchy/messages/search", route_paths)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_endpoint_includes_active_match_info(self, get_session_mock):
+        #R070-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        session = _FakeSession(
+            rows=[
+                _Result(scalar=1),
+                _Result(
+                    rows=[
+                        {
+                            "transaction_id": "txn_x", "account_id": "acc_x",
+                            "institution_id": None, "account_last_four": None,
+                            "date": "2026-05-06", "amount": "200.00", "description": "Cursor",
+                            "status": "posted", "transaction_type_code": "card_payment",
+                            "teller_category": None,
+                            "nys_snw_category_id": None, "level_1": None, "level_1_name": None,
+                            "level_2": None, "level_2_name": None, "level_3": None, "level_4": None,
+                            "categorization": None,
+                            "match_id": 351, "match_state": "ai_match_confident",
+                            "match_selected_by": "ai",
+                            "match_email_message_id": "msg_abc", "moved_to_matchy_at": None,
+                            "match_ai_confidence": 0.95, "match_count": 3,
+                        }
+                    ]
+                ),
+            ]
+        )
+        get_session_mock.return_value = _SessionContext(session)
+        request = SimpleNamespace(
+            query_params={"search": "", "status": "", "only_unclassified": "false",
+                          "match_state": "ai_match_confident", "limit": "10", "offset": "0"}
+        )
+        body = endpoint(request=request, search="", status="", only_unclassified=False,
+                        match_state="ai_match_confident", only_unmoved_match=False, limit=10, offset=0)
+        self.assertEqual(body.total, 1)
+        self.assertEqual(body.items[0].transaction_id, "txn_x")
+        self.assertIsNotNone(body.items[0].match)
+        self.assertEqual(body.items[0].match.match_id, 351)
+        self.assertEqual(body.items[0].match.state, "ai_match_confident")
+        self.assertEqual(body.items[0].match.match_count, 3)
+        count_sql, count_params = session.calls[0]
+        list_sql, list_params = session.calls[1]
+        self.assertIn("transaction_email_match", count_sql)
+        self.assertIn("match_state", count_sql)
+        self.assertEqual(count_params["match_state"], "ai_match_confident")
+        self.assertIn("match_count", list_sql)
+        self.assertEqual(list_params["match_state"], "ai_match_confident")
+        self.assertEqual(list_params["only_unmoved_match"], False)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_endpoint_filters_by_match_state(self, get_session_mock):
+        #R070-T02
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        session = _FakeSession(
+            rows=[
+                _Result(scalar=0),
+                _Result(rows=[]),
+            ]
+        )
+        get_session_mock.return_value = _SessionContext(session)
+        request = SimpleNamespace(
+            query_params={"search": "", "status": "", "only_unclassified": "false",
+                          "match_state": "human_confirmed_ai_match", "only_unmoved_match": "true",
+                          "limit": "10", "offset": "0"}
+        )
+        body = endpoint(request=request, search="", status="", only_unclassified=False,
+                        match_state="human_confirmed_ai_match", only_unmoved_match=True,
+                        limit=10, offset=0)
+        self.assertEqual(body.total, 0)
+        list_sql, list_params = session.calls[1]
+        self.assertIn("match_state", list_sql)
+        self.assertIn("only_unmoved_match", list_sql)
+        self.assertEqual(list_params["match_state"], "human_confirmed_ai_match")
+        self.assertEqual(list_params["only_unmoved_match"], True)
 
 
 if __name__ == "__main__":

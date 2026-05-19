@@ -20,7 +20,7 @@ enum APIError: Error, LocalizedError {
 protocol ClassificationAPI: Sendable {
     // #R001: Fetch categories and transaction listings from the local classifier API.
     func fetchCategories() async throws -> [CategoryOption]
-    func fetchTransactions(search: String, onlyUnclassified: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse
+    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse
     // #R005: Persist one or more classification mutations in a single batch request.
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse]
     // #R040: Manage nys_snw_category definitions from the UI.
@@ -111,16 +111,23 @@ actor APIClient: ClassificationAPI {
         try await send(path: "/v1/categories")
     }
 
-    func fetchTransactions(search: String, onlyUnclassified: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
+    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
         guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/transactions"), resolvingAgainstBaseURL: false) else {
             throw APIError.invalidResponse
         }
-        comp.queryItems = [
+        var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "search", value: search),
             URLQueryItem(name: "only_unclassified", value: onlyUnclassified ? "true" : "false"),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "offset", value: String(offset)),
         ]
+        if !matchState.isEmpty {
+            queryItems.append(URLQueryItem(name: "match_state", value: matchState))
+        }
+        if onlyUnmovedMatch {
+            queryItems.append(URLQueryItem(name: "only_unmoved_match", value: "true"))
+        }
+        comp.queryItems = queryItems
         guard let transactionsURL = comp.url else {
             throw APIError.invalidResponse
         }
