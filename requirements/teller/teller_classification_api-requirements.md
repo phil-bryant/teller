@@ -74,6 +74,27 @@ Tests:
 - R055-T01: Inspect OpenAPI operation responses for the three endpoints and verify `404` is documented.
 - R055-T02: Trigger unknown `match_id` transitions and verify runtime 404 behavior remains unchanged.
 
+R060  Statement: List latest-run email candidates for a transaction with Mailcart-enriched metadata.
+Design: `/v1/matchy/transactions/{transaction_id}/candidates` resolves the most recent `transaction_email_match_run` for the transaction, selects rows from `transaction_email_candidate` ordered by `score DESC, email_received_at DESC NULLS LAST, candidate_id ASC`, and merges per-id subject, sender, and preview/body_text from Mailcart's `GET /v1/messages/{id}` into the UI-facing `{subject, from, snippet}` fields; per-id Mailcart failures degrade to `mailcart_error` on the row rather than failing the whole request. Returns 404 when no match runs exist for the transaction.
+Tests:
+- R060-T01: Seed multiple match runs and verify only the latest run's candidates are returned, sorted by score descending; verify 404 when no runs exist; verify empty array when the latest run has no candidates.
+- R060-T02: Provide Mailcart subject/from/snippet and verify they appear merged onto each candidate row.
+- R060-T03: Simulate per-id Mailcart failure for one candidate and verify the row returns with `mailcart_error` populated rather than the request 502ing.
+- R060-T04: Provide Mailcart in its real per-message shape (`{message_id, sender, preview, body_text}`) and verify the rows are mapped onto `{email_message_id, from, snippet}` correctly.
+
+R061  Statement: Proxy the full Mailcart message body for the review UI right pane.
+Design: `/v1/matchy/messages/{email_message_id}` validates the identifier as URL-safe base64 (Microsoft Graph IDs) and proxies a GET to Mailcart's `/v1/messages/{id}`, returning `{email_message_id, subject, from, to, received_at, html_body, text_body, snippet}` (mapped from Mailcart's `{message_id, sender, recipients, preview, html_body, text_body}` envelope). Mailcart 404 surfaces as classifier 404; other upstream failures surface as 502. Base URL comes from env `MAILCART_SERVICE_BASE_URL` (defaults to `http://127.0.0.1:8788`); optional bearer token from `MAILCART_SERVICE_TOKEN` is only attached when set.
+Tests:
+- R061-T01: Provide a fake Mailcart payload and verify body fields are proxied; verify invalid `email_message_id` returns 400.
+- R061-T02: Simulate Mailcart 404 for the id and verify classifier surfaces 404.
+- R061-T03: Provide Mailcart's real per-message envelope (`{message_id, sender, recipients, preview, html_body, text_body, body_text}`) and verify the mapping onto the UI-facing shape.
+
+R062  Statement: Proxy free-form Mailcart search for ad-hoc candidate discovery.
+Design: `/v1/matchy/messages/search` accepts a printable-ASCII `query` (1-200 chars) and `limit` (1-100, default 25), proxies to Mailcart `/v1/messages/search?query=...&limit=...`, and returns `{query, items: [{email_message_id, subject, from, received_at, snippet}]}` (mapped from Mailcart's `{messages: [{message_id, sender, preview, received_at, body_text}]}` envelope). Upstream payloads missing a `messages` array (or legacy `items` array) surface as 502.
+Tests:
+- R062-T01: Provide a fake Mailcart payload and verify each hit is proxied to the response; verify a malformed upstream response surfaces 502.
+- R062-T02: Provide Mailcart's real `{messages: [...]}` envelope and verify each hit is mapped to the UI-facing `{email_message_id, from, snippet}` shape.
+
 ## Changelog
 
 - 2026-04-22: Initial reverse-engineered requirements for `teller/teller_classification_api.py`.
@@ -81,3 +102,5 @@ Tests:
 - 2026-05-10: Updated R030 single-write contract to path-only transaction identity and tightened R045 OpenAPI schema parity for category mutation payloads.
 - 2026-05-10: Added R050 to map duplicate category hierarchy integrity violations to HTTP 409 conflict responses.
 - 2026-05-15: Added R055 to require OpenAPI 404 documentation parity for match-review mutation endpoints.
+- 2026-05-18: Added R060/R061/R062 for the Match Review three-pane UI: per-transaction candidate listing with Mailcart-enriched metadata, message-body proxy, and free-form Mailcart search proxy.
+- 2026-05-19: Realigned R060/R061/R062 with the real Mailcart contract (`/v1/messages/search` returning `{messages: [...]}`; `/v1/messages/{id}` newly added in Mailcart R035) and switched config to the shared `MAILCART_SERVICE_BASE_URL`/`MAILCART_SERVICE_TOKEN` env vars used by matchy.

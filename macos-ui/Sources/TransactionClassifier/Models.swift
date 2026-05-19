@@ -177,3 +177,89 @@ struct MatchReviewActionResponse: Codable, Hashable {
     let selected_by: String
     let updated_at: String
 }
+
+// JSON-tolerant container for reason_json blobs returned by the matchy candidate endpoint.
+enum JSONValue: Codable, Hashable {
+    case null
+    case bool(Bool)
+    case number(Double)
+    case string(String)
+    case array([JSONValue])
+    case object([String: JSONValue])
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() { self = .null; return }
+        if let value = try? container.decode(Bool.self) { self = .bool(value); return }
+        if let value = try? container.decode(Double.self) { self = .number(value); return }
+        if let value = try? container.decode(String.self) { self = .string(value); return }
+        if let value = try? container.decode([JSONValue].self) { self = .array(value); return }
+        if let value = try? container.decode([String: JSONValue].self) { self = .object(value); return }
+        throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported JSON value")
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .null: try container.encodeNil()
+        case .bool(let value): try container.encode(value)
+        case .number(let value): try container.encode(value)
+        case .string(let value): try container.encode(value)
+        case .array(let value): try container.encode(value)
+        case .object(let value): try container.encode(value)
+        }
+    }
+
+    var prettyDescription: String {
+        switch self {
+        case .null: return "null"
+        case .bool(let value): return value ? "true" : "false"
+        case .number(let value): return value.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(value))" : String(value)
+        case .string(let value): return value
+        case .array(let value): return "[" + value.map(\.prettyDescription).joined(separator: ", ") + "]"
+        case .object(let value):
+            return "{" + value.map { "\($0.key): \($0.value.prettyDescription)" }.sorted().joined(separator: ", ") + "}"
+        }
+    }
+}
+
+struct MatchCandidateRow: Codable, Hashable, Identifiable {
+    let email_message_id: String
+    let score: Double
+    let reason_json: JSONValue?
+    let email_received_at: String?
+    let is_selected_by_ai: Bool
+    let is_unmatched_email_priority: Bool
+    let subject: String?
+    let from: String?
+    let snippet: String?
+    let mailcart_error: String?
+
+    var id: String { email_message_id }
+}
+
+struct EmailMessage: Codable, Hashable {
+    let email_message_id: String
+    let subject: String?
+    let from: String?
+    let to: String?
+    let received_at: String?
+    let html_body: String?
+    let text_body: String?
+    let snippet: String?
+}
+
+struct EmailSearchHit: Codable, Hashable, Identifiable {
+    let email_message_id: String
+    let subject: String?
+    let from: String?
+    let received_at: String?
+    let snippet: String?
+
+    var id: String { email_message_id }
+}
+
+struct EmailSearchResponse: Codable, Hashable {
+    let query: String
+    let items: [EmailSearchHit]
+}

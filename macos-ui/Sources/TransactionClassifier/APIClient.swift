@@ -31,6 +31,9 @@ protocol ClassificationAPI: Sendable {
     func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse
     func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse
+    func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow]
+    func fetchMessage(emailMessageId: String) async throws -> EmailMessage
+    func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse
 }
 
 extension ClassificationAPI {
@@ -73,6 +76,22 @@ extension ClassificationAPI {
     func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse {
         _ = matchId
         throw APIError.unsupportedOperation("Match no-email action")
+    }
+
+    func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
+        _ = transactionId
+        throw APIError.unsupportedOperation("Match candidate listing")
+    }
+
+    func fetchMessage(emailMessageId: String) async throws -> EmailMessage {
+        _ = emailMessageId
+        throw APIError.unsupportedOperation("Email message fetch")
+    }
+
+    func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse {
+        _ = query
+        _ = limit
+        throw APIError.unsupportedOperation("Mailcart search")
     }
 }
 
@@ -154,6 +173,28 @@ actor APIClient: ClassificationAPI {
 
     func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse {
         try await send(path: "/v1/matchy/matches/\(matchId)/no-email", method: "PUT")
+    }
+
+    func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
+        let encoded = transactionId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? transactionId
+        return try await send(path: "/v1/matchy/transactions/\(encoded)/candidates")
+    }
+
+    func fetchMessage(emailMessageId: String) async throws -> EmailMessage {
+        let encoded = emailMessageId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? emailMessageId
+        return try await send(path: "/v1/matchy/messages/\(encoded)")
+    }
+
+    func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse {
+        guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/matchy/messages/search"), resolvingAgainstBaseURL: false) else {
+            throw APIError.invalidResponse
+        }
+        comp.queryItems = [
+            URLQueryItem(name: "query", value: query),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ]
+        guard let url = comp.url else { throw APIError.invalidResponse }
+        return try await send(url: url)
     }
 
     private func send<T: Decodable>(path: String, method: String = "GET", body: Data? = nil) async throws -> T {

@@ -45,6 +45,16 @@ private func sampleTransaction(_ id: String, date: String = "2026-04-18", classi
           transaction_type_code: "card_payment", teller_category: "food", classification: classification)
 }
 
+private func sampleMatchReviewRow(matchId: Int, txn: String, emailId: String, confidence: Double?, selectedAt: String,
+                                  state: String = "ai_match_confident", description: String = "") -> MatchReviewRow {
+    let json = """
+    {"match_id":\(matchId),"transaction_id":"\(txn)","email_message_id":"\(emailId)","state":"\(state)",
+     "ai_confidence":\(confidence.map { String($0) } ?? "null"),"selected_by":"ai","selected_at":"\(selectedAt)",
+     "moved_to_matchy_at":null,"description":"\(description.isEmpty ? txn : description)","amount":"200.00","date":"2026-05-06"}
+    """
+    return try! JSONDecoder().decode(MatchReviewRow.self, from: Data(json.utf8))
+}
+
 final class ClassificationViewModelTests: XCTestCase {
     func testTransactionListDecodesDecimalAmountString() throws {
         // #R001
@@ -170,6 +180,63 @@ final class ClassificationViewModelTests: XCTestCase {
         await vm.undoLast()
         XCTAssertNil(vm.transactions.first?.classification, "A single undo should restore the prior unclassified state")
         XCTAssertTrue(vm.undoStack.isEmpty)
+    }
+
+    @MainActor
+    func testMatchReviewGroupedRowsDedupesByTransactionAndKeepsHighestConfidenceRepresentative() {
+        // Three active match rows for one transaction (matchy linked 3 emails to one charge)
+        // should appear as ONE row in the grouped view, picking the highest-confidence row
+        // as the representative.
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        vm.matchReviewRows = [
+            sampleMatchReviewRow(matchId: 434, txn: "txn_cursor", emailId: "msg_a", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
+            sampleMatchReviewRow(matchId: 435, txn: "txn_cursor", emailId: "msg_b", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
+            sampleMatchReviewRow(matchId: 436, txn: "txn_cursor", emailId: "msg_c", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
+            sampleMatchReviewRow(matchId: 437, txn: "txn_other", emailId: "msg_x", confidence: 0.80, selectedAt: "2026-05-19T18:43:35Z"),
+        ]
+        let grouped = vm.matchReviewGroupedRows
+        XCTAssertEqual(grouped.count, 2)
+        XCTAssertEqual(grouped.map(\.transaction_id), ["txn_cursor", "txn_other"])
+        // Tie on confidence + selected_at -> highest match_id wins as representative.
+        XCTAssertEqual(grouped[0].match_id, 436)
+        XCTAssertEqual(vm.matchedEmailCount(for: "txn_cursor"), 3)
+        XCTAssertEqual(vm.matchedEmailCount(for: "txn_other"), 1)
+    }
+
+    @MainActor
+    func testActiveEmailIdsForSelectedTransactionReturnsFullSet() {
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        vm.matchReviewRows = [
+            sampleMatchReviewRow(matchId: 434, txn: "txn_cursor", emailId: "msg_a", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
+            sampleMatchReviewRow(matchId: 435, txn: "txn_cursor", emailId: "msg_b", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
+            sampleMatchReviewRow(matchId: 436, txn: "txn_cursor", emailId: "msg_c", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
+            sampleMatchReviewRow(matchId: 437, txn: "txn_other", emailId: "msg_x", confidence: 0.80, selectedAt: "2026-05-19T18:43:35Z"),
+        ]
+        vm.selectedMatchId = 434
+        XCTAssertEqual(vm.activeEmailIdsForSelectedTransaction, ["msg_a", "msg_b", "msg_c"])
+        vm.selectedMatchId = 437
+        XCTAssertEqual(vm.activeEmailIdsForSelectedTransaction, ["msg_x"])
+        vm.selectedMatchId = nil
+        XCTAssertEqual(vm.activeEmailIdsForSelectedTransaction, [])
+    }
+
+    @MainActor
+    func testCanOverrideSelectedMatchUsesActiveSetNotJustRepresentative() {
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        vm.matchReviewRows = [
+            sampleMatchReviewRow(matchId: 434, txn: "txn_cursor", emailId: "msg_a", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
+            sampleMatchReviewRow(matchId: 435, txn: "txn_cursor", emailId: "msg_b", confidence: 0.95, selectedAt: "2026-05-19T18:43:34Z"),
+        ]
+        vm.selectedMatchId = 434
+        // Picking msg_b (a non-representative active email) must NOT be considered an override target.
+        vm.selectedCandidateId = "msg_b"
+        XCTAssertFalse(vm.canOverrideSelectedMatch)
+        // Picking a brand new email IS an override target.
+        vm.selectedCandidateId = "msg_zzz"
+        XCTAssertTrue(vm.canOverrideSelectedMatch)
     }
 
     @MainActor

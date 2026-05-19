@@ -80,8 +80,23 @@ final class ClassificationViewModel {
     var matchOverrideEmailMessageId = ""
     var matchReviewStatusText = "Ready"
     var matchReviewErrorText = ""
+    var candidates: [MatchCandidateRow] = []
+    var candidatesBusy = false
+    var candidatesErrorText = ""
+    var selectedCandidateId: String?
+    var selectedEmail: EmailMessage?
+    var emailBusy = false
+    var emailErrorText = ""
+    var mailcartSearchQuery = ""
+    var mailcartSearchResults: [EmailSearchHit] = []
+    var mailcartSearchBusy = false
+    var mailcartSearchErrorText = ""
+    var matchOverrideNote = ""
     private let api: any ClassificationAPI
     private var suppressAutoApply = false
+    private var lastLoadedCandidatesTransactionId: String?
+    private var mailcartSearchTaskToken: UUID?
+    private static let mailcartSearchDebounceNanoseconds: UInt64 = 250_000_000
 
     init(api: any ClassificationAPI = APIClient()) { self.api = api }
 
@@ -150,6 +165,70 @@ final class ClassificationViewModel {
         }
     }
 
+    var selectedMatchRow: MatchReviewRow? { matchReviewRows.first { $0.match_id == selectedMatchId } }
+
+    /// Match-review rows deduped by `transaction_id`. Each transaction appears at most once;
+    /// the chosen "representative" row is the highest-confidence active row for that transaction
+    /// (ties broken by most-recent `selected_at`, then by `match_id`). Original row order is
+    /// preserved otherwise.
+    /// This stops a single transaction with N AI-linked emails (matchy can correctly tie multiple
+    /// emails to one charge, per the AI prompt's "1 transaction may map to multiple emails" rule)
+    /// from rendering as N apparent transactions in the left pane.
+    var matchReviewGroupedRows: [MatchReviewRow] {
+        var representatives: [String: MatchReviewRow] = [:]
+        var orderedIds: [String] = []
+        for row in matchReviewRows {
+            if let existing = representatives[row.transaction_id] {
+                if Self.isBetterRepresentative(row, than: existing) {
+                    representatives[row.transaction_id] = row
+                }
+            } else {
+                representatives[row.transaction_id] = row
+                orderedIds.append(row.transaction_id)
+            }
+        }
+        return orderedIds.compactMap { representatives[$0] }
+    }
+
+    private static func isBetterRepresentative(_ candidate: MatchReviewRow, than current: MatchReviewRow) -> Bool {
+        let candidateConfidence = candidate.ai_confidence ?? -1
+        let currentConfidence = current.ai_confidence ?? -1
+        if candidateConfidence != currentConfidence { return candidateConfidence > currentConfidence }
+        if candidate.selected_at != current.selected_at { return candidate.selected_at > current.selected_at }
+        return candidate.match_id > current.match_id
+    }
+
+    /// How many active match rows exist for the given transaction. Used by the left pane to render
+    /// "N emails" hints when matchy linked multiple emails to one transaction.
+    func matchedEmailCount(for transactionId: String) -> Int {
+        matchReviewRows.reduce(0) { $0 + ($1.transaction_id == transactionId ? 1 : 0) }
+    }
+
+    /// All `email_message_id`s currently active for the selected transaction. The candidates pane
+    /// uses this set to mark every AI-picked candidate as "active" (not just the one representative
+    /// match_id's email).
+    var activeEmailIdsForSelectedTransaction: Set<String> {
+        guard let row = selectedMatchRow else { return [] }
+        var result = Set<String>()
+        for matchRow in matchReviewRows where matchRow.transaction_id == row.transaction_id {
+            if let emailId = matchRow.email_message_id, !emailId.isEmpty {
+                result.insert(emailId)
+            }
+        }
+        return result
+    }
+
+    var overrideTargetEmailMessageId: String? {
+        let trimmedTyped = matchOverrideEmailMessageId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedTyped.isEmpty { return trimmedTyped }
+        return selectedCandidateId
+    }
+
+    var canOverrideSelectedMatch: Bool {
+        guard selectedMatchId != nil, let candidateId = overrideTargetEmailMessageId else { return false }
+        return !activeEmailIdsForSelectedTransaction.contains(candidateId)
+    }
+
     func loadMatchReview() async {
         busy = true
         defer { busy = false }
@@ -164,13 +243,98 @@ final class ClassificationViewModel {
             matchReviewTotal = response.total
             matchReviewStatusText = "Loaded \(response.items.count) of \(response.total) matches"
             matchReviewErrorText = ""
+            if let currentId = selectedMatchId, !response.items.contains(where: { $0.match_id == currentId }) {
+                selectedMatchId = nil
+            }
             if selectedMatchId == nil {
                 selectedMatchId = response.items.first?.match_id
             }
+            await selectedMatchDidChange()
         } catch {
             matchReviewErrorText = error.localizedDescription
             matchReviewStatusText = "Match review load failed"
         }
+    }
+
+    func selectedMatchDidChange() async {
+        guard let row = selectedMatchRow else {
+            candidates = []
+            selectedCandidateId = nil
+            selectedEmail = nil
+            lastLoadedCandidatesTransactionId = nil
+            return
+        }
+        if lastLoadedCandidatesTransactionId == row.transaction_id { return }
+        await loadCandidatesForSelectedMatch()
+    }
+
+    func loadCandidatesForSelectedMatch() async {
+        guard let row = selectedMatchRow else { return }
+        candidatesBusy = true
+        candidatesErrorText = ""
+        defer { candidatesBusy = false }
+        do {
+            let rows = try await api.fetchCandidates(transactionId: row.transaction_id)
+            candidates = rows
+            lastLoadedCandidatesTransactionId = row.transaction_id
+            let preferred = rows.first(where: { $0.email_message_id == row.email_message_id })?.email_message_id
+                ?? rows.first(where: { $0.is_selected_by_ai })?.email_message_id
+                ?? rows.first?.email_message_id
+            selectedCandidateId = preferred
+            await selectedCandidateDidChange()
+        } catch {
+            candidates = []
+            selectedCandidateId = nil
+            selectedEmail = nil
+            candidatesErrorText = error.localizedDescription
+        }
+    }
+
+    func selectedCandidateDidChange() async {
+        guard let candidateId = selectedCandidateId else {
+            selectedEmail = nil
+            return
+        }
+        emailBusy = true
+        emailErrorText = ""
+        defer { emailBusy = false }
+        do {
+            selectedEmail = try await api.fetchMessage(emailMessageId: candidateId)
+        } catch {
+            selectedEmail = nil
+            emailErrorText = error.localizedDescription
+        }
+    }
+
+    func selectCandidate(_ emailMessageId: String?) async {
+        selectedCandidateId = emailMessageId
+        await selectedCandidateDidChange()
+    }
+
+    func searchMailcartIfNeeded() async {
+        let query = mailcartSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            mailcartSearchResults = []
+            mailcartSearchErrorText = ""
+            mailcartSearchBusy = false
+            return
+        }
+        let token = UUID()
+        mailcartSearchTaskToken = token
+        mailcartSearchBusy = true
+        try? await Task.sleep(nanoseconds: Self.mailcartSearchDebounceNanoseconds)
+        guard mailcartSearchTaskToken == token else { return }
+        do {
+            let response = try await api.searchMessages(query: query, limit: 25)
+            guard mailcartSearchTaskToken == token else { return }
+            mailcartSearchResults = response.items
+            mailcartSearchErrorText = ""
+        } catch {
+            guard mailcartSearchTaskToken == token else { return }
+            mailcartSearchResults = []
+            mailcartSearchErrorText = error.localizedDescription
+        }
+        if mailcartSearchTaskToken == token { mailcartSearchBusy = false }
     }
 
     func confirmSelectedMatch() async {
@@ -187,15 +351,19 @@ final class ClassificationViewModel {
 
     func overrideSelectedMatch() async {
         guard let matchId = selectedMatchId else { return }
-        let emailId = matchOverrideEmailMessageId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !emailId.isEmpty else {
-            matchReviewErrorText = "Override email message id is required."
+        guard let emailId = overrideTargetEmailMessageId, !emailId.isEmpty else {
+            matchReviewErrorText = "Select a candidate (or paste a message id) before overriding."
             return
         }
+        let trimmedNote = matchOverrideNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = trimmedNote.isEmpty ? "Overridden in Teller UI" : trimmedNote
         do {
-            _ = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: "Overridden in Teller UI")
+            _ = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: note)
             matchReviewStatusText = "Overrode match \(matchId)"
             matchReviewErrorText = ""
+            matchOverrideEmailMessageId = ""
+            matchOverrideNote = ""
+            lastLoadedCandidatesTransactionId = nil
             await loadMatchReview()
         } catch {
             matchReviewErrorText = error.localizedDescription
@@ -209,6 +377,7 @@ final class ClassificationViewModel {
             _ = try await api.markMatchNoEmail(matchId: matchId)
             matchReviewStatusText = "Marked match \(matchId) as no-email"
             matchReviewErrorText = ""
+            lastLoadedCandidatesTransactionId = nil
             await loadMatchReview()
         } catch {
             matchReviewErrorText = error.localizedDescription

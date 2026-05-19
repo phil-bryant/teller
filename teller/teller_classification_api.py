@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import re
 import shutil
 import unicodedata
 from functools import lru_cache
@@ -30,6 +31,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ENUM as PgEnum
 from teller.teller_db import get_session
+from teller.teller_mailcart_client import MailcartError, get_mailcart_client
 
 _EXISTENCE_QUERIES = {
     ("nys_snw_category", "nys_snw_category_id"): text("""
@@ -151,6 +153,27 @@ _TRANSACTION_TABLE = Table(
     Column("date", Date),
     schema="teller",
 )
+
+
+_LATEST_MATCH_RUN_SQL = text("""
+    SELECT match_run_id
+      FROM teller.transaction_email_match_run
+     WHERE transaction_id = :transaction_id
+     ORDER BY started_at DESC, match_run_id DESC
+     LIMIT 1
+""")
+
+_LATEST_RUN_CANDIDATES_SQL = text("""
+    SELECT email_message_id,
+           score,
+           reason_json,
+           email_received_at,
+           is_selected_by_ai,
+           is_unmatched_email_priority
+      FROM teller.transaction_email_candidate
+     WHERE match_run_id = :match_run_id
+     ORDER BY score DESC, email_received_at DESC NULLS LAST, candidate_id ASC
+""")
 
 
 def _match_review_filters(state: str, only_unmoved: bool):
@@ -387,6 +410,59 @@ class MatchReviewActionResponse(BaseModel):
     state: str
     selected_by: str
     updated_at: datetime
+
+
+class MatchCandidateRow(BaseModel):
+    #R060: Latest-run candidate row enriched with Mailcart metadata for the middle pane.
+    email_message_id: str
+    score: float
+    reason_json: Dict[str, Any] = Field(default_factory=dict)
+    email_received_at: Optional[datetime] = None
+    is_selected_by_ai: bool = False
+    is_unmatched_email_priority: bool = False
+    subject: Optional[str] = None
+    sender: Optional[str] = Field(default=None, alias="from")
+    snippet: Optional[str] = None
+    mailcart_error: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True, ser_json_inf_nan="null")
+
+
+class EmailMessage(BaseModel):
+    #R061: Full email message body proxied from Mailcart.
+    email_message_id: str
+    subject: Optional[str] = None
+    sender: Optional[str] = Field(default=None, alias="from")
+    recipients: Optional[str] = Field(default=None, alias="to")
+    received_at: Optional[datetime] = None
+    html_body: Optional[str] = None
+    text_body: Optional[str] = None
+    snippet: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class EmailSearchHit(BaseModel):
+    email_message_id: str
+    subject: Optional[str] = None
+    sender: Optional[str] = Field(default=None, alias="from")
+    received_at: Optional[datetime] = None
+    snippet: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class EmailSearchResponse(BaseModel):
+    #R062: Free-form Mailcart search results proxied through the classifier API.
+    query: str
+    items: List[EmailSearchHit]
+
+
+#R061: Microsoft Graph message IDs are URL-safe base64-ish strings (letters, digits, dashes, underscores,
+#R061: and occasionally `=` padding); cap at 4096 chars to comfortably cover Graph IDs (typically ~152).
+_EMAIL_MESSAGE_ID_PATTERN = r"^[A-Za-z0-9_\-=]+$"
+_EMAIL_MESSAGE_ID_MAX_LENGTH = 4096
+_EMAIL_SEARCH_QUERY_PATTERN = r"^[\x20-\x7E]+$"
 
 
 class MatchOverrideMutation(BaseModel):
@@ -961,4 +1037,171 @@ def create_app() -> FastAPI:
                 clear_email_message_id=True,
             )
 
+    #R060: List latest-run candidates for a transaction, enriched with Mailcart metadata.
+    @app.get(
+        "/v1/matchy/transactions/{transaction_id}/candidates",
+        response_model=List[MatchCandidateRow],
+        response_model_by_alias=True,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction or no match runs recorded"},
+            503: {"model": ApiError, "description": "Mailcart is not configured"},
+        },
+    )
+    def list_match_candidates(transaction_id: str):
+        with get_session() as session:
+            latest = session.execute(_LATEST_MATCH_RUN_SQL, {"transaction_id": transaction_id}).fetchone()
+            if not latest:
+                raise HTTPException(status_code=404, detail=f"No match runs recorded for transaction_id: {transaction_id}")
+            candidate_rows = session.execute(
+                _LATEST_RUN_CANDIDATES_SQL, {"match_run_id": latest[0]}
+            ).mappings().all()
+        if not candidate_rows:
+            return []
+        return _enrich_candidates_with_mailcart(candidate_rows)
+
+    #R061: Proxy the full message body + metadata from Mailcart for the right pane.
+    @app.get(
+        "/v1/matchy/messages/{email_message_id}",
+        response_model=EmailMessage,
+        response_model_by_alias=True,
+        responses={
+            400: {"model": ApiError, "description": "Invalid email message identifier"},
+            404: {"model": ApiError, "description": "Unknown email message identifier"},
+            502: {"model": ApiError, "description": "Mailcart upstream returned an unexpected response"},
+            503: {"model": ApiError, "description": "Mailcart is not configured"},
+        },
+    )
+    def get_match_message(email_message_id: str):
+        _validate_email_message_id(email_message_id)
+        client = get_mailcart_client()
+        try:
+            payload = client.get_message(email_message_id)
+        except MailcartError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message)
+        return _email_message_from_payload(email_message_id, payload)
+
+    #R062: Proxy a free-form Mailcart search to populate the secondary middle-pane results.
+    @app.get(
+        "/v1/matchy/messages/search",
+        response_model=EmailSearchResponse,
+        response_model_by_alias=True,
+        responses={
+            400: {"model": ApiError, "description": "Invalid query parameter"},
+            502: {"model": ApiError, "description": "Mailcart upstream returned an unexpected response"},
+            503: {"model": ApiError, "description": "Mailcart is not configured"},
+        },
+    )
+    def search_match_messages(
+        query: Annotated[str, StringConstraints(min_length=1, max_length=200, pattern=_EMAIL_SEARCH_QUERY_PATTERN)] = Query(...),
+        limit: int = Query(default=25, ge=1, le=100),
+    ):
+        client = get_mailcart_client()
+        try:
+            payload = client.search(query=query, limit=limit)
+        except MailcartError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message)
+        #R062: Mailcart returns {"messages": [...]} (see mailcart/scripts/matchy_mailcart_api.py R020); accept "items"
+        #R062: as a fallback so a future contract change does not silently break the UI.
+        hits_raw = None
+        if isinstance(payload, dict):
+            hits_raw = payload.get("messages")
+            if not isinstance(hits_raw, list):
+                hits_raw = payload.get("items")
+        if not isinstance(hits_raw, list):
+            raise HTTPException(status_code=502, detail="mailcart: search response missing 'messages' array")
+        hits = [_email_search_hit_from_payload(item) for item in hits_raw if isinstance(item, dict)]
+        return EmailSearchResponse(query=query, items=hits)
+
     return app
+
+
+def _validate_email_message_id(email_message_id: str) -> None:
+    if (
+        not email_message_id
+        or len(email_message_id) > _EMAIL_MESSAGE_ID_MAX_LENGTH
+        or not re.match(_EMAIL_MESSAGE_ID_PATTERN, email_message_id)
+    ):
+        raise HTTPException(status_code=400, detail="Invalid email_message_id")
+
+
+def _enrich_candidates_with_mailcart(candidate_rows: List[Dict[str, Any]]) -> List[MatchCandidateRow]:
+    #R060: Best-effort fan-out enrichment; per-id Mailcart failures degrade to mailcart_error rather than 502.
+    try:
+        client = get_mailcart_client()
+    except HTTPException as exc:
+        if exc.status_code == 503:
+            return [_candidate_row_with_error(row, exc.detail) for row in candidate_rows]
+        raise
+    enriched: List[MatchCandidateRow] = []
+    for row in candidate_rows:
+        try:
+            metadata = client.get_message(row["email_message_id"])
+        except MailcartError as exc:
+            enriched.append(_candidate_row_with_error(row, exc.message))
+            continue
+        enriched.append(_candidate_row_from_db_and_metadata(row, metadata))
+    return enriched
+
+
+def _candidate_row_from_db_and_metadata(row: Dict[str, Any], metadata: Dict[str, Any]) -> MatchCandidateRow:
+    #R060: Mailcart's per-message response uses {subject, sender, preview, body_text} (and html_body for HTML
+    #R060: messages); map those into the UI-facing {subject, from, snippet} fields.
+    payload = _candidate_payload(row)
+    if isinstance(metadata, dict):
+        payload["subject"] = metadata.get("subject")
+        payload["from"] = metadata.get("from") or metadata.get("sender")
+        snippet = metadata.get("snippet") or metadata.get("preview")
+        if not snippet:
+            body_text = metadata.get("body_text") or metadata.get("text_body") or ""
+            snippet = body_text[:200] if isinstance(body_text, str) else None
+        payload["snippet"] = snippet or None
+    return MatchCandidateRow.model_validate(payload)
+
+
+def _candidate_row_with_error(row: Dict[str, Any], message: str) -> MatchCandidateRow:
+    payload = _candidate_payload(row)
+    payload["mailcart_error"] = message
+    return MatchCandidateRow.model_validate(payload)
+
+
+def _candidate_payload(row: Dict[str, Any]) -> Dict[str, Any]:
+    reason = row.get("reason_json") or {}
+    if not isinstance(reason, dict):
+        reason = {}
+    return {
+        "email_message_id": row["email_message_id"],
+        "score": float(row["score"]),
+        "reason_json": reason,
+        "email_received_at": row.get("email_received_at"),
+        "is_selected_by_ai": bool(row.get("is_selected_by_ai")),
+        "is_unmatched_email_priority": bool(row.get("is_unmatched_email_priority")),
+    }
+
+
+def _email_message_from_payload(email_message_id: str, payload: Dict[str, Any]) -> EmailMessage:
+    #R061: Mailcart serializes per-message rows as {message_id, subject, sender, recipients, preview,
+    #R061: html_body, text_body, body_text, received_at} (see mailcart R035); fall back to legacy
+    #R061: field names where they happen to coincide so callers that mock the older contract still work.
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=502, detail="mailcart: message response was not a JSON object")
+    return EmailMessage.model_validate({
+        "email_message_id": payload.get("message_id") or payload.get("email_message_id") or email_message_id,
+        "subject": payload.get("subject"),
+        "from": payload.get("sender") or payload.get("from"),
+        "to": payload.get("recipients") or payload.get("to"),
+        "received_at": payload.get("received_at"),
+        "html_body": payload.get("html_body"),
+        "text_body": payload.get("text_body"),
+        "snippet": payload.get("preview") or payload.get("snippet"),
+    })
+
+
+def _email_search_hit_from_payload(payload: Dict[str, Any]) -> EmailSearchHit:
+    #R062: Mailcart search rows use {message_id, subject, sender, preview, received_at, body_text}.
+    return EmailSearchHit.model_validate({
+        "email_message_id": payload.get("message_id") or payload.get("email_message_id") or payload.get("id") or "",
+        "subject": payload.get("subject"),
+        "from": payload.get("sender") or payload.get("from"),
+        "received_at": payload.get("received_at"),
+        "snippet": payload.get("preview") or payload.get("snippet"),
+    })

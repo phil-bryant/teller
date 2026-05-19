@@ -494,3 +494,33 @@ TRIGGER FLOW
 │ (operator/job in ecosystem) │                                 │ validates ids + starts run │
 └───────────────────────────√─┘                                 └────────────────────────────┘
 ```
+
+### Teller ↔ Mailcart contract (Match Review UI)
+
+The Teller classifier API proxies Mailcart for the macOS Match Review three-pane UI. The
+contract Mailcart exposes (see `mailcart/scripts/matchy_mailcart_api.py` and matchy's
+`matchy/mailcart_client.py`):
+
+- `GET /v1/messages/search?query=<string>&limit=<int>` — returns
+  `{"messages": [{"message_id", "subject", "preview", "received_at", "sender", "body_text"}]}`.
+- `GET /v1/messages/{message_id}` — returns
+  `{"message_id", "subject", "preview", "received_at", "sender", "recipients", "html_body", "text_body", "body_text"}`.
+- `POST /v1/messages/{message_id}/move` — used by matchy, not by Teller.
+
+Teller calls Mailcart via the proxy module `teller/teller_mailcart_client.py`:
+
+- Base URL defaults to `http://127.0.0.1:8788` (Mailcart is a local-only service); override
+  with the `MAILCART_SERVICE_BASE_URL` environment variable (the same name matchy uses).
+- Bearer token is optional and read from `MAILCART_SERVICE_TOKEN`; it is only attached when
+  set. Mailcart does not validate it. The Microsoft Graph token Mailcart uses internally is
+  managed by Mailcart itself (cached at `~/.cache/mailcart/graph_oauth.json`, refreshed on 401).
+- Teller exposes three read-only proxy/aggregation endpoints (no write token required):
+  `GET /v1/matchy/transactions/{transaction_id}/candidates`,
+  `GET /v1/matchy/messages/{email_message_id}`,
+  `GET /v1/matchy/messages/search`. Each endpoint maps Mailcart's
+  `{message_id, sender, preview, body_text}` fields onto the UI-facing
+  `{email_message_id, from, snippet, html_body, text_body}` shape used by `MatchCandidateRow`,
+  `EmailMessage`, and `EmailSearchHit`.
+- Per-id Mailcart failures during candidate enrichment degrade gracefully — the row returns
+  with `mailcart_error` rather than failing the whole listing — so the review pane remains
+  usable when Mailcart is partially unavailable.

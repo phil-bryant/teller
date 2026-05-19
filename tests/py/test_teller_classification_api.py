@@ -23,6 +23,15 @@
 # #R045-T01: Traceability anchor.
 # #R050-T01: Traceability anchor.
 # #R055-T01: Traceability anchor.
+# #R060-T01: Traceability anchor.
+# #R060-T02: Traceability anchor.
+# #R060-T03: Traceability anchor.
+# #R060-T04: Traceability anchor.
+# #R061-T01: Traceability anchor.
+# #R061-T02: Traceability anchor.
+# #R061-T03: Traceability anchor.
+# #R062-T01: Traceability anchor.
+# #R062-T02: Traceability anchor.
 
 import unittest
 from datetime import datetime, timezone
@@ -45,6 +54,7 @@ from teller.teller_classification_api import (
     SingleClassificationMutation,
     ClassificationBatchRequest,
 )
+from teller.teller_mailcart_client import MailcartError
 
 
 class _Result:
@@ -881,6 +891,321 @@ class ClassificationApiTests(unittest.TestCase):
                     body=SimpleNamespace(email_message_id="m_1", note="manual"),
                 )
             self.assertEqual(override_ctx.exception.status_code, 404)
+
+class _FakeMailcartClient:
+    def __init__(self, *, messages=None, message_errors=None, search_payload=None, search_error=None):
+        self._messages = dict(messages or {})
+        self._message_errors = dict(message_errors or {})
+        self._search_payload = search_payload
+        self._search_error = search_error
+        self.get_message_calls = []
+        self.search_calls = []
+
+    def get_message(self, email_message_id):
+        self.get_message_calls.append(email_message_id)
+        if email_message_id in self._message_errors:
+            raise self._message_errors[email_message_id]
+        if email_message_id not in self._messages:
+            raise MailcartError(status_code=404, message="mailcart: message not found")
+        return self._messages[email_message_id]
+
+    def search(self, query, limit):
+        self.search_calls.append({"query": query, "limit": limit})
+        if self._search_error is not None:
+            raise self._search_error
+        return self._search_payload
+
+
+class MatchCandidateProxyTests(unittest.TestCase):
+    def setUp(self):
+        self._mailcart_patches = []
+
+    def tearDown(self):
+        for patcher in self._mailcart_patches:
+            patcher.stop()
+
+    def _route_endpoint(self, app, path, method):
+        for route in app.routes:
+            if getattr(route, "path", None) == path and method in getattr(route, "methods", set()):
+                return route.endpoint
+        raise AssertionError(f"route not found: {method} {path}")
+
+    def _install_mailcart_client(self, client):
+        patcher = patch("teller.teller_classification_api.get_mailcart_client", return_value=client)
+        self._mailcart_patches.append(patcher)
+        patcher.start()
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_list_candidates_returns_latest_run_only_sorted_by_score(self, get_session_mock):
+        #R060-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
+        candidate_rows = [
+            {
+                "email_message_id": "msg_high",
+                "score": 0.92,
+                "reason_json": {"reason": "amount-and-date match"},
+                "email_received_at": datetime(2026, 5, 17, 12, 0, tzinfo=timezone.utc),
+                "is_selected_by_ai": True,
+                "is_unmatched_email_priority": False,
+            },
+            {
+                "email_message_id": "msg_low",
+                "score": 0.41,
+                "reason_json": {},
+                "email_received_at": datetime(2026, 5, 16, 8, 30, tzinfo=timezone.utc),
+                "is_selected_by_ai": False,
+                "is_unmatched_email_priority": True,
+            },
+        ]
+        session = _FakeSession(rows=[_Result(row=(42,)), _Result(rows=candidate_rows)])
+        get_session_mock.return_value = _SessionContext(session)
+        self._install_mailcart_client(
+            _FakeMailcartClient(messages={
+                "msg_high": {"subject": "Order receipt", "from": "shop@example.com", "snippet": "Thanks!"},
+                "msg_low":  {"subject": "Newsletter", "from": "news@example.com", "snippet": "Hi"},
+            })
+        )
+
+        body = endpoint(transaction_id="txn_42")
+
+        self.assertEqual([row.email_message_id for row in body], ["msg_high", "msg_low"])
+        self.assertEqual(body[0].subject, "Order receipt")
+        self.assertTrue(body[0].is_selected_by_ai)
+        self.assertEqual(body[1].subject, "Newsletter")
+        self.assertTrue(body[1].is_unmatched_email_priority)
+        run_sql, run_params = session.calls[0]
+        cand_sql, cand_params = session.calls[1]
+        self.assertIn("FROM teller.transaction_email_match_run", run_sql)
+        self.assertEqual(run_params["transaction_id"], "txn_42")
+        self.assertIn("transaction_email_candidate", cand_sql)
+        self.assertIn("ORDER BY score DESC", cand_sql)
+        self.assertEqual(cand_params["match_run_id"], 42)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_list_candidates_merges_mailcart_metadata_onto_db_rows(self, get_session_mock):
+        #R060-T02
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
+        session = _FakeSession(rows=[
+            _Result(row=(7,)),
+            _Result(rows=[{
+                "email_message_id": "msg_1",
+                "score": 0.5,
+                "reason_json": {"why": "fuzzy"},
+                "email_received_at": None,
+                "is_selected_by_ai": False,
+                "is_unmatched_email_priority": False,
+            }]),
+        ])
+        get_session_mock.return_value = _SessionContext(session)
+        self._install_mailcart_client(_FakeMailcartClient(messages={
+            "msg_1": {"subject": "Hello", "from": "alice@example.com", "snippet": "preview"},
+        }))
+
+        body = endpoint(transaction_id="txn_with_one_run")
+
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0].subject, "Hello")
+        self.assertEqual(body[0].sender, "alice@example.com")
+        self.assertEqual(body[0].snippet, "preview")
+        self.assertEqual(body[0].reason_json, {"why": "fuzzy"})
+        self.assertIsNone(body[0].mailcart_error)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_list_candidates_partial_mailcart_failure_does_not_500(self, get_session_mock):
+        #R060-T03
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
+        session = _FakeSession(rows=[
+            _Result(row=(8,)),
+            _Result(rows=[
+                {"email_message_id": "msg_ok",   "score": 0.7, "reason_json": {}, "email_received_at": None,
+                 "is_selected_by_ai": False, "is_unmatched_email_priority": False},
+                {"email_message_id": "msg_bad",  "score": 0.6, "reason_json": {}, "email_received_at": None,
+                 "is_selected_by_ai": False, "is_unmatched_email_priority": False},
+            ]),
+        ])
+        get_session_mock.return_value = _SessionContext(session)
+        self._install_mailcart_client(_FakeMailcartClient(
+            messages={"msg_ok": {"subject": "Good", "from": "ok@example.com", "snippet": "ok"}},
+            message_errors={"msg_bad": MailcartError(status_code=502, message="mailcart: upstream returned 500")},
+        ))
+
+        body = endpoint(transaction_id="txn_42")
+
+        self.assertEqual(body[0].subject, "Good")
+        self.assertIsNone(body[0].mailcart_error)
+        self.assertIsNone(body[1].subject)
+        self.assertEqual(body[1].mailcart_error, "mailcart: upstream returned 500")
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_list_candidates_returns_404_when_no_runs_exist(self, get_session_mock):
+        #R060-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
+        session = _FakeSession(rows=[_Result(row=None)])
+        get_session_mock.return_value = _SessionContext(session)
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(transaction_id="txn_missing")
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_list_candidates_returns_empty_when_run_has_no_candidates(self, get_session_mock):
+        #R060-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
+        session = _FakeSession(rows=[_Result(row=(1,)), _Result(rows=[])])
+        get_session_mock.return_value = _SessionContext(session)
+        body = endpoint(transaction_id="txn_no_candidates")
+        self.assertEqual(body, [])
+
+    def test_get_message_proxies_body_and_metadata(self):
+        #R061-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/{email_message_id}", "GET")
+        self._install_mailcart_client(_FakeMailcartClient(messages={
+            "msg_42": {
+                "email_message_id": "msg_42",
+                "subject": "Receipt",
+                "from": "store@example.com",
+                "to": "me@example.com",
+                "received_at": "2026-05-17T12:00:00+00:00",
+                "html_body": "<p>hi</p>",
+                "text_body": "hi",
+                "snippet": "hi",
+            }
+        }))
+        body = endpoint(email_message_id="msg_42")
+        self.assertEqual(body.email_message_id, "msg_42")
+        self.assertEqual(body.subject, "Receipt")
+        self.assertEqual(body.sender, "store@example.com")
+        self.assertEqual(body.recipients, "me@example.com")
+        self.assertEqual(body.html_body, "<p>hi</p>")
+        self.assertEqual(body.text_body, "hi")
+
+    def test_get_message_surfaces_404_from_mailcart(self):
+        #R061-T02
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/{email_message_id}", "GET")
+        self._install_mailcart_client(_FakeMailcartClient())
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(email_message_id="msg_missing")
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    def test_get_message_rejects_invalid_identifier(self):
+        #R061-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/{email_message_id}", "GET")
+        self._install_mailcart_client(_FakeMailcartClient())
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(email_message_id="bad id with space")
+        self.assertEqual(ctx.exception.status_code, 400)
+
+    def test_search_messages_validates_query_and_proxies_items(self):
+        #R062-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
+        client = _FakeMailcartClient(search_payload={"items": [
+            {"email_message_id": "msg_a", "subject": "A", "from": "a@example.com", "received_at": "2026-05-17T12:00:00+00:00", "snippet": "..."},
+            {"email_message_id": "msg_b", "subject": "B", "from": "b@example.com", "received_at": "2026-05-17T13:00:00+00:00", "snippet": "..."},
+        ]})
+        self._install_mailcart_client(client)
+        body = endpoint(query="amazon receipt", limit=5)
+        self.assertEqual(body.query, "amazon receipt")
+        self.assertEqual([hit.email_message_id for hit in body.items], ["msg_a", "msg_b"])
+        self.assertEqual(client.search_calls, [{"query": "amazon receipt", "limit": 5}])
+
+    def test_search_messages_502s_when_upstream_returns_no_items_array(self):
+        #R062-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
+        self._install_mailcart_client(_FakeMailcartClient(search_payload={"not_items": []}))
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(query="q", limit=5)
+        self.assertEqual(ctx.exception.status_code, 502)
+
+    def test_search_messages_accepts_real_mailcart_messages_envelope(self):
+        #R062-T02
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
+        client = _FakeMailcartClient(search_payload={"messages": [
+            {"message_id": "msg_a", "subject": "Receipt", "sender": "store@example.com",
+             "preview": "preview text", "received_at": "2026-05-17T12:00:00+00:00", "body_text": "preview text"},
+            {"message_id": "msg_b", "subject": "Bill", "sender": "biller@example.com",
+             "preview": "second", "received_at": "2026-05-17T13:00:00+00:00", "body_text": "second"},
+        ]})
+        self._install_mailcart_client(client)
+        body = endpoint(query="amazon", limit=5)
+        self.assertEqual([hit.email_message_id for hit in body.items], ["msg_a", "msg_b"])
+        self.assertEqual(body.items[0].sender, "store@example.com")
+        self.assertEqual(body.items[0].snippet, "preview text")
+
+    def test_get_message_accepts_real_mailcart_payload_shape(self):
+        #R061-T03
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/{email_message_id}", "GET")
+        self._install_mailcart_client(_FakeMailcartClient(messages={
+            "AAMkADk": {
+                "message_id": "AAMkADk",
+                "subject": "Receipt",
+                "sender": "store@example.com",
+                "recipients": "me@example.com,cc@example.com",
+                "preview": "Thanks for your order",
+                "received_at": "2026-05-17T12:00:00+00:00",
+                "html_body": "<p>Thanks!</p>",
+                "text_body": "",
+                "body_text": "<p>Thanks!</p>",
+            }
+        }))
+        body = endpoint(email_message_id="AAMkADk")
+        self.assertEqual(body.email_message_id, "AAMkADk")
+        self.assertEqual(body.subject, "Receipt")
+        self.assertEqual(body.sender, "store@example.com")
+        self.assertEqual(body.recipients, "me@example.com,cc@example.com")
+        self.assertEqual(body.html_body, "<p>Thanks!</p>")
+        self.assertEqual(body.snippet, "Thanks for your order")
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_list_candidates_merges_real_mailcart_shape(self, get_session_mock):
+        #R060-T04
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
+        session = _FakeSession(rows=[
+            _Result(row=(11,)),
+            _Result(rows=[{
+                "email_message_id": "AAMkADk",
+                "score": 0.81,
+                "reason_json": {"why": "amount"},
+                "email_received_at": None,
+                "is_selected_by_ai": True,
+                "is_unmatched_email_priority": False,
+            }]),
+        ])
+        get_session_mock.return_value = _SessionContext(session)
+        self._install_mailcart_client(_FakeMailcartClient(messages={
+            "AAMkADk": {
+                "message_id": "AAMkADk",
+                "subject": "Order receipt",
+                "sender": "shop@example.com",
+                "preview": "Thanks for your order",
+                "body_text": "Thanks for your order, here are the details...",
+            }
+        }))
+        body = endpoint(transaction_id="txn_real")
+        self.assertEqual(body[0].subject, "Order receipt")
+        self.assertEqual(body[0].sender, "shop@example.com")
+        self.assertEqual(body[0].snippet, "Thanks for your order")
+        self.assertTrue(body[0].is_selected_by_ai)
+
+    def test_matchy_extension_endpoints_register_with_app(self):
+        #R060-T01
+        app = create_app()
+        route_paths = {route.path for route in app.routes}
+        self.assertIn("/v1/matchy/transactions/{transaction_id}/candidates", route_paths)
+        self.assertIn("/v1/matchy/messages/{email_message_id}", route_paths)
+        self.assertIn("/v1/matchy/messages/search", route_paths)
+
 
 if __name__ == "__main__":
     unittest.main()

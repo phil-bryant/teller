@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 private enum AppTab: Hashable {
     case classify
@@ -214,53 +215,533 @@ private struct MatchReviewView: View {
     @Bindable var viewModel: ClassificationViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
+            MatchReviewToolbar(viewModel: viewModel)
+            HSplitView {
+                MatchTransactionsPane(viewModel: viewModel)
+                    .frame(minWidth: 300, idealWidth: 360)
+                CandidatesPane(viewModel: viewModel)
+                    .frame(minWidth: 320, idealWidth: 400)
+                EmailDetailPane(viewModel: viewModel)
+                    .frame(minWidth: 360, idealWidth: 540)
+            }
+            .accessibilityIdentifier("match-review-split")
             HStack(spacing: 8) {
-                Picker("State", selection: $viewModel.matchReviewStateFilter) {
-                    Text("All").tag("")
-                    Text("Needs review").tag("ai_candidate_uncertain")
-                    Text("No email").tag("ai_no_match_found")
-                    Text("AI confident").tag("ai_match_confident")
+                if !viewModel.matchReviewErrorText.isEmpty {
+                    Text(viewModel.matchReviewErrorText)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("match-review-error")
+                } else {
+                    Text(viewModel.matchReviewStatusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("match-review-status")
                 }
-                .frame(width: 220)
-                Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
-                Button("Refresh") { Task { await viewModel.loadMatchReview() } }
+                Spacer()
             }
-            List(selection: $viewModel.selectedMatchId) {
-                ForEach(viewModel.matchReviewRows) { row in
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(row.description).lineLimit(1)
-                        Text("txn: \(row.transaction_id) • email: \(row.email_message_id ?? "none")")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("\(row.state) • confidence: \(row.ai_confidence.map { String(format: "%.2f", $0) } ?? "n/a")")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    .tag(Optional(row.match_id))
-                }
-            }
-            HStack(spacing: 8) {
-                TextField("Override email message id", text: $viewModel.matchOverrideEmailMessageId)
-                    .textFieldStyle(.roundedBorder)
-                Button("Confirm") { Task { await viewModel.confirmSelectedMatch() } }
-                    .disabled(viewModel.selectedMatchId == nil)
-                Button("Override") { Task { await viewModel.overrideSelectedMatch() } }
-                    .disabled(viewModel.selectedMatchId == nil)
-                Button("Mark no-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
-                    .disabled(viewModel.selectedMatchId == nil)
-            }
-            if !viewModel.matchReviewErrorText.isEmpty {
-                Text(viewModel.matchReviewErrorText).font(.caption).foregroundStyle(.red)
-            } else {
-                Text(viewModel.matchReviewStatusText).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
         }
         .task { await viewModel.loadMatchReview() }
         .onChange(of: viewModel.matchReviewStateFilter) { _, _ in Task { await viewModel.loadMatchReview() } }
         .onChange(of: viewModel.matchReviewOnlyUnmoved) { _, _ in Task { await viewModel.loadMatchReview() } }
+        .onChange(of: viewModel.selectedMatchId) { _, _ in Task { await viewModel.selectedMatchDidChange() } }
+        .onChange(of: viewModel.selectedCandidateId) { _, _ in Task { await viewModel.selectedCandidateDidChange() } }
+        .onChange(of: viewModel.mailcartSearchQuery) { _, _ in Task { await viewModel.searchMailcartIfNeeded() } }
     }
+}
+
+private struct MatchReviewToolbar: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Picker("State", selection: $viewModel.matchReviewStateFilter) {
+                Text("All").tag("")
+                Text("Needs review").tag("ai_candidate_uncertain")
+                Text("No email").tag("ai_no_match_found")
+                Text("AI confident").tag("ai_match_confident")
+            }
+            .frame(width: 240)
+            .accessibilityIdentifier("match-review-state-picker")
+            Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
+                .accessibilityIdentifier("match-review-only-unmoved-toggle")
+            Spacer()
+            Button("Refresh") { Task { await viewModel.loadMatchReview() } }
+                .accessibilityIdentifier("match-review-refresh-button")
+        }
+    }
+}
+
+private struct MatchTransactionsPane: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    var body: some View {
+        let groupedRows = viewModel.matchReviewGroupedRows
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text("Transactions")
+                    .font(.headline)
+                Spacer()
+                if viewModel.busy {
+                    ProgressView().controlSize(.small)
+                }
+                // Show "<unique transactions> / <total matches>" so the user can see at a glance when
+                // matchy linked multiple emails to one transaction (groupedRows.count < matchReviewRows.count).
+                Text("\(groupedRows.count) / \(viewModel.matchReviewTotal)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            List(selection: $viewModel.selectedMatchId) {
+                ForEach(groupedRows) { row in
+                    MatchTransactionRowView(
+                        row: row,
+                        matchedEmailCount: viewModel.matchedEmailCount(for: row.transaction_id)
+                    )
+                    .tag(Optional(row.match_id))
+                    .accessibilityIdentifier("match-transaction-row-\(row.match_id)")
+                }
+            }
+            .accessibilityIdentifier("match-review-transactions-list")
+        }
+        .padding(8)
+    }
+}
+
+private struct MatchTransactionRowView: View {
+    let row: MatchReviewRow
+    let matchedEmailCount: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(row.description)
+                    .font(.body.weight(.medium))
+                    .lineLimit(1)
+                Spacer()
+                Text(row.amount as NSNumber, formatter: amountFormatter)
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+            }
+            HStack(spacing: 8) {
+                Text(row.date)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                StateBadge(state: row.state)
+                if let confidence = row.ai_confidence {
+                    ConfidencePill(confidence: confidence)
+                }
+                if matchedEmailCount > 1 {
+                    EmailCountBadge(count: matchedEmailCount)
+                }
+                Spacer()
+                if row.moved_to_matchy_at != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .help("Moved to matchy folder")
+                }
+            }
+            Text("txn \(row.transaction_id)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct EmailCountBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(count) emails")
+            .font(.caption2.weight(.medium))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.purple.opacity(0.18))
+            .foregroundStyle(Color.purple)
+            .clipShape(Capsule())
+            .help("Matchy linked \(count) emails to this single transaction")
+            .accessibilityIdentifier("match-email-count-badge")
+    }
+}
+
+private struct StateBadge: View {
+    let state: String
+
+    var body: some View {
+        Text(stateLabel(state))
+            .font(.caption2.weight(.medium))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(stateColor(state).opacity(0.18))
+            .foregroundStyle(stateColor(state))
+            .clipShape(Capsule())
+            .accessibilityIdentifier("match-state-badge-\(state)")
+    }
+
+    private func stateLabel(_ state: String) -> String {
+        switch state {
+        case "ai_no_match_found": return "no email"
+        case "ai_candidate_uncertain": return "uncertain"
+        case "ai_match_confident": return "AI match"
+        case "human_confirmed_ai_match": return "confirmed"
+        case "human_overrode_ai_match": return "overridden"
+        default: return state
+        }
+    }
+
+    private func stateColor(_ state: String) -> Color {
+        switch state {
+        case "ai_match_confident": return .blue
+        case "ai_candidate_uncertain": return .orange
+        case "ai_no_match_found": return .gray
+        case "human_confirmed_ai_match": return .green
+        case "human_overrode_ai_match": return .purple
+        default: return .secondary
+        }
+    }
+}
+
+private struct ConfidencePill: View {
+    let confidence: Double
+
+    var body: some View {
+        Text(String(format: "%.0f%%", confidence * 100))
+            .font(.caption2.monospacedDigit())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.accentColor.opacity(0.16))
+            .foregroundStyle(.primary)
+            .clipShape(Capsule())
+    }
+}
+
+private struct CandidatesPane: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    // The full set of email_message_ids matchy has actively linked to the selected transaction.
+    // When matchy ties multiple emails to one transaction, every one of them should render with
+    // the "active" badge in the candidates list — not just the single representative match row.
+    private var activeMatchEmailIds: Set<String> { viewModel.activeEmailIdsForSelectedTransaction }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Candidates")
+                    .font(.headline)
+                Spacer()
+                if viewModel.candidatesBusy {
+                    ProgressView().controlSize(.small)
+                }
+                Text("\(viewModel.candidates.count)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if !viewModel.candidatesErrorText.isEmpty {
+                Text(viewModel.candidatesErrorText)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("candidates-error")
+            }
+            List(selection: $viewModel.selectedCandidateId) {
+                Section {
+                    if viewModel.candidates.isEmpty && !viewModel.candidatesBusy {
+                        Text(viewModel.selectedMatchId == nil ? "Select a transaction on the left to see candidates."
+                                                              : "No candidates recorded for this transaction.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(viewModel.candidates) { candidate in
+                            CandidateRowView(candidate: candidate,
+                                             isActiveMatch: activeMatchEmailIds.contains(candidate.email_message_id))
+                                .tag(Optional(candidate.email_message_id))
+                                .accessibilityIdentifier("candidate-row-\(candidate.email_message_id)")
+                        }
+                    }
+                }
+                Section("Search Mailcart") {
+                    TextField("Subject, sender, or keyword", text: $viewModel.mailcartSearchQuery)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("mailcart-search-field")
+                    if !viewModel.mailcartSearchErrorText.isEmpty {
+                        Text(viewModel.mailcartSearchErrorText)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                    if viewModel.mailcartSearchBusy {
+                        HStack { ProgressView().controlSize(.small); Text("Searching…").font(.caption) }
+                    }
+                    ForEach(viewModel.mailcartSearchResults) { hit in
+                        SearchHitRowView(hit: hit)
+                            .tag(Optional(hit.email_message_id))
+                            .accessibilityIdentifier("mailcart-hit-row-\(hit.email_message_id)")
+                    }
+                }
+            }
+            .accessibilityIdentifier("candidates-list")
+        }
+        .padding(8)
+    }
+}
+
+private struct CandidateRowView: View {
+    let candidate: MatchCandidateRow
+    let isActiveMatch: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(candidate.subject ?? candidate.email_message_id)
+                    .font(.body.weight(.medium))
+                    .lineLimit(1)
+                if candidate.is_selected_by_ai {
+                    Text("AI pick")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Color.blue.opacity(0.2))
+                        .clipShape(Capsule())
+                }
+                if isActiveMatch {
+                    Text("active")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Color.green.opacity(0.2))
+                        .clipShape(Capsule())
+                }
+            }
+            HStack(spacing: 6) {
+                Text(candidate.from ?? "unknown sender")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                if let received = candidate.email_received_at {
+                    Text("• \(formattedDateString(received))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            HStack(spacing: 6) {
+                Text(String(format: "score %.2f", candidate.score))
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                if candidate.is_unmatched_email_priority {
+                    Text("priority")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+                if let error = candidate.mailcart_error {
+                    Text("• \(error)")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .lineLimit(1)
+                }
+            }
+            if let snippet = candidate.snippet, !snippet.isEmpty {
+                Text(snippet)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.vertical, 4)
+        .help(reasonTooltip)
+    }
+
+    private var reasonTooltip: String {
+        guard let reason = candidate.reason_json else { return candidate.email_message_id }
+        return reason.prettyDescription
+    }
+}
+
+private struct SearchHitRowView: View {
+    let hit: EmailSearchHit
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(hit.subject ?? hit.email_message_id)
+                .font(.body.weight(.medium))
+                .lineLimit(1)
+            HStack(spacing: 6) {
+                Text(hit.from ?? "unknown sender")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                if let received = hit.received_at {
+                    Text("• \(formattedDateString(received))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let snippet = hit.snippet, !snippet.isEmpty {
+                Text(snippet)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct EmailDetailPane: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Email")
+                    .font(.headline)
+                Spacer()
+                if viewModel.emailBusy {
+                    ProgressView().controlSize(.small)
+                }
+            }
+            if !viewModel.emailErrorText.isEmpty {
+                Text(viewModel.emailErrorText)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("email-error")
+            }
+            if let email = viewModel.selectedEmail {
+                EmailHeaderView(email: email)
+                Divider()
+                EmailBodyContent(email: email)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView("Select an email to view body",
+                                       systemImage: "envelope",
+                                       description: Text("Pick a candidate or search result from the middle pane."))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            Divider()
+            MatchActionsBar(viewModel: viewModel)
+        }
+        .padding(8)
+    }
+}
+
+private struct EmailHeaderView: View {
+    let email: EmailMessage
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(email.subject ?? email.email_message_id)
+                .font(.title3.weight(.semibold))
+                .lineLimit(2)
+                .accessibilityIdentifier("email-subject")
+            HStack(spacing: 8) {
+                if let from = email.from { Text("From: \(from)").font(.caption) }
+                if let to = email.to { Text("To: \(to)").font(.caption) }
+                if let received = email.received_at {
+                    Text("• \(formattedDateString(received))").font(.caption)
+                }
+            }
+            .foregroundStyle(.secondary)
+            Text("id: \(email.email_message_id)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct EmailBodyContent: View {
+    let email: EmailMessage
+
+    var body: some View {
+        if let html = email.html_body, !html.isEmpty {
+            EmailBodyWebView(htmlBody: html)
+                .accessibilityIdentifier("email-body-html")
+        } else if let text = email.text_body, !text.isEmpty {
+            ScrollView {
+                Text(text)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+                    .padding(8)
+            }
+            .accessibilityIdentifier("email-body-text")
+        } else {
+            ContentUnavailableView("Empty body", systemImage: "doc.text",
+                                   description: Text("Mailcart returned no html_body or text_body for this message."))
+        }
+    }
+}
+
+private struct MatchActionsBar: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                TextField("Override email message id (optional override)", text: $viewModel.matchOverrideEmailMessageId)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("override-email-message-id-field")
+            }
+            HStack(spacing: 8) {
+                TextField("Note (optional)", text: $viewModel.matchOverrideNote)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("override-note-field")
+            }
+            HStack(spacing: 8) {
+                Button("Confirm") { Task { await viewModel.confirmSelectedMatch() } }
+                    .disabled(viewModel.selectedMatchId == nil)
+                    .accessibilityIdentifier("match-confirm-button")
+                Button("Override with this email") { Task { await viewModel.overrideSelectedMatch() } }
+                    .disabled(!viewModel.canOverrideSelectedMatch)
+                    .accessibilityIdentifier("match-override-button")
+                Button("Mark no-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
+                    .disabled(viewModel.selectedMatchId == nil)
+                    .accessibilityIdentifier("match-no-email-button")
+                Spacer()
+            }
+        }
+    }
+}
+
+private struct EmailBodyWebView: NSViewRepresentable {
+    let htmlBody: String
+
+    func makeNSView(context: Context) -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.setValue(false, forKey: "drawsBackground")
+        return webView
+    }
+
+    func updateNSView(_ nsView: WKWebView, context: Context) {
+        nsView.loadHTMLString(wrappedHTML, baseURL: nil)
+    }
+
+    private var wrappedHTML: String {
+        """
+        <!doctype html>
+        <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            html, body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.4; margin: 12px; color: -apple-system-label; background: transparent; }
+            img { max-width: 100%; height: auto; }
+            blockquote { border-left: 3px solid rgba(127,127,127,0.4); margin: 0; padding-left: 10px; color: -apple-system-secondary-label; }
+            a { color: -apple-system-blue; }
+            pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        </style></head><body>
+        \(htmlBody)
+        </body></html>
+        """
+    }
+}
+
+private func formattedDateString(_ raw: String) -> String {
+    let isoFormatter = ISO8601DateFormatter()
+    isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let date = isoFormatter.date(from: raw) ?? ISO8601DateFormatter().date(from: raw) {
+        let display = DateFormatter()
+        display.dateStyle = .medium
+        display.timeStyle = .short
+        return display.string(from: date)
+    }
+    return raw
 }
 
 private struct DetailPane: View {
