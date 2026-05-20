@@ -98,3 +98,159 @@ ok 95 fails when 1psa is missing
 ok 96 all psql invocations include fail-fast on_error_stop
 ok 97 uses configurable 1psa source for admin and teller roles
 ok 98 fails when postgres password is empty
+ok 99 runs bootstrap and teller SQL in order through sql directory
+ok 100 applies create_triggers after classification table and enforces cascade alter
+ok 101 ensures pgtap extension is created in prod during bootstrap
+ok 102 applies explicit ingest reconcile grants after audit setup
+ok 103 fails on first psql error
+ok 104 psql command includes custom host and port from env
+ok 105 uses 1psa when teller db password is unset
+ok 106 fails with clear error when database password is empty
+ok 107 fails when classification FK is missing ON DELETE CASCADE
+ok 108 emits a single pass line for successful verification
+ok 109 fails when updated_at coverage has gaps
+ok 110 runs from repository root regardless of caller cwd
+ok 111 fails with actionable message when shell tests are enabled but bats is missing
+ok 112 can disable python suite via RUN_PYTHON_TESTS=false
+ok 113 runs sql suite by default when sql tests are present
+ok 114 fails with actionable message when sql tests are enabled but pg_prove is missing
+ok 115 uses user-local pg_prove from ~/perl5/bin when PATH lacks pg_prove
+ok 116 fails clearly when sql preflight cannot query database
+ok 117 fails with actionable message when pgtap extension is missing
+ok 118 uses 1psa fallback when teller db password env is unset
+ok 119 can disable sql suite via RUN_SQL_TESTS=false
+ok 120 runs swift suite by default when macos tests exist
+ok 121 can disable swift suite via RUN_SWIFT_TESTS=false
+ok 122 does not invoke macOS crash reporter verification script
+ok 123 fails when snapshot step fails
+ok 124 resolves against repository root for relative paths
+ok 125 snapshot lane honors RUN_SNAPSHOT_TESTS and snapshot record
+ok 126 XCUITest gate fails with missing xcode project
+ok 127 XCUITest can be disabled while snapshot runs
+ok 128 defaults run snapshot and xcodebuild when env vars unset
+ok 129 passes xcodebuild project scheme destination and derived data overrides
+ok 130 runs only selected XCUITests by numeric selectors
+ok 131 fails when selector references non-existent test numbers
+ok 132 does not invoke macOS crash reporter verification script
+ok 133 verifies forced-crash replay persists crash artifacts
+ok 134 fails when forced-crash run exits zero
+ok 135 fails with clear message when macos-ui path is missing
+ok 136 remains standalone and is not chained by numbered runners
+ok 137 argparse includes debug, dry run, and institution
+ok 138 client loads cert paths from home teller
+ok 139 Teller client uses macOS UI connect repair launcher
+ok 140 transaction fetch paginates with from_id
+ok 141 enrollment context builder dedupes
+ok 142 main skips database when dry run
+ok 143 persistence path calls persist_all
+ok 144 persistence path documents R030 and R035
+ok 145 OCR path uses vision swift bridge
+ok 146 parsing uses regex and type maps for line extraction
+ok 147 account matching uses last four and institution rows
+ok 148 statement transaction ids are stable
+ok 149 cli exposes institution account statements root and dry run
+ok 150 main logs backfill complete with counters
+ok 151 resolves default host and port
+ok 152 entrypoint uses uvicorn with create_app
+ok 153 requires classifier write token lookup preflight
+ok 154 fails on psql error
+ok 155 auto-resolves posted transaction and category
+ok 156 strict mode requires category id
+ok 157 sends request to api url and database host from env
+ok 158 resolves empty password with 1psa
+ok 159 api json uses transaction and category
+ok 160 persists line matches expected format
+ok 161 pass output includes details before status
+ok 162 fails on curl error
+ok 163 prints DAST startup banner
+ok 164 runs DAST lane when scanner integrations are disabled
+ok 165 category integrity gate asserts seed protection invariants
+ok 166 forwards args to TransactionClassifier with computed package path
+ok 167 reports pass for all nine checks when every child succeeds
+ok 168 runs from repository root regardless of caller directory
+ok 169 fails fast when a checklist script is missing
+ok 170 launches checks concurrently
+ok 171 streams per-check results in completion order
+ok 172 renders intermediate progress before all checks complete
+ok 173 prints final 100 percent progress before overall summary
+ok 174 waits for all checks and reports a single failed child
+ok 175 writes child output to per-check log artifacts
+ok 176 child check scripts do not invoke the parallel meta-runner
+ok 177 rejects concurrent orchestrator runs with an active lock
+ok 178 reclaims stale lock file and succeeds
+ok 179 fails when pg_dump is missing
+ok 180 creates dump and globals artifacts with printed paths
+ok 181 fails clearly when 1psa is missing
+ok 182 wrong confirmation cancels before teardown commands
+ok 183 successful confirmation runs cleanup and prints completion
+ok 184 fails when pg_restore is missing
+ok 185 defaults to latest dump and reports completion path
+ok 186 table-scoped restore skips globals file requirement
+ok 187 refuses full restore when teller schema already exists
+ok 188 fails when teller password lookup is empty
+ok 189 full restore re-syncs teller password and verifies teller auth
+ok 190 define audit log table
+ok 191 define primary key column lookup and audit trigger
+ok 192 normalize single and composite record ids
+ok 193 attach audit triggers to teller base tables
+ok 194 defines update updated_at trigger function
+ok 195 iterates teller base tables for updated at
+ok 196 replaces existing custom triggers
+ok 197 uses before update trigger name pattern
+ok 198 view joins transaction to related teller data
+ok 199 view orders by date and description
+▶ Running Python unit tests (unittest)...
+..........................................................................2026-05-20 00:37:10 [debug    ] TellerObject.__init__          api_data={'amount': 'not-an-int'} class_name=TellerTransactionDetails
+2026-05-20 00:37:10 [debug    ] TellerObject._mapped_api_data  api_data={'amount': 'not-an-int'} class_name=TellerTransactionDetails
+2026-05-20 00:37:10 [debug    ] TellerObject.__post_init__     api_data={'amount': 'not-an-int'} class_name=TellerTransactionDetails mapped_api_data={'amount': 'not-an-int'}
+2026-05-20 00:37:10 [debug    ] TellerObject._mapped_api_data  api_data={'amount': 'not-an-int'} class_name=TellerTransactionDetails
+2026-05-20 00:37:10 [debug    ] TellerObject.setting_attr      class_name=TellerTransactionDetails is_list=False key=amount target=<class 'int'> value=not-an-int
+.2026-05-20 00:37:10 [debug    ] TellerObject.__init__          api_data={'api_name': 'merchant', 'amount': '42', 'debug_label': 'visible', 'unknown': 'ignored'} class_name=TellerTransactionDetails
+2026-05-20 00:37:10 [debug    ] TellerObject._mapped_api_data  api_data={'api_name': 'merchant', 'amount': '42', 'debug_label': 'visible', 'unknown': 'ignored'} class_name=TellerTransactionDetails
+2026-05-20 00:37:10 [debug    ] TellerObject.__post_init__     api_data={'api_name': 'merchant', 'amount': '42', 'debug_label': 'visible', 'unknown': 'ignored'} class_name=TellerTransactionDetails mapped_api_data={'aliased_name': 'merchant', 'amount': '42', 'debug_label': 'visible'}
+2026-05-20 00:37:10 [debug    ] TellerObject._mapped_api_data  api_data={'api_name': 'merchant', 'amount': '42', 'debug_label': 'visible', 'unknown': 'ignored'} class_name=TellerTransactionDetails
+2026-05-20 00:37:10 [debug    ] TellerObject.setting_attr      class_name=TellerTransactionDetails is_list=False key=aliased_name target=<class 'str'> value=merchant
+2026-05-20 00:37:10 [debug    ] TellerObject.setting_attr      class_name=TellerTransactionDetails is_list=False key=amount target=<class 'int'> value=42
+2026-05-20 00:37:10 [debug    ] TellerObject.setting_attr      class_name=TellerTransactionDetails is_list=False key=debug_label target=<class 'str'> value=visible
+.2026-05-20 00:37:10 [debug    ] TellerObject.__init__          api_data=None class_name=TellerTransactionDetails
+.2026-05-20 00:37:10 [debug    ] TellerObject.__init__          api_data=None class_name=TellerTransactionDetails
+.2026-05-20 00:37:10 [debug    ] TellerObject.__init__          api_data={'debug_label': 'only_this', 'hidden_label': 'skip_this'} class_name=TellerTransactionDetails
+2026-05-20 00:37:10 [debug    ] TellerObject._mapped_api_data  api_data={'debug_label': 'only_this', 'hidden_label': 'skip_this'} class_name=TellerTransactionDetails
+2026-05-20 00:37:10 [debug    ] TellerObject.__post_init__     api_data={'debug_label': 'only_this', 'hidden_label': 'skip_this'} class_name=TellerTransactionDetails mapped_api_data={'debug_label': 'only_this', 'hidden_label': 'skip_this'}
+2026-05-20 00:37:10 [debug    ] TellerObject._mapped_api_data  api_data={'debug_label': 'only_this', 'hidden_label': 'skip_this'} class_name=TellerTransactionDetails
+2026-05-20 00:37:10 [debug    ] TellerObject.setting_attr      class_name=TellerTransactionDetails is_list=False key=debug_label target=<class 'str'> value=only_this
+2026-05-20 00:37:10 [debug    ] TellerObject.setting_attr      class_name=TellerTransactionDetails is_list=False key=hidden_label target=<class 'str'> value=skip_this
+..2026-05-20 00:37:10 [debug    ] TellerObject.__init__          api_data=None class_name=TellerTransactionDetails
+.2026-05-20 00:37:10 [debug    ] TellerObject.__init__          api_data=None class_name=TellerTransactionDetails
+....2026-05-20 00:37:10 [info     ] Persisted account + identities account_id=acc_1 owner_count=1
+2026-05-20 00:37:10 [info     ] Persisted transactions         account_id=acc_1 count=1
+2026-05-20 00:37:10 [info     ] Database commit complete
+............
+----------------------------------------------------------------------
+Ran 97 tests in 1.598s
+
+OK
+▶ Preparing SQL unit tests (pgTAP)...
+▶ Running SQL unit tests (pgTAP via pg_prove)...
+Can't locate strict.pm:   /Library/Perl/5.34/darwin-thread-multi-2level/strict.pm: Permission denied at /Users/phil/perl5/bin/pg_prove line 3.
+BEGIN failed--compilation aborted at /Users/phil/perl5/bin/pg_prove line 3.
+ℹ️  Retrying user-local pg_prove with Homebrew perl...
+./tests/sql/01_schema_smoke.sql .. ok
+All tests successful.
+Files=1, Tests=4,  0 wallclock secs ( 0.01 usr  0.01 sys +  0.01 cusr  0.00 csys =  0.03 CPU)
+Result: PASS
+Can't locate strict.pm:   /Library/Perl/5.34/darwin-thread-multi-2level/strict.pm: Permission denied at /Users/phil/perl5/bin/pg_prove line 3.
+BEGIN failed--compilation aborted at /Users/phil/perl5/bin/pg_prove line 3.
+ℹ️  Retrying user-local pg_prove with Homebrew perl...
+./tests/sql/02_transaction_info_view_columns.sql .. ok
+All tests successful.
+Files=1, Tests=8,  0 wallclock secs ( 0.00 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.01 CPU)
+Result: PASS
+Can't locate strict.pm:   /Library/Perl/5.34/darwin-thread-multi-2level/strict.pm: Permission denied at /Users/phil/perl5/bin/pg_prove line 3.
+BEGIN failed--compilation aborted at /Users/phil/perl5/bin/pg_prove line 3.
+ℹ️  Retrying user-local pg_prove with Homebrew perl...
+./tests/sql/03_nys_snw_category_integrity.sql .. ok
+All tests successful.
+Files=1, Tests=9,  0 wallclock secs ( 0.00 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.01 CPU)
+Result: PASS
+▶ Running Swift unit tests (swift test)...
