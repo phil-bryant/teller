@@ -143,8 +143,8 @@ if [[ "$RUN_XCUITESTS" == "true" ]]; then
 
   if [[ -n "$XCUITEST_SELECTED_NUMBERS" ]]; then
     echo "ℹ️  Selecting XCUITest scenarios by index: ${XCUITEST_SELECTOR_RAW}"
-    XCUITEST_STEPS="$XCUITEST_SELECTED_NUMBERS" env \
-      xcodebuild test \
+    export XCUITEST_STEPS="$XCUITEST_SELECTED_NUMBERS"
+    xcodebuild test \
       -project "$XCUITEST_PROJECT" \
       -scheme "$XCUITEST_SCHEME" \
       -destination "$XCUITEST_DESTINATION" \
