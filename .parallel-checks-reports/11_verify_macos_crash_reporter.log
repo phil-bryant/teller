@@ -1,6 +1,0 @@
-▶ Triggering intentional crash to seed pending crash report...
-./11_verify_macos_crash_reporter.sh: line 82: 72701 Trace/BPT trap: 5       TELLER_MACOS_FORCE_CRASH_ON_LAUNCH=1 swift run TransactionClassifier > /dev/null 2>&1
-▶ Relaunching app to process pending crash report...
-✅ PLCrashReporter verification passed.
-   - crash report: /Users/phil/Library/Application Support/TransactionClassifier/CrashReports/crash-2026-05-20T04-35-02.280Z.plcrash
-   - metadata: /Users/phil/Library/Application Support/TransactionClassifier/CrashReports/crash-2026-05-20T04-35-02.280Z.json

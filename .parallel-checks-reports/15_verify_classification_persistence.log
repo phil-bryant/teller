@@ -1,3 +1,0 @@
-API response: [{"transaction_id":"txn_psevobri32lh0dikjc002","nys_snw_category_id":1,"type":"user","updated_at":"2026-05-20T00:35:03.835409-04:00"}]
-Persisted row: txn_psevobri32lh0dikjc002:1:user
-✅ PASS: persisted classification txn_psevobri32lh0dikjc002:1:user

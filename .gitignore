@@ -19,3 +19,7 @@ bin/*
 .cursor/rules/*
 .security-reports/
 .security-venv/
+.parallel-checks-reports/
+.18_run_all_checks_parallel.lock
+macos-ui/.swiftpm-run.lock
+macos-ui/.swiftpm-run.lock.d/
