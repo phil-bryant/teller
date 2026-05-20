@@ -34,7 +34,27 @@ Design: `onlyUnclassified` is initialized to `true` so `loadAll()` filters out a
 Tests:
 - R025-T01: Launch app in UI-testing mode and verify only unclassified fixture rows appear in the list and the Unclassified toggle reads as on.
 
+R030  Statement: Delete one or more selected categories from the category editor.
+Design: `deleteSelectedCategories()` iterates `categoryEditorSelection`, calls `deleteCategory` for each id, reloads categories, clears selection, and reports partial failures when some deletes fail.
+Tests:
+- R030-T01: Select two categories with a mock API, invoke bulk delete, and verify both delete calls are made and the selection clears.
+
+R035  Statement: Support clearing a human-reviewed match back to unmatched.
+Design: `clearSelectedMatch()` deactivates the active match for the primary selected transaction via the classifier API (by `match_id` when present, otherwise by `transaction_id`). `canClearSelectedMatch` is true when the selected transaction has an active match row that can be cleared. On success the view model reloads transactions and clears match-review status text; on failure it surfaces the API error in `matchReviewErrorText`.
+Tests:
+- R035-T01: Select a transaction with an active human-reviewed match, invoke `clearSelectedMatch()`, and verify the clear API is called and the row no longer carries match metadata after reload.
+- R035-T02: Select a transaction with no active match and verify `canClearSelectedMatch` is false.
+
+R040  Statement: Debounce Mailcart search in the candidates pane and surface results or errors.
+Design: `searchMailcartIfNeeded()` trims the query, debounces non-empty input (~250ms), calls `searchMessages(query:limit:)`, and updates `mailcartSearchResults` / `mailcartSearchErrorText`. An empty query clears results and errors.
+Tests:
+- R040-T01: Set a non-empty `mailcartSearchQuery`, await search, and verify results populate from the API response.
+- R040-T02: Simulate a search API failure and verify `mailcartSearchErrorText` is set and results clear.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ClassificationViewModel.swift` to replace prior plan-only coverage.
 - 2026-04-23: Added R025 to default the Unclassified filter to enabled on initial load.
+- 2026-05-19: Added R030 (bulk category delete from category editor selection).
+- 2026-05-19: Added R035 (clear human-reviewed match back to unmatched).
+- 2026-05-19: Added R040 (debounced Mailcart search in candidates pane).

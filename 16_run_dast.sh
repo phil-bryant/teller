@@ -920,6 +920,7 @@ if transaction_id is not None and category_id is not None:
 if match_ids:
     set_path_param_enum("/v1/matchy/matches/{match_id}/confirm", "put", "match_id", match_ids)
     set_path_param_enum("/v1/matchy/matches/{match_id}/no-email", "put", "match_id", match_ids)
+    set_path_param_enum("/v1/matchy/matches/{match_id}/clear", "put", "match_id", match_ids)
     set_path_param_enum("/v1/matchy/matches/{match_id}/override", "put", "match_id", match_ids)
 
 if match_ids:

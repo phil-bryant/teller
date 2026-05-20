@@ -5,6 +5,11 @@
 // #R015-T01: Traceability anchor.
 // #R020-T01: Traceability anchor.
 // #R025-T01: Traceability anchor.
+// #R030-T01: Traceability anchor.
+// #R035-T01: Traceability anchor.
+// #R035-T02: Traceability anchor.
+// #R040-T01: Traceability anchor.
+// #R040-T02: Traceability anchor.
 
 import Foundation
 import XCTest
@@ -16,12 +21,21 @@ actor MockAPI: ClassificationAPI {
     var pagedResponses: [Int: TransactionListResponse]
     var fetchOffsets: [Int] = []
     var lastSaved: [ClassificationMutation] = []
-    init(categories: [CategoryOption], response: TransactionListResponse, pagedResponses: [Int: TransactionListResponse] = [:]) {
+    var deletedCategoryIds: [Int] = []
+    var clearedMatchIds: [Int] = []
+    var clearedTransactionIds: [String] = []
+    var searchCalls: [(query: String, limit: Int)] = []
+    var searchResponse: EmailSearchResponse
+    var searchError: Error?
+    init(categories: [CategoryOption], response: TransactionListResponse, pagedResponses: [Int: TransactionListResponse] = [:],
+         searchResponse: EmailSearchResponse = .init(query: "", items: []), searchError: Error? = nil) {
         self.categories = categories
         self.response = response
         var merged = pagedResponses
         merged[0] = response
         self.pagedResponses = merged
+        self.searchResponse = searchResponse
+        self.searchError = searchError
     }
     func fetchCategories() async throws -> [CategoryOption] { categories }
     func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
@@ -34,6 +48,27 @@ actor MockAPI: ClassificationAPI {
         lastSaved = updates
         return updates.map { .init(transaction_id: $0.transaction_id, nys_snw_category_id: $0.nys_snw_category_id, type: "user", updated_at: "now") }
     }
+    func deleteCategory(id: Int) async throws -> CategoryDeleteResponse {
+        deletedCategoryIds.append(id)
+        categories.removeAll { $0.nys_snw_category_id == id }
+        return .init(nys_snw_category_id: id, deleted: true)
+    }
+    func recordedDeletedCategoryIds() -> [Int] { deletedCategoryIds }
+    func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+        clearedMatchIds.append(matchId)
+        return .init(match_id: matchId, transaction_id: "txn_cleared", state: "human_confirmed_ai_match", selected_by: "human", updated_at: "now")
+    }
+    func clearTransactionMatch(transactionId: String) async throws -> MatchReviewActionResponse {
+        clearedTransactionIds.append(transactionId)
+        return .init(match_id: 0, transaction_id: transactionId, state: "human_confirmed_ai_match", selected_by: "human", updated_at: "now")
+    }
+    func recordedClearedMatchIds() -> [Int] { clearedMatchIds }
+    func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse {
+        searchCalls.append((query, limit))
+        if let searchError { throw searchError }
+        return EmailSearchResponse(query: query, items: searchResponse.items)
+    }
+    func recordedSearchCalls() -> [(query: String, limit: Int)] { searchCalls }
 }
 
 private func sampleCategory(_ id: Int, _ name: String, applicability: String? = nil) -> CategoryOption {
@@ -260,6 +295,37 @@ final class ClassificationViewModelTests: XCTestCase {
         XCTAssertTrue(vm.canConfirmSelectedMatch)
         XCTAssertTrue(vm.canOverrideSelectedMatch)
         XCTAssertTrue(vm.canMarkSelectedMatchNoEmail)
+        XCTAssertFalse(vm.canClearSelectedMatch)
+    }
+
+    @MainActor
+    func testCanClearSelectedMatchWhenActiveMatchExists() {
+        // #R035-T02
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        vm.transactions = [
+            sampleTransactionWithMatch(id: "txn_matched", matchId: 42, emailId: "msg_a", confidence: 0.9, count: 1),
+        ]
+        vm.selection = ["txn_matched"]
+        XCTAssertTrue(vm.canClearSelectedMatch)
+    }
+
+    @MainActor
+    func testClearSelectedMatchCallsApiAndReloads() async {
+        // #R035-T01
+        let matched = sampleTransactionWithMatch(
+            id: "txn_matched", matchId: 42, emailId: "msg_a", confidence: 0.9, count: 1,
+            state: "human_confirmed_ai_match"
+        )
+        let api = MockAPI(categories: [], response: .init(total: 1, items: [matched]))
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_matched"]
+        await vm.clearSelectedMatch()
+        let clearedIds = await api.recordedClearedMatchIds()
+        XCTAssertEqual(clearedIds, [42])
+        XCTAssertEqual(vm.matchReviewStatusText, "Cleared match 42 for txn_cleared")
+        XCTAssertTrue(vm.matchReviewErrorText.isEmpty)
     }
 
     @MainActor
@@ -278,5 +344,50 @@ final class ClassificationViewModelTests: XCTestCase {
         XCTAssertEqual(saved.count, 1)
         XCTAssertEqual(saved.first?.transaction_id, "txn_2")
         XCTAssertEqual(vm.transactions.first(where: { $0.transaction_id == "txn_2" })?.classification?.nys_snw_category_id, 22)
+    }
+
+    @MainActor
+    func testDeleteSelectedCategoriesRemovesAllSelectedRows() async {
+        // #R030
+        let categories = [sampleCategory(11, "Utilities"), sampleCategory(12, "Dining"), sampleCategory(13, "Travel")]
+        let api = MockAPI(categories: categories, response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        await vm.reloadCategories()
+        vm.categoryEditorSelection = [11, 12]
+        await vm.deleteSelectedCategories()
+        let deleted = await api.recordedDeletedCategoryIds()
+        XCTAssertEqual(deleted, [11, 12])
+        XCTAssertTrue(vm.categoryEditorSelection.isEmpty)
+        XCTAssertEqual(vm.allCategories.map(\.nys_snw_category_id), [13])
+        XCTAssertEqual(vm.categoryEditorStatusText, "Deleted 2 categories.")
+    }
+
+    @MainActor
+    func testSearchMailcartPopulatesResultsFromApi() async {
+        // #R040-T01
+        let hit = EmailSearchHit(email_message_id: "msg_phil", subject: "Hello Phil", from: "phil@example.com",
+                                 received_at: "2026-05-17T12:00:00+00:00", snippet: "preview")
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []),
+                          searchResponse: .init(query: "phil", items: [hit]))
+        let vm = ClassificationViewModel(api: api)
+        vm.mailcartSearchQuery = "phil"
+        await vm.searchMailcartIfNeeded()
+        XCTAssertEqual(vm.mailcartSearchResults.map(\.email_message_id), ["msg_phil"])
+        XCTAssertTrue(vm.mailcartSearchErrorText.isEmpty)
+        let calls = await api.recordedSearchCalls()
+        XCTAssertEqual(calls.count, 1)
+        XCTAssertEqual(calls.first?.query, "phil")
+    }
+
+    @MainActor
+    func testSearchMailcartSurfacesApiFailure() async {
+        // #R040-T02
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []),
+                          searchError: APIError.requestFailed("search failed"))
+        let vm = ClassificationViewModel(api: api)
+        vm.mailcartSearchQuery = "phil"
+        await vm.searchMailcartIfNeeded()
+        XCTAssertTrue(vm.mailcartSearchResults.isEmpty)
+        XCTAssertTrue(vm.mailcartSearchErrorText.contains("search failed"))
     }
 }

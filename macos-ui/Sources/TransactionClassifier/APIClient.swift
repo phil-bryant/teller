@@ -31,9 +31,11 @@ protocol ClassificationAPI: Sendable {
     func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse
     func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse
+    func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse
     func confirmTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func overrideTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse
+    func clearTransactionMatch(transactionId: String) async throws -> MatchReviewActionResponse
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow]
     func fetchMessage(emailMessageId: String) async throws -> EmailMessage
     func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse
@@ -81,6 +83,11 @@ extension ClassificationAPI {
         throw APIError.unsupportedOperation("Match no-email action")
     }
 
+    func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+        _ = matchId
+        throw APIError.unsupportedOperation("Match clear action")
+    }
+
     func confirmTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
         _ = transactionId
         _ = emailMessageId
@@ -98,6 +105,11 @@ extension ClassificationAPI {
     func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse {
         _ = transactionId
         throw APIError.unsupportedOperation("Transaction no-email action")
+    }
+
+    func clearTransactionMatch(transactionId: String) async throws -> MatchReviewActionResponse {
+        _ = transactionId
+        throw APIError.unsupportedOperation("Transaction match clear action")
     }
 
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
@@ -204,6 +216,10 @@ actor APIClient: ClassificationAPI {
         try await send(path: "/v1/matchy/matches/\(matchId)/no-email", method: "PUT")
     }
 
+    func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+        try await send(path: "/v1/matchy/matches/\(matchId)/clear", method: "PUT")
+    }
+
     func confirmTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
         let body = MatchOverrideRequest(email_message_id: emailMessageId, note: note)
         guard let data = try? JSONEncoder().encode(body) else { throw APIError.encodeFailed }
@@ -221,6 +237,11 @@ actor APIClient: ClassificationAPI {
     func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse {
         let encoded = transactionId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? transactionId
         return try await send(path: "/v1/matchy/transactions/\(encoded)/no-email", method: "PUT")
+    }
+
+    func clearTransactionMatch(transactionId: String) async throws -> MatchReviewActionResponse {
+        let encoded = transactionId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? transactionId
+        return try await send(path: "/v1/matchy/transactions/\(encoded)/clear", method: "PUT")
     }
 
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {

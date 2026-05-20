@@ -72,7 +72,11 @@ _TRANSACTION_COUNT_SQL = text("""
        AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
        AND (:status = '' OR tt.status::text = :status)
        AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
-       AND (:match_state = '' OR tem.state = :match_state)
+       AND (:match_state = ''
+            OR (:match_state = 'unmatched' AND (tem.match_id IS NULL
+                OR (tem.state = 'ai_no_match_found' AND tem.selected_by <> 'human')))
+            OR (:match_state = 'no_email' AND tem.state = 'ai_no_match_found' AND tem.selected_by = 'human')
+            OR (tem.state = :match_state))
        AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
 """)
 
@@ -112,7 +116,11 @@ _TRANSACTION_LIST_SQL = text("""
        AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
        AND (:status = '' OR tt.status::text = :status)
        AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
-       AND (:match_state = '' OR tem.state = :match_state)
+       AND (:match_state = ''
+            OR (:match_state = 'unmatched' AND (tem.match_id IS NULL
+                OR (tem.state = 'ai_no_match_found' AND tem.selected_by <> 'human')))
+            OR (:match_state = 'no_email' AND tem.state = 'ai_no_match_found' AND tem.selected_by = 'human')
+            OR (tem.state = :match_state))
        AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
     ORDER BY tt.date DESC, tt.transaction_id DESC
     LIMIT :limit OFFSET :offset
@@ -722,6 +730,41 @@ def _read_match_row(session, match_id: int) -> Dict[str, Any]:
     return dict(row)
 
 
+def _read_active_match_row(session, match_id: int) -> Dict[str, Any]:
+    row = session.execute(text("""
+        SELECT m.match_id,
+               m.transaction_id,
+               m.email_message_id,
+               m.state::text AS state,
+               m.selected_by::text AS selected_by
+          FROM teller.transaction_email_match m
+         WHERE m.match_id = :match_id
+           AND m.active = TRUE
+         LIMIT 1
+    """), {"match_id": match_id}).mappings().fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Unknown match_id: {match_id}")
+    return dict(row)
+
+
+def _read_active_match_for_transaction(session, transaction_id: str) -> Dict[str, Any]:
+    row = session.execute(text("""
+        SELECT m.match_id,
+               m.transaction_id,
+               m.email_message_id,
+               m.state::text AS state,
+               m.selected_by::text AS selected_by
+          FROM teller.transaction_email_match m
+         WHERE m.transaction_id = :transaction_id
+           AND m.active = TRUE
+         ORDER BY m.selected_at DESC, m.match_id DESC
+         LIMIT 1
+    """), {"transaction_id": transaction_id}).mappings().fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"No active match for transaction_id: {transaction_id}")
+    return dict(row)
+
+
 def _insert_match_audit(session, match_id: int, from_state: Optional[str], to_state: str, actor: str, note: Optional[str]) -> None:
     session.execute(text("""
         INSERT INTO teller.transaction_email_match_audit (
@@ -802,6 +845,55 @@ def _transition_match_state(
         state=updated["state"],
         selected_by=updated["selected_by"],
         updated_at=updated["updated_at"],
+    )
+
+
+def _deactivate_match(session, match_id: int, note: Optional[str]) -> MatchReviewActionResponse:
+    row = _read_active_match_row(session, match_id)
+    from_state = row["state"]
+    statement = (
+        update(_MATCH_REVIEW_TABLE)
+        .where(_MATCH_REVIEW_TABLE.c.match_id == bindparam("target_match_id"))
+        .where(_MATCH_REVIEW_TABLE.c.active.is_(True))
+        .values(
+            active=False,
+            updated_at=func.current_timestamp(),
+        )
+        .returning(
+            _MATCH_REVIEW_TABLE.c.transaction_id,
+            cast(_MATCH_REVIEW_TABLE.c.state, String).label("state"),
+            cast(_MATCH_REVIEW_TABLE.c.selected_by, String).label("selected_by"),
+            _MATCH_REVIEW_TABLE.c.updated_at,
+        )
+    )
+    try:
+        updated = session.execute(statement, {"target_match_id": match_id}).mappings().fetchone()
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Unknown match_id: {match_id}")
+        _insert_match_audit(
+            session,
+            match_id,
+            from_state,
+            from_state,
+            "human",
+            note or "Cleared from Teller review UI",
+        )
+        session.commit()
+    except HTTPException:
+        raise
+    except (IntegrityError, DataError):
+        if hasattr(session, "rollback"):
+            session.rollback()
+        raise HTTPException(status_code=409, detail="Match deactivation conflicts with current state")
+    updated_at = updated["updated_at"]
+    if isinstance(updated_at, datetime) and updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+    return MatchReviewActionResponse(
+        match_id=match_id,
+        transaction_id=updated["transaction_id"],
+        state=updated["state"],
+        selected_by=updated["selected_by"],
+        updated_at=updated_at,
     )
 
 
@@ -1028,8 +1120,8 @@ def create_app() -> FastAPI:
         search: str = Query(default="", min_length=0, max_length=120, pattern=r"^[\x20-\x7E]*$"),
         status: Literal["", "posted", "pending"] = Query(default=""),
         only_unclassified: bool = Query(default=False),
-        match_state: Literal["", "ai_no_match_found", "ai_candidate_uncertain", "ai_match_confident",
-                              "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
+        match_state: Literal["", "unmatched", "no_email", "ai_no_match_found", "ai_candidate_uncertain",
+                              "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
         only_unmoved_match: bool = Query(default=False),
         limit: int = Query(default=150, ge=1, le=500),
         offset: int = Query(default=0, ge=0, le=1_000_000),
@@ -1226,6 +1318,20 @@ def create_app() -> FastAPI:
                 clear_email_message_id=True,
             )
 
+    #R071: Deactivate active match rows so transactions return to unmatched.
+    @app.put(
+        "/v1/matchy/matches/{match_id:int}/clear",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown match id or no active match"},
+            409: {"model": ApiError, "description": "Match deactivation conflicts with current state"},
+        },
+    )
+    def clear_match(request: Request, match_id: int):
+        _require_write_access(request)
+        with get_session() as session:
+            return _deactivate_match(session=session, match_id=match_id, note="Cleared from Teller review UI")
+
     @app.put(
         "/v1/matchy/transactions/{transaction_id}/confirm-candidate",
         response_model=MatchReviewActionResponse,
@@ -1287,6 +1393,25 @@ def create_app() -> FastAPI:
                 note="Marked no-email from Teller review UI",
             )
 
+    @app.put(
+        "/v1/matchy/transactions/{transaction_id}/clear",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction or no active match"},
+            409: {"model": ApiError, "description": "Match deactivation conflicts with current state"},
+        },
+    )
+    def clear_transaction_match(request: Request, transaction_id: str):
+        _require_write_access(request)
+        with get_session() as session:
+            _ensure_posted_transaction(session, transaction_id)
+            row = _read_active_match_for_transaction(session, transaction_id)
+            return _deactivate_match(
+                session=session,
+                match_id=int(row["match_id"]),
+                note="Cleared from Teller review UI",
+            )
+
     #R060: List latest-run candidates for a transaction, enriched with Mailcart metadata.
     @app.get(
         "/v1/matchy/transactions/{transaction_id}/candidates",
@@ -1309,28 +1434,9 @@ def create_app() -> FastAPI:
                 return []
             return _enrich_candidates_with_mailcart(session, candidate_rows)
 
-    #R061: Proxy the full message body + metadata from Mailcart for the right pane.
-    @app.get(
-        "/v1/matchy/messages/{email_message_id}",
-        response_model=EmailMessage,
-        response_model_by_alias=True,
-        responses={
-            400: {"model": ApiError, "description": "Invalid email message identifier"},
-            404: {"model": ApiError, "description": "Unknown email message identifier"},
-            502: {"model": ApiError, "description": "Mailcart upstream returned an unexpected response"},
-            503: {"model": ApiError, "description": "Mailcart is not configured"},
-        },
-    )
-    def get_match_message(email_message_id: str):
-        _validate_email_message_id(email_message_id)
-        client = get_mailcart_client()
-        try:
-            payload = client.get_message(email_message_id)
-        except MailcartError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.message)
-        return _email_message_from_payload(email_message_id, payload)
-
     #R062: Proxy a free-form Mailcart search to populate the secondary middle-pane results.
+    #R062: Register this static path before `/v1/matchy/messages/{email_message_id}` so Starlette does not
+    #R062: treat the literal segment `search` as a message id (which breaks macOS Mailcart search decoding).
     @app.get(
         "/v1/matchy/messages/search",
         response_model=EmailSearchResponse,
@@ -1361,6 +1467,27 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=502, detail="mailcart: search response missing 'messages' array")
         hits = [_email_search_hit_from_payload(item) for item in hits_raw if isinstance(item, dict)]
         return EmailSearchResponse(query=query, items=hits)
+
+    #R061: Proxy the full message body + metadata from Mailcart for the right pane.
+    @app.get(
+        "/v1/matchy/messages/{email_message_id}",
+        response_model=EmailMessage,
+        response_model_by_alias=True,
+        responses={
+            400: {"model": ApiError, "description": "Invalid email message identifier"},
+            404: {"model": ApiError, "description": "Unknown email message identifier"},
+            502: {"model": ApiError, "description": "Mailcart upstream returned an unexpected response"},
+            503: {"model": ApiError, "description": "Mailcart is not configured"},
+        },
+    )
+    def get_match_message(email_message_id: str):
+        _validate_email_message_id(email_message_id)
+        client = get_mailcart_client()
+        try:
+            payload = client.get_message(email_message_id)
+        except MailcartError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message)
+        return _email_message_from_payload(email_message_id, payload)
 
     return app
 

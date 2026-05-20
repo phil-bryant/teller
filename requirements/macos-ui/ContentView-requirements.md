@@ -45,8 +45,20 @@ Tests:
 - R035-T01: Unit-test amount variant generation and text line selection helpers.
 - R035-T02: Select a wide receipt email candidate and verify the order total amount is scrolled into view horizontally and vertically.
 
+R040  Statement: Manage Categories supports multi-select and bulk delete.
+Design: `CategoryManagerView` keeps category selection in a `Set<Int>`. Plain click selects one row; Command-click toggles rows in the set. The sidebar header exposes a Delete action enabled when one or more categories are selected. When exactly one category is selected the edit form is active; when multiple are selected the form is disabled and the header shows the selection count.
+Tests:
+- R040-T01: Command-click two categories and verify Delete is enabled; trigger bulk delete and verify both categories are removed from the list.
+
+R045  Statement: Match action bar exposes a Clear control to the right of Mark no-email.
+Design: `MatchActionsBar` renders Confirm, Override with this email, Mark no-email, then Clear in that order. Clear is bound to `clearSelectedMatch()` and disabled when `canClearSelectedMatch` is false. On success the transaction list reloads and the row shows the unmatched badge (no active human-reviewed match).
+Tests:
+- R045-T01: Select a transaction with a human-reviewed match, tap Clear, and verify the row badge returns to unmatched and the button is disabled for transactions with no clearable match.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ContentView.swift` from macOS classifier implementation.
 - 2026-04-23: Added R020 (auto-refresh on Unclassified toggle), R025 (scroll-to-selection), and R030 (detail header includes transaction id).
 - 2026-05-19: Added R035 (auto-scroll email body to transaction amount).
+- 2026-05-19: Added R040 (category multi-select and bulk delete in Manage Categories).
+- 2026-05-19: Added R045 (Clear match action to the right of Mark no-email).

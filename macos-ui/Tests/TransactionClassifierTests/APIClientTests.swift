@@ -8,6 +8,8 @@
 // #R010-T01: Traceability anchor.
 // #R040-T01: Traceability anchor.
 // #R045-T01: Traceability anchor.
+// #R050-T01: Traceability anchor.
+// #R062-T01: Traceability anchor.
 
 import Foundation
 import XCTest
@@ -224,5 +226,61 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(updated.display_label, "Pets Updated")
         let deleted = try await client.deleteCategory(id: 300)
         XCTAssertTrue(deleted.deleted)
+    }
+
+    func testClearMatchUsesPutClearEndpoints() async throws {
+        // #R050
+        var callIndex = 0
+        URLProtocolStub.requestHandler = { request in
+            defer { callIndex += 1 }
+            let responseBody = """
+            {"match_id":55,"transaction_id":"txn_clear","state":"human_confirmed_ai_match","selected_by":"human","updated_at":"now"}
+            """
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            switch callIndex {
+            case 0:
+                XCTAssertEqual(request.httpMethod, "PUT")
+                XCTAssertEqual(request.url?.path, "/v1/matchy/matches/55/clear")
+                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
+            default:
+                XCTAssertEqual(request.httpMethod, "PUT")
+                XCTAssertEqual(request.url?.path, "/v1/matchy/transactions/txn_clear/clear")
+                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
+            }
+            return (response, Data(responseBody.utf8))
+        }
+
+        let client = makeClient()
+        let byMatch = try await client.clearMatch(matchId: 55)
+        XCTAssertEqual(byMatch.match_id, 55)
+        let byTransaction = try await client.clearTransactionMatch(transactionId: "txn_clear")
+        XCTAssertEqual(byTransaction.transaction_id, "txn_clear")
+    }
+
+    func testSearchMessagesUsesSearchEndpointAndDecodesEnvelope() async throws {
+        // #R062
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/v1/matchy/messages/search")
+            guard let requestURL = request.url,
+                  let components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false) else {
+                throw APIError.invalidResponse
+            }
+            let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+            XCTAssertEqual(query["query"], "phil")
+            XCTAssertEqual(query["limit"], "25")
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            let body = """
+            {"query":"phil","items":[{"email_message_id":"msg_phil","subject":"Hello Phil","from":"phil@example.com","received_at":"2026-05-17T12:00:00+00:00","snippet":"preview"}]}
+            """
+            return (response, Data(body.utf8))
+        }
+
+        let client = makeClient()
+        let response = try await client.searchMessages(query: "phil", limit: 25)
+        XCTAssertEqual(response.query, "phil")
+        XCTAssertEqual(response.items.count, 1)
+        XCTAssertEqual(response.items.first?.email_message_id, "msg_phil")
+        XCTAssertEqual(response.items.first?.from, "phil@example.com")
     }
 }

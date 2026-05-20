@@ -31,8 +31,20 @@ Tests:
 - R045-T01: Trigger non-GET calls and verify `X-Teller-Write-Token` header is attached.
 - R045-T02: Simulate missing token and verify explicit missing-token client error.
 
+R050  Statement: Support clearing a human-reviewed match from the macOS Match & Classify UI.
+Design: `ClassificationAPI` declares `clearMatch(matchId:)` and `clearTransactionMatch(transactionId:)`; `APIClient` issues PUT requests to `/v1/matchy/matches/{match_id}/clear` and `/v1/matchy/transactions/{transaction_id}/clear` and decodes `MatchReviewActionResponse`.
+Tests:
+- R050-T01: Call both clear methods and verify PUT targets the expected paths and decodes the response.
+
+R062  Statement: Proxy Mailcart search from the Match & Classify candidates pane.
+Design: `ClassificationAPI` declares `searchMessages(query:limit:)`; `APIClient` issues GET `/v1/matchy/messages/search?query=...&limit=...` and decodes `{query, items: [EmailSearchHit]}`.
+Tests:
+- R062-T01: Call `searchMessages` and verify the request targets `/v1/matchy/messages/search` with query parameters and decodes the search envelope.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `APIClient.swift` based on classifier app behavior.
 - 2026-04-24: Added `R040` to document category create/update/delete API client support.
 - 2026-05-09: Added `R045` for 1psa-only write-token resolution and mutation header injection.
+- 2026-05-19: Added R050 (clear-match mutation client methods).
+- 2026-05-19: Added R062 (Mailcart search client method for Match & Classify).

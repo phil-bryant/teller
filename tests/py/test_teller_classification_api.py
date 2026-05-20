@@ -32,8 +32,11 @@
 # #R061-T03: Traceability anchor.
 # #R062-T01: Traceability anchor.
 # #R062-T02: Traceability anchor.
+# #R062-T03: Traceability anchor.
 # #R070-T01: Traceability anchor.
-# #R070-T02: Traceability anchor.
+# #R071-T01: Traceability anchor.
+# #R071-T02: Traceability anchor.
+# #R071-T03: Traceability anchor.
 
 import unittest
 from datetime import datetime, timezone
@@ -46,6 +49,7 @@ from unittest.mock import patch
 from teller.teller_classification_api import (
     _category_params,
     _create_transaction_match,
+    _deactivate_match,
     _display_label,
     _transition_match_state,
     _write_category,
@@ -807,6 +811,39 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 409)
         self.assertIn("conflicts with current state", str(ctx.exception.detail))
 
+    @patch("teller.teller_classification_api._insert_match_audit")
+    @patch("teller.teller_classification_api._read_active_match_row")
+    def test_deactivate_match_sets_active_false(self, read_active_match_row_mock, insert_audit_mock):
+        #R071
+        read_active_match_row_mock.return_value = {
+            "match_id": 12,
+            "transaction_id": "txn_1",
+            "state": "human_confirmed_ai_match",
+            "selected_by": "human",
+        }
+        session = _FakeSession(
+            rows=[
+                _Result(
+                    row={
+                        "transaction_id": "txn_1",
+                        "state": "human_confirmed_ai_match",
+                        "selected_by": "human",
+                        "updated_at": datetime.now(timezone.utc),
+                    }
+                )
+            ]
+        )
+
+        response = _deactivate_match(session=session, match_id=12, note="Cleared from Teller review UI")
+
+        self.assertEqual(response.transaction_id, "txn_1")
+        self.assertEqual(response.state, "human_confirmed_ai_match")
+        self.assertEqual(session.commits, 1)
+        update_sql, _ = session.calls[0]
+        self.assertIn("UPDATE teller.transaction_email_match", update_sql)
+        self.assertIn("active", update_sql)
+        insert_audit_mock.assert_called_once()
+
     @patch("teller.teller_classification_api.get_session")
     def test_matchy_review_applies_filter_predicates_with_expression_queries(self, get_session_mock):
         app = create_app()
@@ -862,6 +899,8 @@ class ClassificationApiTests(unittest.TestCase):
             ("/v1/matchy/matches/{match_id}/confirm", "put"),
             ("/v1/matchy/matches/{match_id}/override", "put"),
             ("/v1/matchy/matches/{match_id}/no-email", "put"),
+            ("/v1/matchy/matches/{match_id}/clear", "put"),
+            ("/v1/matchy/transactions/{transaction_id}/clear", "put"),
         ]
         for path, method in endpoints:
             responses = schema["paths"][path][method]["responses"]
@@ -894,6 +933,12 @@ class ClassificationApiTests(unittest.TestCase):
                     body=SimpleNamespace(email_message_id="m_1", note="manual"),
                 )
             self.assertEqual(override_ctx.exception.status_code, 404)
+
+        with patch("teller.teller_classification_api._read_active_match_row", side_effect=unknown_err):
+            clear_endpoint = self._route_endpoint(app, "/v1/matchy/matches/{match_id:int}/clear", "PUT")
+            with self.assertRaises(HTTPException) as clear_ctx:
+                clear_endpoint(request=self._authorized_request(), match_id=999)
+            self.assertEqual(clear_ctx.exception.status_code, 404)
 
 class _FakeMailcartClient:
     def __init__(self, *, messages=None, message_errors=None, search_payload=None, search_error=None):
@@ -1144,6 +1189,42 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertEqual(body.items[0].sender, "store@example.com")
         self.assertEqual(body.items[0].snippet, "preview text")
 
+    def test_search_route_is_registered_before_message_id_route(self):
+        #R062-T03
+        app = create_app()
+        route_paths = [route.path for route in app.routes if hasattr(route, "path")]
+        search_idx = route_paths.index("/v1/matchy/messages/search")
+        message_idx = route_paths.index("/v1/matchy/messages/{email_message_id}")
+        self.assertLess(search_idx, message_idx)
+
+    def test_search_path_matches_search_route_not_message_id_capture(self):
+        #R062-T03
+        from starlette.routing import Match
+
+        app = create_app()
+        scope = {
+            "type": "http",
+            "http_version": "1.1",
+            "method": "GET",
+            "path": "/v1/matchy/messages/search",
+            "raw_path": b"/v1/matchy/messages/search",
+            "root_path": "",
+            "scheme": "http",
+            "query_string": b"query=phil&limit=5",
+            "headers": [],
+            "client": ("test", 50000),
+            "server": ("testserver", 80),
+        }
+        matched_path = None
+        for route in app.routes:
+            if not hasattr(route, "matches"):
+                continue
+            match, _child_scope = route.matches(scope)
+            if match == Match.FULL:
+                matched_path = route.path
+                break
+        self.assertEqual(matched_path, "/v1/matchy/messages/search")
+
     def test_get_message_accepts_real_mailcart_payload_shape(self):
         #R061-T03
         app = create_app()
@@ -1210,6 +1291,8 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertIn("/v1/matchy/transactions/{transaction_id}/confirm-candidate", route_paths)
         self.assertIn("/v1/matchy/transactions/{transaction_id}/override-candidate", route_paths)
         self.assertIn("/v1/matchy/transactions/{transaction_id}/no-email", route_paths)
+        self.assertIn("/v1/matchy/transactions/{transaction_id}/clear", route_paths)
+        self.assertIn("/v1/matchy/matches/{match_id:int}/clear", route_paths)
         self.assertIn("/v1/matchy/messages/{email_message_id}", route_paths)
         self.assertIn("/v1/matchy/messages/search", route_paths)
 
@@ -1322,6 +1405,40 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertIn("only_unmoved_match", list_sql)
         self.assertEqual(list_params["match_state"], "human_confirmed_ai_match")
         self.assertEqual(list_params["only_unmoved_match"], True)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_endpoint_filters_unmatched_match_state(self, get_session_mock):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        session = _FakeSession(rows=[_Result(scalar=0), _Result(rows=[])])
+        get_session_mock.return_value = _SessionContext(session)
+        request = SimpleNamespace(
+            query_params={"search": "", "status": "", "only_unclassified": "false",
+                          "match_state": "unmatched", "limit": "10", "offset": "0"}
+        )
+        endpoint(request=request, search="", status="", only_unclassified=False,
+                 match_state="unmatched", only_unmoved_match=False, limit=10, offset=0)
+        list_sql, list_params = session.calls[1]
+        self.assertIn("unmatched", list_sql)
+        self.assertIn("ai_no_match_found", list_sql)
+        self.assertEqual(list_params["match_state"], "unmatched")
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_endpoint_filters_no_email_match_state(self, get_session_mock):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        session = _FakeSession(rows=[_Result(scalar=0), _Result(rows=[])])
+        get_session_mock.return_value = _SessionContext(session)
+        request = SimpleNamespace(
+            query_params={"search": "", "status": "", "only_unclassified": "false",
+                          "match_state": "no_email", "limit": "10", "offset": "0"}
+        )
+        endpoint(request=request, search="", status="", only_unclassified=False,
+                 match_state="no_email", only_unmoved_match=False, limit=10, offset=0)
+        list_sql, list_params = session.calls[1]
+        self.assertIn("no_email", list_sql)
+        self.assertIn("selected_by = 'human'", list_sql)
+        self.assertEqual(list_params["match_state"], "no_email")
 
 
 if __name__ == "__main__":

@@ -67,7 +67,7 @@ final class ClassificationViewModel {
     var errorText = ""
     var undoStack: [UndoAction] = []
     var statusText = "Ready"
-    var categoryEditorSelectionId: Int?
+    var categoryEditorSelection: Set<Int> = []
     var categoryEditorDraft = CategoryDraft()
     var categoryEditorBusy = false
     var categoryEditorStatusText = "Select a category to edit, or create a new one."
@@ -111,6 +111,10 @@ final class ClassificationViewModel {
         return rows.contains { $0.classification?.nys_snw_category_id != first }
     }
     var canLoadMore: Bool { transactions.count < totalTransactions }
+    var categoryEditorPrimarySelectionId: Int? {
+        guard categoryEditorSelection.count == 1 else { return nil }
+        return categoryEditorSelection.first
+    }
 
     func loadAll() async {
         // #R001: Load categories and the first transaction page together, then refresh derived UI state.
@@ -143,8 +147,13 @@ final class ClassificationViewModel {
         do {
             let fetchedCategories = try await api.fetchCategories()
             setCategories(fetchedCategories)
-            if let selectedId = categoryEditorSelectionId, allCategories.first(where: { $0.nys_snw_category_id == selectedId }) == nil {
-                beginNewCategoryDraft()
+            if categoryEditorSelection.contains(where: { id in
+                allCategories.first(where: { $0.nys_snw_category_id == id }) == nil
+            }) {
+                categoryEditorSelection = categoryEditorSelection.filter { id in
+                    allCategories.contains { $0.nys_snw_category_id == id }
+                }
+                syncCategoryEditorToSelection()
             }
             categoryEditorErrorText = ""
             categoryEditorStatusText = "Loaded \(allCategories.count) categories."
@@ -234,6 +243,10 @@ final class ClassificationViewModel {
 
     var canMarkSelectedMatchNoEmail: Bool {
         primaryTransaction != nil
+    }
+
+    var canClearSelectedMatch: Bool {
+        selectedMatchId != nil
     }
 
     /// Triggered whenever the primary selected transaction changes. Loads the candidate set + email
@@ -439,6 +452,31 @@ final class ClassificationViewModel {
         }
     }
 
+    func clearSelectedMatch() async {
+        // #R035: Deactivate the active match so the transaction returns to unmatched.
+        do {
+            if let matchId = selectedMatchId {
+                let response = try await api.clearMatch(matchId: matchId)
+                matchReviewStatusText = "Cleared match \(matchId) for \(response.transaction_id)"
+            } else if let transactionId = primaryTransaction?.transaction_id {
+                let response = try await api.clearTransactionMatch(transactionId: transactionId)
+                matchReviewStatusText = "Cleared match for \(response.transaction_id)"
+            } else {
+                matchReviewErrorText = "Select a transaction with an active match before clearing."
+                matchReviewStatusText = "Match clear failed"
+                return
+            }
+            matchReviewErrorText = ""
+            matchOverrideEmailMessageId = ""
+            matchOverrideNote = ""
+            lastLoadedCandidatesTransactionId = nil
+            await loadAll()
+        } catch {
+            matchReviewErrorText = error.localizedDescription
+            matchReviewStatusText = "Match clear failed"
+        }
+    }
+
     func selectionDidChange() {
         syncPickerToSelection()
         Task { await selectedTransactionDidChange() }
@@ -470,21 +508,41 @@ final class ClassificationViewModel {
     }
 
     func beginNewCategoryDraft() {
-        categoryEditorSelectionId = nil
+        categoryEditorSelection = []
         categoryEditorDraft = CategoryDraft()
         categoryEditorErrorText = ""
         categoryEditorStatusText = "Creating a new category."
     }
 
+    func syncCategoryEditorToSelection() {
+        switch categoryEditorSelection.count {
+        case 0:
+            categoryEditorDraft = CategoryDraft()
+            categoryEditorErrorText = ""
+            categoryEditorStatusText = "Select a category to edit, or create a new one."
+        case 1:
+            guard let categoryId = categoryEditorSelection.first,
+                  let category = allCategories.first(where: { $0.nys_snw_category_id == categoryId }) else {
+                beginNewCategoryDraft()
+                return
+            }
+            categoryEditorDraft = CategoryDraft(category: category)
+            categoryEditorErrorText = ""
+            categoryEditorStatusText = "Editing category \(categoryId)."
+        default:
+            categoryEditorDraft = CategoryDraft()
+            categoryEditorErrorText = ""
+            categoryEditorStatusText = "\(categoryEditorSelection.count) categories selected."
+        }
+    }
+
     func selectCategoryForEditing(_ categoryId: Int?) {
-        guard let categoryId, let category = allCategories.first(where: { $0.nys_snw_category_id == categoryId }) else {
+        guard let categoryId else {
             beginNewCategoryDraft()
             return
         }
-        categoryEditorSelectionId = categoryId
-        categoryEditorDraft = CategoryDraft(category: category)
-        categoryEditorErrorText = ""
-        categoryEditorStatusText = "Editing category \(categoryId)."
+        categoryEditorSelection = [categoryId]
+        syncCategoryEditorToSelection()
     }
 
     func saveCategoryDraft() async {
@@ -492,14 +550,14 @@ final class ClassificationViewModel {
         defer { categoryEditorBusy = false }
         do {
             let saved: CategoryOption
-            if let categoryId = categoryEditorSelectionId {
+            if let categoryId = categoryEditorPrimarySelectionId {
                 saved = try await api.updateCategory(id: categoryId, category: categoryEditorDraft.payload)
             } else {
                 saved = try await api.createCategory(categoryEditorDraft.payload)
             }
             let fetchedCategories = try await api.fetchCategories()
             setCategories(fetchedCategories)
-            categoryEditorSelectionId = saved.nys_snw_category_id
+            categoryEditorSelection = [saved.nys_snw_category_id]
             categoryEditorDraft = CategoryDraft(category: saved)
             categoryEditorErrorText = ""
             categoryEditorStatusText = "Saved category \(saved.nys_snw_category_id)."
@@ -510,20 +568,40 @@ final class ClassificationViewModel {
         }
     }
 
-    func deleteSelectedCategory() async {
-        guard let categoryId = categoryEditorSelectionId else { return }
+    func deleteSelectedCategories() async {
+        // #R030: Delete every selected category, reload the list, and surface partial failures.
+        guard !categoryEditorSelection.isEmpty else { return }
+        let idsToDelete = categoryEditorSelection.sorted()
         categoryEditorBusy = true
         defer { categoryEditorBusy = false }
+        var deletedCount = 0
+        var failures: [String] = []
+        for categoryId in idsToDelete {
+            do {
+                _ = try await api.deleteCategory(id: categoryId)
+                deletedCount += 1
+            } catch {
+                failures.append("\(categoryId): \(error.localizedDescription)")
+            }
+        }
         do {
-            _ = try await api.deleteCategory(id: categoryId)
             let fetchedCategories = try await api.fetchCategories()
             setCategories(fetchedCategories)
-            beginNewCategoryDraft()
-            categoryEditorStatusText = "Deleted category \(categoryId)."
             syncPickerToSelection()
         } catch {
             categoryEditorErrorText = error.localizedDescription
-            categoryEditorStatusText = "Category delete failed"
+            categoryEditorStatusText = "Category reload failed after delete"
+            return
+        }
+        beginNewCategoryDraft()
+        if failures.isEmpty {
+            categoryEditorErrorText = ""
+            categoryEditorStatusText = deletedCount == 1
+                ? "Deleted category \(idsToDelete[0])."
+                : "Deleted \(deletedCount) categories."
+        } else {
+            categoryEditorErrorText = failures.joined(separator: "; ")
+            categoryEditorStatusText = "Deleted \(deletedCount) of \(idsToDelete.count) categories."
         }
     }
 

@@ -158,13 +158,14 @@ private struct MatchAndClassifyToolbar: View {
                 .accessibilityIdentifier("only-unclassified-toggle")
             Picker("Match", selection: $viewModel.matchReviewStateFilter) {
                 Text("All matches").tag("")
+                Text("Unmatched").tag("unmatched")
+                Text("No email").tag("no_email")
                 Text("Needs review").tag("ai_candidate_uncertain")
-                Text("No email (AI)").tag("ai_no_match_found")
                 Text("AI confident").tag("ai_match_confident")
                 Text("Confirmed").tag("human_confirmed_ai_match")
                 Text("Overridden").tag("human_overrode_ai_match")
             }
-            .frame(width: 220)
+            .frame(width: 240)
             .accessibilityIdentifier("match-review-state-picker")
             Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
                 .accessibilityIdentifier("match-review-only-unmoved-toggle")
@@ -258,7 +259,7 @@ private struct UnifiedTransactionRowView: View {
             HStack(spacing: 6) {
                 Text(row.date).foregroundStyle(.secondary).lineLimit(1)
                 if let match = row.match {
-                    StateBadge(state: match.state)
+                    StateBadge(state: match.state, selectedBy: match.selected_by)
                     if let confidence = match.ai_confidence {
                         ConfidencePill(confidence: confidence)
                     }
@@ -266,7 +267,7 @@ private struct UnifiedTransactionRowView: View {
                         EmailCountBadge(count: match.match_count)
                     }
                 } else {
-                    Text("no match yet")
+                    Text("unmatched")
                         .font(.caption2)
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Color.gray.opacity(0.15))
@@ -322,9 +323,10 @@ private struct EmailCountBadge: View {
 
 private struct StateBadge: View {
     let state: String
+    let selectedBy: String
 
     var body: some View {
-        Text(stateLabel(state))
+        Text(stateLabel(state, selectedBy: selectedBy))
             .font(.caption2.weight(.medium))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -334,9 +336,10 @@ private struct StateBadge: View {
             .accessibilityIdentifier("match-state-badge-\(state)")
     }
 
-    private func stateLabel(_ state: String) -> String {
+    private func stateLabel(_ state: String, selectedBy: String) -> String {
         switch state {
-        case "ai_no_match_found": return "no email"
+        case "ai_no_match_found":
+            return selectedBy == "human" ? "no email" : "unmatched"
         case "ai_candidate_uncertain": return "uncertain"
         case "ai_match_confident": return "AI match"
         case "human_confirmed_ai_match": return "confirmed"
@@ -798,6 +801,9 @@ private struct MatchActionsBar: View {
                 Button("Mark no-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
                     .disabled(!viewModel.canMarkSelectedMatchNoEmail)
                     .accessibilityIdentifier("match-no-email-button")
+                Button("Clear") { Task { await viewModel.clearSelectedMatch() } }
+                    .disabled(!viewModel.canClearSelectedMatch)
+                    .accessibilityIdentifier("match-clear-button")
                 Spacer()
             }
         }
@@ -882,6 +888,17 @@ private func formattedDateString(_ raw: String) -> String {
 private struct CategoryManagerView: View {
     @Bindable var viewModel: ClassificationViewModel
 
+    private var categoryEditorTitle: String {
+        switch viewModel.categoryEditorSelection.count {
+        case 0:
+            return "Create Category"
+        case 1:
+            return "Edit Category"
+        default:
+            return "\(viewModel.categoryEditorSelection.count) Categories Selected"
+        }
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
@@ -892,36 +909,51 @@ private struct CategoryManagerView: View {
                         .disabled(viewModel.categoryEditorBusy)
                     Button("New") { viewModel.beginNewCategoryDraft() }
                         .disabled(viewModel.categoryEditorBusy)
+                    // #R040: Bulk delete is available whenever one or more categories are selected.
+                    Button("Delete") { Task { await viewModel.deleteSelectedCategories() } }
+                        .disabled(viewModel.categoryEditorBusy || viewModel.categoryEditorSelection.isEmpty)
+                        .accessibilityIdentifier("category-bulk-delete-button")
                 }
-                List(selection: $viewModel.categoryEditorSelectionId) {
-                    ForEach(viewModel.allCategories) { category in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(category.display_label).lineLimit(1)
-                            Text("ID \(category.nys_snw_category_id)").font(.caption).foregroundStyle(.secondary)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(viewModel.allCategories) { category in
+                            CategoryListRowView(
+                                category: category,
+                                isSelected: viewModel.categoryEditorSelection.contains(category.nys_snw_category_id)
+                            )
+                            .accessibilityIdentifier("category-row-\(category.nys_snw_category_id)")
+                            .onTapGesture {
+                                let categoryId = category.nys_snw_category_id
+                                if NSEvent.modifierFlags.contains(.command) {
+                                    if viewModel.categoryEditorSelection.contains(categoryId) {
+                                        viewModel.categoryEditorSelection.remove(categoryId)
+                                    } else {
+                                        viewModel.categoryEditorSelection.insert(categoryId)
+                                    }
+                                } else {
+                                    viewModel.categoryEditorSelection = [categoryId]
+                                }
+                            }
                         }
-                        .tag(Optional(category.nys_snw_category_id))
                     }
                 }
-                .onChange(of: viewModel.categoryEditorSelectionId) { _, newValue in
-                    viewModel.selectCategoryForEditing(newValue)
+                .onChange(of: viewModel.categoryEditorSelection) { _, _ in
+                    viewModel.syncCategoryEditorToSelection()
                 }
                 .accessibilityIdentifier("category-manager-list")
             }
             .frame(minWidth: 360, idealWidth: 420, maxWidth: 460)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text(viewModel.categoryEditorSelectionId == nil ? "Create Category" : "Edit Category")
+                Text(categoryEditorTitle)
                     .font(.headline)
                 CategoryDraftForm(draft: $viewModel.categoryEditorDraft)
-                    .disabled(viewModel.categoryEditorBusy)
+                    .disabled(viewModel.categoryEditorBusy || viewModel.categoryEditorSelection.count != 1)
                 HStack(spacing: 8) {
                     Button("Save") { Task { await viewModel.saveCategoryDraft() } }
                         .keyboardShortcut("s", modifiers: .command)
-                        .disabled(viewModel.categoryEditorBusy)
+                        .disabled(viewModel.categoryEditorBusy || viewModel.categoryEditorPrimarySelectionId == nil)
                         .accessibilityIdentifier("category-save-button")
-                    Button("Delete") { Task { await viewModel.deleteSelectedCategory() } }
-                        .disabled(viewModel.categoryEditorBusy || viewModel.categoryEditorSelectionId == nil)
-                        .accessibilityIdentifier("category-delete-button")
                 }
                 if !viewModel.categoryEditorErrorText.isEmpty {
                     Text(viewModel.categoryEditorErrorText)
@@ -943,6 +975,23 @@ private struct CategoryManagerView: View {
                 await viewModel.reloadCategories()
             }
         }
+    }
+}
+
+private struct CategoryListRowView: View {
+    let category: CategoryOption
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(category.display_label).lineLimit(1)
+            Text("ID \(category.nys_snw_category_id)").font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(isSelected ? Color.accentColor.opacity(0.22) : Color.clear)
+        .contentShape(Rectangle())
     }
 }
 
