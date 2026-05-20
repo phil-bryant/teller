@@ -19,7 +19,7 @@ struct TransactionClassifierApp: App {
                 .frame(minWidth: 1120, minHeight: 720)
                 .onAppear {
                     if detectAppLaunchMode() == .normal {
-                        bringAppToFront()
+                        activateTransactionClassifierForInput()
                     }
                 }
         }
@@ -44,21 +44,12 @@ struct TransactionClassifierApp: App {
     }
 }
 
-@MainActor
-private func bringAppToFront() {
-    // Ensure terminal-launched runs behave as a normal foreground app.
-    NSApp.activate(ignoringOtherApps: true)
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.windows.first?.makeKeyAndOrderFront(nil)
-    }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.windows.first?.makeKeyAndOrderFront(nil)
-    }
-}
-
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        _ = notification
+        activateTransactionClassifierForInput()
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }

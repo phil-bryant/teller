@@ -194,15 +194,30 @@ _LATEST_MATCH_RUN_SQL = text("""
 """)
 
 _LATEST_RUN_CANDIDATES_SQL = text("""
-    SELECT email_message_id,
+    SELECT candidate_id,
+           email_message_id,
            score,
            reason_json,
            email_received_at,
            is_selected_by_ai,
-           is_unmatched_email_priority
+           is_unmatched_email_priority,
+           cached_subject,
+           cached_sender,
+           cached_snippet,
+           cached_fetched_at
       FROM teller.transaction_email_candidate
      WHERE match_run_id = :match_run_id
      ORDER BY score DESC, email_received_at DESC NULLS LAST, candidate_id ASC
+""")
+
+_UPDATE_CANDIDATE_CACHE_SQL = text("""
+    UPDATE teller.transaction_email_candidate
+       SET cached_subject = :cached_subject,
+           cached_sender = :cached_sender,
+           cached_snippet = :cached_snippet,
+           cached_fetched_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+     WHERE candidate_id = :candidate_id
 """)
 
 
@@ -790,6 +805,118 @@ def _transition_match_state(
     )
 
 
+def _ensure_posted_transaction(session, transaction_id: str) -> None:
+    posted_row = session.execute(text("""
+        SELECT 1
+          FROM teller.transaction
+         WHERE transaction_id = :transaction_id
+           AND status = 'posted'
+         LIMIT 1
+    """), {"transaction_id": transaction_id}).fetchone()
+    if not posted_row:
+        raise HTTPException(status_code=404, detail=f"Unknown transaction_id: {transaction_id}")
+
+
+def _ensure_no_active_match(session, transaction_id: str) -> None:
+    existing = session.execute(text("""
+        SELECT match_id
+          FROM teller.transaction_email_match
+         WHERE transaction_id = :transaction_id
+           AND active = TRUE
+         LIMIT 1
+    """), {"transaction_id": transaction_id}).fetchone()
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail="Transaction already has an active match; use /v1/matchy/matches/{match_id} mutation endpoints",
+        )
+
+
+def _ensure_candidate_for_transaction(session, transaction_id: str, email_message_id: str) -> None:
+    latest = session.execute(_LATEST_MATCH_RUN_SQL, {"transaction_id": transaction_id}).fetchone()
+    if not latest:
+        raise HTTPException(status_code=404, detail=f"No match runs recorded for transaction_id: {transaction_id}")
+    candidate = session.execute(text("""
+        SELECT 1
+          FROM teller.transaction_email_candidate
+         WHERE match_run_id = :match_run_id
+           AND email_message_id = :email_message_id
+         LIMIT 1
+    """), {"match_run_id": latest[0], "email_message_id": email_message_id}).fetchone()
+    if not candidate:
+        raise HTTPException(
+            status_code=422,
+            detail="email_message_id is not a candidate for the latest match run of this transaction",
+        )
+
+
+def _create_transaction_match(
+    session,
+    transaction_id: str,
+    to_state: str,
+    actor: str,
+    note: Optional[str],
+    email_message_id: Optional[str] = None,
+    ai_confidence: Optional[float] = None,
+) -> MatchReviewActionResponse:
+    _ensure_posted_transaction(session, transaction_id)
+    _ensure_no_active_match(session, transaction_id)
+    if to_state == "ai_no_match_found":
+        if email_message_id is not None:
+            raise HTTPException(status_code=422, detail="email_message_id must be omitted for no-email matches")
+    else:
+        if not email_message_id:
+            raise HTTPException(status_code=422, detail="email_message_id is required")
+        _validate_email_message_id(email_message_id)
+        _ensure_candidate_for_transaction(session, transaction_id, email_message_id)
+    try:
+        inserted = session.execute(text("""
+            INSERT INTO teller.transaction_email_match (
+                transaction_id,
+                email_message_id,
+                state,
+                ai_confidence,
+                selected_by,
+                active
+            ) VALUES (
+                :transaction_id,
+                :email_message_id,
+                CAST(:state AS teller.transaction_email_match_state),
+                :ai_confidence,
+                CAST(:selected_by AS teller.transaction_email_match_selected_by),
+                TRUE
+            )
+            RETURNING match_id, updated_at
+        """), {
+            "transaction_id": transaction_id,
+            "email_message_id": email_message_id,
+            "state": to_state,
+            "ai_confidence": ai_confidence,
+            "selected_by": actor,
+        }).mappings().fetchone()
+        if not inserted:
+            raise HTTPException(status_code=500, detail="Failed to create match row")
+        match_id = int(inserted["match_id"])
+        updated_at = inserted["updated_at"]
+        if isinstance(updated_at, datetime) and updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+        _insert_match_audit(session, match_id, None, to_state, actor, note)
+        session.commit()
+    except HTTPException:
+        raise
+    except (IntegrityError, DataError):
+        if hasattr(session, "rollback"):
+            session.rollback()
+        raise HTTPException(status_code=409, detail="Match creation conflicts with existing active email link")
+    return MatchReviewActionResponse(
+        match_id=match_id,
+        transaction_id=transaction_id,
+        state=to_state,
+        selected_by=actor,
+        updated_at=updated_at,
+    )
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Teller Classification API", version="0.1.0")
 
@@ -1099,6 +1226,67 @@ def create_app() -> FastAPI:
                 clear_email_message_id=True,
             )
 
+    @app.put(
+        "/v1/matchy/transactions/{transaction_id}/confirm-candidate",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction or no match runs recorded"},
+            409: {"model": ApiError, "description": "Transaction already has an active match or email link conflict"},
+            422: {"model": ApiError, "description": "Selected email is not a candidate for this transaction"},
+        },
+    )
+    def confirm_transaction_candidate(request: Request, transaction_id: str, body: MatchOverrideMutation):
+        _require_write_access(request)
+        with get_session() as session:
+            return _create_transaction_match(
+                session=session,
+                transaction_id=transaction_id,
+                email_message_id=body.email_message_id,
+                to_state="human_confirmed_ai_match",
+                actor="human",
+                note=body.note or "Confirmed candidate from Teller review UI",
+            )
+
+    @app.put(
+        "/v1/matchy/transactions/{transaction_id}/override-candidate",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction or no match runs recorded"},
+            409: {"model": ApiError, "description": "Transaction already has an active match or email link conflict"},
+            422: {"model": ApiError, "description": "Selected email is not a candidate for this transaction"},
+        },
+    )
+    def override_transaction_candidate(request: Request, transaction_id: str, body: MatchOverrideMutation):
+        _require_write_access(request)
+        with get_session() as session:
+            return _create_transaction_match(
+                session=session,
+                transaction_id=transaction_id,
+                email_message_id=body.email_message_id,
+                to_state="human_overrode_ai_match",
+                actor="human",
+                note=body.note or "Overridden from Teller review UI",
+            )
+
+    @app.put(
+        "/v1/matchy/transactions/{transaction_id}/no-email",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction"},
+            409: {"model": ApiError, "description": "Transaction already has an active match"},
+        },
+    )
+    def mark_transaction_no_email(request: Request, transaction_id: str):
+        _require_write_access(request)
+        with get_session() as session:
+            return _create_transaction_match(
+                session=session,
+                transaction_id=transaction_id,
+                to_state="ai_no_match_found",
+                actor="human",
+                note="Marked no-email from Teller review UI",
+            )
+
     #R060: List latest-run candidates for a transaction, enriched with Mailcart metadata.
     @app.get(
         "/v1/matchy/transactions/{transaction_id}/candidates",
@@ -1117,9 +1305,9 @@ def create_app() -> FastAPI:
             candidate_rows = session.execute(
                 _LATEST_RUN_CANDIDATES_SQL, {"match_run_id": latest[0]}
             ).mappings().all()
-        if not candidate_rows:
-            return []
-        return _enrich_candidates_with_mailcart(candidate_rows)
+            if not candidate_rows:
+                return []
+            return _enrich_candidates_with_mailcart(session, candidate_rows)
 
     #R061: Proxy the full message body + metadata from Mailcart for the right pane.
     @app.get(
@@ -1189,35 +1377,79 @@ def _validate_email_message_id(email_message_id: str) -> None:
 _MAILCART_ENRICHMENT_WORKERS = 16
 
 
-def _enrich_candidates_with_mailcart(candidate_rows: List[Dict[str, Any]]) -> List[MatchCandidateRow]:
+def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any]]) -> List[MatchCandidateRow]:
     #R060: Best-effort fan-out enrichment; per-id Mailcart failures degrade to mailcart_error rather than 502.
-    #R060: Fan out the Mailcart fetches across a small thread pool so the candidates pane populates in
-    #R060: roughly one round-trip-time per batch instead of N sequential round-trips. Order of the input
-    #R060: candidate list is preserved in the returned list.
+    #R060: For rows that already carry cached subject/sender/snippet (matchy persists these at
+    #R060: candidate-insert time), serve directly from the DB so the candidates pane is subsecond.
+    #R060: For rows with NULL cache (legacy data from before the cache columns existed), fall out to
+    #R060: Mailcart through a 16-worker thread pool and write the metadata back into the cache so
+    #R060: the next call is hot. Order of the input candidate list is preserved in the returned list.
+    if not candidate_rows:
+        return []
+
+    enriched: List[MatchCandidateRow | None] = [None] * len(candidate_rows)
+    cold_indexes: List[int] = []
+    for index, row in enumerate(candidate_rows):
+        if row.get("cached_subject") or row.get("cached_sender") or row.get("cached_snippet"):
+            enriched[index] = _candidate_row_from_cache(row)
+        else:
+            cold_indexes.append(index)
+
+    if not cold_indexes:
+        return [item for item in enriched if item is not None]
+
     try:
         client = get_mailcart_client()
     except HTTPException as exc:
         if exc.status_code == 503:
-            return [_candidate_row_with_error(row, exc.detail) for row in candidate_rows]
+            for index in cold_indexes:
+                enriched[index] = _candidate_row_with_error(candidate_rows[index], exc.detail)
+            return [item for item in enriched if item is not None]
         raise
-    if not candidate_rows:
-        return []
+
     from concurrent.futures import ThreadPoolExecutor
 
-    def _fetch_one(index_and_row):
-        index, row = index_and_row
+    def _fetch_one(index):
+        row = candidate_rows[index]
         try:
             metadata = client.get_message(row["email_message_id"])
         except MailcartError as exc:
-            return index, _candidate_row_with_error(row, exc.message)
-        return index, _candidate_row_from_db_and_metadata(row, metadata)
+            return index, _candidate_row_with_error(row, exc.message), None
+        return index, _candidate_row_from_db_and_metadata(row, metadata), metadata
 
-    worker_count = min(_MAILCART_ENRICHMENT_WORKERS, max(1, len(candidate_rows)))
-    enriched: List[MatchCandidateRow | None] = [None] * len(candidate_rows)
+    worker_count = min(_MAILCART_ENRICHMENT_WORKERS, max(1, len(cold_indexes)))
+    cache_updates: List[Dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="mailcart-enrich") as pool:
-        for index, candidate in pool.map(_fetch_one, enumerate(candidate_rows)):
+        for index, candidate, metadata in pool.map(_fetch_one, cold_indexes):
             enriched[index] = candidate
+            if metadata and isinstance(metadata, dict):
+                cache_updates.append({
+                    "candidate_id": candidate_rows[index]["candidate_id"],
+                    "cached_subject": metadata.get("subject"),
+                    "cached_sender": metadata.get("from") or metadata.get("sender"),
+                    "cached_snippet": metadata.get("snippet") or metadata.get("preview") or (metadata.get("body_text") or "")[:240] or None,
+                })
+    # Backfill the cache so the next call is hot. Best-effort: if the write fails (e.g. read-only
+    # role), log and continue rather than 500ing on the user.
+    for update in cache_updates:
+        try:
+            session.execute(_UPDATE_CANDIDATE_CACHE_SQL, update)
+        except Exception:
+            session.rollback()
+            break
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
     return [item for item in enriched if item is not None]
+
+
+def _candidate_row_from_cache(row: Dict[str, Any]) -> MatchCandidateRow:
+    payload = _candidate_payload(row)
+    payload["subject"] = row.get("cached_subject")
+    payload["from"] = row.get("cached_sender")
+    payload["snippet"] = row.get("cached_snippet")
+    return MatchCandidateRow.model_validate(payload)
 
 
 def _candidate_row_from_db_and_metadata(row: Dict[str, Any], metadata: Dict[str, Any]) -> MatchCandidateRow:

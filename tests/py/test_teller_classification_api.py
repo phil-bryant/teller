@@ -45,6 +45,7 @@ from unittest.mock import patch
 
 from teller.teller_classification_api import (
     _category_params,
+    _create_transaction_match,
     _display_label,
     _transition_match_state,
     _write_category,
@@ -944,7 +945,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
         candidate_rows = [
             {
-                "email_message_id": "msg_high",
+                "candidate_id": 1, "email_message_id": "msg_high",
                 "score": 0.92,
                 "reason_json": {"reason": "amount-and-date match"},
                 "email_received_at": datetime(2026, 5, 17, 12, 0, tzinfo=timezone.utc),
@@ -952,7 +953,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
                 "is_unmatched_email_priority": False,
             },
             {
-                "email_message_id": "msg_low",
+                "candidate_id": 2, "email_message_id": "msg_low",
                 "score": 0.41,
                 "reason_json": {},
                 "email_received_at": datetime(2026, 5, 16, 8, 30, tzinfo=timezone.utc),
@@ -992,7 +993,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         session = _FakeSession(rows=[
             _Result(row=(7,)),
             _Result(rows=[{
-                "email_message_id": "msg_1",
+                "candidate_id": 3, "email_message_id": "msg_1",
                 "score": 0.5,
                 "reason_json": {"why": "fuzzy"},
                 "email_received_at": None,
@@ -1022,9 +1023,9 @@ class MatchCandidateProxyTests(unittest.TestCase):
         session = _FakeSession(rows=[
             _Result(row=(8,)),
             _Result(rows=[
-                {"email_message_id": "msg_ok",   "score": 0.7, "reason_json": {}, "email_received_at": None,
+                {"candidate_id": 4, "email_message_id": "msg_ok",   "score": 0.7, "reason_json": {}, "email_received_at": None,
                  "is_selected_by_ai": False, "is_unmatched_email_priority": False},
-                {"email_message_id": "msg_bad",  "score": 0.6, "reason_json": {}, "email_received_at": None,
+                {"candidate_id": 5, "email_message_id": "msg_bad",  "score": 0.6, "reason_json": {}, "email_received_at": None,
                  "is_selected_by_ai": False, "is_unmatched_email_priority": False},
             ]),
         ])
@@ -1176,6 +1177,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         session = _FakeSession(rows=[
             _Result(row=(11,)),
             _Result(rows=[{
+                "candidate_id": 99,
                 "email_message_id": "AAMkADk",
                 "score": 0.81,
                 "reason_json": {"why": "amount"},
@@ -1205,8 +1207,44 @@ class MatchCandidateProxyTests(unittest.TestCase):
         app = create_app()
         route_paths = {route.path for route in app.routes}
         self.assertIn("/v1/matchy/transactions/{transaction_id}/candidates", route_paths)
+        self.assertIn("/v1/matchy/transactions/{transaction_id}/confirm-candidate", route_paths)
+        self.assertIn("/v1/matchy/transactions/{transaction_id}/override-candidate", route_paths)
+        self.assertIn("/v1/matchy/transactions/{transaction_id}/no-email", route_paths)
         self.assertIn("/v1/matchy/messages/{email_message_id}", route_paths)
         self.assertIn("/v1/matchy/messages/search", route_paths)
+
+    @patch("teller.teller_classification_api._insert_match_audit")
+    @patch("teller.teller_classification_api._ensure_candidate_for_transaction")
+    @patch("teller.teller_classification_api._ensure_no_active_match")
+    @patch("teller.teller_classification_api._ensure_posted_transaction")
+    def test_create_transaction_match_inserts_confirmed_candidate(
+        self,
+        ensure_posted_mock,
+        ensure_no_active_mock,
+        ensure_candidate_mock,
+        insert_audit_mock,
+    ):
+        session = _FakeSession(
+            rows=[
+                _Result(row={"match_id": 99, "updated_at": datetime.now(timezone.utc)}),
+            ]
+        )
+        response = _create_transaction_match(
+            session=session,
+            transaction_id="txn_1",
+            email_message_id="msg_abc",
+            to_state="human_confirmed_ai_match",
+            actor="human",
+            note="Confirmed candidate from Teller review UI",
+        )
+        self.assertEqual(response.match_id, 99)
+        self.assertEqual(response.transaction_id, "txn_1")
+        self.assertEqual(response.state, "human_confirmed_ai_match")
+        ensure_posted_mock.assert_called_once()
+        ensure_no_active_mock.assert_called_once()
+        ensure_candidate_mock.assert_called_once()
+        insert_audit_mock.assert_called_once()
+        self.assertEqual(session.commits, 1)
 
     @patch("teller.teller_classification_api.get_session")
     def test_transactions_endpoint_includes_active_match_info(self, get_session_mock):

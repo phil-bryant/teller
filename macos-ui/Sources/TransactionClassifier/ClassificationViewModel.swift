@@ -220,8 +220,20 @@ final class ClassificationViewModel {
     }
 
     var canOverrideSelectedMatch: Bool {
-        guard selectedMatchId != nil, let candidateId = overrideTargetEmailMessageId else { return false }
-        return !activeEmailIdsForSelectedTransaction.contains(candidateId)
+        guard let candidateId = overrideTargetEmailMessageId else { return false }
+        if selectedMatchId != nil {
+            return !activeEmailIdsForSelectedTransaction.contains(candidateId)
+        }
+        return primaryTransaction != nil
+    }
+
+    var canConfirmSelectedMatch: Bool {
+        if selectedMatchId != nil { return true }
+        return primaryTransaction != nil && overrideTargetEmailMessageId != nil
+    }
+
+    var canMarkSelectedMatchNoEmail: Bool {
+        primaryTransaction != nil
     }
 
     /// Triggered whenever the primary selected transaction changes. Loads the candidate set + email
@@ -341,11 +353,28 @@ final class ClassificationViewModel {
     }
 
     func confirmSelectedMatch() async {
-        guard let matchId = selectedMatchId else { return }
+        let trimmedNote = matchOverrideNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = trimmedNote.isEmpty ? nil : trimmedNote
         do {
-            _ = try await api.confirmMatch(matchId: matchId)
-            matchReviewStatusText = "Confirmed match \(matchId)"
+            if let matchId = selectedMatchId {
+                _ = try await api.confirmMatch(matchId: matchId)
+                matchReviewStatusText = "Confirmed match \(matchId)"
+            } else if let transactionId = primaryTransaction?.transaction_id,
+                      let emailId = overrideTargetEmailMessageId {
+                let response = try await api.confirmTransactionCandidate(
+                    transactionId: transactionId,
+                    emailMessageId: emailId,
+                    note: note
+                )
+                matchReviewStatusText = "Confirmed candidate for \(response.transaction_id)"
+            } else {
+                matchReviewErrorText = "Select a candidate before confirming."
+                matchReviewStatusText = "Match confirm failed"
+                return
+            }
             matchReviewErrorText = ""
+            matchOverrideEmailMessageId = ""
+            matchOverrideNote = ""
             lastLoadedCandidatesTransactionId = nil
             await loadAll()
         } catch {
@@ -355,7 +384,6 @@ final class ClassificationViewModel {
     }
 
     func overrideSelectedMatch() async {
-        guard let matchId = selectedMatchId else { return }
         guard let emailId = overrideTargetEmailMessageId, !emailId.isEmpty else {
             matchReviewErrorText = "Select a candidate (or paste a message id) before overriding."
             return
@@ -363,8 +391,21 @@ final class ClassificationViewModel {
         let trimmedNote = matchOverrideNote.trimmingCharacters(in: .whitespacesAndNewlines)
         let note = trimmedNote.isEmpty ? "Overridden in Teller UI" : trimmedNote
         do {
-            _ = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: note)
-            matchReviewStatusText = "Overrode match \(matchId)"
+            if let matchId = selectedMatchId {
+                _ = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: note)
+                matchReviewStatusText = "Overrode match \(matchId)"
+            } else if let transactionId = primaryTransaction?.transaction_id {
+                let response = try await api.overrideTransactionCandidate(
+                    transactionId: transactionId,
+                    emailMessageId: emailId,
+                    note: note
+                )
+                matchReviewStatusText = "Assigned email to \(response.transaction_id)"
+            } else {
+                matchReviewErrorText = "Select a transaction before overriding."
+                matchReviewStatusText = "Match override failed"
+                return
+            }
             matchReviewErrorText = ""
             matchOverrideEmailMessageId = ""
             matchOverrideNote = ""
@@ -377,10 +418,18 @@ final class ClassificationViewModel {
     }
 
     func markSelectedMatchNoEmail() async {
-        guard let matchId = selectedMatchId else { return }
         do {
-            _ = try await api.markMatchNoEmail(matchId: matchId)
-            matchReviewStatusText = "Marked match \(matchId) as no-email"
+            if let matchId = selectedMatchId {
+                _ = try await api.markMatchNoEmail(matchId: matchId)
+                matchReviewStatusText = "Marked match \(matchId) as no-email"
+            } else if let transactionId = primaryTransaction?.transaction_id {
+                let response = try await api.markTransactionNoEmail(transactionId: transactionId)
+                matchReviewStatusText = "Marked \(response.transaction_id) as no-email"
+            } else {
+                matchReviewErrorText = "Select a transaction before marking no-email."
+                matchReviewStatusText = "No-email action failed"
+                return
+            }
             matchReviewErrorText = ""
             lastLoadedCandidatesTransactionId = nil
             await loadAll()

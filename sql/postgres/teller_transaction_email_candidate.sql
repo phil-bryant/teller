@@ -8,6 +8,14 @@ CREATE TABLE teller.transaction_email_candidate (
     reason_json JSONB NOT NULL DEFAULT '{}'::jsonb,
     is_unmatched_email_priority BOOLEAN NOT NULL DEFAULT FALSE,
     is_selected_by_ai BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Cached Mailcart metadata so downstream UIs can render subject/sender/snippet without
+    -- another per-message Mailcart round-trip per candidate (the Match Review candidates pane
+    -- previously paid that round-trip every render, throttling the pane to multi-second loads
+    -- whenever the candidate set exceeded ~10 rows due to requests.Session pool limits).
+    cached_subject TEXT,
+    cached_sender TEXT,
+    cached_snippet TEXT,
+    cached_fetched_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

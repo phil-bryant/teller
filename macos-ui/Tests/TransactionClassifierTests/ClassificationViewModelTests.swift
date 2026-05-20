@@ -249,6 +249,20 @@ final class ClassificationViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testCanConfirmSelectedMatchWhenCandidateExistsWithoutMatchRow() {
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        vm.transactions = [sampleTransaction("txn_unmatched", classification: nil)]
+        vm.candidates = [sampleCandidate(emailId: "msg_ai", isSelectedByAi: true)]
+        vm.selection = ["txn_unmatched"]
+        vm.selectedCandidateId = "msg_ai"
+        XCTAssertNil(vm.selectedMatchId)
+        XCTAssertTrue(vm.canConfirmSelectedMatch)
+        XCTAssertTrue(vm.canOverrideSelectedMatch)
+        XCTAssertTrue(vm.canMarkSelectedMatchNoEmail)
+    }
+
+    @MainActor
     func testSelectedCategoryDidChangeSavesOnlyRowsThatActuallyChange() async {
         // #R005
         let dining = sampleCategory(22, "Dining")

@@ -552,8 +552,12 @@ private struct ClassifyAndEmailPane: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ClassifySection(viewModel: viewModel)
+                .zIndex(1)
             Divider()
             EmailSection(viewModel: viewModel)
+                .frame(maxHeight: .infinity)
+                .layoutPriority(-1)
+                .clipped()
             Divider()
             MatchActionsBar(viewModel: viewModel)
         }
@@ -719,17 +723,29 @@ private struct MatchActionsBar: View {
             }
             HStack(spacing: 8) {
                 Button("Confirm") { Task { await viewModel.confirmSelectedMatch() } }
-                    .disabled(viewModel.selectedMatchId == nil)
+                    .disabled(!viewModel.canConfirmSelectedMatch)
                     .accessibilityIdentifier("match-confirm-button")
                 Button("Override with this email") { Task { await viewModel.overrideSelectedMatch() } }
                     .disabled(!viewModel.canOverrideSelectedMatch)
                     .accessibilityIdentifier("match-override-button")
                 Button("Mark no-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
-                    .disabled(viewModel.selectedMatchId == nil)
+                    .disabled(!viewModel.canMarkSelectedMatchNoEmail)
                     .accessibilityIdentifier("match-no-email-button")
                 Spacer()
             }
         }
+    }
+}
+
+private final class NonFocusStealingWebView: WKWebView {
+    private var userActivated = false
+
+    override var acceptsFirstResponder: Bool { userActivated }
+
+    override func mouseDown(with event: NSEvent) {
+        userActivated = true
+        super.mouseDown(with: event)
+        window?.makeFirstResponder(self)
     }
 }
 
@@ -739,7 +755,7 @@ private struct EmailBodyWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = NonFocusStealingWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         return webView
     }
@@ -889,6 +905,13 @@ private struct CategoryTypeaheadField: View {
                 .textFieldStyle(.roundedBorder)
                 .focused($isFocused)
                 .onSubmit { commitHighlightedOption() }
+                .onChange(of: isFocused) { _, focused in
+                    if focused { activateTransactionClassifierForInput() }
+                }
+                .simultaneousGesture(TapGesture().onEnded {
+                    activateTransactionClassifierForInput()
+                    isFocused = true
+                })
                 .onChange(of: queryText) { _, _ in highlightedIndex = 0 }
                 .onAppear { syncTextFromSelection() }
                 .onChange(of: selectedCategoryId) { _, _ in syncTextFromSelection() }

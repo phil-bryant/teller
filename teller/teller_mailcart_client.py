@@ -27,11 +27,23 @@ class MailcartClient:
     #R060: Mailcart is a local-only service (default 127.0.0.1:8788) so caller authentication is optional;
     #R060: a bearer header is only attached when `MAILCART_SERVICE_TOKEN` is configured (parity with matchy).
     def __init__(self, base_url: str, token: str = "", *, timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
-                 session: Optional[requests.Session] = None) -> None:
+                 session: Optional[requests.Session] = None, max_connections: int = 32) -> None:
         self._base_url = base_url.rstrip("/")
         self._token = (token or "").strip()
         self._timeout = timeout_seconds
-        self._session = session or requests.Session()
+        if session is None:
+            session = requests.Session()
+            # requests.Session defaults to a 10-connection pool per host, which silently throttles
+            # the per-candidate ThreadPoolExecutor fan-out down to ~10x effective concurrency. Bump
+            # both pool dimensions so the 16-worker enrichment actually runs 16-wide.
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=max(max_connections, 4),
+                pool_maxsize=max(max_connections, 4),
+                max_retries=0,
+            )
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
+        self._session = session
 
     def _request(self, method: str, path: str, *, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         url = f"{self._base_url}{path}"
