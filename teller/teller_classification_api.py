@@ -1414,6 +1414,10 @@ def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any
         try:
             metadata = client.get_message(row["email_message_id"])
         except MailcartError as exc:
+            # Translate Mailcart's "no longer in inbox" signal (404) into a user-friendly label and
+            # mark the row negatively-cached so we don't re-ask Graph for it on every UI render.
+            if exc.status_code == 404:
+                return index, _candidate_row_with_error(row, "email no longer in inbox"), {"_negative": True}
             return index, _candidate_row_with_error(row, exc.message), None
         return index, _candidate_row_from_db_and_metadata(row, metadata), metadata
 
@@ -1423,12 +1427,22 @@ def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any
         for index, candidate, metadata in pool.map(_fetch_one, cold_indexes):
             enriched[index] = candidate
             if metadata and isinstance(metadata, dict):
-                cache_updates.append({
-                    "candidate_id": candidate_rows[index]["candidate_id"],
-                    "cached_subject": metadata.get("subject"),
-                    "cached_sender": metadata.get("from") or metadata.get("sender"),
-                    "cached_snippet": metadata.get("snippet") or metadata.get("preview") or (metadata.get("body_text") or "")[:240] or None,
-                })
+                if metadata.get("_negative"):
+                    # Negative cache: write sentinel so the row is treated as "known-missing" and
+                    # served from DB on subsequent calls without re-asking Graph.
+                    cache_updates.append({
+                        "candidate_id": candidate_rows[index]["candidate_id"],
+                        "cached_subject": "[email no longer in inbox]",
+                        "cached_sender": "",
+                        "cached_snippet": None,
+                    })
+                else:
+                    cache_updates.append({
+                        "candidate_id": candidate_rows[index]["candidate_id"],
+                        "cached_subject": metadata.get("subject"),
+                        "cached_sender": metadata.get("from") or metadata.get("sender"),
+                        "cached_snippet": metadata.get("snippet") or metadata.get("preview") or (metadata.get("body_text") or "")[:240] or None,
+                    })
     # Backfill the cache so the next call is hot. Best-effort: if the write fails (e.g. read-only
     # role), log and continue rather than 500ing on the user.
     for update in cache_updates:

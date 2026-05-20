@@ -380,6 +380,28 @@ private struct CandidatesPane: View {
     // the "active" badge in the candidates list — not just the single representative match row.
     private var activeMatchEmailIds: Set<String> { viewModel.activeEmailIdsForSelectedTransaction }
 
+    /// Compact badge label for an "active" candidate that reflects whether the human or the AI
+    /// chose it (so the user can see at a glance whether their `Confirm` click stuck).
+    private var activeBadgeLabel: String {
+        switch viewModel.selectedTransactionMatch?.state {
+        case "human_confirmed_ai_match": return "confirmed"
+        case "human_overrode_ai_match":  return "overridden"
+        case "ai_match_confident":       return "AI match"
+        case "ai_candidate_uncertain":   return "uncertain"
+        default:                         return "active"
+        }
+    }
+
+    private var activeBadgeColor: Color {
+        switch viewModel.selectedTransactionMatch?.state {
+        case "human_confirmed_ai_match": return .green
+        case "human_overrode_ai_match":  return .purple
+        case "ai_match_confident":       return .blue
+        case "ai_candidate_uncertain":   return .orange
+        default:                         return .green
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -409,7 +431,9 @@ private struct CandidatesPane: View {
                     } else {
                         ForEach(viewModel.candidates) { candidate in
                             CandidateRowView(candidate: candidate,
-                                             isActiveMatch: activeMatchEmailIds.contains(candidate.email_message_id))
+                                             isActiveMatch: activeMatchEmailIds.contains(candidate.email_message_id),
+                                             activeBadgeLabel: activeBadgeLabel,
+                                             activeBadgeColor: activeBadgeColor)
                                 .tag(Optional(candidate.email_message_id))
                                 .accessibilityIdentifier("candidate-row-\(candidate.email_message_id)")
                         }
@@ -443,6 +467,8 @@ private struct CandidatesPane: View {
 private struct CandidateRowView: View {
     let candidate: MatchCandidateRow
     let isActiveMatch: Bool
+    let activeBadgeLabel: String
+    let activeBadgeColor: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -459,12 +485,14 @@ private struct CandidateRowView: View {
                         .clipShape(Capsule())
                 }
                 if isActiveMatch {
-                    Text("active")
+                    Text(activeBadgeLabel)
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
-                        .background(Color.green.opacity(0.2))
+                        .background(activeBadgeColor.opacity(0.22))
+                        .foregroundStyle(activeBadgeColor)
                         .clipShape(Capsule())
+                        .accessibilityIdentifier("candidate-active-badge-\(activeBadgeLabel)")
                 }
             }
             HStack(spacing: 6) {
