@@ -29,23 +29,8 @@ Design: Print DAST progress markers and final success output including resolved 
 Tests:
 - R020-T01: Run a passing DAST lane and verify completion output includes report directory.
 
-R025  Statement: Keep macOS UI DAST proxy startup resilient under port contention.
-Design: Before launching ZAP daemon for macOS UI DAST, validate the requested localhost proxy port and automatically pick the next available port when the requested port is already in use.
-Tests:
-- R025-T01: Occupy the requested proxy port and verify the runner auto-selects a free fallback port.
-- R025-T02: Set a non-numeric proxy port and verify startup fails with a clear validation error.
-
-R030  Statement: Isolate OWASP ZAP home state across quick-scan and daemon lanes.
-Design: Use separate ZAP home directories for quick scan and macOS UI daemon startup (while allowing explicit environment overrides) to avoid shared-state startup coupling.
-Tests:
-- R030-T01: Run with defaults and verify quick-scan and daemon invocations use distinct ZAP home paths.
-
-R035  Statement: Surface actionable diagnostics when ZAP daemon startup fails.
-Design: If the macOS UI ZAP daemon cannot become healthy in time, fail fast and print daemon startup log tail so bind/address issues are visible in lane output.
-Tests:
-- R035-T01: Stub daemon startup timeout and verify output includes failure context plus log tail marker.
-
 ## Changelog
 
 - 2026-05-10: Split former combined security lane into `06_run_sast.sh` and `16_run_dast.sh`.
 - 2026-05-15: Added R025/R030/R035 for ZAP proxy resilience, lane state isolation, and startup diagnostics.
+- 2026-05-19: Removed macOS UI / XCUITest DAST integration (R025, R030, R035); DAST is Schemathesis + ZAP quick scan only.

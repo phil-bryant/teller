@@ -1,0 +1,39 @@
+▶ Running dependency freshness checks with /Users/phil/local/src/teller/teller-venv/bin/python
+Dependency freshness report
+- Total outdated: 1
+- Major updates: 0
+- Minor updates: 1
+- Patch updates: 0
+- Unknown updates: 0
+- Outdated entries from requirements.txt: 0
+
+Outdated packages:
+- click: 8.3.3 -> 8.4.0 (minor; transitive; not-pinned)
+▶ Running Teller API drift checks
+Teller API drift report
+- Mode: live
+- Status: pass
+
+Checks:
+- [pass] institutions (http 200)
+- [pass] accounts (http 200)
+- [pass] identity (http 200)
+▶ Running PostgreSQL freshness checks
+PostgreSQL freshness report
+- Client status: ok
+- Client version: 17.10
+- Client minimum: not configured
+- Server check enabled: yes
+- Server status: ok
+- Server version: 17.10.0
+- Server minimum: not configured
+- CVE checks enabled: yes
+- CVE severity threshold: medium
+- CVE snapshot entries: 25
+- CVE snapshot generated at: 2026-05-20T04:35:05.137513Z
+- CVE snapshot age hours: 0.0
+- CVE evaluation status: passed
+- CVE assurance: matched-against-snapshot
+- CVE vulnerabilities found: 0
+- Stale components: none
+✅ Dependency freshness checks completed. Reports: ./.security-reports

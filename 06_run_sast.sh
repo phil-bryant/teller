@@ -1058,8 +1058,7 @@ PY
 
   local run_schemathesis="${RUN_SCHEMATHESIS:-true}"
   local run_zap="${RUN_ZAP:-true}"
-  local run_macos_ui_dast="${RUN_MACOS_UI_DAST:-true}"
-  local reuse_existing_api="${MACOS_UI_DAST_REUSE_EXISTING_API:-false}"
+  local reuse_existing_api="${DAST_REUSE_EXISTING_API:-${MACOS_UI_DAST_REUSE_EXISTING_API:-false}}"
   local run_token_capture_dast="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
   local fail_on_high_critical="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
   local dast_write_token
@@ -1068,12 +1067,6 @@ PY
   local zap_home_dir="${ZAP_HOME_DIR:-${report_dir_abs}/zap-home}"
   # Keep ZAP quick-scan output visible by default unless explicitly silenced.
   local zap_quiet="${ZAP_QUIET:-false}"
-  local macos_ui_dast_proxy_host="${MACOS_UI_DAST_ZAP_PROXY_HOST:-127.0.0.1}"
-  local macos_ui_dast_proxy_port="${MACOS_UI_DAST_ZAP_PROXY_PORT:-8090}"
-  local macos_ui_dast_proxy_url="http://${macos_ui_dast_proxy_host}:${macos_ui_dast_proxy_port}"
-  local zap_api_url="${macos_ui_dast_proxy_url}/JSON/core/view/version/"
-  local zap_alerts_api_url="${macos_ui_dast_proxy_url}/JSON/core/view/alerts/"
-  local zap_html_report_api_url="${macos_ui_dast_proxy_url}/OTHER/core/other/htmlreport/"
 
   local dast_app_python="${DAST_APP_PYTHON:-./teller-venv/bin/python}"
 
@@ -1087,9 +1080,8 @@ PY
 
   local classifier_api_pid=""
   local token_capture_pid=""
-  local zap_proxy_pid=""
 
-  trap 'if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then kill "$token_capture_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then kill "$zap_proxy_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then kill "$classifier_api_pid" >/dev/null 2>&1 || true; fi' EXIT
+  trap 'if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then kill "$token_capture_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then kill "$classifier_api_pid" >/dev/null 2>&1 || true; fi' EXIT
   mkdir -p "$zap_home_dir"
 
   # Start local classification API automatically for DAST execution.
@@ -1164,63 +1156,6 @@ PY
       "${report_dir_abs}/zap-classification.log"
   fi
 
-  # Support local macOS UI Dynamic Application Security Testing (DAST) via ZAP proxy mode.
-  if [[ "$run_macos_ui_dast" == "true" ]]; then
-    if [[ "$run_zap" != "true" ]]; then
-      echo "❌ macOS UI Dynamic Application Security Testing (DAST) requires RUN_ZAP=true."
-      exit 1
-    fi
-
-    print_tool_header \
-      "OWASP ZAP (macOS UI proxy lane)" \
-      "Runs as a local HTTP proxy to inspect traffic emitted by macOS UI flows." \
-      "Captures findings while XCUITest drives realistic user interactions." \
-      "https://www.zaproxy.org/"
-    echo "▶ Starting OWASP ZAP daemon proxy for macOS UI Dynamic Application Security Testing (DAST) at ${macos_ui_dast_proxy_url}"
-    "$zap_cli_cmd" -daemon \
-      -dir "$zap_home_dir" \
-      -host "$macos_ui_dast_proxy_host" \
-      -port "$macos_ui_dast_proxy_port" \
-      -config api.disablekey=true \
-      > "${report_dir_abs}/zap-macos-ui.log" 2>&1 &
-    zap_proxy_pid="$!"
-    wait_for_http "$zap_api_url" 60
-
-    echo "▶ Running macOS UI XCUITest smoke suite through ZAP proxy"
-    RUN_SNAPSHOT_TESTS=false \
-    RUN_XCUITESTS=true \
-    TELLER_CLASSIFIER_API_URL="$base_url" \
-    TELLER_CLASSIFIER_HTTP_PROXY="$macos_ui_dast_proxy_url" \
-      ./10_run_macos_ui_regression_tests.sh | tee "${report_dir_abs}/macos-ui-dast-xcuitest.log"
-
-    if curl -fsS "$zap_alerts_api_url" > "${report_dir_abs}/zap-macos-ui.json"; then
-      if [[ ! -s "${report_dir_abs}/zap-macos-ui.json" ]]; then
-        printf '{"alerts":[]}\n' > "${report_dir_abs}/zap-macos-ui.json"
-      fi
-    else
-      echo "⚠️  Failed to fetch ZAP macOS UI JSON alerts; using empty alert payload."
-      printf '{"alerts":[]}\n' > "${report_dir_abs}/zap-macos-ui.json"
-    fi
-
-    if curl -fsS "$zap_html_report_api_url" > "${report_dir_abs}/zap-macos-ui.html"; then
-      if [[ ! -s "${report_dir_abs}/zap-macos-ui.html" ]]; then
-        printf '<html><body>No ZAP HTML report emitted.</body></html>\n' > "${report_dir_abs}/zap-macos-ui.html"
-      fi
-    else
-      echo "⚠️  Failed to fetch ZAP macOS UI HTML report; writing placeholder report."
-      printf '<html><body>Failed to fetch ZAP HTML report.</body></html>\n' > "${report_dir_abs}/zap-macos-ui.html"
-    fi
-
-    if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then
-      echo "▶ Stopping OWASP ZAP daemon proxy after macOS UI Dynamic Application Security Testing (DAST)"
-      kill "$zap_proxy_pid" >/dev/null 2>&1 || true
-      wait "$zap_proxy_pid" >/dev/null 2>&1 || true
-      zap_proxy_pid=""
-    fi
-  else
-    echo "ℹ️  macOS UI Dynamic Application Security Testing (DAST) skipped (set RUN_MACOS_UI_DAST=true to enable)."
-  fi
-
   # Support optional token-capture DAST coverage with auto-detection.
   if [[ "$run_token_capture_dast" == "auto" ]]; then
     if [[ -f "$HOME/.teller/application_id.txt" ]]; then
@@ -1239,7 +1174,7 @@ PY
 
   local high_alerts=0
   local alerts
-  for zap_json in "${report_dir_abs}/zap-classification.json" "${report_dir_abs}/zap-token-capture.json" "${report_dir_abs}/zap-macos-ui.json"; do
+  for zap_json in "${report_dir_abs}/zap-classification.json" "${report_dir_abs}/zap-token-capture.json"; do
     if [[ -f "$zap_json" ]]; then
       alerts="$(python3 - <<'PY' "$zap_json"
 import json, sys
@@ -1268,7 +1203,7 @@ PY
     fi
   done
 
-  if [[ ! -f "${report_dir_abs}/zap-classification.json" ]] && [[ ! -f "${report_dir_abs}/zap-token-capture.json" ]] && [[ ! -f "${report_dir_abs}/zap-macos-ui.json" ]]; then
+  if [[ ! -f "${report_dir_abs}/zap-classification.json" ]] && [[ ! -f "${report_dir_abs}/zap-token-capture.json" ]]; then
     echo "ℹ️  ZAP CLI quick scan produced HTML/log output only; JSON alert parsing skipped."
   fi
 

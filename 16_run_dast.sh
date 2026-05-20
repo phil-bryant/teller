@@ -94,7 +94,7 @@ wait_for_http() {
 }
 
 is_tcp_port_in_use() {
-  #R025: Detect occupied proxy ports before launching macOS UI DAST daemon.
+  # Detect occupied localhost ports before binding DAST API or ZAP quick-scan proxy.
   local host="$1"
   local port="$2"
   python3 - <<'PY' "$host" "$port"
@@ -114,7 +114,7 @@ PY
 }
 
 find_available_tcp_port() {
-  #R025: Auto-select the next free localhost proxy port when contention occurs.
+  # Auto-select the next free localhost port when the requested port is in use.
   local host="$1"
   local start_port="$2"
   local max_attempts="${3:-50}"
@@ -138,24 +138,6 @@ for offset in range(0, max_attempts + 1):
             continue
 
 raise SystemExit(1)
-PY
-}
-
-print_zap_startup_log_tail() {
-  #R035: Surface startup diagnostics when ZAP daemon health checks fail.
-  local log_path="$1"
-  if [[ ! -f "$log_path" ]]; then
-    return 0
-  fi
-  echo "▶ ZAP startup log tail (${log_path}):"
-  python3 - <<'PY' "$log_path"
-import pathlib
-import sys
-
-log_path = pathlib.Path(sys.argv[1])
-lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
-for line in lines[-40:]:
-    print(line)
 PY
 }
 
@@ -1205,27 +1187,18 @@ PY
 
   local run_schemathesis="${RUN_SCHEMATHESIS:-true}"
   local run_zap="${RUN_ZAP:-true}"
-  local run_macos_ui_dast="${RUN_MACOS_UI_DAST:-true}"
-  local reuse_existing_api="${MACOS_UI_DAST_REUSE_EXISTING_API:-false}"
+  local reuse_existing_api="${DAST_REUSE_EXISTING_API:-${MACOS_UI_DAST_REUSE_EXISTING_API:-false}}"
   local run_token_capture_dast="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
   local fail_on_high_critical="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
   local dast_write_token
   dast_write_token="$(read_classifier_write_token)"
   local zap_cli_cmd="${ZAP_CLI_CMD:-/Applications/ZAP.app/Contents/MacOS/ZAP.sh}"
   local zap_home_root="${ZAP_HOME_DIR:-${report_dir_abs}/zap-home}"
-  #R030: Isolate quick-scan and daemon ZAP state directories.
   local zap_quick_home_dir="${ZAP_QUICK_HOME_DIR:-${zap_home_root}/quick-scan}"
-  local zap_daemon_home_dir="${ZAP_DAEMON_HOME_DIR:-${zap_home_root}/daemon}"
   # Keep ZAP quick-scan output visible by default unless explicitly silenced.
   local zap_quiet="${ZAP_QUIET:-false}"
   local zap_quick_proxy_host="${ZAP_QUICK_PROXY_HOST:-127.0.0.1}"
   local zap_quick_proxy_port="${ZAP_QUICK_PROXY_PORT:-8091}"
-  local macos_ui_dast_proxy_host="${MACOS_UI_DAST_ZAP_PROXY_HOST:-127.0.0.1}"
-  local macos_ui_dast_proxy_port="${MACOS_UI_DAST_ZAP_PROXY_PORT:-8090}"
-  local macos_ui_dast_proxy_url=""
-  local zap_api_url=""
-  local zap_alerts_api_url=""
-  local zap_html_report_api_url=""
 
   local dast_app_python="${DAST_APP_PYTHON:-./teller-venv/bin/python}"
   local dast_integrity_pythonpath="${PYTHONPATH:-}"
@@ -1282,10 +1255,9 @@ PY
 
   local classifier_api_pid=""
   local token_capture_pid=""
-  local zap_proxy_pid=""
 
-  trap 'if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then kill "$token_capture_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then kill "$zap_proxy_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then kill "$classifier_api_pid" >/dev/null 2>&1 || true; fi' EXIT
-  mkdir -p "$zap_quick_home_dir" "$zap_daemon_home_dir"
+  trap 'if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then kill "$token_capture_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then kill "$classifier_api_pid" >/dev/null 2>&1 || true; fi' EXIT
+  mkdir -p "$zap_quick_home_dir"
 
   # Start local classification API automatically for DAST execution.
   if [[ "$reuse_existing_api" == "true" ]]; then
@@ -1383,104 +1355,6 @@ PY
       "$zap_quick_proxy_port"
   fi
 
-  # Support local macOS UI Dynamic Application Security Testing (DAST) via ZAP proxy mode.
-  if [[ "$run_macos_ui_dast" == "true" ]]; then
-    if [[ "$run_zap" != "true" ]]; then
-      echo "❌ macOS UI Dynamic Application Security Testing (DAST) requires RUN_ZAP=true."
-      exit 1
-    fi
-
-    print_tool_header \
-      "OWASP ZAP (macOS UI proxy lane)" \
-      "Runs as a local HTTP proxy to inspect traffic emitted by macOS UI flows." \
-      "Captures findings while XCUITest drives realistic user interactions." \
-      "https://www.zaproxy.org/"
-    if ! [[ "$macos_ui_dast_proxy_port" =~ ^[0-9]+$ ]]; then
-      echo "❌ MACOS_UI_DAST_ZAP_PROXY_PORT must be numeric; received: ${macos_ui_dast_proxy_port}"
-      exit 1
-    fi
-
-    local requested_proxy_port="$macos_ui_dast_proxy_port"
-    local port_status
-    port_status="$(is_tcp_port_in_use "$macos_ui_dast_proxy_host" "$requested_proxy_port")"
-    if [[ "$port_status" == "used" ]]; then
-      local resolved_proxy_port=""
-      if ! resolved_proxy_port="$(find_available_tcp_port "$macos_ui_dast_proxy_host" "$requested_proxy_port" 100)"; then
-        echo "❌ Unable to find an available ZAP proxy port near ${requested_proxy_port} on ${macos_ui_dast_proxy_host}."
-        exit 1
-      fi
-      macos_ui_dast_proxy_port="$resolved_proxy_port"
-      echo "⚠️  MACOS_UI_DAST_ZAP_PROXY_PORT ${requested_proxy_port} is already in use; auto-selected ${macos_ui_dast_proxy_port}."
-    fi
-
-    macos_ui_dast_proxy_url="http://${macos_ui_dast_proxy_host}:${macos_ui_dast_proxy_port}"
-    zap_api_url="${macos_ui_dast_proxy_url}/JSON/core/view/version/"
-    zap_alerts_api_url="${macos_ui_dast_proxy_url}/JSON/core/view/alerts/"
-    zap_html_report_api_url="${macos_ui_dast_proxy_url}/OTHER/core/other/htmlreport/"
-
-    echo "▶ Starting OWASP ZAP daemon proxy for macOS UI Dynamic Application Security Testing (DAST) at ${macos_ui_dast_proxy_url}"
-    "$zap_cli_cmd" -daemon \
-      -dir "$zap_daemon_home_dir" \
-      -host "$macos_ui_dast_proxy_host" \
-      -port "$macos_ui_dast_proxy_port" \
-      -config api.disablekey=true \
-      > "${report_dir_abs}/zap-macos-ui.log" 2>&1 &
-    zap_proxy_pid="$!"
-    if ! wait_for_http "$zap_api_url" 60; then
-      echo "❌ OWASP ZAP daemon proxy failed to become ready at ${zap_api_url}."
-      if [[ -n "$zap_proxy_pid" ]] && ! kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then
-        echo "❌ ZAP daemon process terminated during startup (pid=${zap_proxy_pid})."
-      fi
-      print_zap_startup_log_tail "${report_dir_abs}/zap-macos-ui.log"
-      if grep -Eqi "operation not permitted|zapunknownhostexception|unable to start the main proxy" "${report_dir_abs}/zap-macos-ui.log"; then
-        echo "⚠️  OWASP ZAP daemon startup is blocked in this restricted environment; skipping macOS UI DAST lane with placeholder artifacts."
-        printf '{"alerts":[]}\n' > "${report_dir_abs}/zap-macos-ui.json"
-        printf '<html><body>OWASP ZAP daemon unavailable in restricted runtime.</body></html>\n' > "${report_dir_abs}/zap-macos-ui.html"
-        if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then
-          kill "$zap_proxy_pid" >/dev/null 2>&1 || true
-          wait "$zap_proxy_pid" >/dev/null 2>&1 || true
-          zap_proxy_pid=""
-        fi
-      else
-        exit 1
-      fi
-    else
-      echo "▶ Running macOS UI XCUITest smoke suite through ZAP proxy"
-      RUN_SNAPSHOT_TESTS=false \
-      RUN_XCUITESTS=true \
-      TELLER_CLASSIFIER_API_URL="$base_url" \
-      TELLER_CLASSIFIER_HTTP_PROXY="$macos_ui_dast_proxy_url" \
-        ./10_run_macos_ui_regression_tests.sh | tee "${report_dir_abs}/macos-ui-dast-xcuitest.log"
-
-      if curl -fsS "$zap_alerts_api_url" > "${report_dir_abs}/zap-macos-ui.json"; then
-        if [[ ! -s "${report_dir_abs}/zap-macos-ui.json" ]]; then
-          printf '{"alerts":[]}\n' > "${report_dir_abs}/zap-macos-ui.json"
-        fi
-      else
-        echo "⚠️  Failed to fetch ZAP macOS UI JSON alerts; using empty alert payload."
-        printf '{"alerts":[]}\n' > "${report_dir_abs}/zap-macos-ui.json"
-      fi
-
-      if curl -fsS "$zap_html_report_api_url" > "${report_dir_abs}/zap-macos-ui.html"; then
-        if [[ ! -s "${report_dir_abs}/zap-macos-ui.html" ]]; then
-          printf '<html><body>No ZAP HTML report emitted.</body></html>\n' > "${report_dir_abs}/zap-macos-ui.html"
-        fi
-      else
-        echo "⚠️  Failed to fetch ZAP macOS UI HTML report; writing placeholder report."
-        printf '<html><body>Failed to fetch ZAP HTML report.</body></html>\n' > "${report_dir_abs}/zap-macos-ui.html"
-      fi
-
-      if [[ -n "$zap_proxy_pid" ]] && kill -0 "$zap_proxy_pid" >/dev/null 2>&1; then
-        echo "▶ Stopping OWASP ZAP daemon proxy after macOS UI Dynamic Application Security Testing (DAST)"
-        kill "$zap_proxy_pid" >/dev/null 2>&1 || true
-        wait "$zap_proxy_pid" >/dev/null 2>&1 || true
-        zap_proxy_pid=""
-      fi
-    fi
-  else
-    echo "ℹ️  macOS UI Dynamic Application Security Testing (DAST) skipped (set RUN_MACOS_UI_DAST=true to enable)."
-  fi
-
   # Support optional token-capture DAST coverage with auto-detection.
   if [[ "$run_token_capture_dast" == "auto" ]]; then
     if [[ -f "$HOME/.teller/application_id.txt" ]]; then
@@ -1499,7 +1373,7 @@ PY
 
   local high_alerts=0
   local alerts
-  for zap_json in "${report_dir_abs}/zap-classification.json" "${report_dir_abs}/zap-token-capture.json" "${report_dir_abs}/zap-macos-ui.json"; do
+  for zap_json in "${report_dir_abs}/zap-classification.json" "${report_dir_abs}/zap-token-capture.json"; do
     if [[ -f "$zap_json" ]]; then
       alerts="$(python3 - <<'PY' "$zap_json"
 import json, sys
@@ -1528,7 +1402,7 @@ PY
     fi
   done
 
-  if [[ ! -f "${report_dir_abs}/zap-classification.json" ]] && [[ ! -f "${report_dir_abs}/zap-token-capture.json" ]] && [[ ! -f "${report_dir_abs}/zap-macos-ui.json" ]]; then
+  if [[ ! -f "${report_dir_abs}/zap-classification.json" ]] && [[ ! -f "${report_dir_abs}/zap-token-capture.json" ]]; then
     echo "ℹ️  ZAP CLI quick scan produced HTML/log output only; JSON alert parsing skipped."
   fi
 

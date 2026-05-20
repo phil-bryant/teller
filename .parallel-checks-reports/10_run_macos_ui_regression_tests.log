@@ -1,0 +1,144 @@
+▶ Running macOS UI snapshot regression tests...
+Another instance of SwiftPM (PID: 72701) is already running using '/Users/phil/local/src/teller/macos-ui/.build', waiting until that process has finished execution...[0/1] Planning build
+Building for debugging...
+[0/4] Write swift-version--58304C5D6DBC2206.txt
+Build complete! (0.69s)
+Test Suite 'Selected tests' started at 2026-05-20 00:35:00.786.
+Test Suite 'TransactionClassifierPackageTests.xctest' started at 2026-05-20 00:35:00.787.
+Test Suite 'ContentViewSnapshotTests' started at 2026-05-20 00:35:00.787.
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testConnectTabErrorSnapshot]' started.
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testConnectTabErrorSnapshot]' passed (0.131 seconds).
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testConnectTabSnapshot]' started.
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testConnectTabSnapshot]' passed (0.040 seconds).
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testEmptyStateSnapshot]' started.
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testEmptyStateSnapshot]' passed (0.101 seconds).
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testErrorBannerSnapshot]' started.
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testErrorBannerSnapshot]' passed (0.082 seconds).
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testLoadedSelectionSnapshot]' started.
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testLoadedSelectionSnapshot]' passed (0.072 seconds).
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testMixedSelectionSnapshot]' started.
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testMixedSelectionSnapshot]' passed (0.074 seconds).
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testSaveStateIndicatorsSnapshot]' started.
+Test Case '-[TransactionClassifierSnapshotTests.ContentViewSnapshotTests testSaveStateIndicatorsSnapshot]' passed (0.078 seconds).
+Test Suite 'ContentViewSnapshotTests' passed at 2026-05-20 00:35:01.366.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.578 (0.579) seconds
+Test Suite 'TransactionClassifierPackageTests.xctest' passed at 2026-05-20 00:35:01.366.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.578 (0.579) seconds
+Test Suite 'Selected tests' passed at 2026-05-20 00:35:01.366.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.578 (0.580) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
+▶ Running macOS XCUITest smoke suite...
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project ./macos-ui/TransactionClassifierUIAutomation.xcodeproj -scheme TransactionClassifierUITestHost-CI -destination platform=macOS -derivedDataPath ./macos-ui/.derivedData-ui-tests "-only-testing:TransactionClassifierUITests"
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  PLCrashReporter: https://github.com/microsoft/plcrashreporter.git @ 1.12.2
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (5 targets)
+    Target 'TransactionClassifierUITests' in project 'TransactionClassifierUIAutomation'
+        ➜ Explicit dependency on target 'TransactionClassifierUITestHost' in project 'TransactionClassifierUIAutomation'
+    Target 'TransactionClassifierUITestHost' in project 'TransactionClassifierUIAutomation'
+        ➜ Explicit dependency on target 'CrashReporter' in project 'PLCrashReporter'
+    Target 'CrashReporter' in project 'PLCrashReporter'
+        ➜ Explicit dependency on target 'CrashReporter' in project 'PLCrashReporter'
+        ➜ Explicit dependency on target 'PLCrashReporter_CrashReporter' in project 'PLCrashReporter'
+    Target 'CrashReporter' in project 'PLCrashReporter'
+        ➜ Explicit dependency on target 'PLCrashReporter_CrashReporter' in project 'PLCrashReporter'
+    Target 'PLCrashReporter_CrashReporter' in project 'PLCrashReporter' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/phil/local/src/teller/macos-ui/TransactionClassifierUIAutomation.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+SwiftDriver TransactionClassifierUITestHost normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+    cd /Users/phil/local/src/teller/macos-ui
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TransactionClassifierUITestHost -O @/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierUITestHost.SwiftFileList -Xcc -fmodule-map-file\=/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/GeneratedModuleMaps/CrashReporter.modulemap -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/ModuleCache.noindex -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Products/Debug -F /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Products/Debug/PackageFrameworks -F /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Products/Debug -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierUITestHost-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/ModuleCache.noindex -sdk-module-cache-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierUITestHost.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierUITestHost_const_extract_protocols.json -Xcc -iquote -Xcc /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/TransactionClassifierUITestHost-generated-files.hmap -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/TransactionClassifierUITestHost-own-target-headers.hmap -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/TransactionClassifierUITestHost-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUIAutomation-8d13b16554a2e56cde91ff71ccf97cc7-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/TransactionClassifierUITestHost-project-headers.hmap -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/SourcePackages/checkouts/plcrashreporter/include -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Products/Debug/include -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/DerivedSources-normal/arm64 -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/DerivedSources/arm64 -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierUITestHost-Swift.h -working-directory /Users/phil/local/src/teller/macos-ui -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal arm64 Compiling\ Models.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/Models.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+
+SwiftCompile normal arm64 /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/Models.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+    cd /Users/phil/local/src/teller/macos-ui
+    
+
+SwiftCompile normal arm64 Compiling\ UITestingSupport.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+SwiftCompile normal arm64 /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+    cd /Users/phil/local/src/teller/macos-ui
+    
+
+SwiftCompile normal arm64 Compiling\ ClassificationViewModel.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+
+SwiftCompile normal arm64 /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+    cd /Users/phil/local/src/teller/macos-ui
+    
+
+SwiftCompile normal arm64 Compiling\ TransactionClassifierApp.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+Failed frontend command:
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/APIClient.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/CategoryTypeaheadSupport.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ContentView.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/Models.swift -primary-file /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ConnectModels.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ConnectView.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/CrashReporterService.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/TellerSetupService.swift -emit-dependencies-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierApp.d -emit-const-values-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierApp.swiftconstvalues -emit-reference-dependencies-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierApp.swiftdeps -serialize-diagnostics-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierApp.dia -target arm64-apple-macos14.0 -disable-cross-import-overlay-search -swift-module-cross-import WebKit /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Cryptexes/OS/System/Library/Frameworks/WebKit.framework/Modules/WebKit.swiftcrossimport/SwiftUI.swiftoverlay -swift-module-cross-import WebKit /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks/WebKit.framework/Modules/WebKit.swiftcrossimport/SwiftUI.swiftoverlay -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libFoundationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#FoundationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libObservationMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#ObservationMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libPreviewsMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#PreviewsMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftMacros -load-resolved-plugin /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins/libSwiftUIMacros.dylib\#/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\#SwiftUIMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierUITestHost-dependencies-1.json -debug-module-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierUITestHost.swiftmodule -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -I /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Products/Debug -F /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Products/Debug/PackageFrameworks -F /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Products/Debug -no-color-diagnostics -Xcc -fno-color-diagnostics -g -debug-info-format\=dwarf -dwarf-version\=4 -module-cache-path /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -swift-version 5 -O -serialize-debugging-options -const-gather-protocols-file /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierUITestHost_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/phil/local/src/teller/macos-ui -file-compilation-dir /Users/phil/local/src/teller/macos-ui -Xcc -fmodule-map-file\=/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/GeneratedModuleMaps/CrashReporter.modulemap -Xcc -ivfsstatcache -Xcc /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/TransactionClassifierUITestHost-generated-files.hmap -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/TransactionClassifierUITestHost-own-target-headers.hmap -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/TransactionClassifierUITestHost-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUIAutomation-8d13b16554a2e56cde91ff71ccf97cc7-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/TransactionClassifierUITestHost-project-headers.hmap -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/SourcePackages/checkouts/plcrashreporter/include -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Products/Debug/include -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/DerivedSources-normal/arm64 -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/DerivedSources/arm64 -Xcc -I/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/DerivedSources -no-auto-bridging-header-chaining -module-name TransactionClassifierUITestHost -frontend-parseable-output -disable-clang-spi -clang-target arm64-apple-macos26.5 -target-sdk-version 26.5 -target-sdk-name macosx26.5 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -o /Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Build/Intermediates.noindex/TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierApp.o -index-unit-output-path /TransactionClassifierUIAutomation.build/Debug/TransactionClassifierUITestHost.build/Objects-normal/arm64/TransactionClassifierApp.o
+
+SwiftCompile normal arm64 /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+    cd /Users/phil/local/src/teller/macos-ui
+    
+/Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift:22:25: error: cannot find 'activateTransactionClassifierForInput' in scope
+                        activateTransactionClassifierForInput()
+                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift:50:9: error: cannot find 'activateTransactionClassifierForInput' in scope
+        activateTransactionClassifierForInput()
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ TransactionClassifierUITestHost (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+
+EmitSwiftModule normal arm64 (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+    cd /Users/phil/local/src/teller/macos-ui
+    
+
+SwiftCompile normal arm64 Compiling\ APIClient.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/APIClient.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+
+SwiftCompile normal arm64 /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/APIClient.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+    cd /Users/phil/local/src/teller/macos-ui
+    
+
+SwiftCompile normal arm64 Compiling\ ContentView.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ContentView.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+
+SwiftCompile normal arm64 /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ContentView.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+    cd /Users/phil/local/src/teller/macos-ui
+    
+
+
+Test session results, code coverage, and logs:
+	/Users/phil/local/src/teller/macos-ui/.derivedData-ui-tests/Logs/Test/Test-TransactionClassifierUITestHost-CI-2026.05.20_00-35-02--0400.xcresult
+
+Testing failed:
+	Cannot find 'activateTransactionClassifierForInput' in scope
+	Cannot find 'activateTransactionClassifierForInput' in scope
+	Testing cancelled because the build failed.
+
+** TEST FAILED **
+
+
+The following build commands failed:
+	SwiftCompile normal arm64 Compiling\ TransactionClassifierApp.swift /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+	SwiftCompile normal arm64 /Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift (in target 'TransactionClassifierUITestHost' from project 'TransactionClassifierUIAutomation')
+	Testing project TransactionClassifierUIAutomation with scheme TransactionClassifierUITestHost-CI
+(3 failures)

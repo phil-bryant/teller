@@ -1,0 +1,315 @@
+Traceability check for all requirements/**/*-requirements.md
+
+Traceability check
+- requirements: requirements/00_verify_requirements_traceability-requirements.md
+- source: 00_verify_requirements_traceability.sh
+- tests: /Users/phil/local/src/teller/tests/sh/00_verify_requirements_traceability.bats
+✅ PASS: requirements/00_verify_requirements_traceability-requirements.md -> 00_verify_requirements_traceability.sh
+✅ PASS (test-traceability): requirements/00_verify_requirements_traceability-requirements.md -> /Users/phil/local/src/teller/tests/sh/00_verify_requirements_traceability.bats
+✅ PASS (numbered-test-tags): requirements/00_verify_requirements_traceability-requirements.md
+
+Traceability check
+- requirements: requirements/01_install_prerequisites-requirements.md
+- source: 01_install_prerequisites.sh
+- tests: /Users/phil/local/src/teller/tests/sh/01_install_prerequisites.bats
+✅ PASS: requirements/01_install_prerequisites-requirements.md -> 01_install_prerequisites.sh
+✅ PASS (test-traceability): requirements/01_install_prerequisites-requirements.md -> /Users/phil/local/src/teller/tests/sh/01_install_prerequisites.bats
+✅ PASS (numbered-test-tags): requirements/01_install_prerequisites-requirements.md
+
+Traceability check
+- requirements: requirements/02_create_venv-requirements.md
+- source: 02_create_venv.sh
+- tests: /Users/phil/local/src/teller/tests/sh/02_create_venv.bats
+✅ PASS: requirements/02_create_venv-requirements.md -> 02_create_venv.sh
+✅ PASS (test-traceability): requirements/02_create_venv-requirements.md -> /Users/phil/local/src/teller/tests/sh/02_create_venv.bats
+✅ PASS (numbered-test-tags): requirements/02_create_venv-requirements.md
+
+Traceability check
+- requirements: requirements/03_load_requirements-requirements.md
+- source: 03_load_requirements.sh
+- tests: /Users/phil/local/src/teller/tests/sh/03_load_requirements.bats
+✅ PASS (locked-policy): 03_load_requirements.sh verified-with-exception.
+✅ PASS: requirements/03_load_requirements-requirements.md -> 03_load_requirements.sh
+✅ PASS (locked-source-test-skip): requirements/03_load_requirements-requirements.md (all mapped sources are policy-locked)
+
+Traceability check
+- requirements: requirements/04_run_dependency_freshness_checks-requirements.md
+- source: 04_run_dependency_freshness_checks.sh
+- tests: /Users/phil/local/src/teller/tests/sh/04_run_dependency_freshness_checks.bats
+✅ PASS: requirements/04_run_dependency_freshness_checks-requirements.md -> 04_run_dependency_freshness_checks.sh
+✅ PASS (test-traceability): requirements/04_run_dependency_freshness_checks-requirements.md -> /Users/phil/local/src/teller/tests/sh/04_run_dependency_freshness_checks.bats
+✅ PASS (numbered-test-tags): requirements/04_run_dependency_freshness_checks-requirements.md
+
+Traceability check
+- requirements: requirements/05_run_av_checks-requirements.md
+- source: 05_run_av_checks.sh
+- tests: /Users/phil/local/src/teller/tests/sh/05_run_av_checks.bats
+✅ PASS: requirements/05_run_av_checks-requirements.md -> 05_run_av_checks.sh
+✅ PASS (test-traceability): requirements/05_run_av_checks-requirements.md -> /Users/phil/local/src/teller/tests/sh/05_run_av_checks.bats
+✅ PASS (numbered-test-tags): requirements/05_run_av_checks-requirements.md
+
+Traceability check
+- requirements: requirements/06_run_sast-requirements.md
+- source: 06_run_sast.sh
+- tests: /Users/phil/local/src/teller/tests/sh/06_run_sast.bats
+✅ PASS: requirements/06_run_sast-requirements.md -> 06_run_sast.sh
+✅ PASS (test-traceability): requirements/06_run_sast-requirements.md -> /Users/phil/local/src/teller/tests/sh/06_run_sast.bats
+✅ PASS (numbered-test-tags): requirements/06_run_sast-requirements.md
+
+Traceability check
+- requirements: requirements/07_deploy_database-requirements.md
+- source: 07_deploy_database.sh
+- tests: /Users/phil/local/src/teller/tests/sh/07_deploy_database.bats
+✅ PASS: requirements/07_deploy_database-requirements.md -> 07_deploy_database.sh
+✅ PASS (test-traceability): requirements/07_deploy_database-requirements.md -> /Users/phil/local/src/teller/tests/sh/07_deploy_database.bats
+✅ PASS (numbered-test-tags): requirements/07_deploy_database-requirements.md
+
+Traceability check
+- requirements: requirements/08_verify_deploy_database-requirements.md
+- source: 08_verify_deploy_database.sh
+- tests: /Users/phil/local/src/teller/tests/sh/08_verify_deploy_database.bats
+✅ PASS: requirements/08_verify_deploy_database-requirements.md -> 08_verify_deploy_database.sh
+✅ PASS (test-traceability): requirements/08_verify_deploy_database-requirements.md -> /Users/phil/local/src/teller/tests/sh/08_verify_deploy_database.bats
+✅ PASS (numbered-test-tags): requirements/08_verify_deploy_database-requirements.md
+
+Traceability check
+- requirements: requirements/09_run_unit_tests-requirements.md
+- source: 09_run_unit_tests.sh
+- tests: /Users/phil/local/src/teller/tests/sh/09_run_unit_tests.bats
+✅ PASS: requirements/09_run_unit_tests-requirements.md -> 09_run_unit_tests.sh
+✅ PASS (test-traceability): requirements/09_run_unit_tests-requirements.md -> /Users/phil/local/src/teller/tests/sh/09_run_unit_tests.bats
+✅ PASS (numbered-test-tags): requirements/09_run_unit_tests-requirements.md
+
+Traceability check
+- requirements: requirements/10_run_macos_ui_regression_tests-requirements.md
+- source: 10_run_macos_ui_regression_tests.sh
+- tests: /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift, /Users/phil/local/src/teller/tests/sh/10_run_macos_ui_regression_tests.bats
+✅ PASS: requirements/10_run_macos_ui_regression_tests-requirements.md -> 10_run_macos_ui_regression_tests.sh
+✅ PASS (test-traceability): requirements/10_run_macos_ui_regression_tests-requirements.md -> /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift, /Users/phil/local/src/teller/tests/sh/10_run_macos_ui_regression_tests.bats
+✅ PASS (numbered-test-tags): requirements/10_run_macos_ui_regression_tests-requirements.md
+
+Traceability check
+- requirements: requirements/11_verify_macos_crash_reporter-requirements.md
+- source: 11_verify_macos_crash_reporter.sh
+- tests: /Users/phil/local/src/teller/tests/sh/11_verify_macos_crash_reporter.bats
+✅ PASS: requirements/11_verify_macos_crash_reporter-requirements.md -> 11_verify_macos_crash_reporter.sh
+✅ PASS (test-traceability): requirements/11_verify_macos_crash_reporter-requirements.md -> /Users/phil/local/src/teller/tests/sh/11_verify_macos_crash_reporter.bats
+✅ PASS (numbered-test-tags): requirements/11_verify_macos_crash_reporter-requirements.md
+
+Traceability check
+- requirements: requirements/12_fetch_teller_api_data-requirements.md
+- source: 12_fetch_teller_api_data.py
+- tests: /Users/phil/local/src/teller/tests/sh/12_fetch_teller_api_data.bats
+✅ PASS: requirements/12_fetch_teller_api_data-requirements.md -> 12_fetch_teller_api_data.py
+✅ PASS (test-traceability): requirements/12_fetch_teller_api_data-requirements.md -> /Users/phil/local/src/teller/tests/sh/12_fetch_teller_api_data.bats
+✅ PASS (numbered-test-tags): requirements/12_fetch_teller_api_data-requirements.md
+
+Traceability check
+- requirements: requirements/13_backfill_bank_statements-requirements.md
+- source: 13_backfill_bank_statements.py
+- tests: /Users/phil/local/src/teller/tests/sh/13_backfill_bank_statements.bats
+✅ PASS: requirements/13_backfill_bank_statements-requirements.md -> 13_backfill_bank_statements.py
+✅ PASS (test-traceability): requirements/13_backfill_bank_statements-requirements.md -> /Users/phil/local/src/teller/tests/sh/13_backfill_bank_statements.bats
+✅ PASS (numbered-test-tags): requirements/13_backfill_bank_statements-requirements.md
+
+Traceability check
+- requirements: requirements/14_run_classification_api-requirements.md
+- source: 14_run_classification_api.py
+- tests: /Users/phil/local/src/teller/tests/sh/14_run_classification_api.bats
+✅ PASS: requirements/14_run_classification_api-requirements.md -> 14_run_classification_api.py
+✅ PASS (test-traceability): requirements/14_run_classification_api-requirements.md -> /Users/phil/local/src/teller/tests/sh/14_run_classification_api.bats
+✅ PASS (numbered-test-tags): requirements/14_run_classification_api-requirements.md
+
+Traceability check
+- requirements: requirements/15_verify_classification_persistence-requirements.md
+- source: 15_verify_classification_persistence.sh
+- tests: /Users/phil/local/src/teller/tests/sh/15_verify_classification_persistence.bats
+✅ PASS: requirements/15_verify_classification_persistence-requirements.md -> 15_verify_classification_persistence.sh
+✅ PASS (test-traceability): requirements/15_verify_classification_persistence-requirements.md -> /Users/phil/local/src/teller/tests/sh/15_verify_classification_persistence.bats
+✅ PASS (numbered-test-tags): requirements/15_verify_classification_persistence-requirements.md
+
+Traceability check
+- requirements: requirements/16_run_dast-requirements.md
+- source: 16_run_dast.sh
+- tests: /Users/phil/local/src/teller/tests/sh/16_run_dast.bats
+✅ PASS: requirements/16_run_dast-requirements.md -> 16_run_dast.sh
+✅ PASS (test-traceability): requirements/16_run_dast-requirements.md -> /Users/phil/local/src/teller/tests/sh/16_run_dast.bats
+✅ PASS (numbered-test-tags): requirements/16_run_dast-requirements.md
+
+Traceability check
+- requirements: requirements/17_run_classification_macos-ui-requirements.md
+- source: 17_run_classification_macos-ui.sh
+- tests: /Users/phil/local/src/teller/tests/sh/17_run_classification_macos-ui.bats
+✅ PASS: requirements/17_run_classification_macos-ui-requirements.md -> 17_run_classification_macos-ui.sh
+✅ PASS (test-traceability): requirements/17_run_classification_macos-ui-requirements.md -> /Users/phil/local/src/teller/tests/sh/17_run_classification_macos-ui.bats
+✅ PASS (numbered-test-tags): requirements/17_run_classification_macos-ui-requirements.md
+
+Traceability check
+- requirements: requirements/18_run_all_checks_parallel-requirements.md
+- source: 18_run_all_checks_parallel.sh
+- tests: /Users/phil/local/src/teller/tests/sh/18_run_all_checks_parallel.bats
+✅ PASS: requirements/18_run_all_checks_parallel-requirements.md -> 18_run_all_checks_parallel.sh
+✅ PASS (test-traceability): requirements/18_run_all_checks_parallel-requirements.md -> /Users/phil/local/src/teller/tests/sh/18_run_all_checks_parallel.bats
+✅ PASS (numbered-test-tags): requirements/18_run_all_checks_parallel-requirements.md
+
+Traceability check
+- requirements: requirements/97_backup_database-requirements.md
+- source: 97_backup_database.sh
+- tests: /Users/phil/local/src/teller/tests/sh/97_backup_database.bats
+✅ PASS: requirements/97_backup_database-requirements.md -> 97_backup_database.sh
+✅ PASS (test-traceability): requirements/97_backup_database-requirements.md -> /Users/phil/local/src/teller/tests/sh/97_backup_database.bats
+✅ PASS (numbered-test-tags): requirements/97_backup_database-requirements.md
+
+Traceability check
+- requirements: requirements/98_destroy_database-requirements.md
+- source: 98_destroy_database.sh
+- tests: /Users/phil/local/src/teller/tests/sh/98_destroy_database.bats
+✅ PASS: requirements/98_destroy_database-requirements.md -> 98_destroy_database.sh
+✅ PASS (test-traceability): requirements/98_destroy_database-requirements.md -> /Users/phil/local/src/teller/tests/sh/98_destroy_database.bats
+✅ PASS (numbered-test-tags): requirements/98_destroy_database-requirements.md
+
+Traceability check
+- requirements: requirements/99_restore_database-requirements.md
+- source: 99_restore_database.sh
+- tests: /Users/phil/local/src/teller/tests/sh/99_restore_database.bats
+✅ PASS: requirements/99_restore_database-requirements.md -> 99_restore_database.sh
+✅ PASS (test-traceability): requirements/99_restore_database-requirements.md -> /Users/phil/local/src/teller/tests/sh/99_restore_database.bats
+✅ PASS (numbered-test-tags): requirements/99_restore_database-requirements.md
+
+Traceability check
+- requirements: requirements/macos-ui/APIClient-requirements.md
+- source: macos-ui/Sources/TransactionClassifier/APIClient.swift
+- tests: /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/APIClientTests.swift, /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ConnectAPIClientTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+❌ Missing #R tags for requirement IDs:
+  - R050
+  - R062
+❌ FAIL: requirements/macos-ui/APIClient-requirements.md -> macos-ui/Sources/TransactionClassifier/APIClient.swift
+✅ PASS (test-traceability): requirements/macos-ui/APIClient-requirements.md -> /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/APIClientTests.swift, /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ConnectAPIClientTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS (numbered-test-tags): requirements/macos-ui/APIClient-requirements.md
+
+Traceability check
+- requirements: requirements/macos-ui/ClassificationViewModel-requirements.md
+- source: macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+- tests: /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ClassificationViewModelTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+❌ Missing #R tags for requirement IDs:
+  - R040
+❌ FAIL: requirements/macos-ui/ClassificationViewModel-requirements.md -> macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+✅ PASS (test-traceability): requirements/macos-ui/ClassificationViewModel-requirements.md -> /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ClassificationViewModelTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS (numbered-test-tags): requirements/macos-ui/ClassificationViewModel-requirements.md
+
+Traceability check
+- requirements: requirements/macos-ui/ConnectAPIClient-requirements.md
+- source: macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift
+- tests: /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ConnectAPIClientTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS: requirements/macos-ui/ConnectAPIClient-requirements.md -> macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift
+✅ PASS (test-traceability): requirements/macos-ui/ConnectAPIClient-requirements.md -> /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ConnectAPIClientTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS (numbered-test-tags): requirements/macos-ui/ConnectAPIClient-requirements.md
+
+Traceability check
+- requirements: requirements/macos-ui/ConnectView-requirements.md
+- source: macos-ui/Sources/TransactionClassifier/ConnectView.swift
+- tests: /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ConnectViewModelTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS: requirements/macos-ui/ConnectView-requirements.md -> macos-ui/Sources/TransactionClassifier/ConnectView.swift
+
+Traceability check
+- requirements: requirements/macos-ui/ConnectView-requirements.md
+- source: macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift
+- tests: /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ConnectViewModelTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS: requirements/macos-ui/ConnectView-requirements.md -> macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift
+✅ PASS (test-traceability): requirements/macos-ui/ConnectView-requirements.md -> /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ConnectViewModelTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS (numbered-test-tags): requirements/macos-ui/ConnectView-requirements.md
+
+Traceability check
+- requirements: requirements/macos-ui/ContentView-requirements.md
+- source: macos-ui/Sources/TransactionClassifier/ContentView.swift
+- tests: /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+❌ Missing #R tags for requirement IDs:
+  - R035
+  - R045
+❌ FAIL: requirements/macos-ui/ContentView-requirements.md -> macos-ui/Sources/TransactionClassifier/ContentView.swift
+❌ FAIL (test-traceability): missing tagged tests for requirement IDs in requirements/macos-ui/ContentView-requirements.md:
+  - R040
+  - R045
+❌ FAIL (numbered-test-tags): requirements/tests #Rxxx-T## are not 1:1 for requirements/macos-ui/ContentView-requirements.md:
+  Missing in tests (present in requirements):
+    - R035-T02
+    - R040-T01
+    - R045-T01
+
+Traceability check
+- requirements: requirements/macos-ui/TellerSetupService-requirements.md
+- source: macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift
+- tests: /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ConnectViewModelTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS: requirements/macos-ui/TellerSetupService-requirements.md -> macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift
+
+Traceability check
+- requirements: requirements/macos-ui/TellerSetupService-requirements.md
+- source: macos-ui/Sources/TransactionClassifier/TellerSetupService.swift
+- tests: /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/TellerSetupServiceTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS: requirements/macos-ui/TellerSetupService-requirements.md -> macos-ui/Sources/TransactionClassifier/TellerSetupService.swift
+✅ PASS (test-traceability): requirements/macos-ui/TellerSetupService-requirements.md -> /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/ConnectViewModelTests.swift, /Users/phil/local/src/teller/macos-ui/Tests/TransactionClassifierTests/TellerSetupServiceTests.swift, /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS (numbered-test-tags): requirements/macos-ui/TellerSetupService-requirements.md
+
+Traceability check
+- requirements: requirements/macos-ui/TransactionClassifierApp-requirements.md
+- source: macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift
+- tests: /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS: requirements/macos-ui/TransactionClassifierApp-requirements.md -> macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift
+✅ PASS (test-traceability): requirements/macos-ui/TransactionClassifierApp-requirements.md -> /Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift
+✅ PASS (numbered-test-tags): requirements/macos-ui/TransactionClassifierApp-requirements.md
+
+Traceability check
+- requirements: requirements/sql/create_audit-requirements.md
+- source: sql/postgres/create_audit.sql
+- tests: /Users/phil/local/src/teller/tests/sh/create_audit.bats
+✅ PASS: requirements/sql/create_audit-requirements.md -> sql/postgres/create_audit.sql
+✅ PASS (test-traceability): requirements/sql/create_audit-requirements.md -> /Users/phil/local/src/teller/tests/sh/create_audit.bats
+✅ PASS (numbered-test-tags): requirements/sql/create_audit-requirements.md
+
+Traceability check
+- requirements: requirements/sql/create_triggers-requirements.md
+- source: sql/postgres/create_triggers.sql
+- tests: /Users/phil/local/src/teller/tests/sh/create_triggers.bats
+✅ PASS: requirements/sql/create_triggers-requirements.md -> sql/postgres/create_triggers.sql
+✅ PASS (test-traceability): requirements/sql/create_triggers-requirements.md -> /Users/phil/local/src/teller/tests/sh/create_triggers.bats
+✅ PASS (numbered-test-tags): requirements/sql/create_triggers-requirements.md
+
+Traceability check
+- requirements: requirements/sql/teller_transaction_info_view-requirements.md
+- source: sql/postgres/teller_transaction_info_view.sql
+- tests: /Users/phil/local/src/teller/tests/sh/teller_transaction_info_view.bats
+✅ PASS: requirements/sql/teller_transaction_info_view-requirements.md -> sql/postgres/teller_transaction_info_view.sql
+✅ PASS (test-traceability): requirements/sql/teller_transaction_info_view-requirements.md -> /Users/phil/local/src/teller/tests/sh/teller_transaction_info_view.bats
+✅ PASS (numbered-test-tags): requirements/sql/teller_transaction_info_view-requirements.md
+
+Traceability check
+- requirements: requirements/teller/teller_classification_api-requirements.md
+- source: teller/teller_classification_api.py
+- tests: /Users/phil/local/src/teller/tests/py/test_teller_classification_api.py
+✅ PASS: requirements/teller/teller_classification_api-requirements.md -> teller/teller_classification_api.py
+✅ PASS (test-traceability): requirements/teller/teller_classification_api-requirements.md -> /Users/phil/local/src/teller/tests/py/test_teller_classification_api.py
+✅ PASS (numbered-test-tags): requirements/teller/teller_classification_api-requirements.md
+
+Traceability check
+- requirements: requirements/teller/teller_object-requirements.md
+- source: teller/teller_object.py
+- tests: /Users/phil/local/src/teller/tests/py/test_teller_object.py
+✅ PASS: requirements/teller/teller_object-requirements.md -> teller/teller_object.py
+✅ PASS (test-traceability): requirements/teller/teller_object-requirements.md -> /Users/phil/local/src/teller/tests/py/test_teller_object.py
+✅ PASS (numbered-test-tags): requirements/teller/teller_object-requirements.md
+
+Traceability check
+- requirements: requirements/teller/teller_persist-requirements.md
+- source: teller/teller_persist.py
+- tests: /Users/phil/local/src/teller/tests/py/test_teller_persist.py
+✅ PASS: requirements/teller/teller_persist-requirements.md -> teller/teller_persist.py
+✅ PASS (test-traceability): requirements/teller/teller_persist-requirements.md -> /Users/phil/local/src/teller/tests/py/test_teller_persist.py
+✅ PASS (numbered-test-tags): requirements/teller/teller_persist-requirements.md
+
+✅ PASS: numbered script coverage complete (every numbered script has a numbered requirements doc).
+✅ PASS: numbered requirements scope alignment complete (NN requirements map to NN scripts).
+✅ PASS: numbered script test coverage complete (every numbered script has tests/sh/NN_*.bats).
+✅ PASS: repository software files are covered by requirements docs.
+
+Summary: total=35 pass=32 fail=3
+❌ One or more traceability checks failed.

@@ -85,7 +85,6 @@ From repo root:
 
 - `./09_run_unit_tests.sh` (API/unit tests)
 - `./10_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
-- `RUN_SAST=false RUN_MACOS_UI_DAST=true ./16_run_dast.sh` (local OWASP ZAP-backed DAST for UI-driven API traffic)
 - `./05_run_av_checks.sh` (standalone ClamAV antivirus lane)
 - `./15_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
 - `TXN_ID=... CATEGORY_ID=... ./15_verify_classification_persistence.sh --require-env-ids` (strict CI mode)

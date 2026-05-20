@@ -1,0 +1,111 @@
+running SAST (Static Application Security Testing)
+▶ pip-audit target interpreter: /Users/phil/local/src/teller/teller-venv/bin/python3
++==============================================================================+
+| Security Tool: Semgrep                                                       |
+| Static pattern-based scanning for security and correctness issues.           |
+| Combines community and repo custom rules across tracked source files.        |
+| URL: https://semgrep.dev/docs/                                               |
++==============================================================================+
+▶ Running Semgrep
+ℹ️  Semgrep detailed status: exit_code=0; findings=1; report=./.security-reports/semgrep.json; stderr_log=./.security-reports/semgrep.stderr.log
+⚠️  Semgrep findings (1):
+  - [INFO] python.lang.security.audit.insecure-transport.requests.request-session-with-http.request-session-with-http @ teller/teller_mailcart_client.py:44
+    Detected a request using 'http://'. This request will be unencrypted. Use 'https://' instead.
++==============================================================================+
+| Security Tool: Bandit                                                        |
+| Static security analyzer for Python source code.                             |
+| Flags known insecure coding patterns and risky API usage.                    |
+| URL: https://bandit.readthedocs.io/                                          |
++==============================================================================+
+▶ Running Bandit
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: B101
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[json]	INFO	JSON output written to file: ./.security-reports/bandit.json
+ℹ️  Bandit detailed status: exit_code=1; findings=2; report=./.security-reports/bandit.json
++==============================================================================+
+| Security Tool: pip-audit                                                     |
+| Dependency vulnerability scanner for installed Python packages.              |
+| Maps local dependencies to public vulnerability advisories.                  |
+| URL: https://github.com/pypa/pip-audit                                       |
++==============================================================================+
+▶ Running pip-audit
+No known vulnerabilities found
+ℹ️  pip-audit detailed status: exit_code=0; vulnerabilities=0; report=./.security-reports/pip-audit.json
++==============================================================================+
+| Security Tool: detect-secrets                                                |
+| Scans repository files for high-entropy and known secret formats.            |
+| Helps catch accidentally committed credentials before release.               |
+| URL: https://github.com/Yelp/detect-secrets                                  |
++==============================================================================+
+▶ Running detect-secrets
+ℹ️  detect-secrets detailed status: exit_code=0; findings=0; report=./.security-reports/detect-secrets.json
++==============================================================================+
+| Security Tool: Ruff                                                          |
+| Fast Python linter for static quality and security-related code checks.      |
+| Runs repository lint rules and emits machine-readable JSON findings.         |
+| URL: https://docs.astral.sh/ruff/                                            |
++==============================================================================+
+▶ Running Ruff
+⚠️  Ruff reported findings; continuing to centralized SAST gating.
+ℹ️  Ruff detailed status: exit_code=1; findings=2; report=./.security-reports/ruff.json
++==============================================================================+
+| Security Tool: gitleaks                                                      |
+| Detects hardcoded secrets and credential patterns in tracked files.          |
+| Runs repository-focused leak detection and emits JSON findings.              |
+| URL: https://github.com/gitleaks/gitleaks                                    |
++==============================================================================+
+▶ Running gitleaks
+
+    ○
+    │╲
+    │ ○
+    ○ ░
+    ░    gitleaks
+
+[90m12:35AM[0m [32mINF[0m [1mscanned ~1354836 bytes (1.35 MB) in 124ms[0m
+[90m12:35AM[0m [32mINF[0m [1mno leaks found[0m
++==============================================================================+
+| Security Tool: ShellCheck                                                    |
+| Static analysis for shell scripts to catch correctness and safety issues.    |
+| Runs JSON-reporting checks across numbered shell automation scripts.         |
+| URL: https://www.shellcheck.net/                                             |
++==============================================================================+
+▶ Running ShellCheck
+⚠️  ShellCheck reported findings; continuing to centralized SAST gating.
+ℹ️  ShellCheck detailed status: exit_code=1; findings=1; report=./.security-reports/shellcheck.json
++==============================================================================+
+| Security Tool: SwiftLint                                                     |
+| Static linting for Swift code quality and risky language usage.              |
+| Security lane checks force-cast, force-try, and force-unwrapping patterns.   |
+| URL: https://realm.github.io/SwiftLint/                                      |
++==============================================================================+
+▶ Running SwiftLint (security-focused rules) in ./macos-ui
+⚠️  SwiftLint returned non-zero status; continuing with generated report.
+Static Application Security Testing (SAST) summary
+{
+  "semgrep_total": 1,
+  "semgrep_high_critical": 0,
+  "semgrep_medium_or_higher": 0,
+  "bandit_total": 2,
+  "bandit_high_critical": 0,
+  "bandit_medium_or_higher": 0,
+  "pip_audit_vulnerabilities": 0,
+  "detect_secrets_findings": 0,
+  "ruff_total": 2,
+  "ruff_high_critical": 2,
+  "ruff_medium_or_higher": 2,
+  "shellcheck_total": 1,
+  "shellcheck_high_critical": 0,
+  "shellcheck_medium_or_higher": 0,
+  "gitleaks_findings": 0,
+  "swiftlint_total": 11,
+  "swiftlint_high_critical": 1,
+  "swiftlint_medium_or_higher": 11,
+  "medium_or_higher_total": 13,
+  "high_critical_total": 13,
+  "gate_policy": "financial-app-medium-or-higher-blocking",
+  "gate_failed": true
+}
+❌ Static Application Security Testing (SAST) gate failed: Medium-or-higher findings detected.

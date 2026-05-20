@@ -348,27 +348,6 @@ EOF
   chmod +x "${STUB_BIN}/curl"
 }
 
-stub_curl_health_and_zap_alerts() {
-  cat > "${STUB_BIN}/curl" <<'EOF'
-#!/usr/bin/env bash
-url="${*: -1}"
-if [[ "$url" == *"/JSON/core/view/alerts/"* ]]; then
-  printf '%s' '{"alerts":[{"risk":"Low"}]}'
-  exit 0
-fi
-if [[ "$url" == *"/OTHER/core/other/htmlreport/"* ]]; then
-  printf '%s' '<html><body>zap report</body></html>'
-  exit 0
-fi
-if [[ "$url" == *"/health"* ]] || [[ "$url" == *"/JSON/core/view/version/"* ]]; then
-  printf '%s' '{"ok":true}'
-  exit 0
-fi
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/curl"
-}
-
 stub_schemathesis_ok() {
   cat > "${STUB_BIN}/schemathesis" <<'EOF'
 #!/usr/bin/env bash
@@ -1064,7 +1043,7 @@ EOF
   touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
-  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
+  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false \
     DAST_CATEGORY_INTEGRITY_STRICT=false \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
@@ -1087,7 +1066,7 @@ EOF
   touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
-  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=false \
+  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false \
     DAST_CATEGORY_INTEGRITY_STRICT=false \
     RUN_TOKEN_CAPTURE_DAST=auto \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18788 \
@@ -1115,23 +1094,6 @@ EOF
   [[ "$output" == *"Missing ZAP CLI executable:"* ]]
 }
 
-@test "macOS UI DAST requires RUN_ZAP=true" {
-  #R060
-  setup_shell_test
-  copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  stub_curl_success
-  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false RUN_MACOS_UI_DAST=true \
-    DAST_CATEGORY_INTEGRITY_STRICT=false \
-    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18790 \
-    DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"macOS UI Dynamic Application Security Testing (DAST) requires RUN_ZAP=true."* ]]
-}
-
 @test "DAST with ZAP stub writes zap log and completes" {
   #R045 #R070
   setup_shell_test
@@ -1143,7 +1105,7 @@ EOF
   stub_schemathesis_ok
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
   stub_zap_cli_ok "$zap_path"
-  run env RUN_SAST=false RUN_DAST=true RUN_MACOS_UI_DAST=false \
+  run env RUN_SAST=false RUN_DAST=true \
     DAST_CATEGORY_INTEGRITY_STRICT=false \
     ZAP_CLI_CMD="$zap_path" \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18791 \
@@ -1170,7 +1132,7 @@ EOF
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
   stub_zap_cli_ok "$zap_path"
   local custom_zap_home="${FIXTURE_ROOT}/.custom-zap-home"
-  run env RUN_SAST=false RUN_DAST=true RUN_MACOS_UI_DAST=false \
+  run env RUN_SAST=false RUN_DAST=true \
     DAST_CATEGORY_INTEGRITY_STRICT=false \
     ZAP_CLI_CMD="$zap_path" \
     ZAP_HOME_DIR="$custom_zap_home" \
@@ -1195,7 +1157,7 @@ EOF
   stub_schemathesis_ok
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
   stub_zap_cli_ok "$zap_path"
-  run env RUN_SAST=false RUN_DAST=true RUN_MACOS_UI_DAST=false \
+  run env RUN_SAST=false RUN_DAST=true \
     DAST_CATEGORY_INTEGRITY_STRICT=false \
     ZAP_CLI_CMD="$zap_path" \
     ZAP_QUIET=false \
@@ -1209,34 +1171,6 @@ EOF
   [[ "$calls" != *" -silent"* ]]
 }
 
-@test "macOS UI DAST runs regression through proxy and writes artifacts" {
-  #R060
-  setup_shell_test
-  copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  stub_curl_health_and_zap_alerts
-  stub_schemathesis_ok
-  local zap_path="${TEST_TMPDIR}/ZAP.sh"
-  stub_zap_cli_ok "$zap_path"
-  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=true RUN_MACOS_UI_DAST=true \
-    DAST_CATEGORY_INTEGRITY_STRICT=false \
-    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18792 \
-    DAST_APP_PYTHON=/usr/bin/python3 \
-    ZAP_CLI_CMD="$zap_path" \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
-  [ "$status" -eq 0 ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/zap-macos-ui.json" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/zap-macos-ui.html" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/macos-ui-dast-xcuitest.log" ]
-  calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"zap -daemon -dir ${FIXTURE_ROOT}/.security-reports/zap-home"* ]]
-  [[ "$output" == *"Running macOS UI XCUITest smoke suite through ZAP proxy"* ]]
-  [[ "$output" == *"RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true"* ]]
-  [[ "$output" == *"TELLER_CLASSIFIER_HTTP_PROXY=http://127.0.0.1:8090"* ]]
-}
-
 @test "Schemathesis findings do not abort DAST lane" {
   setup_shell_test
   copy_security_project_files
@@ -1245,7 +1179,7 @@ EOF
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   stub_curl_success
   stub_schemathesis_findings
-  run env RUN_SAST=false RUN_DAST=true RUN_ZAP=false RUN_MACOS_UI_DAST=false \
+  run env RUN_SAST=false RUN_DAST=true RUN_ZAP=false \
     DAST_CATEGORY_INTEGRITY_STRICT=false \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18793 \
     DAST_APP_PYTHON=/usr/bin/python3 \
