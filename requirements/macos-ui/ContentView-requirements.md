@@ -39,7 +39,14 @@ Design: The detail pane renders `Text("Transaction \(selected.transaction_id)")`
 Tests:
 - R030-T01: Select a fixture row and verify the detail pane header displays `Transaction <transaction_id>` matching the selected row.
 
+R035  Statement: When a candidate email body loads, scroll the body pane so the selected transaction's amount is visible.
+Design: `EmailBodyContent` receives `scrollToAmount` from the primary transaction. HTML bodies use `EmailBodyWebView` with a navigation delegate that runs `scrollIntoView({ block: 'center', inline: 'center' })` on the best amount match after load; plain-text bodies use `ScrollViewReader` to center the matching line. Amount search prefers lines containing total keywords and uses absolute-value variants (`$15.19`, `15.19`, etc.).
+Tests:
+- R035-T01: Unit-test amount variant generation and text line selection helpers.
+- R035-T02: Select a wide receipt email candidate and verify the order total amount is scrolled into view horizontally and vertically.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ContentView.swift` from macOS classifier implementation.
 - 2026-04-23: Added R020 (auto-refresh on Unclassified toggle), R025 (scroll-to-selection), and R030 (detail header includes transaction id).
+- 2026-05-19: Added R035 (auto-scroll email body to transaction amount).

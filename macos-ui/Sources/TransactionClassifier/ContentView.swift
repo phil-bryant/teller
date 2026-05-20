@@ -665,7 +665,7 @@ private struct EmailSection: View {
             if let email = viewModel.selectedEmail {
                 EmailHeaderView(email: email)
                 Divider()
-                EmailBodyContent(email: email)
+                EmailBodyContent(email: email, scrollToAmount: viewModel.primaryTransaction?.amount)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.selection.count > 1 {
                 ContentUnavailableView("Multi-select \(viewModel.selection.count) transactions",
@@ -713,23 +713,62 @@ private struct EmailHeaderView: View {
 
 private struct EmailBodyContent: View {
     let email: EmailMessage
+    let scrollToAmount: Decimal?
 
     var body: some View {
         if let html = email.html_body, !html.isEmpty {
-            EmailBodyWebView(htmlBody: html)
+            EmailBodyWebView(htmlBody: html, scrollToAmount: scrollToAmount)
                 .accessibilityIdentifier("email-body-html")
         } else if let text = email.text_body, !text.isEmpty {
-            ScrollView {
-                Text(text)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                    .padding(8)
-            }
-            .accessibilityIdentifier("email-body-text")
+            EmailBodyTextScrollView(text: text, scrollToAmount: scrollToAmount)
+                .accessibilityIdentifier("email-body-text")
         } else {
             ContentUnavailableView("Empty body", systemImage: "doc.text",
                                    description: Text("Mailcart returned no html_body or text_body for this message."))
+        }
+    }
+}
+
+private struct EmailBodyTextScrollView: View {
+    let text: String
+    let scrollToAmount: Decimal?
+
+    private static let amountLineScrollId = "teller-amount-line"
+
+    var body: some View {
+        let amountLineIndex = scrollToAmount.flatMap { bestTextLineIndexForAmount(in: text, amount: $0) }
+        let lines = text.components(separatedBy: .newlines)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                        Text(line.isEmpty ? " " : line)
+                            .font(.system(.body, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                            .id(index == amountLineIndex ? Self.amountLineScrollId : "line-\(index)")
+                    }
+                }
+                .padding(8)
+            }
+            .onAppear {
+                scrollToAmountLine(proxy: proxy, amountLineIndex: amountLineIndex)
+            }
+            .onChange(of: scrollToAmount) { _, _ in
+                let index = scrollToAmount.flatMap { bestTextLineIndexForAmount(in: text, amount: $0) }
+                scrollToAmountLine(proxy: proxy, amountLineIndex: index)
+            }
+            .onChange(of: text) { _, _ in
+                let index = scrollToAmount.flatMap { bestTextLineIndexForAmount(in: text, amount: $0) }
+                scrollToAmountLine(proxy: proxy, amountLineIndex: index)
+            }
+        }
+    }
+
+    private func scrollToAmountLine(proxy: ScrollViewProxy, amountLineIndex: Int?) {
+        guard amountLineIndex != nil else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            proxy.scrollTo(Self.amountLineScrollId, anchor: .center)
         }
     }
 }
@@ -779,33 +818,52 @@ private final class NonFocusStealingWebView: WKWebView {
 
 private struct EmailBodyWebView: NSViewRepresentable {
     let htmlBody: String
+    let scrollToAmount: Decimal?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(scrollToAmount: scrollToAmount)
+    }
 
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = false
         let webView = NonFocusStealingWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
+        webView.navigationDelegate = context.coordinator
+        context.coordinator.loadedHTML = htmlBody
+        webView.loadHTMLString(wrappedEmailHTML(htmlBody), baseURL: nil)
         return webView
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        nsView.loadHTMLString(wrappedHTML, baseURL: nil)
+        context.coordinator.scrollToAmount = scrollToAmount
+        if context.coordinator.loadedHTML != htmlBody {
+            context.coordinator.loadedHTML = htmlBody
+            nsView.loadHTMLString(wrappedEmailHTML(htmlBody), baseURL: nil)
+        } else if scrollToAmount != nil {
+            context.coordinator.scrollToAmount(in: nsView)
+        }
     }
 
-    private var wrappedHTML: String {
-        """
-        <!doctype html>
-        <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            html, body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.4; margin: 12px; color: -apple-system-label; background: transparent; }
-            img { max-width: 100%; height: auto; }
-            blockquote { border-left: 3px solid rgba(127,127,127,0.4); margin: 0; padding-left: 10px; color: -apple-system-secondary-label; }
-            a { color: -apple-system-blue; }
-            pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-        </style></head><body>
-        \(htmlBody)
-        </body></html>
-        """
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var loadedHTML: String?
+        var scrollToAmount: Decimal?
+
+        init(scrollToAmount: Decimal?) {
+            self.scrollToAmount = scrollToAmount
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            _ = navigation
+            scrollToAmount(in: webView)
+        }
+
+        func scrollToAmount(in webView: WKWebView) {
+            guard let amount = scrollToAmount else { return }
+            let variants = amountSearchVariants(for: amount)
+            guard let script = scrollToAmountJavaScript(variants: variants) else { return }
+            webView.evaluateJavaScript(script, completionHandler: nil)
+        }
     }
 }
 
