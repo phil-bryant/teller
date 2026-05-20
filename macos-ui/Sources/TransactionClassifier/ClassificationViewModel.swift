@@ -93,6 +93,12 @@ final class ClassificationViewModel {
     private var suppressAutoApply = false
     private var lastLoadedCandidatesTransactionId: String?
     private var mailcartSearchTaskToken: UUID?
+    /// Token issued for each in-flight candidate fetch. Late-arriving responses for a transaction
+    /// the user has already moved away from are dropped so the candidates pane never shows stale
+    /// data from a previously-selected row (the "HomeAgain showing DoorDash candidates" bug).
+    private var candidatesLoadToken: UUID?
+    /// Token for the in-flight per-candidate email fetch (same rationale as `candidatesLoadToken`).
+    private var emailLoadToken: UUID?
     private static let mailcartSearchDebounceNanoseconds: UInt64 = 250_000_000
 
     init(api: any ClassificationAPI = APIClient()) { self.api = api }
@@ -222,6 +228,8 @@ final class ClassificationViewModel {
     /// for the primary transaction so the right pane stays in sync with the left pane.
     func selectedTransactionDidChange() async {
         guard let row = primaryTransaction else {
+            candidatesLoadToken = nil
+            emailLoadToken = nil
             candidates = []
             selectedCandidateId = nil
             selectedEmail = nil
@@ -229,6 +237,14 @@ final class ClassificationViewModel {
             return
         }
         if lastLoadedCandidatesTransactionId == row.transaction_id { return }
+        // Clear the candidates pane + email pane immediately so the user never sees stale data
+        // from the previously-selected transaction while the new fetch is in flight.
+        candidates = []
+        mailcartSearchResults = []
+        selectedCandidateId = nil
+        selectedEmail = nil
+        candidatesErrorText = ""
+        emailErrorText = ""
         await loadCandidatesForPrimaryTransaction()
     }
 
@@ -236,9 +252,18 @@ final class ClassificationViewModel {
         guard let row = primaryTransaction else { return }
         candidatesBusy = true
         candidatesErrorText = ""
-        defer { candidatesBusy = false }
+        let token = UUID()
+        candidatesLoadToken = token
+        defer {
+            if candidatesLoadToken == token { candidatesBusy = false }
+        }
         do {
             let rows = try await api.fetchCandidates(transactionId: row.transaction_id)
+            // Drop the response if the user has navigated to a different transaction (or cleared
+            // selection) while this fetch was in flight.
+            guard candidatesLoadToken == token,
+                  let current = primaryTransaction,
+                  current.transaction_id == row.transaction_id else { return }
             candidates = rows
             lastLoadedCandidatesTransactionId = row.transaction_id
             let activeEmailId = row.match?.email_message_id
@@ -248,6 +273,9 @@ final class ClassificationViewModel {
             selectedCandidateId = preferred
             await selectedCandidateDidChange()
         } catch {
+            guard candidatesLoadToken == token,
+                  let current = primaryTransaction,
+                  current.transaction_id == row.transaction_id else { return }
             candidates = []
             selectedCandidateId = nil
             selectedEmail = nil
@@ -257,15 +285,25 @@ final class ClassificationViewModel {
 
     func selectedCandidateDidChange() async {
         guard let candidateId = selectedCandidateId else {
+            emailLoadToken = nil
             selectedEmail = nil
             return
         }
         emailBusy = true
         emailErrorText = ""
-        defer { emailBusy = false }
+        let token = UUID()
+        emailLoadToken = token
+        defer {
+            if emailLoadToken == token { emailBusy = false }
+        }
         do {
-            selectedEmail = try await api.fetchMessage(emailMessageId: candidateId)
+            let message = try await api.fetchMessage(emailMessageId: candidateId)
+            // Drop the response if the user has switched candidates (or transactions) since this
+            // fetch started.
+            guard emailLoadToken == token, selectedCandidateId == candidateId else { return }
+            selectedEmail = message
         } catch {
+            guard emailLoadToken == token, selectedCandidateId == candidateId else { return }
             selectedEmail = nil
             emailErrorText = error.localizedDescription
         }
