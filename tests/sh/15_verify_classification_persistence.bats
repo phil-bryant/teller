@@ -154,11 +154,15 @@ EOF
   #R030
   cat > "${STUB_BIN}/curl" <<'EOF'
 #!/usr/bin/env bash
+if [[ "$*" == *"/health"* ]]; then
+  exit 0
+fi
 exit 1
 EOF
   chmod +x "${STUB_BIN}/curl"
   write_psql16
-  run env TELLER_DB_PASSWORD=pw TXN_ID=txn1 CATEGORY_ID=7 zsh "${FIXTURE_ROOT}/15_verify_classification_persistence.sh" --require-env-ids
+  run env CLASSIFICATION_PERSISTENCE_START_API=false TELLER_DB_PASSWORD=pw TXN_ID=txn1 CATEGORY_ID=7 zsh "${FIXTURE_ROOT}/15_verify_classification_persistence.sh" --require-env-ids
   [ "$status" -ne 0 ]
   [[ "$output" == *"❌ FAIL:"* ]]
+  [[ "$output" == *"classification API request failed"* ]]
 }

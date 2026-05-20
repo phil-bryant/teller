@@ -7,7 +7,7 @@ import XCTest
 
 final class EmailAmountScrollSupportTests: XCTestCase {
     func testAmountSearchVariantsUsesAbsoluteValueForNegativeDebit() {
-        let variants = amountSearchVariants(for: Decimal(string: "-15.19")!)
+        let variants = amountSearchVariants(for: decimal("-15.19"))
         XCTAssertTrue(variants.contains("$15.19"))
         XCTAssertTrue(variants.contains("15.19"))
         XCTAssertTrue(variants.contains("-$15.19"))
@@ -15,12 +15,12 @@ final class EmailAmountScrollSupportTests: XCTestCase {
     }
 
     func testAmountSearchVariantsIncludesCommaGroupingForLargeAmounts() {
-        let variants = amountSearchVariants(for: Decimal(string: "1234.56")!)
+        let variants = amountSearchVariants(for: decimal("1234.56"))
         XCTAssertTrue(variants.contains { $0.contains("1,234.56") })
     }
 
     func testAmountSearchVariantsOrdersLongestFirst() {
-        let variants = amountSearchVariants(for: Decimal(string: "15.19")!)
+        let variants = amountSearchVariants(for: decimal("15.19"))
         guard variants.count >= 2 else {
             XCTFail("Expected multiple variants")
             return
@@ -36,9 +36,13 @@ final class EmailAmountScrollSupportTests: XCTestCase {
         Order Total $15.19
         Thank you
         """
-        let index = bestTextLineIndexForAmount(in: text, amount: Decimal(string: "-15.19")!)
+        let index = bestTextLineIndexForAmount(in: text, amount: decimal("-15.19"))
         let lines = text.components(separatedBy: .newlines)
-        XCTAssertEqual(lines[index!], "Order Total $15.19")
+        guard let index else {
+            XCTFail("Expected matching line index")
+            return
+        }
+        XCTAssertEqual(lines[index], "Order Total $15.19")
     }
 
     func testBestTextLineIndexFallsBackToLastMatch() {
@@ -47,19 +51,38 @@ final class EmailAmountScrollSupportTests: XCTestCase {
         Item B $11.19
         Charged $15.19
         """
-        let index = bestTextLineIndexForAmount(in: text, amount: Decimal(string: "15.19")!)
+        let index = bestTextLineIndexForAmount(in: text, amount: decimal("15.19"))
         let lines = text.components(separatedBy: .newlines)
-        XCTAssertEqual(lines[index!], "Charged $15.19")
+        guard let index else {
+            XCTFail("Expected matching line index")
+            return
+        }
+        XCTAssertEqual(lines[index], "Charged $15.19")
     }
 
     func testBestTextLineIndexReturnsNilWhenAmountMissing() {
-        XCTAssertNil(bestTextLineIndexForAmount(in: "No amounts here", amount: Decimal(string: "15.19")!))
+        XCTAssertNil(bestTextLineIndexForAmount(in: "No amounts here", amount: decimal("15.19")))
     }
 
     func testScrollToAmountJavaScriptIncludesPatterns() {
         let script = scrollToAmountJavaScript(variants: ["$15.19", "15.19"])
-        XCTAssertNotNil(script)
-        XCTAssertTrue(script!.contains("\"$15.19\""))
-        XCTAssertTrue(script!.contains("scrollIntoView"))
+        guard let script else {
+            XCTFail("Expected scroll JavaScript")
+            return
+        }
+        XCTAssertTrue(script.contains("\"$15.19\""))
+        XCTAssertTrue(script.contains("scrollIntoView"))
     }
+}
+
+private func decimal(
+    _ string: String,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) -> Decimal {
+    guard let value = Decimal(string: string) else {
+        XCTFail("Invalid decimal literal: \(string)", file: file, line: line)
+        return .zero
+    }
+    return value
 }

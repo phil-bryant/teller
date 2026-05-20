@@ -103,7 +103,7 @@ Available gates/flags:
 - `SNAPSHOT_RECORD=true|false` (default `false`) to refresh snapshot baselines intentionally.
 - `RUN_XCUITESTS=true|false` (default `true`) to include/exclude macOS XCUITest smoke tests.
 - `XCUITEST_PROJECT` (default `./macos-ui/TransactionClassifierUIAutomation.xcodeproj`)
-- `XCUITEST_SCHEME` (default `TransactionClassifierUITestHost`)
+- `XCUITEST_SCHEME` (default `TransactionClassifierUITestHost-CI`)
 - `XCUITEST_DERIVED_DATA_PATH` (default `./macos-ui/.derivedData-ui-tests`)
 
 The UI regression script runs tests via `xcodebuild test` and should not require opening `*-Runner.app` manually in Finder.
@@ -116,6 +116,6 @@ Snapshot tests live in `Tests/TransactionClassifierSnapshotTests` and validate k
 - mixed-category selection
 - save-state indicators
 
-XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` and cover keyboard-first critical paths (`Cmd+]`, `Cmd+Z`), category apply flows, search filtering, and load-more behavior in deterministic fixture mode.
+XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` as a **single-session** suite (`testMacOSUISmokeSuite`): one app launch, 12 ordered requirement-driven scenarios (Match & Classify shell, search, unclassified filter, classification/undo, scroll-into-view, Help menu, Connect tab), then one teardown. Optional positional selectors (e.g. `./10_run_macos_ui_regression_tests.sh 3,6`) set `XCUITEST_STEPS` to run a subset within the same session.
 
 Rollout guidance and gating behavior are captured in `../requirements/10_run_macos_ui_regression_tests-requirements.md`.

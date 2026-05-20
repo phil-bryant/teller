@@ -1572,9 +1572,9 @@ def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any
                     })
     # Backfill the cache so the next call is hot. Best-effort: if the write fails (e.g. read-only
     # role), log and continue rather than 500ing on the user.
-    for update in cache_updates:
+    for cache_update in cache_updates:
         try:
-            session.execute(_UPDATE_CANDIDATE_CACHE_SQL, update)
+            session.execute(_UPDATE_CANDIDATE_CACHE_SQL, cache_update)
         except Exception:
             session.rollback()
             break

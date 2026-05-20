@@ -25,10 +25,15 @@ private let emailAmountPlainDecimalFormatter: NumberFormatter = {
     return formatter
 }()
 
-private let amountTotalKeywordPattern = try! NSRegularExpression(
-    pattern: #"\b(total|order total|grand total|amount due)\b"#,
-    options: [.caseInsensitive]
-)
+private let amountTotalKeywordPattern: NSRegularExpression = {
+    guard let regex = try? NSRegularExpression(
+        pattern: #"\b(total|order total|grand total|amount due)\b"#,
+        options: [.caseInsensitive]
+    ) else {
+        preconditionFailure("amountTotalKeywordPattern is invalid")
+    }
+    return regex
+}()
 
 func amountSearchVariants(for amount: Decimal) -> [String] {
     let absAmount = amount < 0 ? -amount : amount

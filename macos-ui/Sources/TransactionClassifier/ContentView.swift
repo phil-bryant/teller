@@ -35,13 +35,11 @@ struct ContentView: View {
                 .padding(12)
                 .tabItem { Label("Match & Classify", systemImage: "envelope.badge.shield.half.filled") }
                 .tag(AppTab.matchAndClassify)
-                .accessibilityIdentifier("match-and-classify-tab")
 
             CategoryManagerView(viewModel: viewModel)
                 .padding(12)
                 .tabItem { Label("Manage Categories", systemImage: "square.and.pencil") }
                 .tag(AppTab.manageCategories)
-                .accessibilityIdentifier("manage-categories-tab")
 
             ConnectView(viewModel: connectViewModel)
                 .padding(12)
@@ -68,7 +66,11 @@ struct ContentView: View {
             await viewModel.loadAll()
         }
         .onChange(of: viewModel.selection) { _, _ in viewModel.selectionDidChange() }
-        .accessibilityIdentifier("content-root")
+        .transaction { transaction in
+            if detectAppLaunchMode() == .uiTesting {
+                transaction.animation = nil
+            }
+        }
     }
 
 }
@@ -204,21 +206,20 @@ private struct MatchAndClassifyTransactionsPane: View {
                             row: row,
                             isSelected: viewModel.selection.contains(row.transaction_id),
                             saveState: viewModel.rowState[row.transaction_id] ?? .idle,
-                            alternating: idx % 2 == 1
+                            alternating: idx % 2 == 1,
+                            onTap: {
+                                if NSEvent.modifierFlags.contains(.command) {
+                                    if viewModel.selection.contains(row.transaction_id) {
+                                        viewModel.selection.remove(row.transaction_id)
+                                    } else {
+                                        viewModel.selection.insert(row.transaction_id)
+                                    }
+                                } else {
+                                    viewModel.selection = [row.transaction_id]
+                                }
+                            }
                         )
                         .id(row.transaction_id)
-                        .accessibilityIdentifier("transaction-row-\(row.transaction_id)")
-                        .onTapGesture {
-                            if NSEvent.modifierFlags.contains(.command) {
-                                if viewModel.selection.contains(row.transaction_id) {
-                                    viewModel.selection.remove(row.transaction_id)
-                                } else {
-                                    viewModel.selection.insert(row.transaction_id)
-                                }
-                            } else {
-                                viewModel.selection = [row.transaction_id]
-                            }
-                        }
                     }
                 }
                 .scrollTargetLayout()
@@ -229,8 +230,12 @@ private struct MatchAndClassifyTransactionsPane: View {
             // #R025: when the user triggers Next Unclassified via Cmd+]).
             .onChange(of: viewModel.selection) { _, newValue in
                 guard let target = newValue.first else { return }
-                withAnimation(.easeInOut(duration: 0.2)) {
+                if detectAppLaunchMode() == .uiTesting {
                     scrollTargetId = target
+                } else {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        scrollTargetId = target
+                    }
                 }
             }
         }
@@ -246,6 +251,7 @@ private struct UnifiedTransactionRowView: View {
     let isSelected: Bool
     let saveState: SaveState
     let alternating: Bool
+    let onTap: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -294,6 +300,16 @@ private struct UnifiedTransactionRowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(rowBackground)
         .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(rowAccessibilityLabel)
+        .accessibilityIdentifier("transaction-row-\(row.transaction_id)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var rowAccessibilityLabel: String {
+        let category = row.classification?.display_label ?? "Unclassified"
+        return "\(row.description), \(category), transaction \(row.transaction_id)"
     }
 
     private var rowBackground: some View {
@@ -616,34 +632,34 @@ private struct ClassifySection: View {
                 categories: viewModel.categories,
                 hasSelection: !viewModel.selection.isEmpty,
                 showsMixedSelection: viewModel.selectionHasMixedCategories
-            ) { _ in
-                await viewModel.selectedCategoryDidChange()
+            ) { committedCategoryId in
+                await viewModel.selectedCategoryDidChange(committedCategoryId: committedCategoryId)
             }
-            HStack(spacing: 8) {
-                Button("Apply to Selected") { Task { await viewModel.saveSelection() } }
-                    .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(viewModel.selection.isEmpty || viewModel.selectedCategoryId == nil)
-                    .accessibilityIdentifier("apply-selected-button")
-                Button("Clear") { Task { await viewModel.clearSelectionClassification() } }
-                    .disabled(viewModel.selection.isEmpty)
-                    .accessibilityIdentifier("clear-selection-button")
-                Spacer()
-                // #R030: The currently-selected transaction's identifier is surfaced so the user can
-                // #R030: confirm which transaction they're editing (the per-row badges already show
-                // #R030: the id in the left pane).
-                if let selected = viewModel.primaryTransaction {
-                    if let klass = selected.classification {
-                        Text("Current: \(klass.display_label)")
-                            .font(.caption)
-                            .foregroundStyle(.blue)
+            Group {
+                HStack(spacing: 8) {
+                    Button("Apply to Selected") { Task { await viewModel.saveSelection() } }
+                        .keyboardShortcut(.return, modifiers: .command)
+                        .disabled(viewModel.selection.isEmpty || viewModel.selectedCategoryId == nil)
+                        .accessibilityIdentifier("apply-selected-button")
+                    Button("Clear") { Task { await viewModel.clearSelectionClassification() } }
+                        .disabled(viewModel.selection.isEmpty)
+                        .accessibilityIdentifier("clear-selection-button")
+                    Spacer()
+                    if let selected = viewModel.primaryTransaction {
+                        if let klass = selected.classification {
+                            Text("Current: \(klass.display_label)")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                                .lineLimit(1)
+                                .accessibilityIdentifier("selected-assigned-category")
+                        }
+                        // #R030: Detail pane header includes the selected transaction identifier.
+                        Text("Transaction \(selected.transaction_id)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
-                            .accessibilityIdentifier("selected-assigned-category")
+                            .accessibilityIdentifier("selected-transaction-header")
                     }
-                    Text("Transaction \(selected.transaction_id)")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .accessibilityIdentifier("selected-transaction-header")
                 }
             }
         }
@@ -714,6 +730,7 @@ private struct EmailHeaderView: View {
     }
 }
 
+// #R035: Scroll the email body pane so the selected transaction amount is visible after load.
 private struct EmailBodyContent: View {
     let email: EmailMessage
     let scrollToAmount: Decimal?
@@ -801,6 +818,7 @@ private struct MatchActionsBar: View {
                 Button("Mark no-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
                     .disabled(!viewModel.canMarkSelectedMatchNoEmail)
                     .accessibilityIdentifier("match-no-email-button")
+                // #R045: Clear match control sits to the right of Mark no-email in the action bar.
                 Button("Clear") { Task { await viewModel.clearSelectedMatch() } }
                     .disabled(!viewModel.canClearSelectedMatch)
                     .accessibilityIdentifier("match-clear-button")
@@ -1041,10 +1059,14 @@ private struct CategoryTypeaheadField: View {
                 .focused($isFocused)
                 .onSubmit { commitHighlightedOption() }
                 .onChange(of: isFocused) { _, focused in
-                    if focused { activateTransactionClassifierForInput() }
+                    if focused, detectAppLaunchMode() == .normal {
+                        activateTransactionClassifierForInput()
+                    }
                 }
                 .simultaneousGesture(TapGesture().onEnded {
-                    activateTransactionClassifierForInput()
+                    if detectAppLaunchMode() == .normal {
+                        activateTransactionClassifierForInput()
+                    }
                     isFocused = true
                 })
                 .onChange(of: queryText) { _, _ in highlightedIndex = 0 }
@@ -1073,6 +1095,8 @@ private struct CategoryTypeaheadField: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(index == highlightedIndex ? Color.accentColor.opacity(0.18) : Color.clear)
                             .clipShape(RoundedRectangle(cornerRadius: 5))
+                            .accessibilityLabel(option.label)
+                            .accessibilityAddTraits(.isButton)
                             .accessibilityIdentifier("category-option-\(option.id)")
                         }
                         if options.isEmpty {
@@ -1104,7 +1128,7 @@ private struct CategoryTypeaheadField: View {
         selectedCategoryId = option.categoryId
         queryText = option.label
         highlightedIndex = 0
-        Task { await onCommit(option.categoryId) }
+        Task { @MainActor in await onCommit(option.categoryId) }
     }
     private func syncTextFromSelection() {
         guard hasSelection else { queryText = ""; return }

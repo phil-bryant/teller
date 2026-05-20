@@ -182,8 +182,6 @@ struct ConnectView: View {
         .task {
             await viewModel.loadAll()
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("connect-root")
     }
 }
 

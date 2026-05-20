@@ -5,7 +5,6 @@ from typing import Any, Dict, Optional
 
 import requests
 import structlog
-from fastapi import HTTPException
 
 log = structlog.get_logger()
 

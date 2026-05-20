@@ -8,7 +8,9 @@ cd "$SCRIPT_DIR"
 
 MACOS_UI_DIR="${MACOS_UI_DIR:-./macos-ui}"
 CRASH_REPORT_DIR="${CRASH_REPORT_DIR:-${HOME}/Library/Application Support/TransactionClassifier/CrashReports}"
-STARTUP_WAIT_SECONDS="${STARTUP_WAIT_SECONDS:-4}"
+STARTUP_WAIT_SECONDS="${STARTUP_WAIT_SECONDS:-30}"
+MACOS_UI_SWIFTPM_LOCK="${MACOS_UI_SWIFTPM_LOCK:-${MACOS_UI_DIR}/.swiftpm-run.lock}"
+MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS="${MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS:-600}"
 LAUNCH_LOG="$(mktemp)"
 MARKER_FILE="$(mktemp)"
 latest_plcrash=""
@@ -27,6 +29,33 @@ if [[ ! -d "$MACOS_UI_DIR" ]]; then
   echo "❌ macOS UI package path not found at ${MACOS_UI_DIR}."
   exit 1
 fi
+
+with_macos_ui_swift_lock() {
+  local lock_dir="${MACOS_UI_SWIFTPM_LOCK}.d"
+  local start_ts
+  start_ts="$(date +%s)"
+  mkdir -p "$MACOS_UI_DIR"
+  while ! mkdir "$lock_dir" 2>/dev/null; do
+    if [[ -f "${lock_dir}/pid" ]]; then
+      local owner_pid=""
+      owner_pid="$(<"${lock_dir}/pid")"
+      if [[ -n "$owner_pid" ]] && ! kill -0 "$owner_pid" 2>/dev/null; then
+        rm -rf "$lock_dir"
+        continue
+      fi
+    fi
+    if (( $(date +%s) - start_ts >= MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS )); then
+      echo "❌ Timed out waiting for macOS UI SwiftPM lock at ${lock_dir}." >&2
+      return 1
+    fi
+    sleep 1
+  done
+  echo $$ > "${lock_dir}/pid"
+  "$@"
+  local status=$?
+  rm -rf "$lock_dir"
+  return $status
+}
 
 refresh_latest_artifacts() {
   shopt -s nullglob
@@ -76,7 +105,7 @@ baseline_json="$latest_json"
 
 echo "▶ Triggering intentional crash to seed pending crash report..."
 #R010: Require intentional crash run to fail non-zero.
-if (cd "$MACOS_UI_DIR" && TELLER_MACOS_FORCE_CRASH_ON_LAUNCH=1 swift run TransactionClassifier >/dev/null 2>&1); then
+if with_macos_ui_swift_lock sh -c 'cd "$1" && TELLER_MACOS_FORCE_CRASH_ON_LAUNCH=1 swift run TransactionClassifier >/dev/null 2>&1' _ "$MACOS_UI_DIR"; then
   echo "❌ expected forced crash run to exit non-zero."
   exit 1
 fi
@@ -84,7 +113,7 @@ fi
 echo "▶ Relaunching app to process pending crash report..."
 touch "$MARKER_FILE"
 sleep 1
-(cd "$MACOS_UI_DIR" && swift run TransactionClassifier >"$LAUNCH_LOG" 2>&1) &
+with_macos_ui_swift_lock sh -c 'cd "$1" && swift run TransactionClassifier >"$2" 2>&1' _ "$MACOS_UI_DIR" "$LAUNCH_LOG" &
 APP_PID=$!
 FOUND_SAVE_LOG="false"
 FOUND_FRESH_ARTIFACTS="false"

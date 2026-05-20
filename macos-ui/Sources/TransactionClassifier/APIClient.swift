@@ -31,6 +31,7 @@ protocol ClassificationAPI: Sendable {
     func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse
     func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse
+    // #R050: Clear human-reviewed matches by match id or transaction id.
     func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse
     func confirmTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func overrideTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
@@ -38,6 +39,7 @@ protocol ClassificationAPI: Sendable {
     func clearTransactionMatch(transactionId: String) async throws -> MatchReviewActionResponse
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow]
     func fetchMessage(emailMessageId: String) async throws -> EmailMessage
+    // #R062: Search Mailcart messages for Match & Classify candidate discovery.
     func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse
 }
 
@@ -216,6 +218,7 @@ actor APIClient: ClassificationAPI {
         try await send(path: "/v1/matchy/matches/\(matchId)/no-email", method: "PUT")
     }
 
+    // #R050: PUT /v1/matchy/matches/{match_id}/clear to deactivate a human-reviewed match.
     func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse {
         try await send(path: "/v1/matchy/matches/\(matchId)/clear", method: "PUT")
     }
@@ -239,6 +242,7 @@ actor APIClient: ClassificationAPI {
         return try await send(path: "/v1/matchy/transactions/\(encoded)/no-email", method: "PUT")
     }
 
+    // #R050: PUT /v1/matchy/transactions/{transaction_id}/clear when no match row id is available.
     func clearTransactionMatch(transactionId: String) async throws -> MatchReviewActionResponse {
         let encoded = transactionId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? transactionId
         return try await send(path: "/v1/matchy/transactions/\(encoded)/clear", method: "PUT")
@@ -254,6 +258,7 @@ actor APIClient: ClassificationAPI {
         return try await send(path: "/v1/matchy/messages/\(encoded)")
     }
 
+    // #R062: GET /v1/matchy/messages/search with query and limit parameters.
     func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse {
         guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/matchy/messages/search"), resolvingAgainstBaseURL: false) else {
             throw APIError.invalidResponse

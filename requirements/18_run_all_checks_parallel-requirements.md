@@ -67,9 +67,16 @@ Tests:
 - R050-T01: Start one long-running orchestrator process and verify a second invocation exits non-zero with an already-active lock message.
 - R050-T02: Seed a stale lock PID and verify the run succeeds and clears lock ownership on exit.
 
+R055  Statement: Terminate launched child checks on interrupt or termination.
+Design: On SIGINT/SIGTERM, terminate each launched child check process tree before releasing the single-run lock and exiting non-zero.
+Design: When `PARALLEL_CHECKS_TEST_INTERRUPT=1`, invoke the same interrupt stop path immediately after launch so unit tests can verify child cleanup without relying on signal delivery quirks.
+Tests:
+- R055-T01: Launch long-running child stubs with `PARALLEL_CHECKS_TEST_INTERRUPT=1` and verify child processes terminate and interrupt messaging is emitted.
+
 ## Changelog
 
 - 2026-05-20: Initial requirements for `18_run_all_checks_parallel.sh`.
 - 2026-05-20: Stream per-check PASS/FAIL lines in completion order as each parallel job finishes.
 - 2026-05-20: Added continuous aggregate progress bar reporting while parallel checks run.
 - 2026-05-20: Added single-run lock semantics to prevent concurrent orchestrator invocations.
+- 2026-05-20: Terminate child check process trees on SIGINT/SIGTERM instead of leaving orphaned jobs.

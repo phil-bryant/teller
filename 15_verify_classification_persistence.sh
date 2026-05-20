@@ -38,6 +38,102 @@ if [[ -z "$WRITE_TOKEN" ]]; then
   exit 1
 fi
 
+CLASSIFICATION_PERSISTENCE_START_API="${CLASSIFICATION_PERSISTENCE_START_API:-true}"
+CLASSIFICATION_PERSISTENCE_API_PYTHON="${CLASSIFICATION_PERSISTENCE_API_PYTHON:-./teller-venv/bin/python}"
+CLASSIFICATION_PERSISTENCE_API_STARTUP_SECONDS="${CLASSIFICATION_PERSISTENCE_API_STARTUP_SECONDS:-45}"
+classifier_api_pid=""
+classifier_api_started="false"
+
+cleanup_classifier_api() {
+  if [[ "$classifier_api_started" != "true" ]]; then
+    return 0
+  fi
+  if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" 2>/dev/null; then
+    kill "$classifier_api_pid" >/dev/null 2>&1 || true
+    wait "$classifier_api_pid" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup_classifier_api EXIT
+
+classifier_api_port_open() {
+  local host="$1"
+  local port="$2"
+  python3 - <<'PY' "$host" "$port"
+import socket
+import sys
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+try:
+    with socket.create_connection((host, port), timeout=1):
+        pass
+except OSError:
+    raise SystemExit(1)
+PY
+}
+
+wait_for_classifier_api() {
+  local url="$1"
+  local timeout_seconds="$2"
+  local api_host="${3:-}"
+  local api_port="${4:-}"
+  local start_ts
+  start_ts="$(date +%s)"
+  while true; do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    if [[ -n "$api_host" && -n "$api_port" ]] && classifier_api_port_open "$api_host" "$api_port"; then
+      return 0
+    fi
+    if (( "$(date +%s)" - start_ts >= timeout_seconds )); then
+      echo "❌ FAIL: timed out waiting for classification API at ${url}" >&2
+      return 1
+    fi
+    sleep 1
+  done
+}
+
+ensure_classifier_api() {
+  local health_url="${API_URL%/}/health"
+  if curl -fsS "$health_url" >/dev/null 2>&1; then
+    return 0
+  fi
+  if [[ "$CLASSIFICATION_PERSISTENCE_START_API" != "true" ]]; then
+    echo "❌ FAIL: classification API not reachable at ${API_URL}" >&2
+    exit 1
+  fi
+  if [[ ! -x "$CLASSIFICATION_PERSISTENCE_API_PYTHON" ]]; then
+    CLASSIFICATION_PERSISTENCE_API_PYTHON="python3"
+  fi
+  local api_host api_port
+  api_host="$(python3 - <<'PY' "$API_URL"
+import sys
+from urllib.parse import urlparse
+parsed = urlparse(sys.argv[1])
+print(parsed.hostname or "127.0.0.1")
+PY
+)"
+  api_port="$(python3 - <<'PY' "$API_URL"
+import sys
+from urllib.parse import urlparse
+parsed = urlparse(sys.argv[1])
+print(parsed.port or 8787)
+PY
+)"
+  echo "▶ Starting classification API for persistence verification at ${API_URL}"
+  TELLER_CLASSIFIER_API_HOST="$api_host" TELLER_CLASSIFIER_API_PORT="$api_port" \
+    "$CLASSIFICATION_PERSISTENCE_API_PYTHON" "./14_run_classification_api.py" >/dev/null 2>&1 &
+  classifier_api_pid="$!"
+  classifier_api_started="true"
+  if ! wait_for_classifier_api "$health_url" "$CLASSIFICATION_PERSISTENCE_API_STARTUP_SECONDS" "$api_host" "$api_port"; then
+    echo "❌ FAIL: classification API failed to become ready at ${API_URL}" >&2
+    exit 1
+  fi
+}
+
+ensure_classifier_api
+
 #R005: Auto-resolve transaction/category identifiers when env vars are omitted.
 db_scalar() {
   PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -Atc "$1"

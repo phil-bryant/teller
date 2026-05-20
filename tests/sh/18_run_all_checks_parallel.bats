@@ -8,6 +8,7 @@
 # #R045-T02: Traceability anchor.
 # #R050-T01: Traceability anchor.
 # #R050-T02: Traceability anchor.
+# #R055-T01: Traceability anchor.
 
 # Traceability numbered tags for requirements/18_run_all_checks_parallel-requirements.md
 # #R001-T01: Traceability anchor.
@@ -236,4 +237,21 @@ teardown() {
     bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
   [ "$status" -eq 0 ]
   [ ! -f "${FIXTURE_ROOT}/.18_run_all_checks_parallel.lock" ]
+}
+
+@test "terminates child checks when interrupt stop path runs" {
+  #R055
+  write_all_child_stubs 'sleep 60; exit 0'
+
+  run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
+    PARALLEL_CHECKS_TEST_INTERRUPT=1 \
+    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+  [ "$status" -eq 130 ]
+  [[ "$output" == *"Interrupted; stopped parallel checks."* ]]
+
+  local check
+  for check in "${CHECKS[@]}"; do
+    run pgrep -f "${FIXTURE_ROOT}/${check}"
+    [ "$status" -ne 0 ]
+  done
 }

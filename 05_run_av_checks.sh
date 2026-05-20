@@ -134,15 +134,21 @@ run_clamscan_once() {
   clamscan \
     --recursive \
     --infected \
-    --exclude-dir='^\.git$' \
-    --exclude-dir='^teller-venv$' \
-    --exclude-dir='^\.security-venv$' \
-    --exclude-dir='^\.security-reports$' \
-    --exclude-dir='^backups$' \
-    --exclude-dir='^archive/backup_extracts$' \
-    --exclude-dir='^bank_statements$' \
-    --exclude-dir='(^|.*/)macos-ui/\.build(/.*)?$' \
-    --exclude-dir='(^|.*/)macos-ui/\.derivedData-ui-tests(/.*)?$' \
+    --exclude-dir='\.git(/|$)' \
+    --exclude-dir='teller-venv(/|$)' \
+    --exclude-dir='\.security-venv(/|$)' \
+    --exclude-dir='\.security-reports(/|$)' \
+    --exclude-dir='\.parallel-checks-reports(/|$)' \
+    --exclude-dir='\.build(/|$)' \
+    --exclude-dir='\.derivedData-ui-tests(/|$)' \
+    --exclude-dir='\.hypothesis(/|$)' \
+    --exclude-dir='\.ruff_cache(/|$)' \
+    --exclude-dir='__pycache__' \
+    --exclude-dir='\.cursor(/|$)' \
+    --exclude-dir='\.semgrep-home(/|$)' \
+    --exclude-dir='/backups(/|$)' \
+    --exclude-dir='/archive(/|$)' \
+    --exclude-dir='/bank_statements(/|$)' \
     "$scan_target" > "$report_path" 2>&1 &
   local clamav_pid=$!
   echo "▶ ClamAV scan in progress (started) target=${scan_target_abs}"

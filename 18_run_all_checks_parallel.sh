@@ -34,6 +34,9 @@ PROGRESS_INLINE=false
 if [[ -t 1 ]]; then
   PROGRESS_INLINE=true
 fi
+child_pids=()
+cleanup_finished=false
+signal_exit_code=""
 
 #R050: Prevent concurrent invocations of this orchestrator from the same repo root.
 release_single_run_lock() {
@@ -66,7 +69,73 @@ acquire_single_run_lock() {
   return 1
 }
 
-trap release_single_run_lock EXIT INT TERM
+#R055: Terminate launched child checks on interrupt or termination.
+terminate_child_checks() {
+  local pid child grandchild
+  for pid in "${child_pids[@]}"; do
+    [[ -n "$pid" ]] || continue
+    kill -TERM "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+    for child in $(pgrep -P "$pid" 2>/dev/null || true); do
+      kill -TERM "-$child" 2>/dev/null || kill -TERM "$child" 2>/dev/null || true
+      for grandchild in $(pgrep -P "$child" 2>/dev/null || true); do
+        kill -TERM "$grandchild" 2>/dev/null || true
+      done
+    done
+  done
+
+  sleep 1
+
+  for pid in "${child_pids[@]}"; do
+    [[ -n "$pid" ]] || continue
+    kill -KILL "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+    for child in $(pgrep -P "$pid" 2>/dev/null || true); do
+      kill -KILL "-$child" 2>/dev/null || kill -KILL "$child" 2>/dev/null || true
+      for grandchild in $(pgrep -P "$child" 2>/dev/null || true); do
+        kill -KILL "$grandchild" 2>/dev/null || true
+      done
+    done
+  done
+}
+
+finish_run_cleanup() {
+  if [[ "$cleanup_finished" == "true" ]]; then
+    return 0
+  fi
+  cleanup_finished=true
+  finish_progress_line
+  release_single_run_lock
+}
+
+stop_on_signal() {
+  local exit_code="$1"
+  if [[ "$cleanup_finished" == "true" ]]; then
+    exit "$exit_code"
+  fi
+  cleanup_finished=true
+  terminate_child_checks
+  finish_progress_line
+  echo "Interrupted; stopped parallel checks." >&2
+  release_single_run_lock
+  exit "$exit_code"
+}
+
+check_for_signal() {
+  if [[ -n "$signal_exit_code" ]]; then
+    stop_on_signal "$signal_exit_code"
+  fi
+}
+
+record_sigint() {
+  signal_exit_code=130
+}
+
+record_sigterm() {
+  signal_exit_code=143
+}
+
+trap finish_run_cleanup EXIT
+trap record_sigint INT
+trap record_sigterm TERM
 acquire_single_run_lock
 
 render_progress() {
@@ -117,26 +186,23 @@ done
 
 echo "▶ Starting parallel checks (${#CHECKS[@]} scripts)..."
 
-COMPLETION_FIFO="${REPORT_DIR}/.completion.fifo"
-rm -f "$COMPLETION_FIFO"
-mkfifo "$COMPLETION_FIFO"
-exec 3<> "$COMPLETION_FIFO"
-
 #R015: Launch all check scripts concurrently.
 #R020: Capture each child exit code independently.
-pids=()
 for script in "${CHECKS[@]}"; do
   log="${REPORT_DIR}/${script%.sh}.log"
-  rm -f "${log}" "${log}.exit"
+  rm -f "${log}" "${log}.exit" "${log}.exit.reported"
   (
     set +e
     "./${script}" >"${log}" 2>&1
     exit_code=$?
     echo "$exit_code" > "${log}.exit"
-    printf '%s|%s\n' "$script" "$exit_code" >&3
   ) &
-  pids+=("$!")
+  child_pids+=("$!")
 done
+
+if [[ "${PARALLEL_CHECKS_TEST_INTERRUPT:-}" == "1" ]]; then
+  stop_on_signal 130
+fi
 
 #R025: Print each pass/fail line as soon as its check completes (completion order).
 pass_count=0
@@ -147,25 +213,34 @@ reported=0
 #R045: Emit continuous aggregate progress while checks are still running.
 render_progress "$reported" "$total"
 while [[ "$reported" -lt "$total" ]]; do
-  if IFS='|' read -r -t "$PROGRESS_INTERVAL_SECONDS" completed_script completed_exit <&3; then
+  check_for_signal
+  for script in "${CHECKS[@]}"; do
+    exit_file="${REPORT_DIR}/${script%.sh}.log.exit"
+    reported_file="${exit_file}.reported"
+    if [[ ! -f "$exit_file" || -f "$reported_file" ]]; then
+      continue
+    fi
+    : >"$reported_file"
     reported=$((reported + 1))
-    log="${REPORT_DIR}/${completed_script%.sh}.log"
+    log="${REPORT_DIR}/${script%.sh}.log"
+    completed_exit="$(<"$exit_file")"
     if [[ "$completed_exit" -eq 0 ]]; then
-      emit_result_line "✅ PASS: ${completed_script}"
+      emit_result_line "✅ PASS: ${script}"
       pass_count=$((pass_count + 1))
     else
-      emit_result_line "❌ FAIL: ${completed_script} (exit ${completed_exit}) — see ${log}"
+      emit_result_line "❌ FAIL: ${script} (exit ${completed_exit}) — see ${log}"
       fail_count=$((fail_count + 1))
     fi
-  fi
-
+  done
+  check_for_signal
   render_progress "$reported" "$total"
+  if [[ "$reported" -lt "$total" ]]; then
+    sleep "$PROGRESS_INTERVAL_SECONDS"
+  fi
 done
-exec 3>&-
-finish_progress_line
 
 set +e
-for pid in "${pids[@]}"; do
+for pid in "${child_pids[@]}"; do
   wait "$pid"
 done
 set -e

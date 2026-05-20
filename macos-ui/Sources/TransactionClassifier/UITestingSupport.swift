@@ -37,8 +37,13 @@ private func fixtureAmount(_ value: String) -> Decimal {
 }
 
 actor UITestingFixtureAPI: ClassificationAPI {
+    static let matchFixtureEmailId = "msg_receipt_001"
+    static let matchFixtureTransactionId = "txn_001"
+    static let matchFixtureMatchId = 501
+
     private let pageSize: Int
-    private let categories: [CategoryOption] = [
+    private let matchFixtureEnabled: Bool
+    private var categories: [CategoryOption] = [
         .init(nys_snw_category_id: 101, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Dining", applicability: nil, display_label: "Dining"),
         .init(nys_snw_category_id: 102, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Utilities", applicability: nil, display_label: "Utilities"),
         .init(nys_snw_category_id: 103, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Transportation", applicability: nil, display_label: "Transportation"),
@@ -66,10 +71,107 @@ actor UITestingFixtureAPI: ClassificationAPI {
 
     init(processInfo: ProcessInfo = .processInfo) {
         pageSize = Int(processInfo.environment["TELLER_UI_TEST_PAGE_SIZE"] ?? "2") ?? 2
+        matchFixtureEnabled = processInfo.environment["TELLER_UI_TEST_MATCH_FIXTURE"] == "1"
+        if matchFixtureEnabled,
+           let index = rows.firstIndex(where: { $0.transaction_id == Self.matchFixtureTransactionId }) {
+            rows[index].match = TransactionMatchInfo(
+                match_id: Self.matchFixtureMatchId,
+                email_message_id: Self.matchFixtureEmailId,
+                state: "human_confirmed_ai_match",
+                ai_confidence: 0.95,
+                selected_by: "human",
+                moved_to_matchy_at: nil,
+                match_count: 1
+            )
+        }
+    }
+
+    private static func wideReceiptTextBody(orderTotalLine: String) -> String {
+        let padding = String(repeating: " ", count: 240)
+        let filler = (0..<40).map { "Line \($0) \(padding)" }.joined(separator: "\n")
+        return """
+        Coffee Roasters receipt
+        \(filler)
+        Subtotal $12.00
+        Sales Tax $4.24
+        \(orderTotalLine)
+        Thank you for your order
+        """
     }
 
     func fetchCategories() async throws -> [CategoryOption] {
         categories
+    }
+
+    func deleteCategory(id: Int) async throws -> CategoryDeleteResponse {
+        categories.removeAll { $0.nys_snw_category_id == id }
+        return CategoryDeleteResponse(nys_snw_category_id: id, deleted: true)
+    }
+
+    func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
+        guard matchFixtureEnabled, transactionId == Self.matchFixtureTransactionId else {
+            return []
+        }
+        return [
+            MatchCandidateRow(
+                email_message_id: Self.matchFixtureEmailId,
+                score: 0.92,
+                reason_json: nil,
+                email_received_at: "2026-04-20T10:00:00+00:00",
+                is_selected_by_ai: true,
+                is_unmatched_email_priority: false,
+                subject: "Your Coffee Roasters receipt",
+                from: "receipts@coffee.example.com",
+                snippet: "Order Total $16.24",
+                mailcart_error: nil
+            ),
+        ]
+    }
+
+    func fetchMessage(emailMessageId: String) async throws -> EmailMessage {
+        guard matchFixtureEnabled, emailMessageId == Self.matchFixtureEmailId else {
+            throw APIError.requestFailed("Unknown fixture email \(emailMessageId)")
+        }
+        return EmailMessage(
+            email_message_id: Self.matchFixtureEmailId,
+            subject: "Your Coffee Roasters receipt",
+            from: "receipts@coffee.example.com",
+            to: "you@example.com",
+            received_at: "2026-04-20T10:00:00+00:00",
+            html_body: nil,
+            text_body: Self.wideReceiptTextBody(orderTotalLine: "Order Total $16.24"),
+            snippet: "Order Total $16.24"
+        )
+    }
+
+    func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+        guard let index = rows.firstIndex(where: { $0.match?.match_id == matchId }) else {
+            throw APIError.requestFailed("Match \(matchId) not found in fixture.")
+        }
+        let transactionId = rows[index].transaction_id
+        rows[index].match = nil
+        return MatchReviewActionResponse(
+            match_id: matchId,
+            transaction_id: transactionId,
+            state: "human_confirmed_ai_match",
+            selected_by: "human",
+            updated_at: "2026-04-23T00:00:00Z"
+        )
+    }
+
+    func clearTransactionMatch(transactionId: String) async throws -> MatchReviewActionResponse {
+        guard let index = rows.firstIndex(where: { $0.transaction_id == transactionId }) else {
+            throw APIError.requestFailed("Transaction \(transactionId) not found in fixture.")
+        }
+        let matchId = rows[index].match?.match_id ?? 0
+        rows[index].match = nil
+        return MatchReviewActionResponse(
+            match_id: matchId,
+            transaction_id: transactionId,
+            state: "human_confirmed_ai_match",
+            selected_by: "human",
+            updated_at: "2026-04-23T00:00:00Z"
+        )
     }
 
     func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {

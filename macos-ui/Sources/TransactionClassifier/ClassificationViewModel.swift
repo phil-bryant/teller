@@ -339,6 +339,7 @@ final class ClassificationViewModel {
         await selectedCandidateDidChange()
     }
 
+    // #R040: Debounce Mailcart search input and populate results or surface API errors.
     func searchMailcartIfNeeded() async {
         let query = mailcartSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
@@ -482,12 +483,13 @@ final class ClassificationViewModel {
         Task { await selectedTransactionDidChange() }
     }
 
-    func selectedCategoryDidChange() async {
+    func selectedCategoryDidChange(committedCategoryId: Int? = nil) async {
         // #R005: Only send updates for rows whose selected category actually changes.
         if suppressAutoApply || selection.isEmpty { return }
+        let categoryId = committedCategoryId ?? selectedCategoryId
         let updates: [ClassificationMutation] = selectedRows.compactMap { row -> ClassificationMutation? in
-            if row.classification?.nys_snw_category_id == selectedCategoryId { return nil }
-            return ClassificationMutation(transaction_id: row.transaction_id, nys_snw_category_id: selectedCategoryId)
+            if row.classification?.nys_snw_category_id == categoryId { return nil }
+            return ClassificationMutation(transaction_id: row.transaction_id, nys_snw_category_id: categoryId)
         }
         await apply(updates: updates)
     }

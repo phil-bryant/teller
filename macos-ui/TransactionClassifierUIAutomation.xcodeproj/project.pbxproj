@@ -22,6 +22,8 @@
 		A10000010000000000000013 /* ConnectViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000015 /* ConnectViewModel.swift */; };
 		A10000010000000000000014 /* CrashReporterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000016 /* CrashReporterService.swift */; };
 		A10000010000000000000016 /* TellerSetupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000017 /* TellerSetupService.swift */; };
+		A10000010000000000000017 /* AppActivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000018 /* AppActivation.swift */; };
+		A10000010000000000000018 /* EmailAmountScrollSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000019 /* EmailAmountScrollSupport.swift */; };
 		A10000010000000000000015 /* CrashReporter in Frameworks */ = {isa = PBXBuildFile; productRef = A1000B010000000000000001 /* CrashReporter */; };
 /* End PBXBuildFile section */
 
@@ -53,6 +55,8 @@
 		A10001010000000000000015 /* ConnectViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewModel.swift; sourceTree = "<group>"; };
 		A10001010000000000000016 /* CrashReporterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterService.swift; sourceTree = "<group>"; };
 		A10001010000000000000017 /* TellerSetupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TellerSetupService.swift; sourceTree = "<group>"; };
+		A10001010000000000000018 /* AppActivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActivation.swift; sourceTree = "<group>"; };
+		A10001010000000000000019 /* EmailAmountScrollSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailAmountScrollSupport.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +107,8 @@
 				A10001010000000000000015 /* ConnectViewModel.swift */,
 				A10001010000000000000016 /* CrashReporterService.swift */,
 				A10001010000000000000017 /* TellerSetupService.swift */,
+				A10001010000000000000018 /* AppActivation.swift */,
+				A10001010000000000000019 /* EmailAmountScrollSupport.swift */,
 			);
 		};
 		A10003010000000000000003 /* UITests */ = {
@@ -217,6 +223,8 @@
 				A10000010000000000000013 /* ConnectViewModel.swift in Sources */,
 				A10000010000000000000014 /* CrashReporterService.swift in Sources */,
 				A10000010000000000000016 /* TellerSetupService.swift in Sources */,
+				A10000010000000000000017 /* AppActivation.swift in Sources */,
+				A10000010000000000000018 /* EmailAmountScrollSupport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

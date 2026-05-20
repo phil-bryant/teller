@@ -47,7 +47,9 @@ struct TransactionClassifierApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         _ = notification
-        activateTransactionClassifierForInput()
+        if detectAppLaunchMode() == .normal {
+            activateTransactionClassifierForInput()
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
