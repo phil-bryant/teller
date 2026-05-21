@@ -1,4 +1,4 @@
-CREATE TABLE teller.transaction (
+CREATE TABLE IF NOT EXISTS teller.transaction (
     account_id TEXT NOT NULL REFERENCES teller.account(account_id),
     amount DECIMAL(15,2) NOT NULL,
     date DATE NOT NULL,

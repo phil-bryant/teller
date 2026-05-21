@@ -19,6 +19,12 @@
 # #R045-T01: Traceability anchor.
 # #R050-T01: Traceability anchor.
 # #R055-T01: Traceability anchor.
+# #R060-T01: Traceability anchor.
+# #R065-T01: Traceability anchor.
+# #R070-T01: Traceability anchor.
+# #R075-T01: Traceability anchor.
+# #R080-T01: Traceability anchor.
+# #R085-T01: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -180,4 +186,66 @@ EOF
     /grant_ingest_reconcile_privileges\.sql/ { g = NR }
     END { exit (a > 0 && g > 0 && a < g) ? 0 : 1 }
   ' "${CALLS_LOG}"
+}
+
+stub_managed_profile_helper() {
+  mkdir -p "${FIXTURE_ROOT}/scripts"
+  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "PROFILE_NAME=supabase_direct"
+echo "PROFILE_TARGET=managed"
+echo "PG_HOST=db.example.supabase.co"
+echo "PG_PORT=5432"
+echo "PG_DBNAME=postgres"
+echo "PG_USER=postgres"
+echo "PG_SSLMODE=require"
+echo "PG_SEARCH_PATH=teller"
+echo "PG_RUNTIME_ROLE=''"
+echo "PG_PASSWORD_PSA_ITEM=eggnest_supabase"
+EOF
+  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+}
+
+@test "managed profile drives deploy through profile helper" {
+  #R060 #R070
+  export PATH="${STUB_BIN}:/usr/bin:/bin"
+  stub_managed_profile_helper
+  run bash "${FIXTURE_ROOT}/07_deploy_database.sh"
+  [ "$status" -eq 0 ]
+  grep -F "db.example.supabase.co" "${CALLS_LOG}"
+  grep -F "teller_account.sql" "${CALLS_LOG}"
+}
+
+@test "managed deploy skips bootstrap pgtap and ingest grant SQL" {
+  #R065 #R075 #R080
+  export PATH="${STUB_BIN}:/usr/bin:/bin"
+  stub_managed_profile_helper
+  run bash "${FIXTURE_ROOT}/07_deploy_database.sh"
+  [ "$status" -eq 0 ]
+  ! grep "create_database.sql" "${CALLS_LOG}"
+  ! grep "configure_database.sql" "${CALLS_LOG}"
+  ! grep "CREATE EXTENSION IF NOT EXISTS pgtap" "${CALLS_LOG}"
+  ! grep "grant_ingest_reconcile_privileges.sql" "${CALLS_LOG}"
+}
+
+@test "local deploy is idempotent when prod database already exists" {
+  #R085
+  export PATH="${STUB_BIN}:/usr/bin:/bin"
+  cat > "${STUB_BIN}/psql" <<EOF
+#!/usr/bin/env bash
+echo "psql \$*" >> "${CALLS_LOG}"
+for arg in "\$@"; do
+  if [[ "\$arg" == "SELECT 1 FROM pg_database WHERE datname='prod'" ]]; then
+    echo "1"
+    exit 0
+  fi
+done
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/psql"
+  : > "${CALLS_LOG}"
+  run bash "${FIXTURE_ROOT}/07_deploy_database.sh"
+  [ "$status" -eq 0 ]
+  ! grep -F "create_database.sql" "${CALLS_LOG}"
+  grep -F "configure_database.sql" "${CALLS_LOG}"
 }

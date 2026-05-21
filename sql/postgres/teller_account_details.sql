@@ -1,4 +1,4 @@
-CREATE TABLE teller.account_details (
+CREATE TABLE IF NOT EXISTS teller.account_details (
     account_id TEXT REFERENCES teller.account(account_id),
     account_number TEXT PRIMARY KEY,
     account_details_links_id BIGINT NOT NULL REFERENCES teller.account_details_links(account_details_links_id) UNIQUE,

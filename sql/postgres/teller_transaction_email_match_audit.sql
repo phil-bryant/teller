@@ -1,4 +1,4 @@
-CREATE TABLE teller.transaction_email_match_audit (
+CREATE TABLE IF NOT EXISTS teller.transaction_email_match_audit (
     match_audit_id BIGSERIAL PRIMARY KEY,
     match_id BIGINT NOT NULL REFERENCES teller.transaction_email_match(match_id) ON DELETE CASCADE,
     from_state teller.transaction_email_match_state,
@@ -8,7 +8,7 @@ CREATE TABLE teller.transaction_email_match_audit (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_transaction_email_match_audit_match_id
+CREATE INDEX IF NOT EXISTS idx_transaction_email_match_audit_match_id
     ON teller.transaction_email_match_audit(match_id);
 
 COMMENT ON TABLE teller.transaction_email_match_audit IS 'Append-only log of transaction-email match state transitions';

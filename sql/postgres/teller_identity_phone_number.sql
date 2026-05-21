@@ -1,4 +1,4 @@
-CREATE TABLE teller.identity_phone_number (
+CREATE TABLE IF NOT EXISTS teller.identity_phone_number (
     type teller.identity_phone_number_type NOT NULL,
     data TEXT NOT NULL,
     identity_phone_number_id BIGSERIAL PRIMARY KEY,

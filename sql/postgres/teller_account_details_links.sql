@@ -1,4 +1,4 @@
-CREATE TABLE teller.account_details_links (
+CREATE TABLE IF NOT EXISTS teller.account_details_links (
     self_link TEXT NOT NULL UNIQUE,
     account TEXT NOT NULL UNIQUE,
     account_details_links_id BIGSERIAL PRIMARY KEY,

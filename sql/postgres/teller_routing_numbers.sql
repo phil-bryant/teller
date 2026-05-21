@@ -1,4 +1,4 @@
-CREATE TABLE teller.routing_numbers (
+CREATE TABLE IF NOT EXISTS teller.routing_numbers (
     ach TEXT UNIQUE,
     wire TEXT UNIQUE,
     bacs TEXT,

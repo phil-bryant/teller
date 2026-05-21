@@ -1,4 +1,4 @@
-CREATE TABLE teller.identity_email (
+CREATE TABLE IF NOT EXISTS teller.identity_email (
     data TEXT NOT NULL UNIQUE,
     identity_email_id BIGSERIAL PRIMARY KEY,
     identity_id BIGINT NOT NULL REFERENCES teller.identity(identity_id),

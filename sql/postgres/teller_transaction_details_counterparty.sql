@@ -1,4 +1,4 @@
-CREATE TABLE teller.transaction_details_counterparty (
+CREATE TABLE IF NOT EXISTS teller.transaction_details_counterparty (
     name TEXT NOT NULL,
     type teller.counterparty_type NOT NULL,
     transaction_details_counterparty_id BIGSERIAL PRIMARY KEY,

@@ -1,19 +1,20 @@
 SELECT pg_catalog.set_config('search_path', '', false);
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
-CREATE ROLE teller_admin;
-CREATE ROLE teller_write;
-CREATE ROLE teller_read;
+DO $$ BEGIN CREATE ROLE teller_admin; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE teller_write; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE teller_read; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 GRANT teller_read TO teller_write;
 GRANT teller_write TO teller_admin;
-CREATE USER teller WITH 
-    PASSWORD :'teller_password'
-    NOSUPERUSER
-    NOCREATEDB
-    NOCREATEROLE
-    INHERIT
-    LOGIN
-    CONNECTION LIMIT 100;
+SELECT format(
+    'CREATE USER teller WITH PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT LOGIN CONNECTION LIMIT 100',
+    :'teller_password'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'teller')
+\gexec
+SELECT format('ALTER USER teller WITH PASSWORD %L', :'teller_password')
+WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'teller')
+\gexec
 GRANT teller_admin TO teller;
 CREATE SCHEMA IF NOT EXISTS teller AUTHORIZATION teller;
 COMMENT ON SCHEMA teller IS 'Schema for persisting objects fetched from the teller.io API';
@@ -35,4 +36,4 @@ ALTER DEFAULT PRIVILEGES FOR USER teller IN SCHEMA teller
 ALTER DEFAULT PRIVILEGES FOR USER teller IN SCHEMA teller
     GRANT ALL ON TYPES TO teller_admin;
 ALTER USER teller SET search_path TO teller;
-ALTER DATABASE prod OWNER TO teller; 
+ALTER DATABASE prod OWNER TO teller;

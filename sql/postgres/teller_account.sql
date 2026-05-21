@@ -1,4 +1,4 @@
-CREATE TABLE teller.account (
+CREATE TABLE IF NOT EXISTS teller.account (
     currency CHAR(3) NOT NULL,
     enrollment_id TEXT NOT NULL,
     account_id TEXT PRIMARY KEY,

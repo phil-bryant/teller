@@ -1,4 +1,4 @@
-CREATE TABLE teller.transaction_type (
+CREATE TABLE IF NOT EXISTS teller.transaction_type (
     code TEXT NOT NULL UNIQUE,
     transaction_type_id BIGSERIAL PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

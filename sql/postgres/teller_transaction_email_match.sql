@@ -1,4 +1,4 @@
-CREATE TABLE teller.transaction_email_match (
+CREATE TABLE IF NOT EXISTS teller.transaction_email_match (
     match_id BIGSERIAL PRIMARY KEY,
     transaction_id TEXT NOT NULL REFERENCES teller.transaction(transaction_id) ON DELETE CASCADE,
     email_message_id TEXT,
@@ -19,13 +19,13 @@ CREATE TABLE teller.transaction_email_match (
     )
 );
 
-CREATE INDEX idx_transaction_email_match_transaction_id
+CREATE INDEX IF NOT EXISTS idx_transaction_email_match_transaction_id
     ON teller.transaction_email_match(transaction_id);
 
-CREATE INDEX idx_transaction_email_match_state
+CREATE INDEX IF NOT EXISTS idx_transaction_email_match_state
     ON teller.transaction_email_match(state);
 
-CREATE UNIQUE INDEX uq_transaction_email_match_email_active_non_override
+CREATE UNIQUE INDEX IF NOT EXISTS uq_transaction_email_match_email_active_non_override
     ON teller.transaction_email_match(email_message_id)
     WHERE active = TRUE AND state <> 'human_overrode_ai_match';
 
@@ -57,6 +57,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS enforce_matchy_cardinality_trigger ON teller.transaction_email_match;
 CREATE TRIGGER enforce_matchy_cardinality_trigger
     BEFORE INSERT OR UPDATE ON teller.transaction_email_match
     FOR EACH ROW

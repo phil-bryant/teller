@@ -1,4 +1,4 @@
-CREATE TABLE teller.transaction_links (
+CREATE TABLE IF NOT EXISTS teller.transaction_links (
     self_link TEXT NOT NULL UNIQUE,
     account TEXT NOT NULL,
     transaction_links_id BIGSERIAL PRIMARY KEY,

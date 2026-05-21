@@ -1,4 +1,4 @@
-CREATE TABLE teller.transaction_email_match_run (
+CREATE TABLE IF NOT EXISTS teller.transaction_email_match_run (
     match_run_id BIGSERIAL PRIMARY KEY,
     transaction_id TEXT NOT NULL REFERENCES teller.transaction(transaction_id) ON DELETE CASCADE,
     trigger_source teller.matchy_trigger_source NOT NULL,

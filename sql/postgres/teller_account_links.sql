@@ -1,4 +1,4 @@
-CREATE TABLE teller.account_links (
+CREATE TABLE IF NOT EXISTS teller.account_links (
     self_link TEXT NOT NULL,
     details TEXT,
     balances TEXT,

@@ -1,4 +1,4 @@
-CREATE TABLE teller.identity_address_data (
+CREATE TABLE IF NOT EXISTS teller.identity_address_data (
     street TEXT NOT NULL,
     city TEXT NOT NULL,
     region TEXT NOT NULL,

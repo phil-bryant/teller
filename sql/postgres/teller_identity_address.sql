@@ -1,4 +1,4 @@
-CREATE TABLE teller.identity_address (
+CREATE TABLE IF NOT EXISTS teller.identity_address (
     primary_address BOOLEAN NOT NULL DEFAULT false,
     identity_address_data_id BIGINT NOT NULL REFERENCES teller.identity_address_data(identity_address_data_id),
     identity_address_id BIGSERIAL PRIMARY KEY,

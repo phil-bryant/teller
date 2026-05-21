@@ -8,6 +8,7 @@ macos-ui/.swiftpm/
 macos-ui/.derivedData-ui-tests/
 macos/.build/
 tokens.json
+db-profiles.local.json
 localhost.key
 localhost.pem
 bank_statements/*

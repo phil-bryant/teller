@@ -1,4 +1,4 @@
-CREATE TABLE teller.transaction_details (
+CREATE TABLE IF NOT EXISTS teller.transaction_details (
     processing_status TEXT NOT NULL,
     category teller.transaction_category,
     transaction_details_counterparty_id BIGINT REFERENCES teller.transaction_details_counterparty(transaction_details_counterparty_id),

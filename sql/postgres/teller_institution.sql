@@ -1,4 +1,4 @@
-CREATE TABLE teller.institution (
+CREATE TABLE IF NOT EXISTS teller.institution (
     institution_id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

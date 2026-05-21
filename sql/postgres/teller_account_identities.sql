@@ -1,4 +1,4 @@
-CREATE TABLE teller.account_identities (
+CREATE TABLE IF NOT EXISTS teller.account_identities (
     account_id TEXT NOT NULL REFERENCES teller.account(account_id),
     identity_id BIGINT NOT NULL REFERENCES teller.identity(identity_id),
     account_identities_id BIGSERIAL PRIMARY KEY,

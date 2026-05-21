@@ -1,7 +1,6 @@
 #!/usr/bin/env bats
 
 # Requirement test-case tags for requirements/08_verify_deploy_database-requirements.md
-# #R035-T02: Traceability anchor.
 
 # Traceability numbered tags for requirements/08_verify_deploy_database-requirements.md
 # #R001-T01: Traceability anchor.
@@ -14,6 +13,8 @@
 # #R035-T01: Traceability anchor.
 # #R040-T01: Traceability anchor.
 # #R045-T01: Traceability anchor.
+# #R050-T01: Traceability anchor.
+# #R055-T01: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -176,4 +177,49 @@ EOF
   [ "$status" -ne 0 ]
   [[ "$output" == *"missing updated_at trigger coverage: transaction"* ]]
   [[ "$output" == *"❌ FAIL:"* ]]
+}
+
+stub_managed_verify_helper() {
+  mkdir -p "${FIXTURE_ROOT}/scripts"
+  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "PROFILE_NAME=supabase"
+echo "PROFILE_TARGET=managed"
+echo "PG_HOST=db.example.supabase.co"
+echo "PG_PORT=5432"
+echo "PG_DBNAME=postgres"
+echo "PG_USER=postgres"
+echo "PG_SSLMODE=require"
+echo "PG_SEARCH_PATH=teller"
+echo "PG_RUNTIME_ROLE=''"
+echo "PG_PASSWORD_PSA_ITEM=eggnest_supabase"
+EOF
+  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+}
+
+@test "managed profile skips role existence check" {
+  #R050
+  : > "${PSQL_LOG}"
+  make_psql_happy
+  stub_managed_verify_helper
+  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/08_verify_deploy_database.sh"
+  [ "$status" -eq 0 ]
+  ! grep -F "WITH expected(role_name)" "${PSQL_LOG}"
+}
+
+@test "uses profile psa item when password env is unset" {
+  #R055
+  : > "${PSQL_LOG}"
+  make_psql_happy
+  stub_managed_verify_helper
+  : > "${TEST_TMPDIR}/1psa.log"
+  cat > "${STUB_BIN}/1psa" <<EOF
+#!/usr/bin/env bash
+echo "1psa \$*" >> "${TEST_TMPDIR}/1psa.log"
+echo "from1psa"
+EOF
+  chmod +x "${STUB_BIN}/1psa"
+  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/08_verify_deploy_database.sh"
+  [ "$status" -eq 0 ]
+  grep -F "1psa -p eggnest_supabase" "${TEST_TMPDIR}/1psa.log"
 }

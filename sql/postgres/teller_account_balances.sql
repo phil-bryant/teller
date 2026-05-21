@@ -1,4 +1,4 @@
-CREATE TABLE teller.account_balances (
+CREATE TABLE IF NOT EXISTS teller.account_balances (
     account_id TEXT NOT NULL REFERENCES teller.account(account_id),
     ledger NUMERIC(15,2),
     account_balances_links_id BIGINT NOT NULL REFERENCES teller.account_balances_links(account_balances_links_id),

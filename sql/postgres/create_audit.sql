@@ -1,5 +1,5 @@
 -- #R001: Persist immutable audit entries for row-level data changes.
-CREATE TABLE teller.audit_log (
+CREATE TABLE IF NOT EXISTS teller.audit_log (
     id BIGSERIAL PRIMARY KEY,
     table_name TEXT NOT NULL,
     record_id TEXT NOT NULL,
@@ -112,6 +112,7 @@ BEGIN
         AND table_type = 'BASE TABLE'
         AND tables.table_name != 'audit_log'
     LOOP
+        EXECUTE format('DROP TRIGGER IF EXISTS audit_%I ON teller.%I;', table_name, table_name);
         EXECUTE format('
             CREATE TRIGGER audit_%I
                 AFTER INSERT OR UPDATE OR DELETE ON teller.%I

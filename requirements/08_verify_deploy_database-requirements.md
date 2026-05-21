@@ -52,10 +52,20 @@ Tests:
 R035  Statement: Print explicit pass/fail verification result.
 Design: Print one `✅ PASS:` line only when all checks pass (including updated_at coverage); otherwise print `❌ FAIL:` header, list each failed check, and exit non-zero.
 Tests:
-- R035-T01: Verify all-pass run emits a single `✅ PASS:` line.
-- R035-T02: Verify any failed check emits `❌ FAIL:` details and exits non-zero.
+- R035-T01: Verify successful run emits exactly one `✅ PASS:` line.
+
+R050  Statement: Skip teller-role existence checks on managed Postgres targets.
+Design: Resolve the active DB profile via `scripts/db_profile_export.sh`; when `PROFILE_TARGET=managed`, omit the `teller_read/teller_write/teller_admin/teller` role check that does not apply on Supabase.
+Tests:
+- R050-T01: Run verification with `TELLER_DB_PROFILE=supabase` and verify the role check SQL is not executed.
+
+R055  Statement: Resolve verification DB password using the active profile's 1psa item.
+Design: When `TELLER_DB_PASSWORD` is unset, fall back to `1psa -p <profile.onepsa_item>`; allow `TELLER_PSA_ITEM` to override.
+Tests:
+- R055-T01: Run with managed profile and verify the profile's `1psa_item` is queried via 1psa.
 
 ## Changelog
 
+- 2026-05-21: Added R050 and R055 for profile-aware verification on managed Postgres targets.
 - 2026-05-14: Combined updated_at coverage verification into `08_verify_deploy_database.sh` (absorbed former `09` lane behavior).
 - 2026-04-22: Initial requirements for `08_verify_deploy_database.sh`.

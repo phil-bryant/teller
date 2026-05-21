@@ -4,6 +4,8 @@ import structlog
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
+from teller.teller_db_profile import ResolvedProfile, resolve_profile
+
 log = structlog.get_logger()
 
 
@@ -33,47 +35,79 @@ def _read_password_from_onepsa(item: str) -> str:
     return (out or b"").decode("utf-8").strip()
 
 
-def _read_password():
+#R025: Resolve the connection password. ``TELLER_DB_PASSWORD`` overrides everything;
+#R025: otherwise fall back to libonepsa, then ~/.env, using the profile's item name.
+def _read_password(profile: ResolvedProfile) -> str:
     password = os.environ.get("TELLER_DB_PASSWORD", "")
     if password:
         return password
-
-    item = os.environ.get("TELLER_PSA_ITEM", "localhost_postgres_teller")
+    item = profile.onepsa_item
+    if not item:
+        raise RuntimeError(
+            f"DB profile {profile.name!r} has no onepsa_item and TELLER_DB_PASSWORD is unset"
+        )
     try:
         password = _read_password_from_onepsa(item)
-    except Exception as exc:
-        raise RuntimeError("Could not read DB password from libonepsa") from exc
+    except Exception:
+        password = ""
+    if password:
+        return password
+    from teller.teller_db_profile import _read_env_file_fields
+    env_fields = _read_env_file_fields(item)
+    password = env_fields.get("password", "")
     if not password:
-        raise RuntimeError(f"1psa returned empty password for item: {item}")
+        raise RuntimeError(f"Could not read DB password from 1psa or ~/.env for item: {item}")
     return password
+
 
 _engine = None
 
+
+#R030: Build a single cached SQLAlchemy engine driven by the active profile.
 def get_engine():
     global _engine
     if _engine is None:
-        password = _read_password()
-        host = os.environ.get("TELLER_DB_HOST", "localhost")
-        port = os.environ.get("TELLER_DB_PORT", "5432")
-        db = os.environ.get("TELLER_DB_NAME", "prod")
-        user = os.environ.get("TELLER_DB_USER", "teller")
-        runtime_role = os.environ.get("TELLER_DB_ROLE", "teller_write").strip()
-        _engine = create_engine("postgresql+psycopg2://", echo=False, connect_args={
-            "host": host, "port": int(port), "dbname": db, "user": user, "password": password
-        })
+        profile = resolve_profile()
+        password = _read_password(profile)
+        connect_args = {
+            "host": profile.host,
+            "port": profile.port,
+            "dbname": profile.dbname,
+            "user": profile.user,
+            "password": password,
+        }
+        #R035: Apply ``sslmode`` from the profile (Supabase requires TLS).
+        if profile.sslmode and profile.sslmode != "disable":
+            connect_args["sslmode"] = profile.sslmode
+        _engine = create_engine("postgresql+psycopg2://", echo=False, connect_args=connect_args)
 
+        #R040: On every new DBAPI connection, set the schema search path and
+        #R040: optionally adopt the runtime role. Local PostgreSQL uses
+        #R040: ``teller_write``; Supabase profiles can leave this blank to skip
+        #R040: ``SET ROLE`` entirely.
         @event.listens_for(_engine, "connect")
-        def set_search_path(dbapi_conn, connection_record):
+        def _on_connect(dbapi_conn, connection_record):  # noqa: ARG001
             cursor = dbapi_conn.cursor()
-            cursor.execute("SET search_path TO teller")
-            if runtime_role:
-                cursor.execute("SELECT quote_ident(%s)", (runtime_role,))
+            cursor.execute(f"SET search_path TO {profile.search_path}")
+            if profile.runtime_role:
+                cursor.execute("SELECT quote_ident(%s)", (profile.runtime_role,))
                 quoted_role = cursor.fetchone()[0]
                 cursor.execute(f"SET ROLE {quoted_role}")
             cursor.close()
 
-        log.info("Database engine created", host=host, port=port, db=db, user=user, runtime_role=runtime_role or None)
+        log.info(
+            "Database engine created",
+            profile=profile.name,
+            host=profile.host,
+            port=profile.port,
+            db=profile.dbname,
+            user=profile.user,
+            sslmode=profile.sslmode,
+            search_path=profile.search_path,
+            runtime_role=profile.runtime_role or None,
+        )
     return _engine
+
 
 def get_session():
     return sessionmaker(bind=get_engine())()

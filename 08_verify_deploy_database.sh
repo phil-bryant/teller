@@ -2,20 +2,37 @@
 #R001: Run in strict shell mode and fail fast.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
+
+#R050: Resolve target/profile so verification can adapt to local vs managed Postgres.
+PROFILE_NAME="local"
+PROFILE_TARGET="local"
+PG_PASSWORD_PSA_ITEM=""
+PG_SSLMODE="disable"
+if [[ -x "$DB_PROFILE_HELPER" ]]; then
+    eval "$("$DB_PROFILE_HELPER")"
+fi
+
 #R005: Support configurable database connection defaults.
-DB_HOST="${TELLER_DB_HOST:-localhost}"
-DB_PORT="${TELLER_DB_PORT:-5432}"
-DB_NAME="${TELLER_DB_NAME:-prod}"
-DB_USER="${TELLER_DB_USER:-teller}"
+DB_HOST="${TELLER_DB_HOST:-${PG_HOST:-localhost}}"
+DB_PORT="${TELLER_DB_PORT:-${PG_PORT:-5432}}"
+DB_NAME="${TELLER_DB_NAME:-${PG_DBNAME:-prod}}"
+DB_USER="${TELLER_DB_USER:-${PG_USER:-teller}}"
 DB_PASSWORD="${TELLER_DB_PASSWORD:-}"
 
+#R005: Print the resolved deploy target so the operator sees where verification is running.
+echo "ℹ️  Verifying database via profile=${PROFILE_NAME} target=${PROFILE_TARGET} host=${DB_HOST} port=${DB_PORT} db=${DB_NAME} user=${DB_USER}"
+
+#R055: Resolve DB password from environment or profile-driven 1psa fallback.
 #R010: Resolve DB password from environment or 1psa fallback.
 if [[ -z "$DB_PASSWORD" ]]; then
   if ! command -v 1psa >/dev/null 2>&1; then
     echo "❌ FAIL: TELLER_DB_PASSWORD is unset and 1psa is unavailable for fallback lookup."
     exit 1
   fi
-  DB_PASSWORD="$(1psa -p "${TELLER_PSA_ITEM:-localhost_postgres_teller}")"
+  PSA_ITEM="${TELLER_PSA_ITEM:-${PG_PASSWORD_PSA_ITEM:-localhost_postgres_teller}}"
+  DB_PASSWORD="$(1psa -p "$PSA_ITEM")"
 fi
 
 #R015: Refuse verification when DB password resolves empty.
@@ -25,7 +42,7 @@ if [[ -z "$DB_PASSWORD" ]]; then
 fi
 
 db_scalar() {
-  PGPASSWORD="$DB_PASSWORD" psql \
+  PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" psql \
     -h "$DB_HOST" \
     -p "$DB_PORT" \
     -U "$DB_USER" \
@@ -35,7 +52,7 @@ db_scalar() {
 }
 
 db_lines() {
-  PGPASSWORD="$DB_PASSWORD" psql \
+  PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" psql \
     -h "$DB_HOST" \
     -p "$DB_PORT" \
     -U "$DB_USER" \
@@ -50,26 +67,29 @@ record_failure() {
   failures+=("$1")
 }
 
-#R020: Verify required deployed roles exist.
-missing_roles="$(
-  db_lines "
-    WITH expected(role_name) AS (
-      VALUES
-        ('teller_read'),
-        ('teller_write'),
-        ('teller_admin'),
-        ('teller')
-    )
-    SELECT expected.role_name
-    FROM expected
-    LEFT JOIN pg_roles
-      ON pg_roles.rolname = expected.role_name
-    WHERE pg_roles.rolname IS NULL
-    ORDER BY expected.role_name;
-  "
-)"
-if [[ -n "$missing_roles" ]]; then
-  record_failure "missing roles: ${missing_roles//$'\n'/, }"
+#R050: Skip teller_*-role existence check on managed targets where those roles do not exist.
+if [[ "$PROFILE_TARGET" != "managed" ]]; then
+  #R020: Verify required deployed roles exist.
+  missing_roles="$(
+    db_lines "
+      WITH expected(role_name) AS (
+        VALUES
+          ('teller_read'),
+          ('teller_write'),
+          ('teller_admin'),
+          ('teller')
+      )
+      SELECT expected.role_name
+      FROM expected
+      LEFT JOIN pg_roles
+        ON pg_roles.rolname = expected.role_name
+      WHERE pg_roles.rolname IS NULL
+      ORDER BY expected.role_name;
+    "
+  )"
+  if [[ -n "$missing_roles" ]]; then
+    record_failure "missing roles: ${missing_roles//$'\n'/, }"
+  fi
 fi
 
 #R020: Verify required deployed schema exists.
