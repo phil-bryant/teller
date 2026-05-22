@@ -8,18 +8,24 @@ DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
 #R050: Resolve target/profile so verification can adapt to local vs managed Postgres.
 PROFILE_NAME="local"
 PROFILE_TARGET="local"
-PG_PASSWORD_PSA_ITEM=""
+PG_ONEPSA_ITEM=""
 PG_SSLMODE="disable"
 if [[ -x "$DB_PROFILE_HELPER" ]]; then
     eval "$("$DB_PROFILE_HELPER")"
 fi
 
-#R005: Support configurable database connection defaults.
-DB_HOST="${TELLER_DB_HOST:-${PG_HOST:-localhost}}"
-DB_PORT="${TELLER_DB_PORT:-${PG_PORT:-5432}}"
-DB_NAME="${TELLER_DB_NAME:-${PG_DBNAME:-prod}}"
-DB_USER="${TELLER_DB_USER:-${PG_USER:-teller}}"
+#R005: Use connection settings exclusively from the resolved profile (1psa or ~/.env via the helper).
+#R005: Env vars TELLER_DB_* still override for CI/test fixtures.
+DB_HOST="${TELLER_DB_HOST:-${PG_HOST:-}}"
+DB_PORT="${TELLER_DB_PORT:-${PG_PORT:-}}"
+DB_NAME="${TELLER_DB_NAME:-${PG_DBNAME:-}}"
+DB_USER="${TELLER_DB_USER:-${PG_USER:-}}"
 DB_PASSWORD="${TELLER_DB_PASSWORD:-}"
+
+if [[ -z "$DB_HOST" || -z "$DB_PORT" || -z "$DB_NAME" || -z "$DB_USER" ]]; then
+  echo "❌ FAIL: Resolved profile is missing host/port/dbname/user; check the 1psa item or ~/.env."
+  exit 1
+fi
 
 #R005: Print the resolved deploy target so the operator sees where verification is running.
 echo "ℹ️  Verifying database via profile=${PROFILE_NAME} target=${PROFILE_TARGET} host=${DB_HOST} port=${DB_PORT} db=${DB_NAME} user=${DB_USER}"
@@ -31,7 +37,11 @@ if [[ -z "$DB_PASSWORD" ]]; then
     echo "❌ FAIL: TELLER_DB_PASSWORD is unset and 1psa is unavailable for fallback lookup."
     exit 1
   fi
-  PSA_ITEM="${TELLER_PSA_ITEM:-${PG_PASSWORD_PSA_ITEM:-localhost_postgres_teller}}"
+  PSA_ITEM="${TELLER_PSA_ITEM:-${PG_ONEPSA_ITEM:-}}"
+  if [[ -z "$PSA_ITEM" ]]; then
+    echo "❌ FAIL: No 1psa item resolved from db-profiles.json; cannot look up password."
+    exit 1
+  fi
   DB_PASSWORD="$(1psa -p "$PSA_ITEM")"
 fi
 
@@ -42,7 +52,7 @@ if [[ -z "$DB_PASSWORD" ]]; then
 fi
 
 db_scalar() {
-  PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" psql \
+  PGPASSWORD="$DB_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql \
     -h "$DB_HOST" \
     -p "$DB_PORT" \
     -U "$DB_USER" \
@@ -52,7 +62,7 @@ db_scalar() {
 }
 
 db_lines() {
-  PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" psql \
+  PGPASSWORD="$DB_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql \
     -h "$DB_HOST" \
     -p "$DB_PORT" \
     -U "$DB_USER" \

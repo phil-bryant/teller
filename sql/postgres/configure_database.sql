@@ -36,4 +36,4 @@ ALTER DEFAULT PRIVILEGES FOR USER teller IN SCHEMA teller
 ALTER DEFAULT PRIVILEGES FOR USER teller IN SCHEMA teller
     GRANT ALL ON TYPES TO teller_admin;
 ALTER USER teller SET search_path TO teller;
-ALTER DATABASE prod OWNER TO teller;
+SELECT format('ALTER DATABASE %I OWNER TO %I', :'db_name', :'teller_user') \gexec

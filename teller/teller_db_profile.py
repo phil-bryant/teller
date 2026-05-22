@@ -14,10 +14,11 @@ variables still win so existing shell scripts and bats tests keep working unchan
 
 from __future__ import annotations
 
-import ctypes
 import json
 import os
+import subprocess
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -45,32 +46,39 @@ class ProfileError(RuntimeError):
     """Raised when profile lookup or validation fails."""
 
 
-def _read_onepsa_field(item: str, field: str) -> Optional[str]:
-    """Read a single field from a 1psa item via libonepsa. Returns None on missing field."""
-    lib_path = os.environ.get("ONEPSA_LIB_PATH", "/usr/local/lib/libonepsa.dylib")
+def _read_onepsa_fields(item: str, fields: tuple[str, ...]) -> dict[str, str]:
+    """Read multiple fields from a 1psa item in a single CLI call. Returns field→value map."""
+    onepsa_bin = os.environ.get("ONEPSA_BIN", "1psa")
     try:
-        lib = ctypes.CDLL(lib_path)
-    except OSError:
-        return None
-    lib.OnepsaStringFree.argtypes = [ctypes.c_void_p]
-    lib.OnepsaStringFree.restype = None
-    lib.OnepsaGetField.argtypes = [
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        ctypes.POINTER(ctypes.c_char_p),
-    ]
-    lib.OnepsaGetField.restype = ctypes.c_void_p
-    err = ctypes.c_char_p()
-    out_ptr = lib.OnepsaGetField(item.encode("utf-8"), field.encode("utf-8"), ctypes.byref(err))
-    if err.value is not None:
-        message = err.value.decode("utf-8")
-        lib.OnepsaStringFree(err)
-        return None
-    if not out_ptr:
-        return None
-    out = ctypes.cast(out_ptr, ctypes.c_char_p).value
-    lib.OnepsaStringFree(out_ptr)
-    return (out or b"").decode("utf-8").strip() or None
+        result = subprocess.run(  # nosec B603 B607
+            [onepsa_bin, "-m", item, *fields],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return {}
+    parsed: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if not line or "=" not in line:
+            continue
+        field_name, _, value = line.partition("=")
+        field_name = field_name.strip()
+        value = value.strip()
+        if field_name:
+            parsed[field_name] = value
+    return parsed
+
+
+def _read_onepsa_field(item: str, field: str) -> Optional[str]:
+    """Read a single field from a 1psa item. Returns None on missing field."""
+    fields = _read_onepsa_fields(item, (field,))
+    return fields.get(field) or None
+
+
+_CONNECTION_FIELDS = ("host", "port", "database", "username", "schema", "runtime_role", "target", "sslmode")
 
 
 def _read_env_file_fields(item: str) -> dict[str, str]:
@@ -102,20 +110,12 @@ def _read_env_file_fields(item: str) -> dict[str, str]:
 
 #R010: Fetch all connection fields from 1psa first; fall back to ~/.env if 1psa is unavailable.
 def _fetch_record_from_onepsa(item: str) -> dict:
-    host = _read_onepsa_field(item, "host")
-    # If 1psa returned nothing for host, try ~/.env as fallback source for all fields.
-    if host is None:
+    fields = _read_onepsa_fields(item, _CONNECTION_FIELDS)
+    if not fields.get("host"):
         env_fields = _read_env_file_fields(item)
         if env_fields:
             return _record_from_fields(env_fields)
-    port_raw = _read_onepsa_field(item, "port")
-    database = _read_onepsa_field(item, "database")
-    username = _read_onepsa_field(item, "username")
-    schema = _read_onepsa_field(item, "schema")
-    runtime_role = _read_onepsa_field(item, "runtime_role")
-    target = _read_onepsa_field(item, "target")
-    sslmode = _read_onepsa_field(item, "sslmode")
-    return _build_record(host, port_raw, database, username, schema, runtime_role, target, sslmode)
+    return _record_from_fields(fields)
 
 
 def _record_from_fields(fields: dict[str, str]) -> dict:
@@ -243,6 +243,7 @@ def _apply_env_overrides(record: dict) -> dict:
 
 
 #R001: Public entry point used by ``teller_db.get_engine``.
+@lru_cache(maxsize=1)
 def resolve_profile() -> ResolvedProfile:
     document = _load_profile_document()
     name = _select_profile_name(document)
@@ -261,3 +262,8 @@ def resolve_profile() -> ResolvedProfile:
         sslmode=final["sslmode"],
         target=final["target"],
     )
+
+
+def reset_profile_cache() -> None:
+    """Clear the cached profile so tests can mutate env/files between assertions."""
+    resolve_profile.cache_clear()

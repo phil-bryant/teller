@@ -54,9 +54,9 @@ _SUPABASE_FIELDS = {
 
 
 def _make_onepsa_stub(fields):
-    """Return a function that mimics _read_onepsa_field for the given field dict."""
-    def stub(item, field):  # noqa: ARG001
-        return fields.get(field)
+    """Return a function that mimics _read_onepsa_fields for the given field dict."""
+    def stub(item, field_names):  # noqa: ARG001
+        return {name: fields[name] for name in field_names if name in fields}
     return stub
 
 
@@ -66,6 +66,8 @@ class _IsolatedEnvTest(unittest.TestCase):
         self._tempdir = tempfile.TemporaryDirectory()
         self._cwd_before = Path.cwd()
         os.chdir(self._tempdir.name)
+        from teller.teller_db_profile import reset_profile_cache
+        reset_profile_cache()
 
     def tearDown(self):
         os.chdir(self._cwd_before)
@@ -83,7 +85,7 @@ class _IsolatedEnvTest(unittest.TestCase):
 
 class ResolveProfileTests(_IsolatedEnvTest):
     # #R001: Built-in local profile is returned when no file is present.
-    @patch("teller.teller_db_profile._read_onepsa_field", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_builtin_local_profile_when_no_file(self, _mock):
         profile = resolve_profile()
         self.assertEqual(profile.name, "local")
@@ -98,7 +100,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
         self.assertEqual(profile.target, "local")
 
     # #R005: TELLER_DB_PROFILE_FILE wins over repo-local defaults.
-    @patch("teller.teller_db_profile._read_onepsa_field", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
     def test_explicit_profile_file_wins(self, _mock):
         explicit = self._write_profile_file({
             "default_profile": "remote",
@@ -115,7 +117,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
         self.assertEqual(profile.host, "db.example.supabase.co")
 
     # #R005: With no file at any candidate path, the built-in local profile is used.
-    @patch("teller.teller_db_profile._read_onepsa_field", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_no_file_anywhere_falls_back_to_builtin(self, _mock):
         profile = resolve_profile()
         self.assertEqual(profile.name, "local")
@@ -130,7 +132,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
             resolve_profile()
 
     # #R010: Invalid target from 1psa defaults to local.
-    @patch("teller.teller_db_profile._read_onepsa_field")
+    @patch("teller.teller_db_profile._read_onepsa_fields")
     def test_invalid_target_defaults_to_local(self, mock_read):
         fields = dict(_LOCAL_FIELDS, target="bogus")
         mock_read.side_effect = _make_onepsa_stub(fields)
@@ -142,7 +144,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
         self.assertEqual(profile.target, "local")
 
     # #R015: TELLER_DB_PROFILE overrides default_profile.
-    @patch("teller.teller_db_profile._read_onepsa_field", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
     def test_env_profile_name_overrides_default(self, _mock):
         self._write_profile_file({
             "default_profile": "local",
@@ -158,7 +160,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
         self.assertEqual(profile.sslmode, "require")
 
     # #R020: TELLER_DB_HOST overrides the 1psa-sourced host without disturbing other fields.
-    @patch("teller.teller_db_profile._read_onepsa_field", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_env_host_override_keeps_other_fields(self, _mock):
         os.environ["TELLER_DB_HOST"] = "remote.example"
         profile = resolve_profile()
@@ -168,7 +170,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     # #R020: TELLER_PSA_ITEM no longer overrides onepsa_item (item comes from JSON only).
     # Instead we verify TELLER_DB_USER can override the user field.
-    @patch("teller.teller_db_profile._read_onepsa_field", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_env_user_override(self, _mock):
         os.environ["TELLER_DB_USER"] = "custom_user"
         profile = resolve_profile()

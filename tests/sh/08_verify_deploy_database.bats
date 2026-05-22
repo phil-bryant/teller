@@ -96,6 +96,21 @@ setup() {
   : > "${PSQL_LOG}"
   make_psql_happy
   stub_cmd 1psa "echo from1psa"
+  mkdir -p "${FIXTURE_ROOT}/scripts"
+  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "PROFILE_NAME=local"
+echo "PROFILE_TARGET=local"
+echo "PG_HOST=localhost"
+echo "PG_PORT=5432"
+echo "PG_DBNAME=prod"
+echo "PG_USER=teller"
+echo "PG_SSLMODE=disable"
+echo "PG_SEARCH_PATH=teller"
+echo "PG_RUNTIME_ROLE=teller_write"
+echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+EOF
+  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   export PSQL_LOG
 }
@@ -192,7 +207,7 @@ echo "PG_USER=postgres"
 echo "PG_SSLMODE=require"
 echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=''"
-echo "PG_PASSWORD_PSA_ITEM=eggnest_supabase"
+echo "PG_ONEPSA_ITEM=eggnest_supabase"
 EOF
   chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
 }

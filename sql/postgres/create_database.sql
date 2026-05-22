@@ -1,6 +1,6 @@
-CREATE DATABASE prod WITH 
-    OWNER = postgres
-    ENCODING = 'UTF8'
-    LC_COLLATE = 'en_US.UTF-8'
-    LC_CTYPE = 'en_US.UTF-8'
-    TEMPLATE = template0; 
+SELECT format(
+    'CREATE DATABASE %I WITH OWNER = postgres ENCODING = %L LC_COLLATE = %L LC_CTYPE = %L TEMPLATE = template0',
+    :'db_name', 'UTF8', 'en_US.UTF-8', 'en_US.UTF-8'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name')
+\gexec

@@ -39,14 +39,14 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
     #R065: Resolve managed-target password from the profile's 1psa item; env var still wins.
     MANAGED_PASSWORD="${TELLER_DB_PASSWORD:-}"
     if [[ -z "$MANAGED_PASSWORD" ]]; then
-        if [[ -z "${PG_PASSWORD_PSA_ITEM:-}" ]]; then
-            echo "Managed deploy requires PG_PASSWORD_PSA_ITEM (from db-profiles.json) or TELLER_DB_PASSWORD."
+        if [[ -z "${PG_ONEPSA_ITEM:-}" ]]; then
+            echo "Managed deploy requires PG_ONEPSA_ITEM (from db-profiles.json) or TELLER_DB_PASSWORD."
             exit 1
         fi
-        MANAGED_PASSWORD="$(1psa -p "$PG_PASSWORD_PSA_ITEM")"
+        MANAGED_PASSWORD="$(1psa -p "$PG_ONEPSA_ITEM")"
     fi
     if [[ -z "$MANAGED_PASSWORD" ]]; then
-        echo "Failed to read managed DB password (item: ${PG_PASSWORD_PSA_ITEM})"
+        echo "Failed to read managed DB password (item: ${PG_ONEPSA_ITEM})"
         exit 1
     fi
 
@@ -111,12 +111,13 @@ TELLER_PSA_FIELD="${TELLER_PSA_FIELD:-password}"
 
 #R007: Run SQL as postgres with fail-fast psql options.
 run_psql_postgres() {
-    PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres "$@"
+    PGPASSWORD="$POSTGRES_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql "${PSQL_OPTS[@]}" -U postgres "$@"
 }
 
 #R008: Run SQL as teller with fail-fast psql options.
 run_psql_teller() {
-    PGPASSWORD="$TELLER_PASSWORD" psql "${PSQL_OPTS[@]}" -U teller -d prod "$@"
+    PGPASSWORD="$TELLER_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql "${PSQL_OPTS[@]}" \
+        -U "$PG_USER" -d "$PG_DBNAME" "$@"
 }
 
 #R010: Resolve postgres password from configured item/field.
@@ -146,15 +147,19 @@ if [ -z "$TELLER_PASSWORD" ]; then
 fi
 
 #R025: Run admin bootstrap SQL in required order.
-#R085: Skip create_database.sql when 'prod' already exists so re-runs against an existing local DB
-#R085: do not error. configure_database.sql is now idempotent on its own.
-prod_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='prod'")"
-if [ -z "$prod_exists" ]; then
-    run_psql_postgres -f "${SQL_DIR}/create_database.sql"
+#R085: Skip create_database.sql when the resolved DB already exists so re-runs against an existing
+#R085: local DB do not error. configure_database.sql is now idempotent on its own.
+if [[ -z "${PG_DBNAME:-}" || -z "${PG_USER:-}" ]]; then
+    echo "Resolved profile is missing PG_DBNAME or PG_USER; check the 1psa item or ~/.env."
+    exit 1
 fi
-run_psql_postgres -d prod -v teller_password="$TELLER_PASSWORD" -f "${SQL_DIR}/configure_database.sql"
-#R050: Ensure pgTAP extension exists in prod for SQL unit test execution.
-run_psql_postgres -d prod -c "CREATE EXTENSION IF NOT EXISTS pgtap;"
+prod_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql "${PSQL_OPTS[@]}" -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${PG_DBNAME}'")"
+if [ -z "$prod_exists" ]; then
+    run_psql_postgres -v db_name="$PG_DBNAME" -f "${SQL_DIR}/create_database.sql"
+fi
+run_psql_postgres -d "$PG_DBNAME" -v teller_password="$TELLER_PASSWORD" -v db_name="$PG_DBNAME" -v teller_user="$PG_USER" -f "${SQL_DIR}/configure_database.sql"
+#R050: Ensure pgTAP extension exists in the resolved DB for SQL unit test execution.
+run_psql_postgres -d "$PG_DBNAME" -c "CREATE EXTENSION IF NOT EXISTS pgtap;"
 
 #R030: Build teller schema objects in declared dependency order.
 run_psql_teller -f "${SQL_DIR}/teller_enums.sql"
