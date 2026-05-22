@@ -7,11 +7,8 @@
 # #R040-T01: Traceability anchor.
 # #R040-T02: Traceability anchor.
 
-import json
 import os
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from teller import teller_db
@@ -61,7 +58,7 @@ class _IsolatedEnvTest(unittest.TestCase):
 class PasswordResolutionTests(_IsolatedEnvTest):
     # #R025: TELLER_DB_PASSWORD short-circuits libonepsa.
     def test_env_password_wins(self):
-        os.environ["TELLER_DB_PASSWORD"] = "from-env"
+        os.environ["TELLER_DB_PASSWORD"] = "from-env"  # pragma: allowlist secret
         with patch("teller.teller_db._read_password_from_onepsa") as fake_onepsa:
             fake_onepsa.side_effect = AssertionError("libonepsa must not be called")
             self.assertEqual(teller_db._read_password(_LOCAL_PROFILE), "from-env")
@@ -81,7 +78,7 @@ class PasswordResolutionTests(_IsolatedEnvTest):
 class EngineConstructionTests(_IsolatedEnvTest):
     # #R030: Engine is built once and cached.
     def test_engine_is_cached(self):
-        os.environ["TELLER_DB_PASSWORD"] = "pw"
+        os.environ["TELLER_DB_PASSWORD"] = "pw"  # pragma: allowlist secret
         with patch("teller.teller_db.resolve_profile", return_value=_LOCAL_PROFILE), \
              patch("teller.teller_db.create_engine") as fake_create_engine, \
              patch("teller.teller_db.event.listens_for", return_value=lambda fn: fn):
@@ -93,7 +90,7 @@ class EngineConstructionTests(_IsolatedEnvTest):
 
     # #R035: sslmode=require is forwarded into connect_args.
     def test_sslmode_require_forwarded(self):
-        os.environ["TELLER_DB_PASSWORD"] = "pw"
+        os.environ["TELLER_DB_PASSWORD"] = "pw"  # pragma: allowlist secret
         with patch("teller.teller_db.resolve_profile", return_value=_SUPABASE_PROFILE), \
              patch("teller.teller_db.create_engine") as fake_create_engine, \
              patch("teller.teller_db.event.listens_for", return_value=lambda fn: fn):
@@ -105,7 +102,7 @@ class EngineConstructionTests(_IsolatedEnvTest):
 
     # #R035: sslmode=disable is omitted from connect_args.
     def test_sslmode_disable_omitted(self):
-        os.environ["TELLER_DB_PASSWORD"] = "pw"
+        os.environ["TELLER_DB_PASSWORD"] = "pw"  # pragma: allowlist secret
         with patch("teller.teller_db.resolve_profile", return_value=_LOCAL_PROFILE), \
              patch("teller.teller_db.create_engine") as fake_create_engine, \
              patch("teller.teller_db.event.listens_for", return_value=lambda fn: fn):
@@ -117,7 +114,7 @@ class EngineConstructionTests(_IsolatedEnvTest):
 
 class ConnectListenerTests(_IsolatedEnvTest):
     def _capture_connect_listener(self, profile=None):
-        os.environ["TELLER_DB_PASSWORD"] = "pw"
+        os.environ["TELLER_DB_PASSWORD"] = "pw"  # pragma: allowlist secret
         captured = {}
 
         def fake_listens_for(target, event_name):  # noqa: ARG001

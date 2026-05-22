@@ -16,17 +16,34 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-#R010: Support configurable API/DB endpoints with defaults.
+#R010: Resolve API and DB connection from the active profile (1psa+~/.env via the helper).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
+PG_HOST=""
+PG_PORT=""
+PG_DBNAME=""
+PG_USER=""
+PG_SSLMODE="disable"
+PG_ONEPSA_ITEM=""
+if [[ -x "$DB_PROFILE_HELPER" ]]; then
+    eval "$("$DB_PROFILE_HELPER")"
+fi
+
 API_URL="${TELLER_CLASSIFIER_API_URL:-http://127.0.0.1:8787}"
-DB_HOST="${TELLER_DB_HOST:-localhost}"
-DB_PORT="${TELLER_DB_PORT:-5432}"
-DB_NAME="${TELLER_DB_NAME:-prod}"
-DB_USER="${TELLER_DB_USER:-teller}"
+DB_HOST="${TELLER_DB_HOST:-${PG_HOST:-localhost}}"
+DB_PORT="${TELLER_DB_PORT:-${PG_PORT:-5432}}"
+DB_NAME="${TELLER_DB_NAME:-${PG_DBNAME:-}}"
+DB_USER="${TELLER_DB_USER:-${PG_USER:-teller}}"
 DB_PASSWORD="${TELLER_DB_PASSWORD:-}"
+
+if [[ -z "$DB_NAME" ]]; then
+  echo "❌ Resolved profile is missing PG_DBNAME and TELLER_DB_NAME is unset." >&2
+  exit 1
+fi
 
 #R015: Resolve DB password from env or 1psa fallback.
 if [[ -z "$DB_PASSWORD" ]]; then
-  DB_PASSWORD="$(1psa -p "${TELLER_PSA_ITEM:-localhost_postgres_teller}")"
+  DB_PASSWORD="$(1psa -p "${TELLER_PSA_ITEM:-${PG_ONEPSA_ITEM:-localhost_postgres_teller}}")"
 fi
 WRITE_TOKEN="${TELLER_CLASSIFIER_WRITE_TOKEN:-}"
 #R035: Resolve classifier write token from env when provided, otherwise use 1psa.
@@ -136,7 +153,7 @@ ensure_classifier_api
 
 #R005: Auto-resolve transaction/category identifiers when env vars are omitted.
 db_scalar() {
-  PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -Atc "$1"
+  PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -Atc "$1"
 }
 if [[ "$STRICT_IDS" == true ]]; then
   : "${TXN_ID:?Set TXN_ID to a valid teller.transaction.transaction_id}"
@@ -173,7 +190,7 @@ if ! API_RESPONSE="$(curl -f -sS -X POST "${API_URL}/v1/transactions/classificat
 fi
 
 #R025: Query latest persisted classification row for target transaction.
-PERSISTED_LINE="$(PGPASSWORD="$DB_PASSWORD" psql \
+PERSISTED_LINE="$(PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" psql \
   -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -Atc \
   "SELECT transaction_id || ':' || nys_snw_category_id || ':' || type
    FROM teller.transaction_nys_snw_category

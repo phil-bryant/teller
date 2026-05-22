@@ -48,10 +48,9 @@ class ProfileError(RuntimeError):
 
 def _read_onepsa_fields(item: str, fields: tuple[str, ...]) -> dict[str, str]:
     """Read multiple fields from a 1psa item in a single CLI call. Returns field→value map."""
-    onepsa_bin = os.environ.get("ONEPSA_BIN", "1psa")
     try:
-        result = subprocess.run(  # nosec B603 B607
-            [onepsa_bin, "-m", item, *fields],
+        result = subprocess.run(  # noqa: S603, S607
+            ["1psa", "-m", item, *fields],
             check=True,
             capture_output=True,
             text=True,

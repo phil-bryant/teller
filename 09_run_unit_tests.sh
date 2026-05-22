@@ -14,11 +14,24 @@ RUN_MACOS_UI_REGRESSION_TESTS="${RUN_MACOS_UI_REGRESSION_TESTS:-false}"
 #R030: Keep crash-reporter verification isolated to dedicated script 11.
 BATS_FILTER="${BATS_FILTER:-}"
 SQL_TESTS_DIR="${SQL_TESTS_DIR:-./tests/sql}"
-SQL_TEST_DATABASE="${SQL_TEST_DATABASE:-${TELLER_DB_NAME:-${DB_NAME:-prod}}}"
+
+#R025: Resolve DB connection settings from the active profile (1psa+~/.env via the helper).
+DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
+PG_HOST=""
+PG_PORT=""
+PG_DBNAME=""
+PG_USER=""
+PG_SSLMODE="disable"
+PG_ONEPSA_ITEM=""
+if [[ -x "$DB_PROFILE_HELPER" ]]; then
+    eval "$("$DB_PROFILE_HELPER")"
+fi
+
+SQL_TEST_DATABASE="${SQL_TEST_DATABASE:-${TELLER_DB_NAME:-${PG_DBNAME:-}}}"
 PG_PROVE_BIN="${PG_PROVE_BIN:-}"
-DB_HOST="${TELLER_DB_HOST:-localhost}"
-DB_PORT="${TELLER_DB_PORT:-5432}"
-DB_USER="${TELLER_DB_USER:-teller}"
+DB_HOST="${TELLER_DB_HOST:-${PG_HOST:-localhost}}"
+DB_PORT="${TELLER_DB_PORT:-${PG_PORT:-5432}}"
+DB_USER="${TELLER_DB_USER:-${PG_USER:-teller}}"
 DB_PASSWORD="${TELLER_DB_PASSWORD:-${DB_PASSWORD:-}}"
 
 python_interpreter_usable() {
@@ -106,10 +119,14 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
         echo "❌ TELLER_DB_PASSWORD is unset and 1psa is unavailable for fallback lookup."
         exit 1
       fi
-      DB_PASSWORD="$(1psa -p "${TELLER_PSA_ITEM:-localhost_postgres_teller}")"
+      DB_PASSWORD="$(1psa -p "${TELLER_PSA_ITEM:-${PG_ONEPSA_ITEM:-localhost_postgres_teller}}")"
     fi
     if [[ -z "$DB_PASSWORD" ]]; then
       echo "❌ failed to resolve teller DB password for SQL unit tests."
+      exit 1
+    fi
+    if [[ -z "$SQL_TEST_DATABASE" ]]; then
+      echo "❌ Resolved profile is missing PG_DBNAME and SQL_TEST_DATABASE/TELLER_DB_NAME are unset."
       exit 1
     fi
     if ! command -v psql >/dev/null 2>&1; then
@@ -118,7 +135,7 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
     fi
 
     if ! pgtap_installed="$(
-      PGPASSWORD="${DB_PASSWORD}" psql -w -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -v ON_ERROR_STOP=1 -d "$SQL_TEST_DATABASE" -Atqc \
+      PGPASSWORD="${DB_PASSWORD}" PGSSLMODE="${PG_SSLMODE:-disable}" psql -w -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -v ON_ERROR_STOP=1 -d "$SQL_TEST_DATABASE" -Atqc \
         "SELECT 1 FROM pg_extension WHERE extname = 'pgtap' LIMIT 1;" 2>&1
     )"; then
       echo "❌ failed to query '${SQL_TEST_DATABASE}' for pgtap extension availability."
@@ -140,7 +157,7 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
     else
       echo "▶ Running SQL unit tests (pgTAP via pg_prove)..."
       for sql_test_file in "${sql_test_files[@]}"; do
-        if ! PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_USER" PGPASSWORD="$DB_PASSWORD" \
+        if ! PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_USER" PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" \
           PGOPTIONS="-c search_path=teller,public" \
           "$PG_PROVE_BIN" --dbname "$SQL_TEST_DATABASE" "$sql_test_file"; then
           if [[ "$PG_PROVE_BIN" == "${HOME}/perl5/bin/pg_prove" ]]; then
@@ -153,7 +170,7 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
             fi
             if [[ -x "$brew_perl_bin" ]]; then
               echo "ℹ️  Retrying user-local pg_prove with Homebrew perl..."
-              PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_USER" PGPASSWORD="$DB_PASSWORD" \
+              PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_USER" PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" \
                 PGOPTIONS="-c search_path=teller,public" \
                 "$brew_perl_bin" "$PG_PROVE_BIN" --dbname "$SQL_TEST_DATABASE" "$sql_test_file"
               continue

@@ -27,6 +27,21 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "09_run_unit_tests.sh"
+  mkdir -p "${FIXTURE_ROOT}/scripts"
+  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "PROFILE_NAME=local"
+echo "PROFILE_TARGET=local"
+echo "PG_HOST=localhost"
+echo "PG_PORT=5432"
+echo "PG_DBNAME=prod"
+echo "PG_USER=teller"
+echo "PG_SSLMODE=disable"
+echo "PG_SEARCH_PATH=teller"
+echo "PG_RUNTIME_ROLE=teller_write"
+echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+EOF
+  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
 }
 
 teardown() {
