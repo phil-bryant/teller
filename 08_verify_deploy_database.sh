@@ -263,6 +263,14 @@ if [[ -n "$missing_updated_at_coverage" ]]; then
   done <<< "$missing_updated_at_coverage"
 fi
 
+#R060: When the resolved profile requires TLS, confirm the live connection is encrypted.
+if [[ "${PG_SSLMODE:-}" == "require" || "${PG_SSLMODE:-}" == "verify-ca" || "${PG_SSLMODE:-}" == "verify-full" ]]; then
+  ssl_active="$(db_scalar "SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();")"
+  if [[ "$ssl_active" != "t" ]]; then
+    record_failure "sslmode=${PG_SSLMODE} but pg_stat_ssl reports the connection is not encrypted (got '${ssl_active}')"
+  fi
+fi
+
 #R035: Print explicit pass/fail verification result.
 if (( ${#failures[@]} > 0 )); then
   echo "❌ FAIL: Database deployment verification failed."

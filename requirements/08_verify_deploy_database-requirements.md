@@ -64,8 +64,16 @@ Design: When `TELLER_DB_PASSWORD` is unset, fall back to `1psa -p <profile.oneps
 Tests:
 - R055-T01: Run with managed profile and verify the profile's `1psa_item` is queried via 1psa.
 
+R060  Statement: Confirm live TLS when the resolved profile requires SSL.
+Design: When `PG_SSLMODE` is `require`, `verify-ca`, or `verify-full`, query `pg_stat_ssl` for the current backend; record a failure if `ssl` is not `t`.
+Rationale: A misconfigured client could still negotiate plaintext if the server tolerates either. Verifying `pg_stat_ssl` proves the live session is actually encrypted.
+Tests:
+- R060-T01: Stub psql to return `f` for the `pg_stat_ssl` probe with `PG_SSLMODE=require` and verify the script fails with an SSL diagnostic.
+- R060-T02: With `PG_SSLMODE=disable`, verify the SSL probe is skipped entirely.
+
 ## Changelog
 
+- 2026-05-22: Added R060 to confirm live TLS when the resolved profile requires SSL.
 - 2026-05-21: Added R050 and R055 for profile-aware verification on managed Postgres targets.
 - 2026-05-14: Combined updated_at coverage verification into `08_verify_deploy_database.sh` (absorbed former `09` lane behavior).
 - 2026-04-22: Initial requirements for `08_verify_deploy_database.sh`.

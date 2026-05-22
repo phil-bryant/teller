@@ -15,6 +15,8 @@
 # #R045-T01: Traceability anchor.
 # #R050-T01: Traceability anchor.
 # #R055-T01: Traceability anchor.
+# #R060-T01: Traceability anchor.
+# #R060-T02: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -79,6 +81,12 @@ def main():
       print("transaction")
     else:
       print("", end="")
+    return
+  if "pg_stat_ssl" in sql and "pg_backend_pid" in sql:
+    if os.environ.get("SSL_INACTIVE") == "1":
+      print("f", end="")
+    else:
+      print("t", end="")
     return
   print("t", end="")
 
@@ -237,4 +245,42 @@ EOF
   run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/08_verify_deploy_database.sh"
   [ "$status" -eq 0 ]
   grep -F "1psa -p eggnest_supabase" "${TEST_TMPDIR}/1psa.log"
+}
+
+stub_require_ssl_helper() {
+  mkdir -p "${FIXTURE_ROOT}/scripts"
+  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "PROFILE_NAME=local"
+echo "PROFILE_TARGET=local"
+echo "PG_HOST=localhost"
+echo "PG_PORT=5432"
+echo "PG_DBNAME=prod"
+echo "PG_USER=teller"
+echo "PG_SSLMODE=require"
+echo "PG_SEARCH_PATH=teller"
+echo "PG_RUNTIME_ROLE=teller_write"
+echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+EOF
+  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+}
+
+@test "ssl-required deploy fails when pg_stat_ssl reports unencrypted session" {
+  #R060
+  : > "${PSQL_LOG}"
+  make_psql_happy
+  stub_require_ssl_helper
+  run env TELLER_DB_PASSWORD=pw SSL_INACTIVE=1 zsh "${FIXTURE_ROOT}/08_verify_deploy_database.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"sslmode=require"* ]]
+  [[ "$output" == *"pg_stat_ssl"* ]]
+}
+
+@test "ssl probe is skipped when sslmode is disable" {
+  #R060
+  : > "${PSQL_LOG}"
+  make_psql_happy
+  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/08_verify_deploy_database.sh"
+  [ "$status" -eq 0 ]
+  ! grep -F "pg_stat_ssl" "${PSQL_LOG}"
 }
