@@ -74,7 +74,6 @@ On the second launch, the app should detect and persist the pending crash report
 
 ## 3) Keyboard shortcuts
 
-- `Cmd+F` focus search
 - `Cmd+]` jump to next unclassified transaction
 - `Cmd+Return` apply selected category to all selected rows
 - `Cmd+Z` undo last classification action (session-scoped)

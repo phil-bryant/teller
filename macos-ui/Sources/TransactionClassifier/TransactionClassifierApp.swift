@@ -29,8 +29,6 @@ struct TransactionClassifierApp: App {
                 Divider()
                 Button("Keyboard Shortcuts") {}
                     .disabled(true)
-                Button("Focus Search — Cmd+F") {}
-                    .disabled(true)
                 Button("Next Unclassified — Cmd+]") {}
                     .disabled(true)
                 Button("Undo — Cmd+Z") {}

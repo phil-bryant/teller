@@ -18,6 +18,7 @@ R010  Statement: Enforce shared JSON request semantics and explicit API error pr
 Design: Shared `send(...)` methods set JSON headers, decode typed responses, and raise `APIError.requestFailed` on non-2xx responses.
 Tests:
 - R010-T01: Return a non-2xx response and verify the thrown error includes server-provided message text.
+- R010-T02: Validate a second non-2xx API failure path to preserve explicit server-message propagation behavior.
 
 R040  Statement: Support category lifecycle mutations from the macOS classification UI.
 Design: `ClassificationAPI` declares `createCategory(...)`, `updateCategory(...)`, and `deleteCategory(...)`; `APIClient` implements these by encoding `CategoryMutationRequest` for create/update and targeting `/v1/categories` REST endpoints.
@@ -48,3 +49,4 @@ Tests:
 - 2026-05-09: Added `R045` for 1psa-only write-token resolution and mutation header injection.
 - 2026-05-19: Added R050 (clear-match mutation client methods).
 - 2026-05-19: Added R062 (Mailcart search client method for Match & Classify).
+- 2026-05-23: Added `R010-T02` test traceability mapping.

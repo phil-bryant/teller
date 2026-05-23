@@ -15,9 +15,9 @@ Tests:
 - R005-T01: Enter search text and enable unclassified filter; verify view model reload path is invoked and list narrows accordingly.
 
 R010  Statement: Support keyboard-first interaction shortcuts.
-Design: Toolbar exposes command shortcuts for focus search (`Cmd+F`), next unclassified (`Cmd+]`), and undo (`Cmd+Z`).
+Design: Toolbar exposes command shortcuts for next unclassified (`Cmd+]`) and undo (`Cmd+Z`).
 Tests:
-- R010-T01: Trigger each shortcut and verify corresponding view-model action executes.
+- R010-T01: Trigger each shortcut and verify the corresponding view-model action executes.
 
 R015  Statement: Support detail-pane classification edits for current selection.
 Design: Detail pane provides apply and clear actions bound to selected rows and currently chosen category.

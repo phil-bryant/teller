@@ -10,7 +10,6 @@ private enum AppTab: Hashable {
 struct ContentView: View {
     @Bindable var viewModel: ClassificationViewModel
     @Bindable var connectViewModel: ConnectViewModel
-    @FocusState private var searchFocused: Bool
     @State private var scrollTargetId: String?
     @State private var selectedTab: AppTab
     let autoLoadOnAppear: Bool
@@ -31,7 +30,7 @@ struct ContentView: View {
         // #R001: Render transaction triage UI as an HSplitView with 3 panes (Transactions /
         // #R001: Candidates / Classification + Email) inside the unified Match & Classify tab.
         TabView(selection: $selectedTab) {
-            MatchAndClassifyView(viewModel: viewModel, scrollTargetId: $scrollTargetId, searchFocused: $searchFocused)
+            MatchAndClassifyView(viewModel: viewModel, scrollTargetId: $scrollTargetId)
                 .padding(12)
                 .tabItem { Label("Match & Classify", systemImage: "envelope.badge.shield.half.filled") }
                 .tag(AppTab.matchAndClassify)
@@ -50,9 +49,7 @@ struct ContentView: View {
         .navigationSplitViewStyle(.balanced)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                // #R010: Expose keyboard-first shortcuts for search focus, next-unclassified, and undo.
-                Button("Focus Search") { searchFocused = true }.keyboardShortcut("f", modifiers: .command)
-                    .accessibilityIdentifier("focus-search-button")
+                // #R010: Expose keyboard-first shortcuts for next-unclassified and undo.
                 if selectedTab != .connect {
                     Button("Next Unclassified") { viewModel.nextUnclassified() }.keyboardShortcut("]", modifiers: .command)
                         .accessibilityIdentifier("next-unclassified-button")
@@ -92,11 +89,10 @@ private func initialTab(startTab: String?, processInfo: ProcessInfo = .processIn
 private struct MatchAndClassifyView: View {
     @Bindable var viewModel: ClassificationViewModel
     @Binding var scrollTargetId: String?
-    @FocusState.Binding var searchFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            MatchAndClassifyToolbar(viewModel: viewModel, searchFocused: $searchFocused)
+            MatchAndClassifyToolbar(viewModel: viewModel)
             HSplitView {
                 MatchAndClassifyTransactionsPane(viewModel: viewModel, scrollTargetId: $scrollTargetId)
                     .frame(minWidth: 240, idealWidth: 320)
@@ -145,7 +141,6 @@ private struct MatchAndClassifyView: View {
 
 private struct MatchAndClassifyToolbar: View {
     @Bindable var viewModel: ClassificationViewModel
-    @FocusState.Binding var searchFocused: Bool
 
     var body: some View {
         // #R005: Provide search/filter controls (text search, unclassified toggle, match-state picker,
@@ -153,7 +148,6 @@ private struct MatchAndClassifyToolbar: View {
         HStack(spacing: 8) {
             TextField("Search description / transaction id", text: $viewModel.searchText)
                 .textFieldStyle(.roundedBorder)
-                .focused($searchFocused)
                 .onSubmit { Task { await viewModel.loadAll() } }
                 .accessibilityIdentifier("search-field")
             Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
