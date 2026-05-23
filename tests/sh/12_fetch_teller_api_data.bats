@@ -3,6 +3,7 @@
 # Requirement test-case tags for requirements/12_fetch_teller_api_data-requirements.md
 # #R001-T02: Traceability anchor.
 # #R005-T02: Traceability anchor.
+# #R005-T03: Traceability anchor.
 # #R010-T02: Traceability anchor.
 # #R015-T02: Traceability anchor.
 # #R020-T02: Traceability anchor.
@@ -47,6 +48,12 @@ repo_src() {
   run grep "certificate.pem" "$(repo_src)"
   [ "$status" -eq 0 ]
   run grep "auth_token" "$(repo_src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "client emits explicit missing-token error code" {
+  #R005
+  run grep "auth_token.missing" "$(repo_src)"
   [ "$status" -eq 0 ]
 }
 

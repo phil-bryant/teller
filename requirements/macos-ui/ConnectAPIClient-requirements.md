@@ -15,9 +15,10 @@ Tests:
 - R005-T01: Call `storeToken(...)` twice in add mode with the same base hint and verify second output uses a distinct suffixed filename.
 
 R010  Statement: Reconnect mode must update only the selected enrollment context.
-Design: `storeToken(...)` in `reconnect` mode requires a matching `targetKey` and writes token/enrollment updates to that context's resolved file paths.
+Design: `storeToken(...)` in `reconnect` mode requires a matching `targetKey`, writes to only that context's resolved files, and refreshes enrollment ID from identity data when reconnect payload omits it.
 Tests:
 - R010-T01: Create two local contexts, reconnect one by key, and verify only selected token/enrollment files change.
+- R010-T02: Reconnect with empty enrollment ID and verify stale enrollment file contents are replaced.
 
 R015  Statement: Deletion must move only selected local context files to local Trash.
 Design: `deleteContext(targetKey:)` resolves one context, moves token and enrollment files into `~/.Trash/teller-enrollment-removals` with timestamped names, and returns remaining contexts.
@@ -43,3 +44,4 @@ Tests:
 ## Changelog
 
 - 2026-05-02: Added Swift replacement requirements for connect context/session/storage behavior previously documented for shell/token-server flows.
+- 2026-05-23: Added reconnect enrollment-ID refresh requirement to prevent stale disconnected enrollment reuse.

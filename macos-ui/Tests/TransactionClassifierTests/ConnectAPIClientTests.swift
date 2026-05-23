@@ -5,6 +5,7 @@
 // #R001-T01: Traceability anchor.
 // #R005-T01: Traceability anchor.
 // #R010-T01: Traceability anchor.
+// #R010-T02: Traceability anchor.
 // #R015-T01: Traceability anchor.
 // #R020-T01: Traceability anchor.
 // #R025-T01: Traceability anchor.
@@ -46,7 +47,7 @@ final class ConnectAPIClientTests: XCTestCase {
     func testStoreTokenAddWritesSuffixedFiles() async throws {
         let home = try makeTempHome()
         let client = makeClient(home: home)
-        let response = try await client.storeToken(
+        let first = try await client.storeToken(
             ConnectStoreTokenRequest(
                 token: "token_abc",
                 enrollmentId: "enr_new",
@@ -55,10 +56,23 @@ final class ConnectAPIClientTests: XCTestCase {
                 institutionIdHint: "inst_new"
             )
         )
-        XCTAssertTrue(response.ok)
-        XCTAssertTrue(response.path.hasSuffix("auth_token_inst_new.json"))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: response.path))
-        let saved = try Data(contentsOf: URL(fileURLWithPath: response.path))
+        let second = try await client.storeToken(
+            ConnectStoreTokenRequest(
+                token: "token_xyz",
+                enrollmentId: "enr_newer",
+                action: "add",
+                targetKey: "",
+                institutionIdHint: "inst_new"
+            )
+        )
+        XCTAssertTrue(first.ok)
+        XCTAssertTrue(second.ok)
+        XCTAssertTrue(first.path.hasSuffix("auth_token_inst_new.json"))
+        XCTAssertTrue(second.path.hasSuffix("auth_token_inst_new_1.json"))
+        XCTAssertNotEqual(first.path, second.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: first.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: second.path))
+        let saved = try Data(contentsOf: URL(fileURLWithPath: first.path))
         XCTAssertTrue(String(decoding: saved, as: UTF8.self).contains("token_abc"))
     }
 

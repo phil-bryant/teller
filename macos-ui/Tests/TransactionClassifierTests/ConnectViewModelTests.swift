@@ -61,7 +61,7 @@ actor MockConnectAPI: ConnectAPI {
     func startSession(action: ConnectAction, selectedContext: ConnectContext?) async throws -> ConnectStartSession {
         if action == .reconnect {
             guard let selectedContext, selectedContext.hasEnrollmentId else {
-                throw ConnectServiceError.validation("Selected context has no enrollment_id.")
+                throw ConnectServiceError.validation("The selected connection cannot be edited.")
             }
             return ConnectStartSession(
                 action: action,
@@ -116,11 +116,12 @@ final class ConnectViewModelTests: XCTestCase {
         await vm.loadAll()
         XCTAssertEqual(vm.contexts.count, 1)
         XCTAssertEqual(vm.selectedContextKey, "default")
-        XCTAssertTrue(vm.statusText.contains("/tmp/auth_token.json"))
+        XCTAssertEqual(vm.statusText, "Connections ready.")
     }
 
     @MainActor
-    func testReconnectUsesSelectedContextKey() async {
+    func testEditStartsSessionForSelectedConnection() async {
+        // #R005
         let api = MockConnectAPI(
             status: ConnectStatusResponse(token_saved: false, saved_path: "", error: ""),
             contexts: [sampleContext(key: "suffix:inst_beta", institution: "inst_beta", enrollment: "enr_beta")]
@@ -128,16 +129,28 @@ final class ConnectViewModelTests: XCTestCase {
         let vm = ConnectViewModel(api: api)
         await vm.loadAll()
         vm.selectedContextKey = "suffix:inst_beta"
-        vm.manualToken = "token_new"
-        vm.manualEnrollmentId = "enr_beta"
-        await vm.saveManualToken(action: .reconnect)
-        let saved = await api.recordedLastStored()
-        XCTAssertEqual(saved?.action, "reconnect")
-        XCTAssertEqual(saved?.targetKey, "suffix:inst_beta")
+        await vm.startConnect(action: .reconnect)
+        XCTAssertEqual(vm.activeSession?.action, .reconnect)
+        XCTAssertEqual(vm.activeSession?.targetKey, "suffix:inst_beta")
+    }
+
+    @MainActor
+    func testAddStartsAddSession() async {
+        // #R005
+        let api = MockConnectAPI(
+            status: ConnectStatusResponse(token_saved: false, saved_path: "", error: ""),
+            contexts: [sampleContext()]
+        )
+        let vm = ConnectViewModel(api: api)
+        await vm.loadAll()
+        await vm.startConnect(action: .add)
+        XCTAssertEqual(vm.activeSession?.action, .add)
+        XCTAssertEqual(vm.activeSession?.targetKey, "")
     }
 
     @MainActor
     func testDeleteSelectedRemovesContext() async {
+        // #R010
         let api = MockConnectAPI(
             status: ConnectStatusResponse(token_saved: false, saved_path: "", error: ""),
             contexts: [sampleContext(key: "default"), sampleContext(key: "suffix:inst_beta", institution: "inst_beta", enrollment: "enr_beta")]
