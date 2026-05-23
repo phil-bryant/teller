@@ -9,22 +9,6 @@
             [   AF    !     ] h=-&- v=-&- SwiftUI.ListCoreClipView 0xaddr f=(...) b=(-)
               [   AF    !     ] h=-&- v=-&- SwiftUI.SwiftUIOutlineListView 0xaddr f=(...) b=(-)
             [  HAF    ! W   ] h=--- v=--- NSScroller 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
-          [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
-            [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr "configured" f=(...) b=(-)
-              [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
-              [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
-        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashSecureFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
-          [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitSecureTextField 0xaddr f=(...) b=(-)
-            [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
-            [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
-        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
-          [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
-            [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
-            [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
-        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
-          [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
-            [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
-            [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
       [   AF    !     ] h=--- v=--- NSSegmentedControl 0xaddr f=(...) b=(-)
         [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_22AppKitSegmentedControl_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
 A=autoresizesSubviews, C=canDrawConcurrently, D=needsDisplay, F=flipped, G=gstate, H=hidden (h=by ancestor), L=needsLayout (l=child needsLayout), U=needsUpdateConstraints (u=child needsUpdateConstraints), O=opaque, P=preservesContentDuringLiveResize, S=scaled/rotated, W=wantsLayer (w=ancestor wantsLayer), V=needsVibrancy (v=allowsVibrancy), #=has surface

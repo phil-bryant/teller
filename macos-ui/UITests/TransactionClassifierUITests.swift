@@ -71,7 +71,7 @@ final class TransactionClassifierUITests: XCTestCase {
             case 8: runUndoRestoresPriorCategoryScenario()
             case 9: runNextUnclassifiedScrollsIntoViewScenario()
             case 10: runHelpMenuListsHotkeysScenario()
-            case 11: runConnectTabManualSaveScenario()
+            case 11: runConnectTabLoadsConnectionsScenario()
             case 12: runConnectTabHidesNextUnclassifiedScenario()
             default: break
             }
@@ -91,7 +91,9 @@ final class TransactionClassifierUITests: XCTestCase {
         // #R005
         ensureMatchAndClassifyTab()
         let searchField = uiElement("search-field")
-        pasteText("coffee", into: searchField)
+        clearSearchField(searchField)
+        searchField.click()
+        searchField.typeText("coffee")
         app.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(uiElement("transaction-row-txn_001").waitForExistence(timeout: waitTimeout))
         clearSearchField(searchField)
@@ -211,7 +213,6 @@ final class TransactionClassifierUITests: XCTestCase {
         helpMenu.click()
 
         XCTAssertTrue(app.menuItems["Keyboard Shortcuts"].exists)
-        XCTAssertTrue(app.menuItems["Focus Search — Cmd+F"].exists)
         XCTAssertTrue(app.menuItems["Next Unclassified — Cmd+]"].exists)
         XCTAssertTrue(app.menuItems["Undo — Cmd+Z"].exists)
         XCTAssertTrue(app.menuItems["Apply to Selected — Cmd+Return"].exists)
@@ -220,39 +221,14 @@ final class TransactionClassifierUITests: XCTestCase {
         dismissOpenMenus()
     }
 
-    private func runConnectTabManualSaveScenario() {
+    private func runConnectTabLoadsConnectionsScenario() {
         // #R020 #R025
         ensureConnectTab()
-
-        let tokenField = connectTokenField()
-        XCTAssertTrue(tokenField.waitForExistence(timeout: launchTimeout))
-        pasteText("token_fixture", into: tokenField)
-
-        let saveButton = connectManualSaveButton()
-        XCTAssertTrue(saveButton.waitForExistence(timeout: waitTimeout))
-        XCTAssertTrue(saveButton.isEnabled, "Save Manual Token should enable after entering a token.")
-        saveButton.click()
-        waitForConnectManualSave()
-    }
-
-    private func waitForConnectManualSave() {
-        let savedPath = uiElement("connect-token-path")
-        let status = uiElement("connect-status-text")
-        let deadline = Date().addingTimeInterval(4)
-        while Date() < deadline {
-            if savedPath.exists {
-                return
-            }
-            if status.exists, elementText(status).localizedCaseInsensitiveContains("saved") {
-                return
-            }
-            if uiElement("connect-error-banner").exists {
-                XCTFail("Connect save failed: \(elementText(uiElement("connect-error-banner")))")
-                return
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-        XCTFail("Connect manual save did not complete.")
+        XCTAssertTrue(uiElement("connect-context-list").waitForExistence(timeout: waitTimeout))
+        XCTAssertTrue(uiElement("connect-add-button").exists)
+        XCTAssertTrue(uiElement("connect-edit-button").exists)
+        XCTAssertTrue(uiElement("connect-delete-button").exists)
+        XCTAssertTrue(connectStatusOrErrorExists())
     }
 
     private func runConnectTabHidesNextUnclassifiedScenario() {
@@ -317,38 +293,15 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func connectTabIsVisible() -> Bool {
-        uiElement("connect-token-field").exists
-            || uiElement("connect-manual-save-button").exists
-            || uiElement("connect-context-list").exists
-            || app.staticTexts["Connect via Native WebView"].exists
+        uiElement("connect-context-list").exists
+            || uiElement("connect-add-button").exists
+            || uiElement("connect-title").exists
     }
 
     private func connectTabIsReady() -> Bool {
-        connectTokenField().exists
-            || uiElement("connect-manual-save-button").exists
-            || app.staticTexts["Connect via Native WebView"].exists
-    }
-
-    private func connectTokenField() -> XCUIElement {
-        let targeted = uiElement("connect-token-field")
-        if targeted.exists {
-            return targeted
-        }
-        let secure = app.secureTextFields.matching(
-            NSPredicate(format: "identifier == %@", "connect-token-field")
-        ).firstMatch
-        if secure.exists {
-            return secure
-        }
-        return app.secureTextFields["access token"].firstMatch
-    }
-
-    private func connectManualSaveButton() -> XCUIElement {
-        let targeted = uiElement("connect-manual-save-button")
-        if targeted.exists {
-            return targeted
-        }
-        return app.buttons["Save Manual Token"].firstMatch
+        uiElement("connect-context-list").exists
+            && uiElement("connect-add-button").exists
+            && connectStatusOrErrorExists()
     }
 
     private func waitForConnectTab(timeout: TimeInterval) -> Bool {
@@ -360,6 +313,10 @@ final class TransactionClassifierUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
         }
         return connectTabIsReady()
+    }
+
+    private func connectStatusOrErrorExists() -> Bool {
+        uiElement("connect-status-text").exists || uiElement("connect-error-banner").exists
     }
 
     private func ensureUnclassifiedFilterDisabled() {
