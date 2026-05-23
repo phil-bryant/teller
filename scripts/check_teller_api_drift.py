@@ -30,10 +30,27 @@ def read_token(path: Path) -> str:
     return str(payload.get("current", "")).strip()
 
 
-def resolve_credentials() -> dict[str, str]:
+def discover_token_candidates() -> list[tuple[str, str]]:
+    candidates: list[tuple[str, str]] = []
+    default_token = read_token(HOME_TELLER_DIR / "auth_token.json")
+    if default_token:
+        candidates.append(("default", default_token))
+
+    if HOME_TELLER_DIR.is_dir():
+        for token_path in sorted(HOME_TELLER_DIR.glob("auth_token_*.json")):
+            suffix = token_path.stem[len("auth_token_"):]
+            token = read_token(token_path)
+            if token:
+                candidates.append((suffix, token))
+    return candidates
+
+
+def resolve_credentials(institution_id: str = "") -> dict[str, Any]:
     cert_path = os.environ.get("TELLER_CERT_PATH", "").strip()
     key_path = os.environ.get("TELLER_KEY_PATH", "").strip()
     token = os.environ.get("TELLER_ACCESS_TOKEN", "").strip()
+    token_source = "env:TELLER_ACCESS_TOKEN" if token else ""
+    warnings: list[str] = []
 
     if not cert_path:
         candidate = HOME_TELLER_DIR / "certificate.pem"
@@ -44,12 +61,40 @@ def resolve_credentials() -> dict[str, str]:
         if candidate.is_file():
             key_path = str(candidate)
     if not token:
-        token = read_token(HOME_TELLER_DIR / "auth_token.json")
+        candidates = discover_token_candidates()
+        if institution_id:
+            filtered = [item for item in candidates if item[0] == institution_id]
+            if not filtered:
+                warnings.append(
+                    f"No token candidates matched --institution-id={institution_id}. "
+                    "Set TELLER_ACCESS_TOKEN or choose a matching suffix."
+                )
+            elif len(filtered) > 1:
+                warnings.append(
+                    f"Multiple token candidates matched --institution-id={institution_id}; "
+                    "set TELLER_ACCESS_TOKEN to disambiguate."
+                )
+            else:
+                token_source, token = filtered[0]
+        else:
+            if len(candidates) == 1:
+                token_source, token = candidates[0]
+            elif len(candidates) > 1:
+                warnings.append(
+                    "Multiple local Teller token files were found. "
+                    "Set TELLER_ACCESS_TOKEN or use --institution-id <suffix>."
+                )
 
-    return {"cert_path": cert_path, "key_path": key_path, "token": token}
+    return {
+        "cert_path": cert_path,
+        "key_path": key_path,
+        "token": token,
+        "token_source": token_source,
+        "warnings": warnings,
+    }
 
 
-def run_live_canary(timeout_seconds: int) -> dict[str, Any]:
+def run_live_canary(timeout_seconds: int, institution_id: str = "") -> dict[str, Any]:
     try:
         import requests
     except ImportError:
@@ -60,13 +105,13 @@ def run_live_canary(timeout_seconds: int) -> dict[str, Any]:
             "warnings": ["Skipping live canary: Python package 'requests' is not installed."],
         }
 
-    credentials = resolve_credentials()
+    credentials = resolve_credentials(institution_id=institution_id)
     cert_path = credentials["cert_path"]
     key_path = credentials["key_path"]
     token = credentials["token"]
 
     checks: list[dict[str, Any]] = []
-    warnings: list[str] = []
+    warnings: list[str] = list(credentials.get("warnings", []))
 
     if not cert_path or not key_path:
         return {
@@ -105,7 +150,7 @@ def run_live_canary(timeout_seconds: int) -> dict[str, Any]:
         run_check("accounts", "/accounts", auth_token=token)
         run_check("identity", "/identity", auth_token=token)
     else:
-        warnings.append("Skipping /accounts and /identity checks: TELLER_ACCESS_TOKEN is unavailable.")
+        warnings.append("Skipping /accounts and /identity checks: no usable Teller auth token was resolved.")
 
     failed = [check for check in checks if check["status"] == "fail"]
     status = "fail" if failed else ("warn" if warnings else "pass")
@@ -175,6 +220,11 @@ def parse_args() -> argparse.Namespace:
         default=15,
         help="HTTP timeout for live canary requests.",
     )
+    parser.add_argument(
+        "--institution-id",
+        default="",
+        help="Token suffix to use when multiple local auth_token_<suffix>.json files exist.",
+    )
     return parser.parse_args()
 
 
@@ -209,7 +259,7 @@ def main() -> int:
     output_json.parent.mkdir(parents=True, exist_ok=True)
     output_text.parent.mkdir(parents=True, exist_ok=True)
 
-    live_result = run_live_canary(timeout_seconds=args.timeout_seconds)
+    live_result = run_live_canary(timeout_seconds=args.timeout_seconds, institution_id=args.institution_id)
     if live_result["mode"] == "fallback":
         fallback_result = run_fallback_checks()
         merged_checks = fallback_result["checks"]

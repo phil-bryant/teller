@@ -44,6 +44,31 @@ final class ConnectAPIClientTests: XCTestCase {
         XCTAssertTrue(contexts.contains { $0.key == "suffix:inst_beta" })
     }
 
+    func testFetchStatusUsesSuffixTokenWhenDefaultMissing() async throws {
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        try Data("{\"current\":\"token_beta\"}\n".utf8).write(to: tellerDir.appendingPathComponent("auth_token_inst_beta.json"))
+        try Data("enr_beta\n".utf8).write(to: tellerDir.appendingPathComponent("enrollment_id_inst_beta.txt"))
+
+        let client = makeClient(home: home)
+        let status = try await client.fetchStatus()
+        XCTAssertTrue(status.token_saved)
+        XCTAssertTrue(status.saved_path.hasSuffix("auth_token_inst_beta.json"))
+    }
+
+    func testFetchStatusReturnsFalseWhenNoValidTokenExists() async throws {
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        try Data("{\"current\":\"\"}\n".utf8).write(to: tellerDir.appendingPathComponent("auth_token.json"))
+
+        let client = makeClient(home: home)
+        let status = try await client.fetchStatus()
+        XCTAssertFalse(status.token_saved)
+        XCTAssertTrue(status.saved_path.hasSuffix("auth_token.json"))
+    }
+
     func testStoreTokenAddWritesSuffixedFiles() async throws {
         let home = try makeTempHome()
         let client = makeClient(home: home)

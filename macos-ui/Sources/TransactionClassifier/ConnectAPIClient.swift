@@ -40,12 +40,32 @@ actor ConnectAPIClient: ConnectAPI {
     }
 
     func fetchStatus() async throws -> ConnectStatusResponse {
-        let hasToken = fileManager.fileExists(atPath: authTokenFile.path)
-        return ConnectStatusResponse(
-            token_saved: hasToken,
-            saved_path: authTokenFile.path,
-            error: lastError
-        )
+        do {
+            let contexts = try discoverLocalContexts()
+            for context in contexts {
+                let token = try tokenFromFile(path: URL(fileURLWithPath: context.token_path))
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !token.isEmpty {
+                    return ConnectStatusResponse(
+                        token_saved: true,
+                        saved_path: context.token_path,
+                        error: lastError
+                    )
+                }
+            }
+            return ConnectStatusResponse(
+                token_saved: false,
+                saved_path: authTokenFile.path,
+                error: lastError
+            )
+        } catch {
+            lastError = error.localizedDescription
+            return ConnectStatusResponse(
+                token_saved: false,
+                saved_path: authTokenFile.path,
+                error: lastError
+            )
+        }
     }
 
     func fetchContexts() async throws -> [ConnectContext] {

@@ -159,6 +159,7 @@ def _load_metadata_contexts() -> List[dict]:
                         "enrollment_id": row.get("enrollment_id", ""),
                         "token": row.get("token", ""),
                         "institution_id": row.get("institution_id", ""),
+                        "source": "metadata",
                     })
     return contexts
 
@@ -170,6 +171,7 @@ def _load_suffix_contexts() -> List[dict]:
             "enrollment_id": _read_text_file(TELLER_DIR / f"enrollment_id_{suffix}.txt"),
             "token": _read_token_file(token_file),
             "institution_id": suffix,
+            "source": "suffix",
         })
     return contexts
 
@@ -199,9 +201,15 @@ def _dedupe_contexts(contexts: List[dict]) -> List[dict]:
         enrollment_id = row.get("enrollment_id", "")
         institution_id = row.get("institution_id", "")
         token = row.get("token", "")
+        source = row.get("source", "")
         key = enrollment_id or f"{institution_id}:{token[:12]}"
         if key:
-            deduped[key] = {"enrollment_id": enrollment_id, "token": token, "institution_id": institution_id}
+            deduped[key] = {
+                "enrollment_id": enrollment_id,
+                "token": token,
+                "institution_id": institution_id,
+                "source": source,
+            }
     return list(deduped.values())
 
 def _fetch_context_data(client: TellerAPIClient, institution_id: str) -> tuple:
@@ -230,11 +238,15 @@ def _fetch_context_data(client: TellerAPIClient, institution_id: str) -> tuple:
 
 def _build_enrollment_contexts(institution_id: str) -> List[dict]:
     #R020: Merge default/metadata/suffix enrollment contexts, then dedupe and optionally scope by institution.
-    contexts = [{
-        "enrollment_id": _read_text_file(TELLER_DIR / "enrollment_id.txt"),
-        "token": _read_token_file(TELLER_DIR / "auth_token.json"),
-        "institution_id": "",
-    }]
+    contexts = []
+    default_token = _read_token_file(TELLER_DIR / "auth_token.json")
+    if default_token:
+        contexts.append({
+            "enrollment_id": _read_text_file(TELLER_DIR / "enrollment_id.txt"),
+            "token": default_token,
+            "institution_id": "",
+            "source": "default",
+        })
     contexts.extend(_load_metadata_contexts())
     contexts.extend(_load_suffix_contexts())
     contexts = _dedupe_contexts(contexts)
@@ -242,10 +254,10 @@ def _build_enrollment_contexts(institution_id: str) -> List[dict]:
         matched = [row for row in contexts if row.get("institution_id") == institution_id]
         if not matched:
             inferred = _infer_enrollment_ids_from_db(institution_id)
-            matched = [{"enrollment_id": enrollment_id, "token": "", "institution_id": institution_id}
+            matched = [{"enrollment_id": enrollment_id, "token": "", "institution_id": institution_id, "source": "inferred"}
                        for enrollment_id in inferred]
         contexts = matched if matched else contexts
-    contexts = contexts if contexts else [{"enrollment_id": "", "token": "", "institution_id": ""}]
+    contexts = contexts if contexts else [{"enrollment_id": "", "token": "", "institution_id": "", "source": "fallback"}]
     return contexts
 
 def main():
@@ -270,15 +282,26 @@ def main():
                 raw_balances_by_account.update(bals_by_account)
             except TellerAPIError as exc:
                 errors.append(
-                    {"institution_id": context.get("institution_id", ""), "enrollment_id": context.get("enrollment_id", ""),
-                     "status_code": exc.status_code, "message": exc.message, "code": exc.code}
+                    {
+                        "institution_id": context.get("institution_id", ""),
+                        "enrollment_id": context.get("enrollment_id", ""),
+                        "source": context.get("source", "unknown"),
+                        "status_code": exc.status_code,
+                        "message": exc.message,
+                        "code": exc.code,
+                    }
                 )
         if not raw_identities and errors:
             first = errors[0]
             raise TellerAPIError(message=first["message"], code=first["code"], status_code=first["status_code"])
         if errors:
             for err in errors:
-                print(f"Enrollment failed: institution_id={err['institution_id']} enrollment_id={err['enrollment_id']}")
+                print(
+                    "Enrollment failed: "
+                    f"institution_id={err['institution_id']} "
+                    f"enrollment_id={err['enrollment_id']} "
+                    f"source={err.get('source', 'unknown')}"
+                )
                 print(f"  status={err['status_code']} code={err['code']} message={err['message']}")
         #R025: Persist fetched Teller data unless running in dry-run mode.
         if not args.dry_run:
