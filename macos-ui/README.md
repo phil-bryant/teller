@@ -2,7 +2,7 @@
 
 Native macOS UI for reclassifying `teller.transaction` records into `teller.nys_snw_category`.
 
-This app now also includes a native **Connect** tab for local Teller enrollment management (capture, reconnect, add, delete, and manual token save flows backed by the local connect token server).
+This app now also includes a native **Connect** tab for local Teller enrollment management (capture, reconnect, add, delete) backed by an in-process file service (`~/.teller`) and native WebView flow.
 
 ## 1) Start API
 
@@ -16,6 +16,9 @@ Defaults to `http://127.0.0.1:8787`. Override with:
 
 - `TELLER_CLASSIFIER_API_HOST`
 - `TELLER_CLASSIFIER_API_PORT`
+- `TELLER_CLASSIFIER_API_URL` (used by the macOS app's API client; defaults to `http://127.0.0.1:8787`)
+
+Write operations require `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` to be resolvable (used by the API launcher and mutation endpoints).
 
 ## 2) Launch app
 
@@ -77,6 +80,7 @@ On the second launch, the app should detect and persist the pending crash report
 - `Cmd+]` jump to next unclassified transaction
 - `Cmd+Return` apply selected category to all selected rows
 - `Cmd+Z` undo last classification action (session-scoped)
+- `Cmd+S` save category in Manage Categories tab
 
 ## 4) Verification helpers
 
@@ -114,6 +118,7 @@ Snapshot tests live in `Tests/TransactionClassifierSnapshotTests` and validate k
 - error banner
 - mixed-category selection
 - save-state indicators
+- Connect tab (ready + error states)
 
 XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` as a **single-session** suite (`testMacOSUISmokeSuite`): one app launch, 12 ordered requirement-driven scenarios (Match & Classify shell, search, unclassified filter, classification/undo, scroll-into-view, Help menu, Connect tab), then one teardown. Optional positional selectors (e.g. `./10_run_macos_ui_regression_tests.sh 3,6`) set `XCUITEST_STEPS` to run a subset within the same session.
 

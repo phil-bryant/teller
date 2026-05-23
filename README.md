@@ -1,13 +1,13 @@
 # teller
 
-Local PostgreSQL schema setup and management scripts for Teller data.
+Local-first Teller data platform: PostgreSQL schema + ingest scripts + classification API + native macOS review app.
 
 ## Script Execution Order
 
 Run setup scripts in numeric order. The workflow is designed around:
 
 - `01_install_prerequisites.sh`
-  - Ensures Homebrew, required tooling (including `shellcheck` and `clamscan` from ClamAV), `1psa`, and `pg_install` are present.
+  - Ensures Homebrew, required tooling (`shellcheck`, `swiftlint`, `bats`, `gitleaks`, `clamscan`, OWASP ZAP), `1psa`, and sibling repos (`pg_install`, `pgtap`) are present.
   - Ensures Xcode first-launch and license acceptance are completed (using `1psa` for sudo credential input when needed).
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
@@ -25,7 +25,7 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `15_verify_classification_persistence.sh`
 - `16_run_dast.sh`
 - `17_run_classification_macos-ui.sh`
-- `18_configure_teller_io.sh`
+- `18_run_all_checks_parallel.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -45,6 +45,8 @@ source ./teller-venv/bin/activate
 ./04_run_dependency_freshness_checks.sh
 ./05_run_av_checks.sh
 ./06_run_sast.sh
+cp db-profiles-EXAMPLE.json db-profiles.json
+# Edit db-profiles.json default_profile / 1psa_or_env_item for your environment.
 ./07_deploy_database.sh
 ./08_verify_deploy_database.sh
 ./09_run_unit_tests.sh
@@ -56,8 +58,18 @@ source ./teller-venv/bin/activate
 ./15_verify_classification_persistence.sh
 ./16_run_dast.sh
 ./17_run_classification_macos-ui.sh
-./18_configure_teller_io.sh
+./18_run_all_checks_parallel.sh
 ```
+
+Before `./07_deploy_database.sh`, ensure PostgreSQL is installed and running for your selected profile target (for local runs, start your local server/service first).
+
+## Repository Layout
+
+- `teller/` - Python package (ORM models, DB profile/engine, ingest persistence, FastAPI classification API, Mailcart proxy client).
+- `macos-ui/` - SwiftUI desktop app (`TransactionClassifier`) for Match Review, category management, and Connect enrollment flows.
+- `sql/postgres/` - canonical schema objects, triggers, and views for the `teller` schema.
+- `tests/` - `py/` (`unittest`), `sh/` (`bats`), `sql/` (`pgTAP`) plus `macos-ui` snapshot/XCUITest lanes.
+- `requirements/` - requirements traceability docs mapped to source `#R...` tags.
 
 ## Testing and Verification
 
@@ -73,7 +85,7 @@ Dependency freshness automation runs via `04_run_dependency_freshness_checks.sh`
 
 ### 1) Requirements Traceability Verification
 
-Verifies every requirement ID in `requirements/*.md` is mapped to matching `#R...` tags in referenced source files.
+Verifies every requirement ID in `requirements/**/*-requirements.md` is mapped to matching `#R...` tags in referenced source files.
 
 ```bash
 ./00_verify_requirements_traceability.sh
@@ -87,17 +99,26 @@ Optional single-pair mode:
 
 ### 2) Unit Tests
 
-Runs Python `unittest` coverage for all `tests/test*.py` modules.
+Runs the unified local unit lane orchestrator (`09`) across shell, Python, SQL, and Swift test suites.
 
 ```bash
 ./09_run_unit_tests.sh
 ```
 
-Equivalent direct unittest invocation:
+Lane toggles (all default `true`):
+
+- `RUN_SHELL_TESTS`
+- `RUN_PYTHON_TESTS`
+- `RUN_SQL_TESTS`
+- `RUN_SWIFT_TESTS`
+
+Equivalent direct Python unittest invocation:
 
 ```bash
-python3 -m unittest discover tests
+python3 -m unittest discover tests/py
 ```
+
+Shell tests (`tests/sh`) run via `bats` in this lane. See `tests/sh/README.md` for stubbing conventions and scope boundaries.
 
 Optional macOS UI regression lane:
 
@@ -109,7 +130,7 @@ RUN_MACOS_UI_REGRESSION_TESTS=true ./09_run_unit_tests.sh
 
 Runs deterministic snapshot tests and macOS XCUITest smoke flows for `macos-ui`.
 
-This lane can run before Teller configuration (`18`) and Connect enrollment in the native app.
+This lane can run before full Connect enrollment and before script `18`.
 
 ```bash
 ./10_run_macos_ui_regression_tests.sh
@@ -125,13 +146,15 @@ Common flags:
 
 This checks API-to-database persistence by writing one classification via API and reading it back from Postgres.
 
-1. Start the API in one terminal:
+The verifier auto-starts the API by default if `/health` is unavailable (`CLASSIFICATION_PERSISTENCE_START_API=true`).
+
+1. Start the API in one terminal (optional):
 
 ```bash
 ./14_run_classification_api.py
 ```
 
-2. Run the verifier in another terminal:
+2. Run the verifier:
 
 ```bash
 ./15_verify_classification_persistence.sh
@@ -143,15 +166,15 @@ Strict/CI-style mode requiring explicit IDs:
 TXN_ID=txn_xxx CATEGORY_ID=123 ./15_verify_classification_persistence.sh --require-env-ids
 ```
 
+Mutation endpoints require a write token from the `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` (checked by `14_run_classification_api.py`).
+
 ### 4) Built-In Smoke Verifications in Setup Scripts
 
-These checks run automatically as part of existing setup/token workflows:
+These checks run as part of existing app/setup workflows:
 
-- `./18_configure_teller_io.sh`
-  - Verifies Teller mTLS connectivity using `GET /institutions`.
-  - If `~/.teller/auth_token.json` exists, also checks `GET /accounts`.
 - `./17_run_classification_macos-ui.sh`
-  - Opens the native macOS app; Connect tab now owns enrollment add/reconnect/delete and token persistence.
+  - Builds and launches the native macOS app; Connect tab owns enrollment add/reconnect/delete and token persistence.
+  - Connect setup smoke checks are handled in-app by `TellerSetupService` (`GET /institutions`, and optionally `GET /accounts` when token is present).
 
 ### 5) Security Scanning (SAST/DAST)
 
@@ -257,8 +280,7 @@ PostgreSQL CVE policy files:
 
 Triage expectations:
 
-- Patch/minor Dependabot PRs: review CI output, run `./09_run_unit_tests.sh`, then merge when green.
-- Major updates: addressed manually after compatibility validation; these are notify-only and not auto-opened by Dependabot config.
+- Dependency freshness failures: review `dependency-freshness.*` artifacts, validate compatibility, and rerun `./09_run_unit_tests.sh`.
 - Teller drift failures: fix credentials or investigate endpoint/schema behavior changes before release.
 
 ## API Reference Docs
@@ -267,7 +289,7 @@ Local Teller API reference notes now live under `docs/teller-api-reference/`.
 
 ## Secret Sources
 
-`secrets.txt` is archival context only and is not read by scripts.
+`archive/legacy/secrets.txt` is archival context only and is not read by scripts.
 
 Active secret and credential sources are:
 
@@ -277,29 +299,31 @@ Active secret and credential sources are:
   - `private_key.pem`
   - `auth_token.json` and optional `auth_token_<suffix>.json`
   - `enrollment_id.txt` and optional `enrollment_id_<suffix>.txt`
+  - `db_profiles.json` (canonical shared DB profile location)
 - `1psa` items used by database and setup scripts:
   - `localhost_postgres_postgres` / `localhost_postgres_teller` by default for DB scripts
-  - optional Teller item lookups in `18_configure_teller_io.sh`
-- Environment variables passed to scripts (for example `TELLER_APPLICATION_ID`, `TELLER_ACCESS_TOKEN`, `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`)
+  - `TELLER_CLASSIFIER_WRITE_TOKEN` for classification API writes
+- Environment variables passed to scripts (for example `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`, `TELLER_DB_PROFILE`, `TELLER_DB_PROFILE_FILE`)
 - `~/.env` for local runtime settings loaded by `12_fetch_teller_api_data.py`
 
 ## What Each Core Script Does
 
 - `01_install_prerequisites.sh`
   - Ensures Homebrew is installed.
-  - Ensures `go`, `git`, `bats`, `swiftlint`, `shellcheck`, and `clamscan` are available.
-  - Installs `1psa` (from `../1psa`) and clones `pg_install` into `../pg_install`.
+  - Ensures required tooling is available (`go`, `git`, `bats`, `swiftlint`, `shellcheck`, `clamscan`, `gitleaks`, `perl`/`cpanm`, OWASP ZAP).
+  - Installs `1psa` (from `../1psa`) and clones `pg_install` and `pgtap` siblings.
 - `02_create_venv.sh`
   - Creates a Python virtual environment named `<repo>-venv`.
 - `03_load_requirements.sh`
-  - Installs dependencies from `requirements.txt` (or CPU/GPU variant files).
+  - Installs dependencies from `requirements.txt` (supports optional `requirements-cpu.txt` / `requirements-gpu.txt` if present).
   - Must be run with the project virtual environment active.
 - `05_run_av_checks.sh`
   - Runs dedicated ClamAV antivirus checks (signature freshness, recursive scan, optional one-time `freshclam` retry, and AV gating).
 - `06_run_sast.sh`
   - Runs local SAST checks (Semgrep, Bandit, pip-audit, gitleaks, detect-secrets, ShellCheck, and SwiftLint for `macos-ui`).
 - `09_run_unit_tests.sh`
-  - Runs unit tests with `python3 -m unittest discover tests`.
+  - Runs shell (`bats`), Python (`unittest` in `tests/py`), SQL (`pgTAP` via `pg_prove`), and Swift (`swift test`) lanes.
+  - Supports lane toggles with `RUN_SHELL_TESTS`, `RUN_PYTHON_TESTS`, `RUN_SQL_TESTS`, and `RUN_SWIFT_TESTS`.
 - `07_deploy_database.sh`
   - Creates/configures the `prod` database.
   - Applies SQL schema objects in dependency order from `sql/postgres/`.
@@ -310,24 +334,24 @@ Active secret and credential sources are:
   - Supports selective gates with `RUN_SNAPSHOT_TESTS`, `SNAPSHOT_RECORD`, and `RUN_XCUITESTS`.
 - `11_verify_macos_crash_reporter.sh`
   - Validates crash-reporter behavior and expected failure metadata for `macos-ui`.
-- `18_configure_teller_io.sh`
-  - Ensures `~/.teller` contains required Teller credentials/config files.
-  - Supports importing Teller secrets from environment variables or `1psa`.
-  - Runs Teller API smoke tests (`/institutions`, optionally `/accounts`).
 - `12_fetch_teller_api_data.py`
   - Runs Teller API client operations.
 - `13_backfill_bank_statements.py`
   - Backfills statements data.
 - `14_run_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
+  - Requires `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` before serving.
 - `15_verify_classification_persistence.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `16_run_dast.sh`
   - Runs DAST checks (Schemathesis + OWASP ZAP quick scan and related hardening checks) against running/local API targets.
 - `17_run_classification_macos-ui.sh`
-  - Runs the local macOS UI app wrapper (`swift run TransactionClassifier`) from the repo root.
+  - Builds and launches `macos-ui/.build/debug/TransactionClassifier` from the repo root.
   - Connect tab hosts native Teller Connect enrollment/reconnect/add/delete (WebView-backed, no standalone localhost server).
+- `18_run_all_checks_parallel.sh`
+  - Runs local parallel quality/security gate lanes and aggregates reports under `.parallel-checks-reports/`.
+  - Includes traceability, dependency freshness, AV, SAST, DB verify, unit tests, UI regression, crash reporter, and classification persistence checks.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
   - Also captures matching cluster globals (roles/grants) for reliable restores.
@@ -338,61 +362,18 @@ Active secret and credential sources are:
   - Exits if `teller` schema already exists in `prod`.
   - Restores matching globals before database objects.
 
-## Reconfiguring Teller.io
+## Configuring Teller Credentials And Connect
 
-`18_configure_teller_io.sh` automates local Teller file provisioning and API checks, but some setup is dashboard/UI-only.
+Teller dashboard actions and Connect enrollment are partly manual by design.
 
-Manual steps (cannot be provisioned through Teller API endpoints):
+Manual dashboard/setup prerequisites:
 
 - Sign in to the Teller Dashboard and confirm your application exists.
 - Copy your Application ID from [Application Settings](https://teller.io/settings/application).
 - Ensure you have an active Teller client certificate/private key pair.
   - If missing/compromised, revoke and reissue in [Certificates](https://teller.io/settings/certificates).
-- If you need a fresh access token, run a Teller Connect enrollment flow and capture `enrollment.accessToken`.
-  - This requires user interaction and cannot be fully automated server-side.
 
-Automated by `18_configure_teller_io.sh`:
-
-- Clones Teller's examples repo into `./teller-connect-ui` by default (not a sibling under `../src`).
-- Creates and permissions `~/.teller`.
-- Writes:
-  - `application_id.txt`
-  - `certificate.pem`
-  - `private_key.pem`
-  - `auth_token.json` (optional)
-- Verifies Teller API connectivity using mTLS (`/institutions`).
-- Verifies token-based account access (`/accounts`) when `auth_token.json` is present.
-
-### `18_configure_teller_io.sh` Input Options
-
-Use one of the following patterns:
-
-- Direct env values:
-  - `TELLER_APPLICATION_ID`
-  - `TELLER_ACCESS_TOKEN` (optional)
-- File paths for certificate/key:
-  - `TELLER_CERT_PATH`
-  - `TELLER_KEY_PATH`
-- `1psa` lookups:
-  - `TELLER_APP_PSA_ITEM`, `TELLER_APP_PSA_FIELD`
-  - `TELLER_CERT_PSA_ITEM`, `TELLER_CERT_PSA_FIELD`
-  - `TELLER_KEY_PSA_ITEM`, `TELLER_KEY_PSA_FIELD`
-  - `TELLER_AUTH_PSA_ITEM`, `TELLER_AUTH_PSA_FIELD` (optional)
-- Examples repo controls:
-  - `TELLER_EXAMPLES_DIR` (default `./teller-connect-ui`)
-  - `EXAMPLES_REPO_URL` (default `https://github.com/tellerhq/examples.git`)
-  - `CONFIGURE_TELLER_EXAMPLES=true|false` (default `true`)
-
-Example (1psa-backed):
-
-```bash
-TELLER_APP_PSA_ITEM=localhost_teller_app \
-TELLER_CERT_PSA_ITEM=localhost_teller_cert \
-TELLER_KEY_PSA_ITEM=localhost_teller_key \
-./18_configure_teller_io.sh
-```
-
-### Save Refreshed Access Token
+Local app-based enrollment and token refresh:
 
 After completing Teller Connect in the native app, the returned token is saved under `~/.teller`:
 
@@ -404,7 +385,14 @@ Connect behavior:
 
 - Open the **Connect** tab to add, reconnect, or delete local enrollment contexts.
 - Successful Connect writes `auth_token*.json` and `enrollment_id*.txt` with restrictive permissions.
+- Local setup checks for Teller connectivity are available via in-app setup/smoke actions backed by `TellerSetupService`.
 - `12_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
+
+Quality/security aggregate checks are available through:
+
+```bash
+./18_run_all_checks_parallel.sh
+```
 
 ## 1psa Items Used by Database Scripts
 
@@ -454,6 +442,9 @@ POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./07_deploy_d
   - Fix: start PostgreSQL (for example via Homebrew service) and retry.
 
 ## GLOBAL ARCHITECTURE: TELLER → MATCHY ← MAILCART
+
+Implemented in this repository: Teller ingest + schema + classification API + macOS review app.
+External ecosystem services: Matchy worker/orchestration and Mailcart Outlook/Graph adapter.
 ```text
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                            SYSTEM LANDSCAPE                                           │
