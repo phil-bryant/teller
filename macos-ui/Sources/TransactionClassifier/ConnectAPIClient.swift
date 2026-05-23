@@ -42,9 +42,18 @@ actor ConnectAPIClient: ConnectAPI {
     func fetchStatus() async throws -> ConnectStatusResponse {
         do {
             let contexts = try discoverLocalContexts()
+            var firstError: String?
             for context in contexts {
-                let token = try tokenFromFile(path: URL(fileURLWithPath: context.token_path))
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let token: String
+                do {
+                    token = try tokenFromFile(path: URL(fileURLWithPath: context.token_path))
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                } catch {
+                    if firstError == nil {
+                        firstError = error.localizedDescription
+                    }
+                    continue
+                }
                 if !token.isEmpty {
                     return ConnectStatusResponse(
                         token_saved: true,
@@ -52,6 +61,9 @@ actor ConnectAPIClient: ConnectAPI {
                         error: lastError
                     )
                 }
+            }
+            if let firstError {
+                lastError = firstError
             }
             return ConnectStatusResponse(
                 token_saved: false,
