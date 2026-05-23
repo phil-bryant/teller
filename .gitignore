@@ -24,3 +24,4 @@ bin/*
 .18_run_all_checks_parallel.lock
 macos-ui/.swiftpm-run.lock
 macos-ui/.swiftpm-run.lock.d/
+db-profiles.json

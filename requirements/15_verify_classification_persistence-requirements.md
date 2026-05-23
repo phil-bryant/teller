@@ -59,8 +59,14 @@ Tests:
 - R030-T03: On API request failure, verify output starts with `❌ FAIL:` and script exits non-zero.
 - R030-T04: On all outcomes after API call, verify output includes `API response:` and `Persisted row:` detail lines.
 
+R040  Statement: Refuse persistence verification when DB profile setup is missing.
+Design: Profile resolution must fail fast when no profile document exists and print setup guidance to copy `db-profiles-EXAMPLE.json` instead of falling back to implicit local defaults.
+Tests:
+- R040-T01: Run with no candidate profile file and verify script exits non-zero with copy-guidance text.
+
 ## Changelog
 
+- 2026-05-23: Added R040 to require explicit DB profile setup before persistence verification.
 - 2026-04-19: Initial reverse-engineered requirements for `15_verify_classification_persistence.sh`.
 - 2026-04-20: Made smart identifier auto-resolution the default and added `--require-env-ids` strict mode.
 - 2026-04-21: Added explicit, actionable failure behavior when auto-resolve queries return no rows.

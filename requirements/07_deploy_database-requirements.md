@@ -110,8 +110,14 @@ Design: Skip `create_database.sql` when `prod` already exists; rely on idempoten
 Tests:
 - R085-T01: Run deploy twice in succession against a stub psql and verify both runs exit zero.
 
+R090  Statement: Refuse deploy when no DB profile file is configured.
+Design: If `scripts/db_profile_export.sh` cannot resolve a profile document, exit non-zero and surface explicit setup guidance (`cp db-profiles-EXAMPLE.json db-profiles.json`) instead of silently defaulting to local.
+Tests:
+- R090-T01: Run with no candidate profile file and verify deploy exits non-zero with copy-guidance text.
+
 ## Changelog
 
+- 2026-05-23: Added R090 to require explicit DB profile setup before deploy.
 - 2026-05-21: Added R060-R085 for profile-aware deploy that supports managed PostgreSQL targets and idempotent re-runs.
 - 2026-05-13: Added R055 for ingest reconcile/audit grant application during deploy.
 - 2026-04-24: Added R006-R008 for fail-fast `psql` options and wrapper function coverage.

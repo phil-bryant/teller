@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 #R001: Run tests from repository root regardless of caller working directory.
 cd "$SCRIPT_DIR"
 
@@ -23,9 +24,19 @@ PG_DBNAME=""
 PG_USER=""
 PG_SSLMODE="disable"
 PG_ONEPSA_ITEM=""
-if [[ -x "$DB_PROFILE_HELPER" ]]; then
-    eval "$("$DB_PROFILE_HELPER")"
+if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
+  echo "❌ DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}"
+  exit 1
 fi
+profile_exports_file="$(mktemp)"
+if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
+  #R035: Refuse SQL lane preflight when DB profile setup is missing.
+  rm -f "$profile_exports_file"
+  exit 1
+fi
+PROFILE_EXPORTS="$(<"$profile_exports_file")"
+rm -f "$profile_exports_file"
+eval "$PROFILE_EXPORTS"
 
 SQL_TEST_DATABASE="${SQL_TEST_DATABASE:-${TELLER_DB_NAME:-${PG_DBNAME:-}}}"
 PG_PROVE_BIN="${PG_PROVE_BIN:-}"

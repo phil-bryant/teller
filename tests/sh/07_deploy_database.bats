@@ -25,6 +25,7 @@
 # #R075-T01: Traceability anchor.
 # #R080-T01: Traceability anchor.
 # #R085-T01: Traceability anchor.
+# #R090-T01: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -263,4 +264,18 @@ EOF
   [ "$status" -eq 0 ]
   ! grep -F "create_database.sql" "${CALLS_LOG}"
   grep -F "configure_database.sql" "${CALLS_LOG}"
+}
+
+@test "fails with setup guidance when db profile file is missing" {
+  #R090
+  export PATH="${STUB_BIN}:/usr/bin:/bin"
+  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "No DB profile file found. Create one with: cp db-profiles-EXAMPLE.json db-profiles.json" >&2
+exit 1
+EOF
+  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  run bash "${FIXTURE_ROOT}/07_deploy_database.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"cp db-profiles-EXAMPLE.json db-profiles.json"* ]]
 }

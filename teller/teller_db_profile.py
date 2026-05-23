@@ -165,8 +165,8 @@ def _candidate_profile_paths() -> list[Path]:
     return paths
 
 
-#R010: Load the first existing profile file, or ``None`` if none exist.
-def _load_profile_document() -> Optional[dict]:
+#R010: Load the first existing profile file, or fail with setup guidance.
+def _load_profile_document() -> dict:
     for path in _candidate_profile_paths():
         if not path.is_file():
             continue
@@ -180,25 +180,27 @@ def _load_profile_document() -> Optional[dict]:
         if not isinstance(profiles, dict) or not profiles:
             raise ProfileError(f"DB profile file {path} is missing a non-empty 'profiles' object")
         return payload
-    return None
+    raise ProfileError(
+        "No DB profile file found. Create one with: cp db-profiles-EXAMPLE.json db-profiles.json"
+    )
 
 
 #R015: Choose the active profile name. ``TELLER_DB_PROFILE`` beats the file's
-#R015: ``default_profile`` field; ``"local"`` is the final fallback so a fresh
-#R015: checkout boots without any config.
-def _select_profile_name(document: Optional[dict]) -> str:
+#R015: ``default_profile`` field.
+def _select_profile_name(document: dict) -> str:
     override = os.environ.get("TELLER_DB_PROFILE", "").strip()
     if override:
         return override
-    if document and isinstance(document.get("default_profile"), str) and document["default_profile"].strip():
+    if isinstance(document.get("default_profile"), str) and document["default_profile"].strip():
         return document["default_profile"].strip()
-    return "local"
+    raise ProfileError(
+        "DB profile file is missing a non-empty 'default_profile'. "
+        "Copy db-profiles-EXAMPLE.json and choose a default profile."
+    )
 
 
-def _resolve_onepsa_item(document: Optional[dict], name: str) -> str:
+def _resolve_onepsa_item(document: dict, name: str) -> str:
     """Get the 1psa item name for a given profile."""
-    if document is None:
-        return "localhost_postgres_teller"
     profiles = document.get("profiles") or {}
     record = profiles.get(name)
     if not isinstance(record, dict):

@@ -84,20 +84,11 @@ class _IsolatedEnvTest(unittest.TestCase):
 
 
 class ResolveProfileTests(_IsolatedEnvTest):
-    # #R001: Built-in local profile is returned when no file is present.
-    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
-    def test_builtin_local_profile_when_no_file(self, _mock):
-        profile = resolve_profile()
-        self.assertEqual(profile.name, "local")
-        self.assertEqual(profile.host, "localhost")
-        self.assertEqual(profile.port, 5432)
-        self.assertEqual(profile.dbname, "prod")
-        self.assertEqual(profile.user, "teller")
-        self.assertEqual(profile.onepsa_item, "localhost_postgres_teller")
-        self.assertEqual(profile.search_path, "teller")
-        self.assertEqual(profile.runtime_role, "teller_write")
-        self.assertEqual(profile.sslmode, "disable")
-        self.assertEqual(profile.target, "local")
+    # #R001: Missing profile files fail with setup guidance.
+    def test_missing_profile_file_raises_with_copy_guidance(self):
+        with self.assertRaises(ProfileError) as ctx:
+            resolve_profile()
+        self.assertIn("cp db-profiles-EXAMPLE.json db-profiles.json", str(ctx.exception))
 
     # #R005: TELLER_DB_PROFILE_FILE wins over repo-local defaults.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
@@ -116,11 +107,10 @@ class ResolveProfileTests(_IsolatedEnvTest):
         self.assertEqual(profile.onepsa_item, "my_remote_item")
         self.assertEqual(profile.host, "db.example.supabase.co")
 
-    # #R005: With no file at any candidate path, the built-in local profile is used.
-    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
-    def test_no_file_anywhere_falls_back_to_builtin(self, _mock):
-        profile = resolve_profile()
-        self.assertEqual(profile.name, "local")
+    # #R005: Missing profile files must not silently fall back.
+    def test_no_file_anywhere_raises(self):
+        with self.assertRaises(ProfileError):
+            resolve_profile()
 
     # #R010: Missing 1psa_item field raises ProfileError.
     def test_missing_onepsa_item_rejected(self):
@@ -162,6 +152,10 @@ class ResolveProfileTests(_IsolatedEnvTest):
     # #R020: TELLER_DB_HOST overrides the 1psa-sourced host without disturbing other fields.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_env_host_override_keeps_other_fields(self, _mock):
+        self._write_profile_file({
+            "default_profile": "local",
+            "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
+        })
         os.environ["TELLER_DB_HOST"] = "remote.example"
         profile = resolve_profile()
         self.assertEqual(profile.host, "remote.example")
@@ -172,6 +166,10 @@ class ResolveProfileTests(_IsolatedEnvTest):
     # Instead we verify TELLER_DB_USER can override the user field.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_env_user_override(self, _mock):
+        self._write_profile_file({
+            "default_profile": "local",
+            "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
+        })
         os.environ["TELLER_DB_USER"] = "custom_user"
         profile = resolve_profile()
         self.assertEqual(profile.user, "custom_user")

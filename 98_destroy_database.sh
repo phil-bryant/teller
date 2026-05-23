@@ -2,8 +2,9 @@
 #R001: Fail fast on unrecoverable teardown errors.
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-#R060: Resolve the active DB profile so we know whether to tear down a local DB or a managed schema.
+SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+# Resolve the active DB profile so we know whether to tear down a local DB or a managed schema.
 DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
 
 #R005: Require 1psa before any credential lookup.
@@ -12,22 +13,35 @@ if ! command -v 1psa >/dev/null 2>&1; then
     exit 1
 fi
 
-#R060: Read the resolved profile via the shared helper. For managed targets we force the
-#R060: "supabase_direct" profile so DDL never goes through the transaction pooler.
-if [[ -x "$DB_PROFILE_HELPER" ]]; then
-    eval "$("$DB_PROFILE_HELPER")"
-else
-    PROFILE_NAME="local"
-    PROFILE_TARGET="local"
+# Read the resolved profile via the shared helper. For managed targets we force the
+# "supabase_direct" profile so DDL never goes through the transaction pooler.
+if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
+    echo "DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}"
+    exit 1
 fi
+profile_exports_file="$(mktemp)"
+if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
+    rm -f "$profile_exports_file"
+    exit 1
+fi
+PROFILE_EXPORTS="$(<"$profile_exports_file")"
+rm -f "$profile_exports_file"
+eval "$PROFILE_EXPORTS"
 
-#R006: Ensure psql stops immediately on SQL errors.
+# Ensure psql stops immediately on SQL errors.
 PSQL_OPTS=(-v ON_ERROR_STOP=1)
 
 if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
-    #R060: Re-resolve using the direct (non-pooler) profile for DDL teardown.
+    # Re-resolve using the direct (non-pooler) profile for DDL teardown.
     if [[ "$PROFILE_NAME" != "supabase_direct" && -x "$DB_PROFILE_HELPER" ]]; then
-        eval "$("$DB_PROFILE_HELPER" --profile supabase_direct)"
+        profile_exports_file="$(mktemp)"
+        if ! "$DB_PROFILE_HELPER" --profile supabase_direct >"$profile_exports_file"; then
+            rm -f "$profile_exports_file"
+            exit 1
+        fi
+        PROFILE_EXPORTS="$(<"$profile_exports_file")"
+        rm -f "$profile_exports_file"
+        eval "$PROFILE_EXPORTS"
     fi
 
     echo "ℹ️  Destroying managed schema via profile=${PROFILE_NAME} host=${PG_HOST} port=${PG_PORT} db=${PG_DBNAME} user=${PG_USER} schema=${PG_SEARCH_PATH}"
@@ -39,7 +53,7 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
         exit 1
     fi
 
-    #R065: Resolve managed-target password from the profile's 1psa item; env var still wins.
+    # Resolve managed-target password from the profile's 1psa item; env var still wins.
     MANAGED_PASSWORD="${TELLER_DB_PASSWORD:-}"
     if [[ -z "$MANAGED_PASSWORD" ]]; then
         if [[ -z "${PG_ONEPSA_ITEM:-}" ]]; then
@@ -53,14 +67,14 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
         exit 1
     fi
 
-    #R070: Run SQL against the managed target as the profile user.
+    # Run SQL against the managed target as the profile user.
     run_psql_managed() {
         PGPASSWORD="$MANAGED_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql "${PSQL_OPTS[@]}" \
             -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d "$PG_DBNAME" "$@"
     }
 
-    #R072: Preflight: confirm the host resolves and we can connect before sending any DROP.
-    #R072: Catches AAAA-only hosts (e.g. legacy db.<ref>.supabase.co) and bad creds up front.
+    # Preflight: confirm the host resolves and we can connect before sending any DROP.
+    # Catches AAAA-only hosts (e.g. legacy db.<ref>.supabase.co) and bad creds up front.
     if ! getent hosts "$PG_HOST" >/dev/null 2>&1 && ! host -t A "$PG_HOST" >/dev/null 2>&1; then
         if ! host "$PG_HOST" >/dev/null 2>&1; then
             echo "❌ Cannot resolve host '$PG_HOST'."
@@ -77,14 +91,14 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
         exit 1
     fi
 
-    #R075: On managed targets we cannot DROP DATABASE; drop the teller schema and teller roles only.
+    # On managed targets we cannot DROP DATABASE; drop the teller schema and teller roles only.
     SCHEMA_NAME="${PG_SEARCH_PATH:-teller}"
     run_psql_managed -c "DROP SCHEMA IF EXISTS \"${SCHEMA_NAME}\" CASCADE;"
-    #R080: Drop teller roles idempotently. Order matters: drop dependent roles before parents.
+    # Drop teller roles idempotently. Order matters: drop dependent roles before parents.
     run_psql_managed -c "DROP ROLE IF EXISTS teller_write;"
     run_psql_managed -c "DROP ROLE IF EXISTS teller_read;"
     run_psql_managed -c "DROP ROLE IF EXISTS teller_admin;"
-    #R080: Drop the teller user last so any remaining dependencies surface as a clear error.
+    # Drop the teller user last so any remaining dependencies surface as a clear error.
     run_psql_managed -c "DROP USER IF EXISTS teller;"
 
     #R025: Print completion status after teardown.
@@ -109,7 +123,7 @@ if [ -z "$POSTGRES_PASSWORD" ]; then
     exit 1
 fi
 
-#R085: Use the resolved profile's DB name when available so a non-default local DB still works.
+# Use the resolved profile's DB name when available so a non-default local DB still works.
 LOCAL_DBNAME="${PG_DBNAME:-prod}"
 
 echo "ℹ️  Destroying local database via profile=${PROFILE_NAME:-local} db=${LOCAL_DBNAME}"

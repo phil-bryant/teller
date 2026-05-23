@@ -8,6 +8,7 @@
 # #R030-T02: Traceability anchor.
 # #R030-T03: Traceability anchor.
 # #R030-T04: Traceability anchor.
+# #R040-T01: Traceability anchor.
 
 # Traceability numbered tags for requirements/15_verify_classification_persistence-requirements.md
 # #R001-T01: Traceability anchor.
@@ -180,4 +181,18 @@ EOF
   [ "$status" -ne 0 ]
   [[ "$output" == *"❌ FAIL:"* ]]
   [[ "$output" == *"classification API request failed"* ]]
+}
+
+@test "fails with setup guidance when db profile file is missing" {
+  #R040
+  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "No DB profile file found. Create one with: cp db-profiles-EXAMPLE.json db-profiles.json" >&2
+exit 1
+EOF
+  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  run env TELLER_DB_PASSWORD=pw TXN_ID=txn1 CATEGORY_ID=7 \
+    zsh "${FIXTURE_ROOT}/15_verify_classification_persistence.sh" --require-env-ids
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"cp db-profiles-EXAMPLE.json db-profiles.json"* ]]
 }

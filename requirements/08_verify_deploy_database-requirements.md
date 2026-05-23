@@ -71,8 +71,14 @@ Tests:
 - R060-T01: Stub psql to return `f` for the `pg_stat_ssl` probe with `PG_SSLMODE=require` and verify the script fails with an SSL diagnostic.
 - R060-T02: With `PG_SSLMODE=disable`, verify the SSL probe is skipped entirely.
 
+R065  Statement: Refuse verification when DB profile setup is missing.
+Design: If profile resolution fails (no `db-profiles.json`/candidate profile document), exit non-zero and print setup guidance to copy `db-profiles-EXAMPLE.json` instead of verifying with implicit local defaults.
+Tests:
+- R065-T01: Run with no candidate profile file and verify verification exits non-zero with copy-guidance text.
+
 ## Changelog
 
+- 2026-05-23: Added R065 to require explicit DB profile setup before verification.
 - 2026-05-22: Added R060 to confirm live TLS when the resolved profile requires SSL.
 - 2026-05-21: Added R050 and R055 for profile-aware verification on managed Postgres targets.
 - 2026-05-14: Combined updated_at coverage verification into `08_verify_deploy_database.sh` (absorbed former `09` lane behavior).

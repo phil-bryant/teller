@@ -17,6 +17,7 @@
 # #R055-T01: Traceability anchor.
 # #R060-T01: Traceability anchor.
 # #R060-T02: Traceability anchor.
+# #R065-T01: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -283,4 +284,17 @@ EOF
   run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/08_verify_deploy_database.sh"
   [ "$status" -eq 0 ]
   ! grep -F "pg_stat_ssl" "${PSQL_LOG}"
+}
+
+@test "fails with setup guidance when db profile file is missing" {
+  #R065
+  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "No DB profile file found. Create one with: cp db-profiles-EXAMPLE.json db-profiles.json" >&2
+exit 1
+EOF
+  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/08_verify_deploy_database.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"cp db-profiles-EXAMPLE.json db-profiles.json"* ]]
 }

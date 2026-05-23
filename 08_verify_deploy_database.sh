@@ -10,9 +10,19 @@ PROFILE_NAME="local"
 PROFILE_TARGET="local"
 PG_ONEPSA_ITEM=""
 PG_SSLMODE="disable"
-if [[ -x "$DB_PROFILE_HELPER" ]]; then
-    eval "$("$DB_PROFILE_HELPER")"
+if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
+  echo "❌ FAIL: DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}"
+  exit 1
 fi
+profile_exports_file="$(mktemp)"
+if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
+  #R065: Refuse verification when DB profile setup is missing.
+  rm -f "$profile_exports_file"
+  exit 1
+fi
+PROFILE_EXPORTS="$(<"$profile_exports_file")"
+rm -f "$profile_exports_file"
+eval "$PROFILE_EXPORTS"
 
 #R005: Use connection settings exclusively from the resolved profile (1psa or ~/.env via the helper).
 #R005: Env vars TELLER_DB_* still override for CI/test fixtures.

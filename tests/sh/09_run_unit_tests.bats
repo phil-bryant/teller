@@ -11,6 +11,7 @@
 # #R025-T07: Traceability anchor.
 # #R025-T08: Traceability anchor.
 # #R025-T09: Traceability anchor.
+# #R035-T01: Traceability anchor.
 
 # Traceability numbered tags for requirements/09_run_unit_tests-requirements.md
 # #R001-T01: Traceability anchor.
@@ -314,4 +315,27 @@ EOF
   #R030
   run grep -E 'verify_macos_crash_reporter|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/09_run_unit_tests.sh"
   [ "$status" -ne 0 ]
+}
+
+@test "fails sql preflight with setup guidance when db profile file is missing" {
+  #R035
+  stub_cmd bats "exit 0"
+  stub_cmd python3 "exit 0"
+  stub_cmd swift "exit 0"
+  stub_cmd psql "echo 1; exit 0"
+  stub_cmd pg_prove "exit 0"
+  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "No DB profile file found. Create one with: cp db-profiles-EXAMPLE.json db-profiles.json" >&2
+exit 1
+EOF
+  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  mkdir -p "${FIXTURE_ROOT}/tests/sql"
+  cat > "${FIXTURE_ROOT}/tests/sql/smoke.sql" <<'EOF'
+SELECT 1;
+EOF
+
+  run bash -c "cd '${FIXTURE_ROOT}' && RUN_SHELL_TESTS=false RUN_PYTHON_TESTS=false RUN_SWIFT_TESTS=false RUN_SQL_TESTS=true ./09_run_unit_tests.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"cp db-profiles-EXAMPLE.json db-profiles.json"* ]]
 }

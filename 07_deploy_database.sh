@@ -2,7 +2,8 @@
 #R001: Fail fast on unrecoverable SQL/bootstrap errors.
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 #R035: Resolve SQL directory relative to script location.
 SQL_DIR="${SCRIPT_DIR}/sql/postgres"
 #R060: Resolve the active DB profile so we know whether to deploy locally or to a managed target.
@@ -16,12 +17,19 @@ fi
 
 #R060: Read the resolved profile via the shared helper. For managed targets we force the
 #R060: "supabase_direct" profile so DDL never goes through the transaction pooler.
-if [[ -x "$DB_PROFILE_HELPER" ]]; then
-    eval "$("$DB_PROFILE_HELPER")"
-else
-    PROFILE_NAME="local"
-    PROFILE_TARGET="local"
+#R090: Refuse deploy when profile resolution fails (no implicit local fallback).
+if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
+    echo "DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}"
+    exit 1
 fi
+profile_exports_file="$(mktemp)"
+if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
+    rm -f "$profile_exports_file"
+    exit 1
+fi
+PROFILE_EXPORTS="$(<"$profile_exports_file")"
+rm -f "$profile_exports_file"
+eval "$PROFILE_EXPORTS"
 
 #R060: Print the resolved deploy target so the operator sees where deploy is running.
 echo "ℹ️  Deploying database via profile=${PROFILE_NAME} target=${PROFILE_TARGET}${PG_HOST:+ host=${PG_HOST}}${PG_PORT:+ port=${PG_PORT}}${PG_DBNAME:+ db=${PG_DBNAME}}${PG_USER:+ user=${PG_USER}}"
@@ -32,7 +40,14 @@ PSQL_OPTS=(-v ON_ERROR_STOP=1)
 if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
     #R060: Re-resolve using the direct (non-pooler) profile for DDL apply.
     if [[ "$PROFILE_NAME" != "supabase_direct" && -x "$DB_PROFILE_HELPER" ]]; then
-        eval "$("$DB_PROFILE_HELPER" --profile supabase_direct)"
+        profile_exports_file="$(mktemp)"
+        if ! "$DB_PROFILE_HELPER" --profile supabase_direct >"$profile_exports_file"; then
+            rm -f "$profile_exports_file"
+            exit 1
+        fi
+        PROFILE_EXPORTS="$(<"$profile_exports_file")"
+        rm -f "$profile_exports_file"
+        eval "$PROFILE_EXPORTS"
         echo "ℹ️  Switched to direct DDL profile=${PROFILE_NAME} host=${PG_HOST} port=${PG_PORT} db=${PG_DBNAME} user=${PG_USER}"
     fi
 

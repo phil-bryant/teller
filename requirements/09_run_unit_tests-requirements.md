@@ -49,8 +49,14 @@ Design: `09_run_unit_tests.sh` must not invoke `./11_verify_macos_crash_reporter
 Tests:
 - R030-T01: Grep the script text and verify it contains no `verify_macos_crash_reporter` substring and no `CRASH_REPORTER_SMOKE` token.
 
+R035  Statement: Refuse SQL unit-test execution when DB profile setup is missing.
+Design: SQL preflight profile resolution must fail fast when no profile file is configured and surface setup guidance to copy `db-profiles-EXAMPLE.json` rather than silently defaulting to local DB coordinates.
+Tests:
+- R035-T01: With SQL tests enabled and no candidate profile file, verify runner exits non-zero with copy-guidance text.
+
 ## Changelog
 
+- 2026-05-23: Added R035 to require explicit DB profile setup before SQL test preflight.
 - 2026-05-12: Replaced opt-in crash-reporter lane with R030 isolation requirement; verification is standalone `11_verify_macos_crash_reporter.sh`.
 - 2026-05-07: Added R030 for optional PLCrashReporter smoke lane (later removed; see 2026-05-12).
 - 2026-04-26: Added R025 to run SQL unit tests from `tests/sql`.

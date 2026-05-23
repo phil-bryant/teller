@@ -38,10 +38,15 @@ if [[ -n "$OVERRIDE_PROFILE" ]]; then
 fi
 
 PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" "$PYTHON_BIN" - <<'PY'
+import sys
 import shlex
-from teller.teller_db_profile import resolve_profile
+from teller.teller_db_profile import ProfileError, resolve_profile
 
-profile = resolve_profile()
+try:
+    profile = resolve_profile()
+except ProfileError as exc:
+    print(str(exc), file=sys.stderr)
+    raise SystemExit(1)
 fields = {
     "PROFILE_NAME": profile.name,
     "PROFILE_TARGET": profile.target,

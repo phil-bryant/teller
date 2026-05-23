@@ -1,0 +1,8 @@
+{
+    "default_profile": "supabase",
+    "profiles": {
+        "local": { "1psa_or_env_item": "LOCALHOST_POSTGRES_TELLER" },
+        "supabase": { "1psa_or_env_item": "EGGNEST_SUPABASE" },
+        "supabase_direct": { "1psa_or_env_item": "EGGNEST_SUPABASE_DIRECT" }
+    }
+}

@@ -17,7 +17,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 #R010: Resolve API and DB connection from the active profile (1psa+~/.env via the helper).
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
 PG_HOST=""
 PG_PORT=""
@@ -25,9 +26,19 @@ PG_DBNAME=""
 PG_USER=""
 PG_SSLMODE="disable"
 PG_ONEPSA_ITEM=""
-if [[ -x "$DB_PROFILE_HELPER" ]]; then
-    eval "$("$DB_PROFILE_HELPER")"
+if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
+  echo "❌ DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}" >&2
+  exit 1
 fi
+profile_exports_file="$(mktemp)"
+if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
+  #R040: Refuse persistence verification when DB profile setup is missing.
+  rm -f "$profile_exports_file"
+  exit 1
+fi
+PROFILE_EXPORTS="$(<"$profile_exports_file")"
+rm -f "$profile_exports_file"
+eval "$PROFILE_EXPORTS"
 
 API_URL="${TELLER_CLASSIFIER_API_URL:-http://127.0.0.1:8787}"
 DB_HOST="${TELLER_DB_HOST:-${PG_HOST:-localhost}}"
