@@ -8,11 +8,11 @@ enum ConnectAction: String, CaseIterable, Codable, Sendable {
     var buttonLabel: String {
         switch self {
         case .capture:
-            return "Connect"
+            return "Add"
         case .reconnect:
-            return "Reconnect"
+            return "Edit"
         case .add:
-            return "Add Enrollment"
+            return "Add"
         }
     }
 }

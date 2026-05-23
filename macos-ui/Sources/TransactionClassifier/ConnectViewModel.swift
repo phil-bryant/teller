@@ -17,7 +17,7 @@ final class ConnectViewModel {
     var manualToken = ""
     var manualEnrollmentId = ""
     var manualInstitutionHint = ""
-    var statusText = "Connect service idle."
+    var statusText = "Ready."
     var errorText = ""
     var busy = false
     var showingDeleteConfirmation = false
@@ -56,11 +56,16 @@ final class ConnectViewModel {
                 selectedContextKey = contexts.first?.key
             }
             updateStatusFromServer(status)
-            try await refreshSetupStatus()
+            do {
+                try await refreshSetupStatus()
+            } catch {
+                // Setup diagnostics are not part of the primary Add/Edit/Delete UX.
+                setupErrorText = error.localizedDescription
+            }
             errorText = ""
         } catch {
             errorText = error.localizedDescription
-            statusText = "Connect service unavailable."
+            statusText = "Could not load connections."
         }
     }
 
@@ -141,10 +146,10 @@ final class ConnectViewModel {
                 selectedContextKey = contexts.first?.key
             }
             errorText = ""
-            statusText = "Loaded \(contexts.count) local enrollment context(s)."
+            statusText = "Loaded \(contexts.count) connection(s)."
         } catch {
             errorText = error.localizedDescription
-            statusText = "Context refresh failed."
+            statusText = "Could not refresh connections."
         }
     }
 
@@ -180,12 +185,12 @@ final class ConnectViewModel {
         do {
             let session = try await api.startSession(action: action, selectedContext: selectedContext)
             activeSession = session
-            statusText = "Opening \(action.buttonLabel.lowercased()) flow..."
+            statusText = "Opening \(action.buttonLabel.lowercased())..."
             errorText = ""
         } catch {
             activeSession = nil
             errorText = error.localizedDescription
-            statusText = "Connect flow unavailable."
+            statusText = "Could not open that action."
         }
     }
 
@@ -210,11 +215,11 @@ final class ConnectViewModel {
                 targetKey = targetKeyOverride
             } else {
                 guard let selectedContext else {
-                    errorText = "Select a context before reconnecting."
+                    errorText = "Select a connection before editing."
                     return
                 }
                 guard selectedContext.hasEnrollmentId else {
-                    errorText = "Selected context has no enrollment_id."
+                    errorText = "The selected connection cannot be edited."
                     return
                 }
                 targetKey = selectedContext.key
@@ -261,25 +266,25 @@ final class ConnectViewModel {
             let response = try await api.deleteContext(targetKey: selectedContext.key)
             contexts = response.remaining
             selectedContextKey = contexts.first?.key
-            statusText = "Deleted context \(selectedContext.displayInstitutionId)."
+            statusText = "Deleted \(selectedContext.displayInstitutionId)."
             errorText = ""
         } catch {
             errorText = error.localizedDescription
-            statusText = "Delete failed."
+            statusText = "Could not delete connection."
         }
     }
 
     private func updateStatusFromServer(_ status: ConnectStatusResponse) {
         lastSavedTokenPath = status.saved_path
         if !status.error.isEmpty {
-            statusText = "Connect service reported an error."
+            statusText = "Service reported an error."
             errorText = status.error
             return
         }
         if status.token_saved {
-            statusText = "Latest token path: \(status.saved_path)"
+            statusText = "Connections ready."
         } else {
-            statusText = "Ready to manage local enrollments."
+            statusText = "Ready."
         }
     }
 

@@ -36,7 +36,35 @@ class TellerAPIClient:
 
     def _load_auth(self):
         #R005: Load auth token and TLS cert/key from ~/.teller (or explicit auth token override).
-        token = self._auth_token or json.loads((TELLER_DIR / "auth_token.json").read_text())["current"]
+        token = self._auth_token
+        if not token:
+            default_token_path = TELLER_DIR / "auth_token.json"
+            if not default_token_path.is_file():
+                raise TellerAPIError(
+                    message=(
+                        f"Missing auth token at {default_token_path}. "
+                        "Use the macOS app Connect tab and click Add or Edit to save a connection token."
+                    ),
+                    code="auth_token.missing",
+                    status_code=0,
+                )
+            try:
+                token = json.loads(default_token_path.read_text()).get("current", "")
+            except json.JSONDecodeError as exc:
+                raise TellerAPIError(
+                    message=f"Invalid auth token JSON at {default_token_path}: {exc}",
+                    code="auth_token.invalid_json",
+                    status_code=0,
+                ) from exc
+            if not token:
+                raise TellerAPIError(
+                    message=(
+                        f"Auth token file {default_token_path} has no 'current' token value. "
+                        "Use the macOS app Connect tab and re-save the connection."
+                    ),
+                    code="auth_token.empty",
+                    status_code=0,
+                )
         self.kwargs = {
             'auth': (token, ""),
             'cert': (str(TELLER_DIR / "certificate.pem"), str(TELLER_DIR / "private_key.pem")),

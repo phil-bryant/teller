@@ -79,4 +79,28 @@ final class ConnectAPIClientTests: XCTestCase {
         XCTAssertNotNil(response.moved_token)
         XCTAssertNotNil(response.moved_enrollment)
     }
+
+    func testReconnectWithoutEnrollmentIDClearsStaleEnrollmentFile() async throws {
+        // #R010
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        try Data("{\"current\":\"old_token\"}\n".utf8).write(to: tellerDir.appendingPathComponent("auth_token.json"))
+        let enrollmentPath = tellerDir.appendingPathComponent("enrollment_id.txt")
+        try Data("enr_disconnected\n".utf8).write(to: enrollmentPath)
+
+        let client = makeClient(home: home)
+        _ = try await client.storeToken(
+            ConnectStoreTokenRequest(
+                token: "new_token",
+                enrollmentId: "",
+                action: "reconnect",
+                targetKey: "default",
+                institutionIdHint: ""
+            )
+        )
+
+        let savedEnrollment = try String(contentsOf: enrollmentPath, encoding: .utf8)
+        XCTAssertEqual(savedEnrollment, "\n")
+    }
 }

@@ -57,6 +57,8 @@ actor ConnectAPIClient: ConnectAPI {
             let token = request.token.trimmingCharacters(in: .whitespacesAndNewlines)
             let enrollmentID = request.enrollmentId.trimmingCharacters(in: .whitespacesAndNewlines)
             let institutionHint = request.institutionIdHint.trimmingCharacters(in: .whitespacesAndNewlines)
+            let inferredDetails = inferIdentityDetails(token: token)
+            let resolvedEnrollmentID = enrollmentID.isEmpty ? inferredDetails.enrollmentID : enrollmentID
 
             guard !token.isEmpty else {
                 throw ConnectServiceError.validation("Token is required.")
@@ -68,15 +70,15 @@ actor ConnectAPIClient: ConnectAPI {
 
             if request.action == ConnectAction.reconnect.rawValue {
                 guard let target = contexts.first(where: { $0.key == request.targetKey }) else {
-                    throw ConnectServiceError.notFound("Context not found for reconnect.")
+                    throw ConnectServiceError.notFound("Connection not found for editing.")
                 }
                 outputTokenFile = URL(fileURLWithPath: target.token_path)
                 outputEnrollmentFile = URL(fileURLWithPath: target.enrollment_path)
             } else if request.action == ConnectAction.add.rawValue {
-                let inferredInstitution = inferInstitutionID(token: token)
+                let inferredInstitution = inferredDetails.institutionID
                 let baseSuffix = sanitizeSuffix(
                     institutionHint.isEmpty
-                        ? (enrollmentID.isEmpty ? inferredInstitution : enrollmentID)
+                        ? (resolvedEnrollmentID.isEmpty ? inferredInstitution : resolvedEnrollmentID)
                         : institutionHint
                 )
                 let suffix = ensureUniqueSuffix(base: baseSuffix)
@@ -86,9 +88,7 @@ actor ConnectAPIClient: ConnectAPI {
 
             try ensureTellerDirectory()
             try writeTokenJSON(token: token, to: outputTokenFile)
-            if !enrollmentID.isEmpty {
-                try writeText(enrollmentID + "\n", to: outputEnrollmentFile)
-            }
+            try writeText(resolvedEnrollmentID + "\n", to: outputEnrollmentFile)
             lastError = ""
             return ConnectStoreTokenResponse(
                 ok: true,
@@ -131,10 +131,10 @@ actor ConnectAPIClient: ConnectAPI {
 
         if action == .reconnect {
             guard let selectedContext else {
-                throw ConnectServiceError.validation("Select a context before reconnecting.")
+                throw ConnectServiceError.validation("Select a connection before editing.")
             }
             guard selectedContext.hasEnrollmentId else {
-                throw ConnectServiceError.validation("Selected context has no enrollment_id.")
+                throw ConnectServiceError.validation("The selected connection cannot be edited.")
             }
             return ConnectStartSession(
                 action: action,
@@ -239,10 +239,14 @@ actor ConnectAPIClient: ConnectAPI {
     }
 
     private func inferInstitutionID(token: String) -> String {
+        inferIdentityDetails(token: token).institutionID
+    }
+
+    private func inferIdentityDetails(token: String) -> (institutionID: String, enrollmentID: String) {
         let normalizedToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedToken.isEmpty else { return "" }
+        guard !normalizedToken.isEmpty else { return ("", "") }
         guard fileManager.fileExists(atPath: certFile.path), fileManager.fileExists(atPath: keyFile.path) else {
-            return ""
+            return ("", "")
         }
 
         let process = Process()
@@ -262,19 +266,20 @@ actor ConnectAPIClient: ConnectAPI {
             try process.run()
             process.waitUntilExit()
             guard process.terminationStatus == 0 else {
-                return ""
+                return ("", "")
             }
             let data = stdout.fileHandleForReading.readDataToEndOfFile()
             guard let rows = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
                   let first = rows.first,
                   let account = first["account"] as? [String: Any],
-                  let institution = account["institution"] as? [String: Any],
-                  let institutionID = institution["id"] as? String else {
-                return ""
+                  let institution = account["institution"] as? [String: Any] else {
+                return ("", "")
             }
-            return institutionID
+            let institutionID = institution["id"] as? String ?? ""
+            let enrollmentID = account["enrollment_id"] as? String ?? ""
+            return (institutionID, enrollmentID)
         } catch {
-            return ""
+            return ("", "")
         }
     }
 
