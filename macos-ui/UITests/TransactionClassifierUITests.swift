@@ -50,6 +50,10 @@ final class TransactionClassifierUITests: XCTestCase {
             "Fixture list did not finish loading."
         )
     }
+    
+    func testRecordedFlow() throws {
+        
+    }
 
     override class func tearDown() {
         app?.terminate()
