@@ -28,6 +28,10 @@ class CheckPostgresFreshnessTests(unittest.TestCase):
             "  echo \"psql (PostgreSQL) ${PSQL_CLIENT_VERSION:-16.2}\"\n"
             "  exit 0\n"
             "fi\n"
+            "if [[ \"${PSQL_SERVER_QUERY_EXIT:-0}\" != \"0\" && \" $* \" == *\" -tAc \"* ]]; then\n"
+            "  echo \"${PSQL_SERVER_QUERY_ERROR:-server query failed}\" >&2\n"
+            "  exit \"${PSQL_SERVER_QUERY_EXIT}\"\n"
+            "fi\n"
             "if [[ \"$1\" == \"-tAc\" ]]; then\n"
             "  echo \"${PSQL_SERVER_VERSION_NUM:-160002}\"\n"
             "  exit 0\n"
@@ -208,6 +212,41 @@ class CheckPostgresFreshnessTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(report["server"]["version"], "15.17.0")
         self.assertEqual(report["cve"]["vulnerabilities"], [])
+
+    def test_server_warning_includes_attempted_target_details(self) -> None:
+        #R020
+        snapshot = {
+            "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "cves": [],
+        }
+        policy = {
+            "severity_threshold": "high",
+            "max_snapshot_age_hours": 168,
+            "fail_on_stale_snapshot": False,
+        }
+        prior_query_exit = os.environ.get("PSQL_SERVER_QUERY_EXIT")
+        prior_query_error = os.environ.get("PSQL_SERVER_QUERY_ERROR")
+        os.environ["PSQL_SERVER_QUERY_EXIT"] = "2"
+        os.environ["PSQL_SERVER_QUERY_ERROR"] = "connection refused"
+        try:
+            _, report = self._run_checker(
+                snapshot=snapshot,
+                policy=policy,
+                extra_args=["--check-server-version", "--server-psql-args=-h dbhost -U teller -d prod"],
+            )
+        finally:
+            if prior_query_exit is None:
+                os.environ.pop("PSQL_SERVER_QUERY_EXIT", None)
+            else:
+                os.environ["PSQL_SERVER_QUERY_EXIT"] = prior_query_exit
+            if prior_query_error is None:
+                os.environ.pop("PSQL_SERVER_QUERY_ERROR", None)
+            else:
+                os.environ["PSQL_SERVER_QUERY_ERROR"] = prior_query_error
+        joined_warnings = "\n".join(report["summary"]["warnings"])
+        self.assertIn("attempted psql args: -h dbhost -U teller -d prod", joined_warnings)
+        self.assertEqual(report["server"]["status"], "error")
+        self.assertIn("connection refused", report["server"]["error"])
 
 
 if __name__ == "__main__":

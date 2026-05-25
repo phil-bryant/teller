@@ -21,10 +21,10 @@ This directory contains `bats-core` unit tests for repository shell scripts.
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`
 - `09_run_unit_tests.bats` -> `09_run_unit_tests.sh`
   - Requirement IDs: `R001`, `R005`, `R010`, `R015`, `R020`
-- `17_run_classification_macos-ui.bats` -> `17_run_classification_macos-ui.sh`
+- `17_run_classification_macos-ui.bats` -> `18_run_classification_macos-ui.sh`
   - Wrapper contract test (forwarding and package-path composition)
 
 ## Notes
 
 - Tests avoid live network and database dependencies by using command stubs.
-- Integration scripts (`05`, `06`, `08`, `16`) remain out of unit scope by design.
+- Integration scripts (`05`, `06`, `08`, `17`) remain out of unit scope by design.

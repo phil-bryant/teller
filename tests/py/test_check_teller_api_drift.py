@@ -56,6 +56,26 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertEqual(creds["token_source"], "fabt")
         self.assertEqual(creds["warnings"], [])
 
+    def test_run_all_tokens_returns_all_candidates(self) -> None:
+        self._write_token("auth_token_chase.json", "token-chase")
+        self._write_token("auth_token_fabt.json", "token-fabt")
+
+        creds = self.module.resolve_credentials(run_all_tokens=True)
+        candidates = creds["token_candidates"]
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual(candidates[0][0], "chase")
+        self.assertEqual(candidates[1][0], "fabt")
+        self.assertEqual(creds["warnings"], [])
+
+    def test_run_all_tokens_respects_institution_filter(self) -> None:
+        self._write_token("auth_token_chase.json", "token-chase")
+        self._write_token("auth_token_fabt.json", "token-fabt")
+
+        creds = self.module.resolve_credentials(run_all_tokens=True, institution_id="fabt")
+        candidates = creds["token_candidates"]
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0], "fabt")
+
 
 if __name__ == "__main__":
     unittest.main()

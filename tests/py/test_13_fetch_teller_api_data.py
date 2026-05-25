@@ -99,10 +99,10 @@ def _restore_modules(original: dict[str, object]) -> None:
 
 def load_module():
     repo_root = Path(__file__).resolve().parents[2]
-    script_path = repo_root / "12_fetch_teller_api_data.py"
+    script_path = repo_root / "13_fetch_teller_api_data.py"
     spec = importlib.util.spec_from_file_location("fetch_teller_api_data", script_path)
     if spec is None or spec.loader is None:
-        raise RuntimeError("Unable to load 12_fetch_teller_api_data module")
+        raise RuntimeError("Unable to load 13_fetch_teller_api_data module")
 
     module = importlib.util.module_from_spec(spec)
     original = _stub_teller_modules()

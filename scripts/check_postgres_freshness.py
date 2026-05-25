@@ -494,6 +494,14 @@ def run_command(args: list[str], timeout_seconds: int = 10) -> tuple[int, str]:
     return result.returncode, output
 
 
+def describe_server_target(args: argparse.Namespace) -> str:
+    if args.server_psql_args:
+        return f"psql args: {args.server_psql_args}"
+    if args.server_dsn:
+        return "server dsn"
+    return "default psql args"
+
+
 def build_report(args: argparse.Namespace) -> dict[str, Any]:
     stale_components: list[str] = []
     warnings: list[str] = []
@@ -558,7 +566,10 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             if server_exit != 0:
                 server_info["status"] = "error"
                 server_info["error"] = server_output or "SHOW server_version_num failed"
-                warnings.append("Could not determine PostgreSQL server version.")
+                warnings.append(
+                    "Could not determine PostgreSQL server version "
+                    f"(attempted {describe_server_target(args)})."
+                )
                 if args.fail_on_stale:
                     stale_components.append("server_unknown")
             else:

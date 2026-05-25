@@ -151,7 +151,7 @@ PY
 )"
   echo "▶ Starting classification API for persistence verification at ${API_URL}"
   TELLER_CLASSIFIER_API_HOST="$api_host" TELLER_CLASSIFIER_API_PORT="$api_port" \
-    "$CLASSIFICATION_PERSISTENCE_API_PYTHON" "./14_run_classification_api.py" >/dev/null 2>&1 &
+    "$CLASSIFICATION_PERSISTENCE_API_PYTHON" "./15_run_classification_api.py" >/dev/null 2>&1 &
   classifier_api_pid="$!"
   classifier_api_started="true"
   if ! wait_for_classifier_api "$health_url" "$CLASSIFICATION_PERSISTENCE_API_STARTUP_SECONDS" "$api_host" "$api_port"; then

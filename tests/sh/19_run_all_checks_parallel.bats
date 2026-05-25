@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/18_run_all_checks_parallel-requirements.md
+# Requirement test-case tags for requirements/19_run_all_checks_parallel-requirements.md
 # #R025-T02: Traceability anchor.
 # #R025-T03: Traceability anchor.
 # #R030-T02: Traceability anchor.
@@ -10,7 +10,7 @@
 # #R050-T02: Traceability anchor.
 # #R055-T01: Traceability anchor.
 
-# Traceability numbered tags for requirements/18_run_all_checks_parallel-requirements.md
+# Traceability numbered tags for requirements/19_run_all_checks_parallel-requirements.md
 # #R001-T01: Traceability anchor.
 # #R005-T01: Traceability anchor.
 # #R010-T01: Traceability anchor.
@@ -27,13 +27,14 @@ load "helpers/common.bash"
 CHECKS=(
   "00_verify_requirements_traceability.sh"
   "04_run_dependency_freshness_checks.sh"
+  "12_run_teller_api_smoke_checks.sh"
   "05_run_av_checks.sh"
   "06_run_sast.sh"
   "08_verify_deploy_database.sh"
   "09_run_unit_tests.sh"
   "10_run_macos_ui_regression_tests.sh"
   "11_verify_macos_crash_reporter.sh"
-  "15_verify_classification_persistence.sh"
+  "16_verify_classification_persistence.sh"
 )
 
 write_child_stub() {
@@ -58,7 +59,7 @@ write_all_child_stubs() {
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "18_run_all_checks_parallel.sh"
+  copy_script_to_fixture "19_run_all_checks_parallel.sh"
   export REPORT_DIR="${FIXTURE_ROOT}/reports"
   mkdir -p "$REPORT_DIR"
 }
@@ -67,28 +68,28 @@ teardown() {
   teardown_shell_test
 }
 
-@test "reports pass for all nine checks when every child succeeds" {
+@test "reports pass for all ten checks when every child succeeds" {
   #R001 #R025 #R030
   write_all_child_stubs 'echo "stub ${BASH_SOURCE[0]##*/}"; exit 0'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"✅ PASS: all parallel checks succeeded (9/9)"* ]]
+  [[ "$output" == *"✅ PASS: all parallel checks succeeded (10/10)"* ]]
 
   local check pass_count=0
   for check in "${CHECKS[@]}"; do
     [[ "$output" == *"✅ PASS: ${check}"* ]]
     pass_count=$((pass_count + 1))
   done
-  [ "$pass_count" -eq 9 ]
+  [ "$pass_count" -eq 10 ]
 }
 
 @test "runs from repository root regardless of caller directory" {
   #R005
   write_all_child_stubs 'echo "cwd=$(pwd)" >> "'"${CALLS_LOG}"'"; exit 0'
 
-  run bash -c "cd '${TEST_TMPDIR}' && PARALLEL_CHECKS_REPORT_DIR='${REPORT_DIR}' bash '${FIXTURE_ROOT}/18_run_all_checks_parallel.sh'"
+  run bash -c "cd '${TEST_TMPDIR}' && PARALLEL_CHECKS_REPORT_DIR='${REPORT_DIR}' bash '${FIXTURE_ROOT}/19_run_all_checks_parallel.sh'"
   [ "$status" -eq 0 ]
 
   local invocations
@@ -97,7 +98,7 @@ teardown() {
   while IFS= read -r line; do
     [[ "$line" == cwd="${FIXTURE_ROOT}" ]]
   done < <(grep '^cwd=' "${CALLS_LOG}")
-  [ "$(grep -c '^cwd=' "${CALLS_LOG}")" -eq 9 ]
+  [ "$(grep -c '^cwd=' "${CALLS_LOG}")" -eq 10 ]
 }
 
 @test "fails fast when a checklist script is missing" {
@@ -106,7 +107,7 @@ teardown() {
   rm -f "${FIXTURE_ROOT}/09_run_unit_tests.sh"
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"expected check script not found: ./09_run_unit_tests.sh"* ]]
   [ ! -f "${REPORT_DIR}/00_verify_requirements_traceability.log.exit" ]
@@ -118,7 +119,7 @@ teardown() {
 
   start_epoch="$(date +%s)"
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   end_epoch="$(date +%s)"
   elapsed=$((end_epoch - start_epoch))
 
@@ -133,7 +134,7 @@ teardown() {
   write_child_stub "04_run_dependency_freshness_checks.sh" 'exit 0'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -eq 0 ]
 
   local before_slow before_overall
@@ -151,11 +152,11 @@ teardown() {
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
     PARALLEL_CHECKS_PROGRESS_INTERVAL_SECONDS=1 \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -eq 0 ]
 
-  [[ "$output" == *"Progress: [0/9 (0%)]"* ]]
-  [[ "$output" =~ Progress:\ \[[1-8]/9\ \([0-9]+%\)\] ]]
+  [[ "$output" == *"Progress: [0/10 (0%)]"* ]]
+  [[ "$output" =~ Progress:\ \[[1-9]/10\ \([0-9]+%\)\] ]]
 }
 
 @test "prints final 100 percent progress before overall summary" {
@@ -163,13 +164,13 @@ teardown() {
   write_all_child_stubs 'exit 0'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -eq 0 ]
 
   local before_overall
-  before_overall="${output%%✅ PASS: all parallel checks succeeded (9/9)*}"
-  [[ "$before_overall" == *"Progress: [9/9 (100%)]"* ]]
-  [[ "$output" == *"✅ PASS: all parallel checks succeeded (9/9)"* ]]
+  before_overall="${output%%✅ PASS: all parallel checks succeeded (10/10)*}"
+  [[ "$before_overall" == *"Progress: [10/10 (100%)]"* ]]
+  [[ "$output" == *"✅ PASS: all parallel checks succeeded (10/10)"* ]]
 }
 
 @test "waits for all checks and reports a single failed child" {
@@ -178,12 +179,12 @@ teardown() {
   write_child_stub "09_run_unit_tests.sh" 'echo "unit-tests-failed"; exit 1'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"❌ FAIL: 09_run_unit_tests.sh (exit 1)"* ]]
   [[ "$output" == *"see ${REPORT_DIR}/09_run_unit_tests.log"* ]]
   [[ "$output" == *"✅ PASS: 00_verify_requirements_traceability.sh"* ]]
-  [[ "$output" == *"❌ FAIL: parallel checks: 8/9 passed"* ]]
+  [[ "$output" == *"❌ FAIL: parallel checks: 9/10 passed"* ]]
   grep -q 'unit-tests-failed' "${REPORT_DIR}/09_run_unit_tests.log"
 }
 
@@ -193,7 +194,7 @@ teardown() {
   write_child_stub "05_run_av_checks.sh" 'echo "av-marker-12345"; exit 0'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -eq 0 ]
   grep -q 'av-marker-12345' "${REPORT_DIR}/05_run_av_checks.log"
 }
@@ -216,12 +217,12 @@ teardown() {
   write_all_child_stubs 'sleep 2; exit 0'
 
   env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh" > "${TEST_TMPDIR}/first-run.log" 2>&1 &
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh" > "${TEST_TMPDIR}/first-run.log" 2>&1 &
   first_pid="$!"
   sleep 0.2
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"already active"* ]]
 
@@ -231,12 +232,12 @@ teardown() {
 @test "reclaims stale lock file and succeeds" {
   #R050
   write_all_child_stubs 'exit 0'
-  printf '%s\n' 999999 > "${FIXTURE_ROOT}/.18_run_all_checks_parallel.lock"
+  printf '%s\n' 999999 > "${FIXTURE_ROOT}/.19_run_all_checks_parallel.lock"
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -eq 0 ]
-  [ ! -f "${FIXTURE_ROOT}/.18_run_all_checks_parallel.lock" ]
+  [ ! -f "${FIXTURE_ROOT}/.19_run_all_checks_parallel.lock" ]
 }
 
 @test "terminates child checks when interrupt stop path runs" {
@@ -245,7 +246,7 @@ teardown() {
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
     PARALLEL_CHECKS_TEST_INTERRUPT=1 \
-    bash "${FIXTURE_ROOT}/18_run_all_checks_parallel.sh"
+    bash "${FIXTURE_ROOT}/19_run_all_checks_parallel.sh"
   [ "$status" -eq 130 ]
   [[ "$output" == *"Interrupted; stopped parallel checks."* ]]
 

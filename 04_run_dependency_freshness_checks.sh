@@ -7,10 +7,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 REPORT_DIR="${DEPENDENCY_REPORT_DIR:-./.security-reports}"
-RUN_TELLER_CANARY="${RUN_TELLER_CANARY:-true}"
 RUN_POSTGRES_FRESHNESS="${RUN_POSTGRES_FRESHNESS:-true}"
+RUN_TELLER_VERSION_FRESHNESS="${RUN_TELLER_VERSION_FRESHNESS:-true}"
 FAIL_ON_MAJOR="${DEPENDENCY_FAIL_ON_MAJOR:-false}"
 FAIL_ON_DIRECT_OUTDATED="${DEPENDENCY_FAIL_ON_DIRECT_OUTDATED:-true}"
+TELLER_API_BASELINE_VERSION="${TELLER_API_BASELINE_VERSION:-}"
+TELLER_API_VERSION_FAIL_ON_NEW="${TELLER_API_VERSION_FAIL_ON_NEW:-false}"
+TELLER_API_VERSION_SOURCES="${TELLER_API_VERSION_SOURCES:-https://teller.io/docs/api,https://api.teller.io/openapi.json,https://api.teller.io/swagger.json}"
+TELLER_API_VERSION_DASHBOARD_URL="${TELLER_API_VERSION_DASHBOARD_URL:-https://teller.io/settings/application}"
+TELLER_API_VERSION_DASHBOARD_PSA_ITEM="${TELLER_API_VERSION_DASHBOARD_PSA_ITEM:-TELLER_IO}"
+TELLER_API_VERSION_DASHBOARD_USERNAME_FIELD="${TELLER_API_VERSION_DASHBOARD_USERNAME_FIELD:-username}"
+TELLER_API_VERSION_DASHBOARD_PASSWORD_FIELD="${TELLER_API_VERSION_DASHBOARD_PASSWORD_FIELD:-password}"
+TELLER_API_VERSION_DASHBOARD_OTP_FIELD="${TELLER_API_VERSION_DASHBOARD_OTP_FIELD:-one-time password}"
 POSTGRES_FAIL_ON_STALE="${POSTGRES_FAIL_ON_STALE:-false}"
 POSTGRES_CHECK_SERVER_VERSION="${POSTGRES_CHECK_SERVER_VERSION:-true}"
 POSTGRES_CHECK_CVES="${POSTGRES_CHECK_CVES:-true}"
@@ -52,7 +60,7 @@ if [[ "$PROJECT_PYTHON_EXPLICIT" != "true" ]]; then
   fi
 fi
 
-echo "▶ Running dependency freshness checks with ${PROJECT_PYTHON}"
+echo && echo "▶ Running dependency freshness checks with ${PROJECT_PYTHON}"
 #R010: Emit machine-readable and text freshness reports with optional major-version gate.
 DEPENDENCY_FRESHNESS_ARGS=(
   ./scripts/check_dependency_freshness.py
@@ -67,19 +75,43 @@ if [[ "$FAIL_ON_DIRECT_OUTDATED" == "true" ]]; then
 fi
 "$PROJECT_PYTHON" "${DEPENDENCY_FRESHNESS_ARGS[@]}"
 
-if [[ "$RUN_TELLER_CANARY" == "true" ]]; then
-  #R015: Run optional Teller API compatibility/drift canary checks.
-  echo "▶ Running Teller API drift checks"
-  "$PROJECT_PYTHON" ./scripts/check_teller_api_drift.py \
-    --output-json "${REPORT_DIR}/teller-api-drift.json" \
-    --output-text "${REPORT_DIR}/teller-api-drift.txt"
+#R015: Run optional Teller API version freshness checks via machine-readable API metadata.
+if [[ "$RUN_TELLER_VERSION_FRESHNESS" == "true" ]]; then
+  echo && echo "▶ Running Teller API version freshness checks"
+  TELLER_VERSION_ARGS=(
+    ./scripts/check_teller_api_version_freshness.py
+    --output-json "${REPORT_DIR}/teller-api-version-freshness.json"
+    --output-text "${REPORT_DIR}/teller-api-version-freshness.txt"
+    --version-sources "${TELLER_API_VERSION_SOURCES}"
+    --dashboard-url "${TELLER_API_VERSION_DASHBOARD_URL}"
+  )
+  if command -v 1psa >/dev/null 2>&1 && [[ -n "$TELLER_API_VERSION_DASHBOARD_PSA_ITEM" ]] && 1psa -l "$TELLER_API_VERSION_DASHBOARD_PSA_ITEM" >/dev/null 2>&1; then
+    TELLER_VERSION_ARGS+=(--dashboard-psa-item "${TELLER_API_VERSION_DASHBOARD_PSA_ITEM}")
+    TELLER_VERSION_ARGS+=(--dashboard-username-field "${TELLER_API_VERSION_DASHBOARD_USERNAME_FIELD}")
+    TELLER_VERSION_ARGS+=(--dashboard-password-field "${TELLER_API_VERSION_DASHBOARD_PASSWORD_FIELD}")
+    TELLER_VERSION_ARGS+=(--dashboard-otp-field "${TELLER_API_VERSION_DASHBOARD_OTP_FIELD}")
+  fi
+  if [[ -n "$TELLER_API_BASELINE_VERSION" ]]; then
+    TELLER_VERSION_ARGS+=(--baseline-version "${TELLER_API_BASELINE_VERSION}")
+  fi
+  if [[ "$TELLER_API_VERSION_FAIL_ON_NEW" == "true" ]]; then
+    TELLER_VERSION_ARGS+=(--fail-on-new)
+  fi
+  "$PROJECT_PYTHON" "${TELLER_VERSION_ARGS[@]}"
 fi
 
 #R020: Run optional PostgreSQL version freshness checks and emit freshness artifacts.
 if [[ "$RUN_POSTGRES_FRESHNESS" == "true" ]]; then
-  echo "▶ Running PostgreSQL freshness checks"
+  echo && echo "▶ Running PostgreSQL freshness checks"
   if [[ "$POSTGRES_CHECK_SERVER_VERSION" == "true" ]] && [[ -z "$POSTGRES_SERVER_PSQL_ARGS" ]]; then
-    POSTGRES_SERVER_PSQL_ARGS="-h localhost -U teller -d prod"
+    if [[ -n "${POSTGRES_SERVER_DSN:-}" ]]; then
+      echo "ℹ️ PostgreSQL server check target: server-dsn (explicit)"
+    else
+      POSTGRES_SERVER_PSQL_ARGS="-h localhost -U teller -d prod"
+      echo "ℹ️ PostgreSQL server check target: psql args (default) '${POSTGRES_SERVER_PSQL_ARGS}'"
+    fi
+  elif [[ "$POSTGRES_CHECK_SERVER_VERSION" == "true" ]]; then
+    echo "ℹ️ PostgreSQL server check target: psql args (explicit) '${POSTGRES_SERVER_PSQL_ARGS}'"
   fi
   if [[ "$POSTGRES_CHECK_SERVER_VERSION" == "true" ]] && [[ -z "${PGPASSWORD:-}" ]] && command -v 1psa >/dev/null 2>&1; then
     if [[ "$POSTGRES_SERVER_PSA_FIELD" == "password" ]]; then
@@ -89,6 +121,15 @@ if [[ "$RUN_POSTGRES_FRESHNESS" == "true" ]]; then
       postgres_password="$(1psa -f "$POSTGRES_SERVER_PSA_ITEM" "$POSTGRES_SERVER_PSA_FIELD" 2>/dev/null || true)"
       export PGPASSWORD="$postgres_password"
     fi
+    if [[ -n "${PGPASSWORD:-}" ]]; then
+      echo "ℹ️ PostgreSQL password source: 1psa (${POSTGRES_SERVER_PSA_ITEM}:${POSTGRES_SERVER_PSA_FIELD})"
+    else
+      echo "⚠️ PostgreSQL password source: 1psa lookup returned empty (${POSTGRES_SERVER_PSA_ITEM}:${POSTGRES_SERVER_PSA_FIELD})"
+    fi
+  elif [[ "$POSTGRES_CHECK_SERVER_VERSION" == "true" ]] && [[ -n "${PGPASSWORD:-}" ]]; then
+    echo "ℹ️ PostgreSQL password source: PGPASSWORD environment variable"
+  elif [[ "$POSTGRES_CHECK_SERVER_VERSION" == "true" ]]; then
+    echo "⚠️ PostgreSQL password source: not set (PGPASSWORD missing and 1psa unavailable)"
   fi
   POSTGRES_FRESHNESS_ARGS=(
     ./scripts/check_postgres_freshness.py

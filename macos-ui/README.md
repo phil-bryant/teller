@@ -9,7 +9,7 @@ This app now also includes a native **Connect** tab for local Teller enrollment 
 From repo root:
 
 ```zsh
-./14_run_classification_api.py
+./15_run_classification_api.py
 ```
 
 Defaults to `http://127.0.0.1:8787`. Override with:
@@ -45,7 +45,7 @@ Connect is now owned in-process by the app (local file-backed service + native W
 From repo root, the recommended launcher is:
 
 ```zsh
-./17_run_classification_macos-ui.sh
+./18_run_classification_macos-ui.sh
 ```
 
 That command launches this macOS app; open the Connect tab to manage local enrollments.
@@ -89,8 +89,8 @@ From repo root:
 - `./09_run_unit_tests.sh` (API/unit tests)
 - `./10_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
 - `./05_run_av_checks.sh` (standalone ClamAV antivirus lane)
-- `./15_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./15_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
+- `./16_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./16_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
 
 ## 5) Automated UI regression testing
 

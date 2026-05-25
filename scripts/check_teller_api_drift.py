@@ -45,7 +45,7 @@ def discover_token_candidates() -> list[tuple[str, str]]:
     return candidates
 
 
-def resolve_credentials(institution_id: str = "") -> dict[str, Any]:
+def resolve_credentials(institution_id: str = "", run_all_tokens: bool = False) -> dict[str, Any]:
     cert_path = os.environ.get("TELLER_CERT_PATH", "").strip()
     key_path = os.environ.get("TELLER_KEY_PATH", "").strip()
     token = os.environ.get("TELLER_ACCESS_TOKEN", "").strip()
@@ -62,6 +62,23 @@ def resolve_credentials(institution_id: str = "") -> dict[str, Any]:
             key_path = str(candidate)
     if not token:
         candidates = discover_token_candidates()
+        if run_all_tokens and candidates:
+            if institution_id:
+                filtered = [item for item in candidates if item[0] == institution_id]
+                if not filtered:
+                    warnings.append(
+                        f"No token candidates matched --institution-id={institution_id}. "
+                        "Set TELLER_ACCESS_TOKEN or choose a matching suffix."
+                    )
+                candidates = filtered
+            return {
+                "cert_path": cert_path,
+                "key_path": key_path,
+                "token": "",
+                "token_source": "",
+                "token_candidates": candidates,
+                "warnings": warnings,
+            }
         if institution_id:
             filtered = [item for item in candidates if item[0] == institution_id]
             if not filtered:
@@ -90,11 +107,12 @@ def resolve_credentials(institution_id: str = "") -> dict[str, Any]:
         "key_path": key_path,
         "token": token,
         "token_source": token_source,
+        "token_candidates": [(token_source, token)] if token else [],
         "warnings": warnings,
     }
 
 
-def run_live_canary(timeout_seconds: int, institution_id: str = "") -> dict[str, Any]:
+def run_live_canary(timeout_seconds: int, institution_id: str = "", run_all_tokens: bool = False) -> dict[str, Any]:
     try:
         import requests
     except ImportError:
@@ -105,10 +123,11 @@ def run_live_canary(timeout_seconds: int, institution_id: str = "") -> dict[str,
             "warnings": ["Skipping live canary: Python package 'requests' is not installed."],
         }
 
-    credentials = resolve_credentials(institution_id=institution_id)
+    credentials = resolve_credentials(institution_id=institution_id, run_all_tokens=run_all_tokens)
     cert_path = credentials["cert_path"]
     key_path = credentials["key_path"]
     token = credentials["token"]
+    token_candidates = [item for item in credentials.get("token_candidates", []) if item[1]]
 
     checks: list[dict[str, Any]] = []
     warnings: list[str] = list(credentials.get("warnings", []))
@@ -146,7 +165,11 @@ def run_live_canary(timeout_seconds: int, institution_id: str = "") -> dict[str,
         checks.append(check_result)
 
     run_check("institutions", "/institutions")
-    if token:
+    if run_all_tokens and token_candidates:
+        for token_source, candidate_token in token_candidates:
+            run_check(f"accounts[{token_source}]", "/accounts", auth_token=candidate_token)
+            run_check(f"identity[{token_source}]", "/identity", auth_token=candidate_token)
+    elif token:
         run_check("accounts", "/accounts", auth_token=token)
         run_check("identity", "/identity", auth_token=token)
     else:
@@ -178,8 +201,8 @@ def run_fallback_checks() -> dict[str, Any]:
     source_files = [
         Path("macos-ui/Sources/TransactionClassifier/TellerSetupService.swift"),
         Path("macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift"),
-        Path("17_run_classification_macos-ui.sh"),
-        Path("12_fetch_teller_api_data.py"),
+        Path("18_run_classification_macos-ui.sh"),
+        Path("13_fetch_teller_api_data.py"),
     ]
     endpoint_markers = ["/institutions", "/accounts", "/identity"]
     for source_path in source_files:
@@ -225,12 +248,17 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Token suffix to use when multiple local auth_token_<suffix>.json files exist.",
     )
+    parser.add_argument(
+        "--run-all-tokens",
+        action="store_true",
+        help="Run authenticated checks for every discovered local token candidate.",
+    )
     return parser.parse_args()
 
 
 def build_text_report(report: dict[str, Any]) -> str:
     lines = [
-        "Teller API drift report",
+        "Teller API smoke report",
         f"- Mode: {report['mode']}",
         f"- Status: {report['status']}",
         "",
@@ -259,7 +287,11 @@ def main() -> int:
     output_json.parent.mkdir(parents=True, exist_ok=True)
     output_text.parent.mkdir(parents=True, exist_ok=True)
 
-    live_result = run_live_canary(timeout_seconds=args.timeout_seconds, institution_id=args.institution_id)
+    live_result = run_live_canary(
+        timeout_seconds=args.timeout_seconds,
+        institution_id=args.institution_id,
+        run_all_tokens=args.run_all_tokens,
+    )
     if live_result["mode"] == "fallback":
         fallback_result = run_fallback_checks()
         merged_checks = fallback_result["checks"]
