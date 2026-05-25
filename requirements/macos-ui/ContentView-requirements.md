@@ -49,6 +49,7 @@ R040  Statement: Manage Categories supports multi-select and bulk delete.
 Design: `CategoryManagerView` keeps category selection in a `Set<Int>`. Plain click selects one row; Command-click toggles rows in the set. The sidebar header exposes a Delete action enabled when one or more categories are selected. When exactly one category is selected the edit form is active; when multiple are selected the form is disabled and the header shows the selection count.
 Tests:
 - R040-T01: Command-click two categories and verify Delete is enabled; trigger bulk delete and verify both categories are removed from the list.
+- R040-T02: In the Manage Categories smoke edit scenario, clear/replace only the populated Categorization field before saving (`Dining` -> `Dining Updated`) and keep other draft fields paste-only to avoid unnecessary UI latency.
 
 R045  Statement: Match action bar exposes a Clear control to the right of Mark no-email.
 Design: `MatchActionsBar` renders Confirm, Override with this email, Mark no-email, then Clear in that order. Clear is bound to `clearSelectedMatch()` and disabled when `canClearSelectedMatch` is false. On success the transaction list reloads and the row shows the unmatched badge (no active human-reviewed match).

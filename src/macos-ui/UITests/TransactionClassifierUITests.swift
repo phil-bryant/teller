@@ -417,7 +417,7 @@ final class TransactionClassifierUITests: XCTestCase {
         pasteText("Secondary", into: uiElement("category-field-level-2-name"))
         pasteText("L3", into: uiElement("category-field-level-3"))
         pasteText("L4", into: uiElement("category-field-level-4"))
-        pasteText("Dining Updated", into: uiElement("category-field-categorization"))
+        replaceText(in: uiElement("category-field-categorization"), with: "Dining Updated")
         pasteText("General", into: uiElement("category-field-applicability"))
 
         uiElement("category-save-button").click()
