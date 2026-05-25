@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/13_fetch_teller_api_data-requirements.md
+# Requirement test-case tags for requirements/16_fetch_teller_api_data-requirements.md
 # #R001-T02: Traceability anchor.
 # #R005-T02: Traceability anchor.
 # #R005-T03: Traceability anchor.
@@ -12,7 +12,7 @@
 # #R030-T02: Traceability anchor.
 # #R035-T02: Traceability anchor.
 
-# Traceability numbered tags for requirements/13_fetch_teller_api_data-requirements.md
+# Traceability numbered tags for requirements/16_fetch_teller_api_data-requirements.md
 # #R001-T01: Traceability anchor.
 # #R005-T01: Traceability anchor.
 # #R010-T01: Traceability anchor.
@@ -34,7 +34,7 @@ teardown() {
 }
 
 repo_src() {
-  printf '%s' "$(repo_root)/13_fetch_teller_api_data.py"
+  printf '%s' "$(repo_root)/16_fetch_teller_api_data.py"
 }
 
 @test "argparse includes debug, dry run, and institution" {
@@ -59,7 +59,7 @@ repo_src() {
 
 @test "Teller client uses macOS UI connect repair launcher" {
   #R010
-  run grep "18_run_classification_macos-ui.sh" "$(repo_src)"
+  run grep "21_run_classification_macos-ui.sh" "$(repo_src)"
   [ "$status" -eq 0 ]
   run grep "_repair_enrollment" "$(repo_src)"
   [ "$status" -eq 0 ]

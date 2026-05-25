@@ -9,7 +9,7 @@ todos:
     content: Implement 18_run_all_checks_parallel.sh with parallel launch, log capture, per-script + overall PASS/FAIL
     status: completed
   - id: fix-comment
-    content: Fix stale R030 comment in 09_run_unit_tests.sh (11 not 18)
+    content: Fix stale R030 comment in 09_run_shell_unit_tests.sh (11 not 18)
     status: completed
   - id: bats
     content: Add tests/sh/18_run_all_checks_parallel.bats with stubbed child scripts covering all requirement tests
@@ -34,9 +34,9 @@ Introduce `[18_run_all_checks_parallel.sh](18_run_all_checks_parallel.sh)` as a 
 | 05  | `05_run_av_test.sh`                     |
 | 06  | `06_run_static_security_tests.sh`                          |
 | 08  | `08_deploy_database_verification_test.sh`            |
-| 09  | `09_run_unit_tests.sh`                    |
-| 10  | `10_run_macos_ui_regression_tests.sh`     |
-| 11  | `11_verify_macos_crash_test.sh`       |
+| 09  | `09_run_shell_unit_tests.sh`                    |
+| 10  | `13_run_macos_ui_regression_tests.sh`     |
+| 11  | `14_verify_macos_crash_test.sh`       |
 | 15  | `15_verify_classification_persistence.sh` |
 
 
@@ -130,13 +130,13 @@ set -e
 **Output format** (stable for tests):
 
 - `✅ PASS: 00_run_requirements_traceability_tests.sh`
-- `❌ FAIL: 09_run_unit_tests.sh (exit 1) — see ./.parallel-checks-reports/09_run_unit_tests.log`
+- `❌ FAIL: 09_run_shell_unit_tests.sh (exit 1) — see ./.parallel-checks-reports/09_run_unit_tests.log`
 - `✅ PASS: all parallel checks succeeded (9/9)`
 - `❌ FAIL: parallel checks: 8/9 passed`
 
 Print a short “starting parallel checks…” banner before launch; suppress interleaved child stdout (logs only in files) to keep the summary readable.
 
-**Side fix:** Update stale comment in `[09_run_unit_tests.sh](09_run_unit_tests.sh)` line 14 (`#R030: ... dedicated script 18`) → reference `11_verify_macos_crash_test.sh` instead.
+**Side fix:** Update stale comment in `[09_run_shell_unit_tests.sh](09_run_shell_unit_tests.sh)` line 14 (`#R030: ... dedicated script 18`) → reference `14_verify_macos_crash_test.sh` instead.
 
 ## 3. Bats tests
 
@@ -148,10 +148,10 @@ Create `[tests/sh/18_run_all_checks_parallel.bats](tests/sh/18_run_all_checks_pa
 - Helper `write_child_stub(name, body)` that copies minimal executable stubs for all nine children into `FIXTURE_ROOT`
 - Default stubs: echo script name to stdout, exit 0
 
-**Test cases** (with traceability header comments + inline `#Rxxx` tags, same pattern as `[tests/sh/11_verify_macos_crash_test.bats](tests/sh/11_verify_macos_crash_test.bats)`):
+**Test cases** (with traceability header comments + inline `#Rxxx` tags, same pattern as `[tests/sh/14_verify_macos_crash_test.bats](tests/sh/14_verify_macos_crash_test.bats)`):
 
 1. **all pass** — nine stubs exit 0 → status 0, nine `✅ PASS:` lines, overall PASS
-2. **single failure** — `09_run_unit_tests.sh` stub exits 1 → status 1, that script FAIL, others PASS, overall FAIL
+2. **single failure** — `09_run_shell_unit_tests.sh` stub exits 1 → status 1, that script FAIL, others PASS, overall FAIL
 3. **missing child** — omit one stub file → status non-zero before/at launch, actionable message naming missing script
 4. **repo root** — run from `$TEST_TMPDIR`, child stubs log cwd → all invocations use fixture root
 5. **parallelism** — each stub `sleep 1`; assert elapsed < 5s (sequential would be ~9s)

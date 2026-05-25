@@ -34,7 +34,7 @@ PROGRESS_INTERVAL_SECONDS="${PARALLEL_CHECKS_PROGRESS_INTERVAL_SECONDS:-1}"
 if [[ ! "$PROGRESS_INTERVAL_SECONDS" =~ ^[0-9]+$ || "$PROGRESS_INTERVAL_SECONDS" -le 0 ]]; then
   PROGRESS_INTERVAL_SECONDS=1
 fi
-LOCK_FILE="${SCRIPT_DIR}/.19_run_all_tests_parallel.lock"
+LOCK_FILE="${SCRIPT_DIR}/.22_run_all_tests_parallel.lock"
 PROGRESS_INLINE=false
 if [[ -t 1 ]]; then
   PROGRESS_INLINE=true
@@ -63,7 +63,7 @@ acquire_single_run_lock() {
     existing_lock_pid="$(<"$LOCK_FILE")"
   fi
   if [[ -n "$existing_lock_pid" ]] && kill -0 "$existing_lock_pid" 2>/dev/null; then
-    echo "❌ FAIL: another 19_run_all_tests_parallel.sh run is already active (pid ${existing_lock_pid})." >&2
+    echo "❌ FAIL: another 22_run_all_tests_parallel.sh run is already active (pid ${existing_lock_pid})." >&2
     return 1
   fi
   rm -f "$LOCK_FILE"

@@ -9,7 +9,7 @@ todos:
     content: Add missing DB profile and Postgres prerequisite steps to Quick Start and setup sections.
     status: completed
   - id: correct-test-docs
-    content: Align test documentation with tests/py path and multi-lane behavior in 09_run_unit_tests.sh.
+    content: Align test documentation with tests/py path and multi-lane behavior in 09_run_shell_unit_tests.sh.
     status: completed
   - id: refresh-connect-docs
     content: Update Connect/classifier setup docs to reflect in-process Connect and current token/env requirements.
@@ -28,7 +28,7 @@ Bring repository documentation in sync with current implementation, with priorit
 ## Findings To Address First
 - `README.md` references non-existent `18_configure_teller_io.sh`; actual script is [`18_run_all_checks_parallel.sh`](/Users/phil/local/src/teller/18_run_all_checks_parallel.sh).
 - Quick Start in [`README.md`](/Users/phil/local/src/teller/README.md) omits required DB profile setup (`db-profiles.json`) before running DB scripts.
-- Unit test commands in [`README.md`](/Users/phil/local/src/teller/README.md) point to wrong paths; tests live under [`tests/py/`](/Users/phil/local/src/teller/tests/py) and script orchestration is in [`09_run_unit_tests.sh`](/Users/phil/local/src/teller/09_run_unit_tests.sh).
+- Unit test commands in [`README.md`](/Users/phil/local/src/teller/README.md) point to wrong paths; tests live under [`tests/py/`](/Users/phil/local/src/teller/tests/py) and script orchestration is in [`09_run_shell_unit_tests.sh`](/Users/phil/local/src/teller/09_run_shell_unit_tests.sh).
 - Connect/Teller provisioning docs are stale: macOS Connect flow is in-process via [`ConnectAPIClient.swift`](/Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift) and setup logic in [`TellerSetupService.swift`](/Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/TellerSetupService.swift), not a separate token server script.
 - Root docs understate current system scope (Python ingest + FastAPI classifier + SwiftUI app + SQL schema + multi-lane checks).
 
@@ -43,7 +43,7 @@ Bring repository documentation in sync with current implementation, with priorit
 
 3. **Correct and expand test documentation**
    - Update direct Python unittest command to `tests/py`.
-   - Describe `09_run_unit_tests.sh` multi-lane behavior (Python, shell bats, SQL pgTAP, Swift).
+   - Describe `09_run_shell_unit_tests.sh` multi-lane behavior (Python, shell bats, SQL pgTAP, Swift).
    - Link shell-test conventions from [`tests/sh/README.md`](/Users/phil/local/src/teller/tests/sh/README.md).
 
 4. **Refresh Connect and classifier API setup docs**

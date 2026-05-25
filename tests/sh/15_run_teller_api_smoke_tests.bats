@@ -1,10 +1,10 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/12_run_teller_api_smoke_tests-requirements.md
+# Requirement test-case tags for requirements/15_run_teller_api_smoke_tests-requirements.md
 # #R005-T02: Traceability anchor.
 # #R010-T02: Traceability anchor.
 
-# Traceability numbered tags for requirements/12_run_teller_api_smoke_tests-requirements.md
+# Traceability numbered tags for requirements/15_run_teller_api_smoke_tests-requirements.md
 # #R001-T01: Traceability anchor.
 # #R005-T01: Traceability anchor.
 # #R010-T01: Traceability anchor.
@@ -14,7 +14,7 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "12_run_teller_api_smoke_tests.sh"
+  copy_script_to_fixture "15_run_teller_api_smoke_tests.sh"
   mkdir -p "${FIXTURE_ROOT}/scripts"
 }
 
@@ -46,7 +46,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${TEST_TMPDIR}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' '${FIXTURE_ROOT}/12_run_teller_api_smoke_tests.sh'"
+  run bash -c "cd '${TEST_TMPDIR}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' '${FIXTURE_ROOT}/15_run_teller_api_smoke_tests.sh'"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/teller-api-smoke.json" ]
   [ -f "${FIXTURE_ROOT}/.security-reports/teller-api-smoke.txt" ]
@@ -79,7 +79,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' TELLER_SMOKE_INSTITUTION_ID='chase' ./12_run_teller_api_smoke_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' TELLER_SMOKE_INSTITUTION_ID='chase' ./15_run_teller_api_smoke_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"--institution-id chase"* ]]
@@ -87,7 +87,7 @@ EOF
 
 @test "fails fast for non-executable explicit interpreter path" {
   #R005
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON=./missing-python ./12_run_teller_api_smoke_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON=./missing-python ./15_run_teller_api_smoke_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Project python not executable"* ]]
 }

@@ -1,6 +1,6 @@
 ---
 name: Remove macOS UI DAST
-overview: Remove the macOS XCUITest-through-ZAP-proxy lane from DAST scripts (primarily `16_run_dast.sh`), along with its requirements and bats tests. Keep standalone UI regression testing via `10_run_macos_ui_regression_tests.sh` unchanged.
+overview: Remove the macOS XCUITest-through-ZAP-proxy lane from DAST scripts (primarily `16_run_dast.sh`), along with its requirements and bats tests. Keep standalone UI regression testing via `13_run_macos_ui_regression_tests.sh` unchanged.
 todos:
   - id: strip-16-dast
     content: Remove macOS UI DAST block and related helpers/vars from 16_run_dast.sh; rename reuse-existing-api env
@@ -25,13 +25,13 @@ isProject: false
 
 1. **Schemathesis** (OpenAPI contract fuzzing)
 2. **OWASP ZAP quick scan** (CLI against `/health`)
-3. **macOS UI DAST** — ZAP daemon proxy + `./10_run_macos_ui_regression_tests.sh` with `RUN_XCUITESTS=true` (this is what failed on the missing `activateTransactionClassifierForInput` symbol and what you want removed)
+3. **macOS UI DAST** — ZAP daemon proxy + `./13_run_macos_ui_regression_tests.sh` with `RUN_XCUITESTS=true` (this is what failed on the missing `activateTransactionClassifierForInput` symbol and what you want removed)
 
 The same macOS UI block is **duplicated** in `[06_run_static_security_tests.sh](06_run_static_security_tests.sh)` when `RUN_DAST=true` (off by default). Both copies should be removed so the feature cannot be re-enabled accidentally.
 
 **Out of scope (unchanged):**
 
-- `[10_run_macos_ui_regression_tests.sh](10_run_macos_ui_regression_tests.sh)` and all `macos-ui/` snapshot/XCUITest code
+- `[13_run_macos_ui_regression_tests.sh](13_run_macos_ui_regression_tests.sh)` and all `macos-ui/` snapshot/XCUITest code
 - Swift SAST (`RUN_SWIFT_SAST`) inside `16_run_dast.sh`
 - Schemathesis, ZAP quick scan, category integrity checks, token-capture deprecation messages
 
@@ -42,7 +42,7 @@ flowchart LR
     SCH[Schemathesis]
     ZAPQ[ZAP quick scan]
     ZAPD[ZAP daemon proxy]
-  UI[XCUITest via 10_run_macos_ui_regression_tests.sh]
+  UI[XCUITest via 13_run_macos_ui_regression_tests.sh]
     API --> SCH
     API --> ZAPQ
     API --> ZAPD
@@ -63,7 +63,7 @@ flowchart LR
 
 ### 1. `[16_run_dast.sh](16_run_dast.sh)`
 
-Delete the entire macOS UI DAST block (~lines 1386–1482): `RUN_MACOS_UI_DAST`, proxy host/port selection, ZAP `-daemon`, invocation of `10_run_macos_ui_regression_tests.sh`, and `zap-macos-ui.{json,html,log}` artifact collection.
+Delete the entire macOS UI DAST block (~lines 1386–1482): `RUN_MACOS_UI_DAST`, proxy host/port selection, ZAP `-daemon`, invocation of `13_run_macos_ui_regression_tests.sh`, and `zap-macos-ui.{json,html,log}` artifact collection.
 
 **Also remove/simplify related plumbing:**
 
@@ -120,7 +120,7 @@ No changes needed in `[requirements/06_run_static_security_tests-requirements.md
 ### 5. Documentation
 
 - `[README.md](README.md)`: Remove `RUN_MACOS_UI_DAST`, `MACOS_UI_DAST_ZAP_PROXY_*`, macOS UI DAST example block (~lines 188–199); document `DAST_REUSE_EXISTING_API` if kept/renamed
-- `[macos-ui/README.md](macos-ui/README.md)`: Remove line 88 (`RUN_SAST=false RUN_MACOS_UI_DAST=true ./16_run_dast.sh`); verification helpers should list only `./10_run_macos_ui_regression_tests.sh` for UI testing
+- `[macos-ui/README.md](macos-ui/README.md)`: Remove line 88 (`RUN_SAST=false RUN_MACOS_UI_DAST=true ./16_run_dast.sh`); verification helpers should list only `./13_run_macos_ui_regression_tests.sh` for UI testing
 
 ## Verification
 

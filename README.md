@@ -16,17 +16,20 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `06_run_static_security_tests.sh`
 - `07_deploy_database.sh`
 - `08_deploy_database_verification_test.sh` (includes updated_at trigger coverage verification)
-- `09_run_unit_tests.sh`
-- `10_run_macos_ui_regression_tests.sh` (recommended pre-merge gate; can also be run via `RUN_MACOS_UI_REGRESSION_TESTS=true ./09_run_unit_tests.sh`)
-- `11_verify_macos_crash_test.sh`
-- `12_run_teller_api_smoke_tests.sh`
-- `13_fetch_teller_api_data.py`
-- `14_backfill_bank_statements.py`
-- `15_run_classification_api.py`
-- `16_classification_persistence_verification_test.sh`
-- `17_run_dynamic_security_tests.sh`
-- `18_run_classification_macos-ui.sh`
-- `19_run_all_tests_parallel.sh`
+- `09_run_shell_unit_tests.sh`
+- `10_run_python_unit_tests.sh`
+- `11_run_sql_unit_tests.sh`
+- `12_run_swift_unit_tests.sh`
+- `13_run_macos_ui_regression_tests.sh` (recommended pre-merge gate)
+- `14_verify_macos_crash_test.sh`
+- `15_run_teller_api_smoke_tests.sh`
+- `16_fetch_teller_api_data.py`
+- `17_backfill_bank_statements.py`
+- `18_run_classification_api.py`
+- `19_classification_persistence_verification_test.sh`
+- `20_run_dynamic_security_tests.sh`
+- `21_run_classification_macos-ui.sh`
+- `22_run_all_tests_parallel.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -50,17 +53,20 @@ cp db-profiles-EXAMPLE.json db-profiles.json
 # Edit db-profiles.json default_profile / 1psa_or_env_item for your environment.
 ./07_deploy_database.sh
 ./08_deploy_database_verification_test.sh
-./09_run_unit_tests.sh
-./10_run_macos_ui_regression_tests.sh
-./11_verify_macos_crash_test.sh
-./12_run_teller_api_smoke_tests.sh
-./13_fetch_teller_api_data.py
-./14_backfill_bank_statements.py
-./15_run_classification_api.py
-./16_classification_persistence_verification_test.sh
-./17_run_dynamic_security_tests.sh
-./18_run_classification_macos-ui.sh
-./19_run_all_tests_parallel.sh
+./09_run_shell_unit_tests.sh
+./10_run_python_unit_tests.sh
+./11_run_sql_unit_tests.sh
+./12_run_swift_unit_tests.sh
+./13_run_macos_ui_regression_tests.sh
+./14_verify_macos_crash_test.sh
+./15_run_teller_api_smoke_tests.sh
+./16_fetch_teller_api_data.py
+./17_backfill_bank_statements.py
+./18_run_classification_api.py
+./19_classification_persistence_verification_test.sh
+./20_run_dynamic_security_tests.sh
+./21_run_classification_macos-ui.sh
+./22_run_all_tests_parallel.sh
 ```
 
 Before `./07_deploy_database.sh`, ensure PostgreSQL is installed and running for your selected profile target (for local runs, start your local server/service first).
@@ -81,7 +87,7 @@ Run these checks from the project root after activating the project virtual envi
 source ./teller-venv/bin/activate
 ```
 
-Security scanning runs via `06_run_static_security_tests.sh` (SAST) and `17_run_dynamic_security_tests.sh` (DAST).
+Security scanning runs via `06_run_static_security_tests.sh` (SAST) and `20_run_dynamic_security_tests.sh` (DAST).
 Antivirus scanning runs via `05_run_av_test.sh` (ClamAV lane).
 Dependency freshness automation runs via `04_run_dependency_freshness_tests.sh`.
 
@@ -96,23 +102,19 @@ Verifies every requirement ID in `requirements/**/*-requirements.md` is mapped t
 Optional single-pair mode:
 
 ```bash
-./00_run_requirements_traceability_tests.sh requirements/16_classification_persistence_verification_test-requirements.md 16_classification_persistence_verification_test.sh
+./00_run_requirements_traceability_tests.sh requirements/19_classification_persistence_verification_test-requirements.md 19_classification_persistence_verification_test.sh
 ```
 
 ### 2) Unit Tests
 
-Runs the unified local unit lane orchestrator (`09`) across shell, Python, SQL, and Swift test suites.
+Runs split unit lanes so each suite can run independently (and in parallel under `22`).
 
 ```bash
-./09_run_unit_tests.sh
+./09_run_shell_unit_tests.sh
+./10_run_python_unit_tests.sh
+./11_run_sql_unit_tests.sh
+./12_run_swift_unit_tests.sh
 ```
-
-Lane toggles (all default `true`):
-
-- `RUN_SHELL_TESTS`
-- `RUN_PYTHON_TESTS`
-- `RUN_SQL_TESTS`
-- `RUN_SWIFT_TESTS`
 
 Equivalent direct Python unittest invocation:
 
@@ -120,13 +122,7 @@ Equivalent direct Python unittest invocation:
 python3 -m unittest discover tests/py
 ```
 
-Shell tests (`tests/sh`) run via `bats` in this lane. See `tests/sh/README.md` for stubbing conventions and scope boundaries.
-
-Optional macOS UI regression lane:
-
-```bash
-RUN_MACOS_UI_REGRESSION_TESTS=true ./09_run_unit_tests.sh
-```
+Shell tests (`tests/sh`) run via `bats` in lane `09`. See `tests/sh/README.md` for stubbing conventions and scope boundaries.
 
 ### 2b) macOS UI Regression Tests
 
@@ -135,7 +131,7 @@ Runs deterministic snapshot tests and macOS XCUITest smoke flows for `macos-ui`.
 This lane can run before full Connect enrollment and before script `18`.
 
 ```bash
-./10_run_macos_ui_regression_tests.sh
+./13_run_macos_ui_regression_tests.sh
 ```
 
 Common flags:
@@ -153,28 +149,28 @@ The verifier auto-starts the API by default if `/health` is unavailable (`CLASSI
 1. Start the API in one terminal (optional):
 
 ```bash
-./15_run_classification_api.py
+./18_run_classification_api.py
 ```
 
 2. Run the verifier:
 
 ```bash
-./16_classification_persistence_verification_test.sh
+./19_classification_persistence_verification_test.sh
 ```
 
 Strict/CI-style mode requiring explicit IDs:
 
 ```bash
-TXN_ID=txn_xxx CATEGORY_ID=123 ./16_classification_persistence_verification_test.sh --require-env-ids
+TXN_ID=txn_xxx CATEGORY_ID=123 ./19_classification_persistence_verification_test.sh --require-env-ids
 ```
 
-Mutation endpoints require a write token from the `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` (checked by `15_run_classification_api.py`).
+Mutation endpoints require a write token from the `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` (checked by `18_run_classification_api.py`).
 
 ### 4) Built-In Smoke Verifications in Setup Scripts
 
 These checks run as part of existing app/setup workflows:
 
-- `./18_run_classification_macos-ui.sh`
+- `./21_run_classification_macos-ui.sh`
   - Builds and launches the native macOS app; Connect tab owns enrollment add/reconnect/delete and token persistence.
   - Connect setup smoke checks are handled in-app by `TellerSetupService` (`GET /institutions`, and optionally `GET /accounts` when token is present).
 
@@ -199,7 +195,7 @@ Run the SAST lane:
 Run the DAST lane:
 
 ```bash
-./17_run_dynamic_security_tests.sh
+./20_run_dynamic_security_tests.sh
 ```
 
 Useful flags:
@@ -237,7 +233,7 @@ ClamAV AV-lane notes:
 - During long scans, it emits periodic heartbeat lines so the run is not silent.
 - On first run, if malware signature databases are missing, the script automatically attempts a one-time `freshclam --stdout` update and retries the scan.
 
-For policy and behavior details, see `requirements/06_run_static_security_tests-requirements.md`, `requirements/17_run_dynamic_security_tests-requirements.md`, and `requirements/05_run_av_test-requirements.md`.
+For policy and behavior details, see `requirements/06_run_static_security_tests-requirements.md`, `requirements/20_run_dynamic_security_tests-requirements.md`, and `requirements/05_run_av_test-requirements.md`.
 
 ### 6) Dependency Freshness + Teller API Smoke
 
@@ -247,7 +243,7 @@ Run locally:
 
 ```bash
 ./04_run_dependency_freshness_tests.sh
-./12_run_teller_api_smoke_tests.sh
+./15_run_teller_api_smoke_tests.sh
 ```
 
 Artifacts are written to `./.security-reports/`:
@@ -296,7 +292,7 @@ PostgreSQL CVE policy files:
 
 Triage expectations:
 
-- Dependency freshness failures: review `dependency-freshness.*` artifacts, validate compatibility, and rerun `./09_run_unit_tests.sh`.
+- Dependency freshness failures: review `dependency-freshness.*` artifacts, validate compatibility, and rerun `./09_run_shell_unit_tests.sh`.
 - Teller API version freshness: checks your dashboard-configured app version first (via optional `1psa` credentials) and falls back to public docs/spec metadata; can report `unknown` when sources are unavailable.
 - Dependency transitive update warnings: informational by default; refresh the venv (`./03_load_requirements.sh`) when you want to align transitive packages.
 - Teller smoke warnings/failures: local token discovery is the default path and authenticated checks run across all discovered local tokens; set `TELLER_ACCESS_TOKEN` only when you want to force one token context.
@@ -323,7 +319,7 @@ Active secret and credential sources are:
   - `localhost_postgres_postgres` / `localhost_postgres_teller` by default for DB scripts
   - `TELLER_CLASSIFIER_WRITE_TOKEN` for classification API writes
 - Environment variables passed to scripts (for example `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`, `TELLER_DB_PROFILE`, `TELLER_DB_PROFILE_FILE`)
-- `~/.env` for local runtime settings loaded by `13_fetch_teller_api_data.py`
+- `~/.env` for local runtime settings loaded by `16_fetch_teller_api_data.py`
 
 ## What Each Core Script Does
 
@@ -340,7 +336,7 @@ Active secret and credential sources are:
   - Runs dedicated ClamAV antivirus checks (signature freshness, recursive scan, optional one-time `freshclam` retry, and AV gating).
 - `06_run_static_security_tests.sh`
   - Runs local SAST checks (Semgrep, Bandit, pip-audit, gitleaks, detect-secrets, ShellCheck, and SwiftLint for `macos-ui`).
-- `09_run_unit_tests.sh`
+- `09_run_shell_unit_tests.sh`
   - Runs shell (`bats`), Python (`unittest` in `tests/py`), SQL (`pgTAP` via `pg_prove`), and Swift (`swift test`) lanes.
   - Supports lane toggles with `RUN_SHELL_TESTS`, `RUN_PYTHON_TESTS`, `RUN_SQL_TESTS`, and `RUN_SWIFT_TESTS`.
 - `07_deploy_database.sh`
@@ -348,30 +344,30 @@ Active secret and credential sources are:
   - Applies SQL schema objects in dependency order from `sql/postgres/`.
 - `08_deploy_database_verification_test.sh`
   - Verifies required database objects, trigger/FK invariants, and `updated_at` trigger coverage after deploy.
-- `10_run_macos_ui_regression_tests.sh`
+- `13_run_macos_ui_regression_tests.sh`
   - Runs `macos-ui` snapshot regression tests and the macOS XCUITest smoke suite.
   - Supports selective gates with `RUN_SNAPSHOT_TESTS`, `SNAPSHOT_RECORD`, and `RUN_XCUITESTS`.
-- `11_verify_macos_crash_test.sh`
+- `14_verify_macos_crash_test.sh`
   - Validates crash-reporter behavior and expected failure metadata for `macos-ui`.
-- `12_run_teller_api_smoke_tests.sh`
+- `15_run_teller_api_smoke_tests.sh`
   - Runs Teller API smoke checks (`/institutions`, and token-backed `/accounts` / `/identity` when auth resolves).
   - Writes smoke artifacts to `.security-reports/`.
-- `13_fetch_teller_api_data.py`
+- `16_fetch_teller_api_data.py`
   - Runs Teller API client operations.
-- `14_backfill_bank_statements.py`
+- `17_backfill_bank_statements.py`
   - Backfills statements data.
-- `15_run_classification_api.py`
+- `18_run_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
   - Requires `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` before serving.
-- `16_classification_persistence_verification_test.sh`
+- `19_classification_persistence_verification_test.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
-- `17_run_dynamic_security_tests.sh`
+- `20_run_dynamic_security_tests.sh`
   - Runs DAST checks (Schemathesis + OWASP ZAP quick scan and related hardening checks) against running/local API targets.
-- `18_run_classification_macos-ui.sh`
+- `21_run_classification_macos-ui.sh`
   - Builds and launches `macos-ui/.build/debug/TransactionClassifier` from the repo root.
   - Connect tab hosts native Teller Connect enrollment/reconnect/add/delete (WebView-backed, no standalone localhost server).
-- `19_run_all_tests_parallel.sh`
+- `22_run_all_tests_parallel.sh`
   - Runs local parallel quality/security gate lanes and aggregates reports under `.parallel-checks-reports/`.
   - Includes traceability, dependency freshness, Teller smoke checks, AV, SAST, DB verify, unit tests, UI regression, crash reporter, and classification persistence checks.
 - `97_backup_database.sh`
@@ -400,7 +396,7 @@ Local app-based enrollment and token refresh:
 After completing Teller Connect in the native app, the returned token is saved under `~/.teller`:
 
 ```bash
-./18_run_classification_macos-ui.sh
+./21_run_classification_macos-ui.sh
 ```
 
 Connect behavior:
@@ -408,12 +404,12 @@ Connect behavior:
 - Open the **Connect** tab to add, reconnect, or delete local enrollment contexts.
 - Successful Connect writes `auth_token*.json` and `enrollment_id*.txt` with restrictive permissions.
 - Local setup checks for Teller connectivity are available via in-app setup/smoke actions backed by `TellerSetupService`.
-- `13_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
+- `16_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
 
 Quality/security aggregate checks are available through:
 
 ```bash
-./19_run_all_tests_parallel.sh
+./22_run_all_tests_parallel.sh
 ```
 
 ## 1psa Items Used by Database Scripts

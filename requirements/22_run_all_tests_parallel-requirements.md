@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `19_run_all_tests_parallel.sh`.
+Applies to `22_run_all_tests_parallel.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` at script entry.
@@ -16,7 +16,7 @@ Tests:
 
 R010  Statement: Discover child checks dynamically from numbered test-script filenames.
 Design: Discover child checks from repository-root `NN_*.sh` files whose basenames contain `test` or `tests`.
-Design: Exclude `19_run_all_tests_parallel.sh` from discovery so the orchestrator never invokes itself.
+Design: Exclude `22_run_all_tests_parallel.sh` from discovery so the orchestrator never invokes itself.
 Design: If discovery yields zero child checks, fail non-zero with an actionable error.
 Tests:
 - R010-T01: Seed mixed numbered scripts and verify only discovered `test/tests` scripts run while the orchestrator excludes itself.
@@ -50,7 +50,7 @@ Tests:
 - R035-T01: Verify stub output appears in the expected log file and FAIL lines reference the log path.
 
 R040  Statement: Remain a standalone meta-runner entrypoint.
-Design: Child check scripts must not invoke or reference `19_run_all_tests_parallel.sh`; each child remains an independent numbered entrypoint.
+Design: Child check scripts must not invoke or reference `22_run_all_tests_parallel.sh`; each child remains an independent numbered entrypoint.
 Tests:
 - R040-T01: Grep child scripts for `run_all_tests_parallel` and verify no matches.
 
@@ -67,7 +67,7 @@ Tests:
 - R060-T01: Verify the run output contains `Timing: wall ...; long pole ...`.
 
 R050  Statement: Prevent concurrent orchestrator runs from the same repository root.
-Design: Acquire a single-run lock file at repo-root scope before launching child checks and fail immediately if another live `19_run_all_tests_parallel.sh` process already owns the lock.
+Design: Acquire a single-run lock file at repo-root scope before launching child checks and fail immediately if another live `22_run_all_tests_parallel.sh` process already owns the lock.
 Design: If the lock file is stale (owner PID no longer exists), reclaim it and continue.
 Tests:
 - R050-T01: Start one long-running orchestrator process and verify a second invocation exits non-zero with an already-active lock message.
@@ -81,7 +81,7 @@ Tests:
 
 ## Changelog
 
-- 2026-05-20: Initial requirements for `19_run_all_tests_parallel.sh`.
+- 2026-05-20: Initial requirements for `22_run_all_tests_parallel.sh`.
 - 2026-05-20: Stream per-check PASS/FAIL lines in completion order as each parallel job finishes.
 - 2026-05-20: Added continuous aggregate progress bar reporting while parallel checks run.
 - 2026-05-20: Added single-run lock semantics to prevent concurrent orchestrator invocations.

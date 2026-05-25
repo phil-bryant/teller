@@ -98,7 +98,7 @@ Tests:
 
 ## Changelog
 
-- 2026-05-10: Split former combined security lane into `06_run_static_security_tests.sh` and `17_run_dynamic_security_tests.sh`.
+- 2026-05-10: Split former combined security lane into `06_run_static_security_tests.sh` and `20_run_dynamic_security_tests.sh`.
 - 2026-05-15: Added R025 to require Ruff execution and report accounting in SAST output.
 - 2026-05-15: Added R030 to enforce Ruff findings as blocking SAST gate signals.
 - 2026-05-15: Added R035 to exclude generated cache/report paths from detect-secrets.

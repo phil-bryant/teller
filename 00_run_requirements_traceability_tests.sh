@@ -273,7 +273,7 @@ if requirements_file.startswith("requirements/macos-ui/"):
     collect_swift_lane("macos-ui/UITests", "ui")
 
 # R020/R035 in 05 are marked as UI (XCUITest) in the requirements text; include UI lane.
-if os.path.basename(requirements_file) == "10_run_macos_ui_regression_tests-requirements.md":
+if os.path.basename(requirements_file) == "13_run_macos_ui_regression_tests-requirements.md":
     collect_swift_lane("macos-ui/UITests", "ui")
 
 if requirements_file.startswith("requirements/") and os.path.basename(requirements_file)[:2].isdigit():

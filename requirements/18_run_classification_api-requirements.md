@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `15_run_classification_api.py`.
+Applies to `18_run_classification_api.py`.
 
 R001  Statement: Resolve API host and port from environment with local defaults.
 Design: Read `TELLER_CLASSIFIER_API_HOST` and `TELLER_CLASSIFIER_API_PORT`; default to `127.0.0.1:8787`.
@@ -22,5 +22,5 @@ Tests:
 
 ## Changelog
 
-- 2026-04-19: Initial reverse-engineered requirements for `15_run_classification_api.py`.
+- 2026-04-19: Initial reverse-engineered requirements for `18_run_classification_api.py`.
 - 2026-05-09: Added R010 for mandatory 1psa-backed write-token preflight.

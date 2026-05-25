@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `10_run_macos_ui_regression_tests.sh`.
+Applies to `13_run_macos_ui_regression_tests.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` in the script entrypoint.
@@ -49,23 +49,23 @@ Tests:
 R040  Statement: Allow selecting specific smoke-suite scenario steps by numeric selector argument.
 Design: Accept an optional positional selector argument with forms `N`, comma-separated lists (`N,M`), and ranges (`N-M`) mapped to an ordered list of known scenarios inside `testMacOSUISmokeSuite`. When selectors are provided, export `XCUITEST_STEPS` to the test runner and invoke a single `-only-testing:TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite` entry (one app launch per run).
 Tests:
-- R040-T01: Run `10_run_macos_ui_regression_tests.sh 1,3,5-6` and verify `XCUITEST_STEPS=1,3,5,6` is exported and only `testMacOSUISmokeSuite` is passed to `xcodebuild test`.
+- R040-T01: Run `13_run_macos_ui_regression_tests.sh 1,3,5-6` and verify `XCUITEST_STEPS=1,3,5,6` is exported and only `testMacOSUISmokeSuite` is passed to `xcodebuild test`.
 
 R045  Statement: Fail fast when selectors reference non-existent scenario numbers.
 Design: Validate each parsed selector index against the known scenario list and exit non-zero with an explicit error before invoking `xcodebuild` when out of range.
 Tests:
-- R045-T01: Run `10_run_macos_ui_regression_tests.sh 99` and verify the script exits non-zero with an unknown-scenario-number error and does not call `xcodebuild`.
+- R045-T01: Run `13_run_macos_ui_regression_tests.sh 99` and verify the script exits non-zero with an unknown-scenario-number error and does not call `xcodebuild`.
 
 R050  Statement: Do not chain macOS crash-reporter verification from this UI regression runner.
-Design: `10_run_macos_ui_regression_tests.sh` must not invoke `./11_verify_macos_crash_test.sh`, reference `verify_macos_crash_test`, or define `RUN_CRASH_REPORTER_SMOKE_TEST`. Run PLCrashReporter verification via `./11_verify_macos_crash_test.sh` as a separate step when needed.
+Design: `13_run_macos_ui_regression_tests.sh` must not invoke `./14_verify_macos_crash_test.sh`, reference `verify_macos_crash_test`, or define `RUN_CRASH_REPORTER_SMOKE_TEST`. Run PLCrashReporter verification via `./14_verify_macos_crash_test.sh` as a separate step when needed.
 Tests:
 - R050-T01: Grep the script text and verify it contains no `verify_macos_crash_test` substring and no `CRASH_REPORTER_SMOKE` token.
 
 ## Changelog
 
 - 2026-05-20: Reworked XCUITest lane to a single-session `testMacOSUISmokeSuite` with 12 requirement-driven scenarios; R040/R045 now target scenario-step selection via `XCUITEST_STEPS`.
-- 2026-05-12: Replaced optional crash-reporter lane with R050 isolation requirement; verification is standalone `11_verify_macos_crash_test.sh`.
-- 2026-04-24: Initial requirements for `10_run_macos_ui_regression_tests.sh`.
+- 2026-05-12: Replaced optional crash-reporter lane with R050 isolation requirement; verification is standalone `14_verify_macos_crash_test.sh`.
+- 2026-04-24: Initial requirements for `13_run_macos_ui_regression_tests.sh`.
 - 2026-04-24: Folded gate rollout guidance from `macos-ui/UI_REGRESSION_ROLLOUT.md` into script-scoped requirements.
 - 2026-05-02: Added optional numeric XCUITest selectors and strict out-of-range validation requirements.
 - 2026-05-07: Added optional PLCrashReporter smoke-verification lane (later removed; see 2026-05-12).

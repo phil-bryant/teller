@@ -3,8 +3,9 @@ set -euo pipefail
 
 SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 #R001: Run tests from repository root regardless of caller working directory.
-cd "$SCRIPT_DIR"
+cd "$REPO_ROOT"
 
 # Optional runner controls for local development.
 RUN_SHELL_TESTS="${RUN_SHELL_TESTS:-true}"
@@ -12,12 +13,12 @@ RUN_PYTHON_TESTS="${RUN_PYTHON_TESTS:-true}"
 RUN_SQL_TESTS="${RUN_SQL_TESTS:-true}"
 RUN_SWIFT_TESTS="${RUN_SWIFT_TESTS:-true}"
 RUN_MACOS_UI_REGRESSION_TESTS="${RUN_MACOS_UI_REGRESSION_TESTS:-false}"
-#R030: Keep crash-reporter verification isolated to dedicated script 11.
+#R030: Keep crash-reporter verification isolated to dedicated script 14.
 BATS_FILTER="${BATS_FILTER:-}"
 SQL_TESTS_DIR="${SQL_TESTS_DIR:-./tests/sql}"
 
 #R025: Resolve DB connection settings from the active profile (1psa+~/.env via the helper).
-DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
+DB_PROFILE_HELPER="${REPO_ROOT}/scripts/db_profile_export.sh"
 PG_HOST=""
 PG_PORT=""
 PG_DBNAME=""
@@ -273,5 +274,5 @@ fi
 
 if [[ "$RUN_MACOS_UI_REGRESSION_TESTS" == "true" ]]; then
   echo "▶ Running macOS UI regression test lane..."
-  ./10_run_macos_ui_regression_tests.sh
+  ./13_run_macos_ui_regression_tests.sh
 fi

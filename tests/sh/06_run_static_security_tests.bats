@@ -33,7 +33,7 @@ load "helpers/common.bash"
 # Minimal OpenAPI/health server for DAST (stdlib only, no Teller/FastAPI deps).
 write_dast_13_stub() {
   local root="$1"
-  cat > "${root}/15_run_classification_api.py" <<'PY'
+  cat > "${root}/18_run_classification_api.py" <<'PY'
 #!/usr/bin/env python3
 import http.server
 import os
@@ -60,17 +60,17 @@ if __name__ == "__main__":
   with socketserver.TCPServer((host, port), H) as s:
     s.serve_forever()
 PY
-  chmod +x "${root}/15_run_classification_api.py"
+  chmod +x "${root}/18_run_classification_api.py"
 }
 
 write_macos_ui_regression_stub() {
   local root="$1"
-  cat > "${root}/10_run_macos_ui_regression_tests.sh" <<'SH'
+  cat > "${root}/13_run_macos_ui_regression_tests.sh" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 echo "macos-ui-regression-stub RUN_SNAPSHOT_TESTS=${RUN_SNAPSHOT_TESTS:-unset} RUN_XCUITESTS=${RUN_XCUITESTS:-unset} TELLER_CLASSIFIER_API_URL=${TELLER_CLASSIFIER_API_URL:-unset} TELLER_CLASSIFIER_HTTP_PROXY=${TELLER_CLASSIFIER_HTTP_PROXY:-unset}"
 SH
-  chmod +x "${root}/10_run_macos_ui_regression_tests.sh"
+  chmod +x "${root}/13_run_macos_ui_regression_tests.sh"
 }
 
 # Delegates to system Python3 except for a fake "python3 -m venv" (R005).
