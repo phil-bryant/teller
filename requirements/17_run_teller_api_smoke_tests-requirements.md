@@ -4,6 +4,12 @@
 
 Applies to `17_run_teller_api_smoke_tests.sh`.
 
+## Ownership Boundaries
+
+This document owns wrapper orchestration behavior.
+Smoke-check implementation details are owned by:
+- `requirements/src/scripts/check_teller_api_drift-requirements.md`
+
 R001  Statement: Run from repository root regardless of caller working directory.
 Design: Resolve script directory from `${BASH_SOURCE[0]}` and `cd` into it before invoking local scripts.
 Tests:

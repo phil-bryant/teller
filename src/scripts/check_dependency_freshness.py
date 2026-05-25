@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#R001: Parse requirements pins and classify outdated dependency update types.
+#R005: Emit JSON/text freshness reports with direct/transitive metadata.
+#R010: Enforce optional major/direct-outdated failure gates.
 """Generate dependency freshness reports for direct and transitive packages."""
 
 from __future__ import annotations

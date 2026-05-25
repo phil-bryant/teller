@@ -6,9 +6,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 #R005: Execute only the shell unit-test lane.
-RUN_SHELL_TESTS=true \
-RUN_PYTHON_TESTS=false \
-RUN_SQL_TESTS=false \
-RUN_SWIFT_TESTS=false \
-RUN_MACOS_UI_REGRESSION_TESTS=false \
-  "${SCRIPT_DIR}/src/scripts/run_unit_test_lanes.sh"
+if RUN_SHELL_TESTS=true \
+  RUN_PYTHON_TESTS=false \
+  RUN_SQL_TESTS=false \
+  RUN_SWIFT_TESTS=false \
+  RUN_MACOS_UI_REGRESSION_TESTS=false \
+  "${SCRIPT_DIR}/src/scripts/run_unit_test_lanes.sh"; then
+  #R006: Emit an unambiguous success marker at completion.
+  echo "✅ Shell unit tests succeeded."
+else
+  #R006: Emit an unambiguous failure marker at completion.
+  echo "❌ Shell unit tests failed."
+  exit 1
+fi

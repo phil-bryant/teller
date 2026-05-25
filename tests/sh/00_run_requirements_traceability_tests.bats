@@ -429,6 +429,39 @@ EOF
   [[ "$output" == *"orphan.sh"* ]]
 }
 
+@test "fails full-run mode when src scripts have no requirements coverage" {
+  #R085
+  mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh" "${FIXTURE_ROOT}/src/scripts"
+  cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
+## Scope
+Applies to `covered.sh`.
+
+R001 Statement: Covered shell source.
+EOF
+  cat > "${FIXTURE_ROOT}/covered.sh" <<'EOF'
+#!/usr/bin/env bash
+#R001: covered.
+EOF
+  chmod +x "${FIXTURE_ROOT}/covered.sh"
+  cat > "${FIXTURE_ROOT}/src/scripts/orphan.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "orphan script"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/orphan.sh"
+  cat > "${FIXTURE_ROOT}/tests/sh/sample.bats" <<'EOF'
+@test "covered shell source" {
+  #R001-T01: covered shell source.
+  #R001
+  true
+}
+EOF
+
+  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"repository software files missing requirements coverage"* ]]
+  [[ "$output" == *"src/scripts/orphan.sh"* ]]
+}
+
 @test "fails numbered script test coverage when companion bats file is missing" {
   #R080
   mkdir -p "${FIXTURE_ROOT}/requirements"

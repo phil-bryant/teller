@@ -4,6 +4,12 @@
 
 Applies to `16_verify_macos_crash_test.sh`.
 
+## Ownership Boundaries
+
+This document owns crash-verification flow behavior.
+Shared SwiftPM lock helper implementation details are owned by:
+- `requirements/src/scripts/macos_ui_swift_lock-requirements.md`
+
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` at script entry.
 Tests:

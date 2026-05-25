@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#R001: Discover latest Teller API version from configured HTTPS metadata sources.
+#R005: Support optional authenticated dashboard-derived version state.
+#R010: Enforce optional baseline drift gate and persist report artifacts.
 """Check whether a newer Teller API version appears to be available."""
 
 from __future__ import annotations

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+#R020: Collect PostgreSQL client/server freshness data with policy-aware gating.
+#R025: Evaluate CVE exposure using snapshot and policy inputs.
 """Generate PostgreSQL version freshness and CVE exposure reports."""
 
 from __future__ import annotations

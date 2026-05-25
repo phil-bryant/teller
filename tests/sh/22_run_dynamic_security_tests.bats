@@ -8,6 +8,7 @@
 # #R010-T01: Traceability anchor.
 # #R015-T01: Traceability anchor.
 # #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -108,6 +109,137 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"running DAST (Dynamic Application Security Testing)"* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
+}
+
+write_dast_baseline_and_cleanup_stubs() {
+  #R025-T01: Stub dast_baseline.py + dast_cleanup.py to record invocation as sentinels.
+  local root="$1"
+  mkdir -p "${root}/src/scripts"
+  cat > "${root}/src/scripts/dast_baseline.py" <<'PYS'
+#!/usr/bin/env python3
+import json
+import pathlib
+import sys
+
+output = pathlib.Path(sys.argv[1])
+sentinel = pathlib.Path(output.parent / "dast-baseline.sentinel")
+sentinel.write_text("captured\n", encoding="utf-8")
+output.write_text(json.dumps({
+    "status": "captured",
+    "profile_name": "stub",
+    "baseline_max_category_id": 0,
+    "baseline_max_match_id": 0,
+    "baseline_max_match_audit_id": 0,
+    "categories": [],
+    "matches": [],
+    "classifications": [],
+}) + "\n", encoding="utf-8")
+print(json.dumps({"status": "captured", "stub": True}))
+PYS
+  chmod +x "${root}/src/scripts/dast_baseline.py"
+
+  cat > "${root}/src/scripts/dast_cleanup.py" <<'PYS'
+#!/usr/bin/env python3
+import json
+import pathlib
+import sys
+
+baseline_path = pathlib.Path(sys.argv[1])
+run_id = sys.argv[2]
+summary_path = pathlib.Path(sys.argv[3])
+sentinel = pathlib.Path(summary_path.parent / "dast-cleanup.sentinel")
+sentinel.write_text(f"{run_id}\n", encoding="utf-8")
+summary_path.write_text(json.dumps({
+    "status": "applied",
+    "run_id": run_id,
+    "counts": {},
+    "baseline_path": str(baseline_path),
+}) + "\n", encoding="utf-8")
+print(json.dumps({"status": "applied", "run_id": run_id, "stub": True}))
+PYS
+  chmod +x "${root}/src/scripts/dast_cleanup.py"
+}
+
+@test "captures baseline and runs cleanup even on DAST failure" {
+  #R025-T01
+  setup_shell_test
+  copy_dast_project_files
+  write_dast_baseline_and_cleanup_stubs "${FIXTURE_ROOT}"
+  stub_curl_success
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+
+  local failing_zap="${FIXTURE_ROOT}/bin/zap.sh"
+  mkdir -p "${FIXTURE_ROOT}/bin"
+  cat > "$failing_zap" <<'EOF'
+#!/usr/bin/env bash
+echo "zap-stub failing on purpose"
+exit 1
+EOF
+  chmod +x "$failing_zap"
+
+  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=true \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=19788 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    ZAP_CLI_CMD="$failing_zap" \
+    SECURITY_REPORT_DIR="${FIXTURE_ROOT}/artifacts/security-dast" \
+    bash "${FIXTURE_ROOT}/22_run_dynamic_security_tests.sh"
+
+  [ "$status" -ne 0 ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.sentinel" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-cleanup.sentinel" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-run-id.txt" ]
+  local run_id_content
+  run_id_content="$(cat "${FIXTURE_ROOT}/artifacts/security-dast/dast-run-id.txt")"
+  [[ "$run_id_content" == dast-* ]]
+}
+
+@test "cleanup runs on success path before integrity check" {
+  #R025-T01
+  setup_shell_test
+  copy_dast_project_files
+  write_dast_baseline_and_cleanup_stubs "${FIXTURE_ROOT}"
+  stub_curl_success
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+
+  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=19789 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    SECURITY_REPORT_DIR="${FIXTURE_ROOT}/artifacts/security-dast" \
+    bash "${FIXTURE_ROOT}/22_run_dynamic_security_tests.sh"
+
+  [ "$status" -eq 0 ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.sentinel" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-cleanup.sentinel" ]
+  [[ "$output" == *"Restoring database to pre-DAST baseline"* ]]
+}
+
+@test "DAST_SKIP_CLEANUP disables baseline and cleanup" {
+  #R025-T01
+  setup_shell_test
+  copy_dast_project_files
+  write_dast_baseline_and_cleanup_stubs "${FIXTURE_ROOT}"
+  stub_curl_success
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+
+  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
+    DAST_SKIP_CLEANUP=true \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=19790 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    SECURITY_REPORT_DIR="${FIXTURE_ROOT}/artifacts/security-dast" \
+    bash "${FIXTURE_ROOT}/22_run_dynamic_security_tests.sh"
+
+  [ "$status" -eq 0 ]
+  [ ! -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.sentinel" ]
+  [ ! -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-cleanup.sentinel" ]
 }
 
 @test "category integrity gate asserts seed protection invariants" {

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#R001: Resolve Teller credentials with predictable local-token fallback behavior.
+#R005: Run live canary checks when credentials exist and degrade safely otherwise.
+#R010: Persist smoke artifacts and fail only on hard check failures.
 """Run Teller API compatibility checks using live canary or local fallback."""
 
 from __future__ import annotations

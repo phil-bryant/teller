@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+#R001: Serialize SwiftPM operations with exclusive lock-directory protocol.
+#R005: Detect and remove stale lock owners before waiting.
+#R010: Enforce bounded wait with periodic lock contention diagnostics.
 # Shared SwiftPM lock helper for scripts that touch ./src/macos-ui.
 # Usage:
 #   source ./src/scripts/macos_ui_swift_lock.sh

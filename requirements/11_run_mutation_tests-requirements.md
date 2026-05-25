@@ -4,6 +4,12 @@
 
 Applies to `11_run_mutation_tests.sh`.
 
+## Ownership Boundaries
+
+This document owns wrapper orchestration and scoring policy.
+Darwin mutation-driver implementation details are owned by:
+- `requirements/src/scripts/mutmut_darwin-requirements.md`
+
 R001  Statement: Run in strict fail-fast mode from repository root.
 Design: Use `umask 007`, `set -euo pipefail`, and resolve `SCRIPT_DIR` for path-independent execution.
 Tests:

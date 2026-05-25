@@ -4,6 +4,14 @@
 
 Applies to `22_run_dynamic_security_tests.sh`.
 
+## Ownership Boundaries
+
+This document owns DAST lane orchestration and hygiene policy.
+Helper implementation details are owned by:
+- `requirements/src/scripts/dast_baseline-requirements.md`
+- `requirements/src/scripts/dast_cleanup-requirements.md`
+- `requirements/src/scripts/cleanup_legacy_dast_artifacts-requirements.md`
+
 R001  Statement: Print an explicit DAST startup banner.
 Design: Emit `running DAST (Dynamic Application Security Testing)` at script startup before scanner orchestration begins.
 Tests:
@@ -29,8 +37,14 @@ Design: Print DAST progress markers and final success output including resolved 
 Tests:
 - R020-T01: Run a passing DAST lane and verify completion output includes report directory.
 
+R025  Statement: DAST run must not leak state to the target database.
+Design: Generate a per-run `DAST_RUN_ID` tag, capture a pre-run baseline via `src/scripts/dast_baseline.py` (max IDs plus full mutable-field snapshots of `nys_snw_category`, `transaction_email_match`, `transaction_email_match_audit`, and `transaction_nys_snw_category`), embed `DAST_RUN_ID` in seeded `categorization` and `email_message_id` payloads, and install an `EXIT` trap that invokes `src/scripts/dast_cleanup.py` to restore mutated rows and delete rows inserted past the baseline (FK-safe order: match restore -> audit delete -> match delete -> classification reconcile -> category delete -> category restore). The cleanup runs both on the success path (before the integrity check) and on any failure path; the post-DAST integrity check therefore also asserts that cleanup succeeded. Cleanup refuses to apply when the recorded profile differs from the current resolved profile unless `DAST_CLEANUP_FORCE=true`, and can be disabled entirely with `DAST_SKIP_CLEANUP=true`.
+Tests:
+- R025-T01: Stub `dast_baseline.py` and `dast_cleanup.py` in the fixture so each writes a sentinel file, then force the DAST lane to fail mid-run (`RUN_ZAP=true` with a failing ZAP stub) and assert both sentinels exist, proving baseline capture ran pre-failure and cleanup ran in the EXIT trap.
+
 ## Changelog
 
 - 2026-05-10: Split former combined security lane into `06_run_static_security_tests.sh` and `22_run_dynamic_security_tests.sh`.
 - 2026-05-15: Added R025/R030/R035 for ZAP proxy resilience, lane state isolation, and startup diagnostics.
 - 2026-05-19: Removed macOS UI / XCUITest DAST integration (R025, R030, R035); DAST is Schemathesis + ZAP quick scan only.
+- 2026-05-25: Added R025 (database-state hygiene): per-run tagging + baseline-restore cleanup with EXIT-trap safety and profile-mismatch refusal.

@@ -4,6 +4,14 @@
 
 Applies to `04_run_dependency_freshness_tests.sh`.
 
+## Ownership Boundaries
+
+This document owns orchestration behavior for the numbered wrapper script.
+Implementation-level requirements for invoked helpers are owned by:
+- `requirements/src/scripts/check_dependency_freshness-requirements.md`
+- `requirements/src/scripts/check_teller_api_version_freshness-requirements.md`
+- `requirements/src/scripts/check_postgres_freshness-requirements.md`
+
 R001  Statement: Run from repository root regardless of caller working directory.
 Design: Resolve script directory from `${BASH_SOURCE[0]}` and `cd` into it before invoking local scripts.
 Tests:

@@ -1,5 +1,6 @@
 BEGIN;
 
+-- #R001: Normalize mutable hierarchy text fields before constraint enforcement.
 -- Normalize printable hierarchy values before enforcing constraints.
 UPDATE teller.nys_snw_category
    SET level_1 = NULLIF(BTRIM(REGEXP_REPLACE(level_1, '[[:cntrl:]]', '', 'g')), ''),
@@ -15,6 +16,7 @@ DO $$
 DECLARE
     empty_rows BIGINT;
 BEGIN
+    -- #R005: Refuse constraint installation while empty hierarchy rows remain.
     SELECT COUNT(*)
       INTO empty_rows
       FROM teller.nys_snw_category
@@ -36,6 +38,7 @@ BEGIN
 END $$;
 
 ALTER TABLE teller.nys_snw_category
+    -- #R010: Recreate and validate hierarchy integrity constraints.
     DROP CONSTRAINT IF EXISTS nys_snw_category_non_empty_hierarchy_chk,
     DROP CONSTRAINT IF EXISTS nys_snw_category_no_control_chars_chk;
 

@@ -750,13 +750,14 @@ PY
     local output_schema_path="$3"
     local write_token="$4"
     local matchy_seed_path="${5:-}"
-    python3 - <<'PY' "$source_openapi_url" "$source_base_url" "$output_schema_path" "$write_token" "$matchy_seed_path"
+    local dast_run_id="${6:-unknown}"
+    python3 - <<'PY' "$source_openapi_url" "$source_base_url" "$output_schema_path" "$write_token" "$matchy_seed_path" "$dast_run_id"
 import json
 import sys
 import urllib.parse
 import urllib.request
 
-openapi_url, base_url, out_path, write_token, matchy_seed_path = sys.argv[1:6]
+openapi_url, base_url, out_path, write_token, matchy_seed_path, dast_run_id = sys.argv[1:7]
 
 def fetch_json(url: str):
     with urllib.request.urlopen(url, timeout=20) as resp:
@@ -817,7 +818,7 @@ if category_id is None:
                 "level_2_name": "Validation",
                 "level_3": "Schemathesis",
                 "level_4": "Seed",
-                "categorization": "Runtime",
+                "categorization": f"Runtime [{dast_run_id}]",
                 "applicability": "all",
             },
         )
@@ -836,7 +837,7 @@ def create_seed_category(seed_suffix: str):
                 "level_2_name": "Validation",
                 "level_3": "Schemathesis",
                 "level_4": f"Delete Seed {seed_suffix}",
-                "categorization": f"Runtime {seed_suffix}",
+                "categorization": f"Runtime [{dast_run_id}] {seed_suffix}",
                 "applicability": f"all-{seed_suffix}",
             },
         )
@@ -958,8 +959,9 @@ PY
 
   seed_matchy_data_for_schemathesis() {
     local output_json_path="$1"
+    local dast_run_id="${2:-unknown}"
     set +e
-    PYTHONPATH="${dast_integrity_pythonpath}" "$dast_app_python" - <<'PY' "$output_json_path"
+    PYTHONPATH="${dast_integrity_pythonpath}" "$dast_app_python" - <<'PY' "$output_json_path" "$dast_run_id"
 import json
 import pathlib
 import sys
@@ -968,6 +970,7 @@ import uuid
 from sqlalchemy import text
 
 output_path = pathlib.Path(sys.argv[1])
+dast_run_id = sys.argv[2]
 payload = {
     "status": "skipped",
     "match_ids": [],
@@ -1014,7 +1017,7 @@ else:
                     )
                 ).fetchone()
                 if tx_row and tx_row[0]:
-                    seeded_email = f"schemathesis-seed-{uuid.uuid4().hex}@example.invalid"
+                    seeded_email = f"dast-seed-{dast_run_id}-{uuid.uuid4().hex}@example.invalid"
                     seeded = conn.execute(
                         text(
                             """
@@ -1065,14 +1068,15 @@ PY
     local source_base_url="$2"
     local output_json_path="$3"
     local write_token="$4"
-    python3 - <<'PY' "$schema_path" "$source_base_url" "$output_json_path" "$write_token"
+    local dast_run_id="${5:-unknown}"
+    python3 - <<'PY' "$schema_path" "$source_base_url" "$output_json_path" "$write_token" "$dast_run_id"
 import json
 import sys
 import urllib.error
 import urllib.request
 import uuid
 
-schema_path, base_url, output_json_path, write_token = sys.argv[1:5]
+schema_path, base_url, output_json_path, write_token, dast_run_id = sys.argv[1:6]
 
 with open(schema_path, "r", encoding="utf-8") as fh:
     schema = json.load(fh)
@@ -1098,7 +1102,7 @@ seed_payload = {
     "level_2_name": "Validation",
     "level_3": "Schemathesis",
     "level_4": f"Delete Contract {seed_suffix}",
-    "categorization": f"Runtime Contract {seed_suffix}",
+    "categorization": f"Runtime Contract [{dast_run_id}] {seed_suffix}",
     "applicability": f"all-contract-{seed_suffix}",
 }
 
@@ -1283,7 +1287,72 @@ PY
   local classifier_api_pid=""
   local token_capture_pid=""
 
-  trap 'if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then kill "$token_capture_pid" >/dev/null 2>&1 || true; fi; if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then kill "$classifier_api_pid" >/dev/null 2>&1 || true; fi' EXIT
+  #R025: Generate a per-run DAST tag and capture a pre-run DB baseline so the
+  #R025: EXIT trap can restore-then-delete every row the run touched.
+  local dast_run_id="${DAST_RUN_ID:-}"
+  if [[ -z "$dast_run_id" ]]; then
+    local raw_run_id
+    if command -v uuidgen >/dev/null 2>&1; then
+      raw_run_id="$(uuidgen | tr '[:upper:]' '[:lower:]' | tr -d '-' | cut -c1-12)"
+    else
+      raw_run_id="$(date +%s)$$"
+    fi
+    dast_run_id="dast-${raw_run_id}"
+  fi
+  export DAST_RUN_ID="$dast_run_id"
+  printf '%s\n' "$dast_run_id" > "${report_dir_abs}/dast-run-id.txt"
+  echo "▶ DAST run id: ${dast_run_id}"
+
+  local dast_baseline_path="${report_dir_abs}/dast-baseline.json"
+  local dast_cleanup_summary_path="${report_dir_abs}/dast-cleanup.json"
+  local dast_skip_cleanup="${DAST_SKIP_CLEANUP:-false}"
+  local dast_cleanup_done="false"
+
+  if [[ "$dast_skip_cleanup" != "true" ]]; then
+    echo "▶ Capturing pre-DAST database baseline at ${dast_baseline_path}"
+    set +e
+    PYTHONPATH="${dast_integrity_pythonpath}" "$dast_app_python" \
+      ./src/scripts/dast_baseline.py "$dast_baseline_path" \
+      > "${report_dir_abs}/dast-baseline.log" 2>&1
+    local dast_baseline_exit=$?
+    set -e
+    if [[ "$dast_baseline_exit" -ne 0 ]]; then
+      echo "⚠️  Pre-DAST baseline capture failed (exit ${dast_baseline_exit}); see ${report_dir_abs}/dast-baseline.log"
+    fi
+  else
+    echo "ℹ️  DAST baseline + cleanup skipped because DAST_SKIP_CLEANUP=true"
+  fi
+
+  _cleanup_dast_state() {
+    local exit_code=$?
+    if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then
+      kill "$token_capture_pid" >/dev/null 2>&1 || true
+    fi
+    if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then
+      kill "$classifier_api_pid" >/dev/null 2>&1 || true
+      wait "$classifier_api_pid" 2>/dev/null || true
+    fi
+    if [[ "$dast_cleanup_done" == "true" ]]; then
+      return $exit_code
+    fi
+    dast_cleanup_done="true"
+    if [[ "$dast_skip_cleanup" == "true" ]]; then
+      return $exit_code
+    fi
+    if [[ ! -f "$dast_baseline_path" ]]; then
+      echo "⚠️  Skipping DAST cleanup; no baseline at ${dast_baseline_path}"
+      return $exit_code
+    fi
+    echo "▶ Restoring database to pre-DAST baseline (run_id=${dast_run_id})"
+    PYTHONPATH="${dast_integrity_pythonpath}" "$dast_app_python" \
+      ./src/scripts/dast_cleanup.py \
+      "$dast_baseline_path" \
+      "$dast_run_id" \
+      "$dast_cleanup_summary_path" \
+      >> "${report_dir_abs}/dast-cleanup.log" 2>&1 || true
+    return $exit_code
+  }
+  trap _cleanup_dast_state EXIT
   mkdir -p "$zap_quick_home_dir"
 
   # Start local classification API automatically for DAST execution.
@@ -1309,12 +1378,12 @@ PY
     local schemathesis_location="$openapi_url"
     local schemathesis_openapi_fixture="${report_dir_abs}/schemathesis-openapi.json"
     local schemathesis_matchy_seed="${report_dir_abs}/schemathesis-matchy-seed.json"
-    if seed_matchy_data_for_schemathesis "$schemathesis_matchy_seed" > "${report_dir_abs}/schemathesis-matchy-seed.log"; then
+    if seed_matchy_data_for_schemathesis "$schemathesis_matchy_seed" "$dast_run_id" > "${report_dir_abs}/schemathesis-matchy-seed.log"; then
       echo "▶ Schemathesis matchy seed prepared at ${schemathesis_matchy_seed}"
     else
       echo "⚠️  Schemathesis matchy seed preparation failed; proceeding with live data only."
     fi
-    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" "$dast_write_token" "$schemathesis_matchy_seed" \
+    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" "$dast_write_token" "$schemathesis_matchy_seed" "$dast_run_id" \
       > "${report_dir_abs}/schemathesis-fixture.json"; then
       schemathesis_location="$schemathesis_openapi_fixture"
       echo "▶ Schemathesis fixture prepared at ${schemathesis_location}"
@@ -1327,6 +1396,7 @@ PY
       "$base_url" \
       "${report_dir_abs}/schemathesis-delete-category-contract.json" \
       "$dast_write_token" \
+      "$dast_run_id" \
       | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
     set +e
     schemathesis run "$schemathesis_location" \
@@ -1439,7 +1509,11 @@ PY
     exit 1
   fi
 
-  # Enforce post-DAST category table integrity invariants.
+  #R025: Restore the database to its pre-DAST baseline before validating
+  #R025: invariants so the integrity check also asserts cleanup succeeded.
+  _cleanup_dast_state || true
+
+  # Enforce post-DAST category table integrity invariants (post-cleanup).
   run_category_integrity_checks "$report_dir_abs"
 
   echo "✅ Dynamic Application Security Testing (DAST) checks completed."

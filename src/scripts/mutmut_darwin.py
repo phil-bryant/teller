@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#R001: Provide macOS-safe mutmut prepare/execute flow without in-process forks.
+#R005: Run mutant tests via subprocess pytest with deterministic environment setup.
+#R010: Integrate with pre-import setproctitle stub to avoid Darwin mutmut crash path.
 """macOS mutmut: prepare stats/mutants, then run mutations via subprocess pytest (no os.fork)."""
 import argparse
 import json

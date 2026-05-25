@@ -1001,7 +1001,6 @@ excluded_relative_prefixes = (
     "storage/sql/",
     "archive/",
     "src/macos-ui/",
-    "src/scripts/",
     "src/sql/postgres/",
     "src/teller/",
 )

@@ -4,6 +4,13 @@
 
 Applies to `14_run_swift_unit_tests.sh`.
 
+## Ownership Boundaries
+
+This document owns wrapper behavior only.
+Shared lane implementation details are owned by:
+- `requirements/src/scripts/run_unit_test_lanes-requirements.md`
+- `requirements/src/scripts/macos_ui_swift_lock-requirements.md`
+
 R001  Statement: Run from repository root regardless of caller working directory.
 Design: Resolve script directory and `cd` there before invoking the shared unit-test lane runner.
 Tests:

@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# Requirement test-case tags for requirements/src/scripts/check_teller_api_version_freshness-requirements.md
+# #R001-T01: Verify version discovery parsing from docs/OpenAPI-style sources.
+# #R005-T01: Verify dashboard/OTP parsing helper behavior.
+# #R010-T01: Verify baseline comparison helpers expose update detection inputs.
+
 import importlib.util
 import unittest
 from pathlib import Path
@@ -20,14 +25,17 @@ class TellerApiVersionFreshnessTests(unittest.TestCase):
         self.module = load_module()
 
     def test_extract_version_from_docs_phrase(self) -> None:
+        #R001
         sample = "Teller uses dated versions with the latest one being 2020-10-12."
         self.assertEqual(self.module.extract_version_from_docs(sample), "2020-10-12")
 
     def test_extract_version_from_docs_missing_phrase(self) -> None:
+        #R001
         sample = "Welcome to the Teller API docs."
         self.assertIsNone(self.module.extract_version_from_docs(sample))
 
     def test_parse_dashboard_versions_latest_phrase(self) -> None:
+        #R005 #R010
         sample = "The application is currently using the latest API version (2020-10-12)."
         parsed = self.module.parse_dashboard_versions(sample)
         self.assertEqual(parsed["current_version"], "2020-10-12")
@@ -35,6 +43,7 @@ class TellerApiVersionFreshnessTests(unittest.TestCase):
         self.assertTrue(parsed["on_latest"])
 
     def test_parse_dashboard_versions_current_and_latest(self) -> None:
+        #R005 #R010
         sample = "The application is currently using API version (2019-07-01). Latest API version (2020-10-12)."
         parsed = self.module.parse_dashboard_versions(sample)
         self.assertEqual(parsed["current_version"], "2019-07-01")
@@ -42,9 +51,11 @@ class TellerApiVersionFreshnessTests(unittest.TestCase):
         self.assertFalse(parsed["on_latest"])
 
     def test_resolve_otp_code_from_digits(self) -> None:
+        #R005
         self.assertEqual(self.module.resolve_otp_code("577 572"), "577572")
 
     def test_resolve_otp_code_from_otpauth_uri(self) -> None:
+        #R005
         uri = "otpauth://totp/Teller:test?issuer=Teller&secret=JBSWY3DPEHPK3PXP&period=30&digits=6"
         code = self.module.resolve_otp_code(uri)
         self.assertTrue(code.isdigit())

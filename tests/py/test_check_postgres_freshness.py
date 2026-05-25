@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# Requirement test-case tags for requirements/src/scripts/check_postgres_freshness-requirements.md
+# #R020-T01: Verify client/server freshness evaluation and target diagnostics.
+# #R025-T01: Verify CVE snapshot/policy evaluation and gating.
+
 import json
 import os
 import subprocess

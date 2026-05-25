@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #R001: Resolve a DB profile and emit shell `KEY=value` exports for sourcing.
 #R005: Optional --profile <name> overrides TELLER_DB_PROFILE for this resolution.
+#R010: Fail clearly when profile resolution cannot produce export values.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

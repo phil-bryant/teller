@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# Requirement test-case tags for requirements/src/scripts/check_teller_api_drift-requirements.md
+# #R001-T01: Verify credential resolution behavior for default, filtered, and run-all token modes.
+# #R005-T01: Verify warnings and fallback credential-path behavior when token selection is ambiguous.
+# #R010-T01: Verify resolved credential payloads preserve expected status fields for report generation.
+
 import importlib.util
 import json
 import tempfile
@@ -30,6 +35,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         (self.teller_dir / filename).write_text(json.dumps(payload), encoding="utf-8")
 
     def test_suffix_only_token_is_resolved(self) -> None:
+        #R001 #R010
         self._write_token("auth_token_chase.json", "token-chase")
 
         creds = self.module.resolve_credentials()
@@ -38,6 +44,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertEqual(creds["warnings"], [])
 
     def test_ambiguous_tokens_require_institution_id(self) -> None:
+        #R001 #R005
         self._write_token("auth_token_chase.json", "token-chase")
         self._write_token("auth_token_fabt.json", "token-fabt")
 
@@ -48,6 +55,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertIn("--institution-id", creds["warnings"][0])
 
     def test_institution_id_selects_matching_suffix(self) -> None:
+        #R001
         self._write_token("auth_token_chase.json", "token-chase")
         self._write_token("auth_token_fabt.json", "token-fabt")
 
@@ -57,6 +65,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertEqual(creds["warnings"], [])
 
     def test_run_all_tokens_returns_all_candidates(self) -> None:
+        #R001 #R010
         self._write_token("auth_token_chase.json", "token-chase")
         self._write_token("auth_token_fabt.json", "token-fabt")
 
@@ -68,6 +77,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertEqual(creds["warnings"], [])
 
     def test_run_all_tokens_respects_institution_filter(self) -> None:
+        #R001 #R005
         self._write_token("auth_token_chase.json", "token-chase")
         self._write_token("auth_token_fabt.json", "token-fabt")
 
