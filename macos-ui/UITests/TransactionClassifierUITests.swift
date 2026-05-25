@@ -17,17 +17,19 @@ import XCTest
 
 final class TransactionClassifierUITests: XCTestCase {
     private static var app: XCUIApplication!
-    private static let scenarioCount = 12
+    private static let scenarioCount = 26
 
-    /// Fixture mode is in-memory; keep waits short so XCTest does not sit on idle quiescence.
+    /// Maximum bounds only; condition polling exits immediately once state is ready.
     private let waitTimeout: TimeInterval = 2
     private let launchTimeout: TimeInterval = 5
+    private let pollInterval: TimeInterval = 0.05
 
     private var unclassifiedFilterDisabled = false
     private var activeTab: ActiveTab = .matchAndClassify
 
     private enum ActiveTab {
         case matchAndClassify
+        case manageCategories
         case connect
     }
 
@@ -36,7 +38,8 @@ final class TransactionClassifierUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments += ["--ui-testing"]
         app.launchEnvironment["TELLER_UI_TEST_MODE"] = "1"
-        app.launchEnvironment["TELLER_UI_TEST_PAGE_SIZE"] = "20"
+        app.launchEnvironment["TELLER_UI_TEST_PAGE_SIZE"] = "5"
+        app.launchEnvironment["TELLER_UI_TEST_MATCH_FIXTURE"] = "1"
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_API_URL")
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_HTTP_PROXY")
         app.launch()
@@ -46,7 +49,7 @@ final class TransactionClassifierUITests: XCTestCase {
         continueAfterFailure = false
         try super.setUpWithError()
         XCTAssertTrue(
-            uiElement("search-field").waitForExistence(timeout: launchTimeout),
+            waitForElement(uiElement("search-field"), timeout: launchTimeout),
             "Fixture list did not finish loading."
         )
     }
@@ -68,15 +71,29 @@ final class TransactionClassifierUITests: XCTestCase {
             case 1: runMatchAndClassifyShellLoadsScenario()
             case 2: runSearchFilterScenario()
             case 3: runUnclassifiedFilterAutoRefreshScenario()
-            case 4: runSelectionShowsTransactionIdScenario()
-            case 5: runNextUnclassifiedShortcutScenario()
-            case 6: runApplyCategoryScenario()
-            case 7: runUndoRestoresUnclassifiedScenario()
-            case 8: runUndoRestoresPriorCategoryScenario()
-            case 9: runNextUnclassifiedScrollsIntoViewScenario()
-            case 10: runHelpMenuListsHotkeysScenario()
-            case 11: runConnectTabLoadsConnectionsScenario()
-            case 12: runConnectTabHidesNextUnclassifiedScenario()
+            case 4: runMatchStatePickerScenario()
+            case 5: runOnlyUnmovedToggleScenario()
+            case 6: runRefreshButtonScenario()
+            case 7: runSelectionShowsTransactionIdScenario()
+            case 8: runNextUnclassifiedShortcutScenario()
+            case 9: runLoadMoreButtonScenario()
+            case 10: runApplyCategoryScenario()
+            case 11: runClearSelectionScenario()
+            case 12: runUndoRestoresUnclassifiedScenario()
+            case 13: runUndoRestoresPriorCategoryScenario()
+            case 14: runCandidatesAndEmailPaneScenario()
+            case 15: runMailcartSearchScenario()
+            case 16: runMatchActionsScenario()
+            case 17: runNextUnclassifiedScrollsIntoViewScenario()
+            case 18: runHelpMenuListsHotkeysScenario()
+            case 19: runConnectTabLoadsConnectionsScenario()
+            case 20: runConnectDeleteCancelScenario()
+            case 21: runConnectDeleteConfirmScenario()
+            case 22: runConnectAddAndEditButtonsScenario()
+            case 23: runConnectTabHidesNextUnclassifiedScenario()
+            case 24: runManageCategoriesLoadAndToolbarScenario()
+            case 25: runManageCategoryEditAndSaveScenario()
+            case 26: runManageCategoryDeleteScenario()
             default: break
             }
         }
@@ -96,10 +113,9 @@ final class TransactionClassifierUITests: XCTestCase {
         ensureMatchAndClassifyTab()
         let searchField = uiElement("search-field")
         clearSearchField(searchField)
-        searchField.click()
-        searchField.typeText("coffee")
+        pasteText("coffee", into: searchField)
         app.typeKey(.return, modifierFlags: [])
-        XCTAssertTrue(uiElement("transaction-row-txn_001").waitForExistence(timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout))
         clearSearchField(searchField)
     }
 
@@ -114,7 +130,35 @@ final class TransactionClassifierUITests: XCTestCase {
         toggle.click()
         unclassifiedFilterDisabled = true
 
-        XCTAssertTrue(uiElement("transaction-row-txn_002").waitForExistence(timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout))
+    }
+
+    private func runMatchStatePickerScenario() {
+        ensureMatchAndClassifyTab()
+        selectMatchStateFilter("Confirmed")
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout))
+        selectMatchStateFilter("All matches")
+    }
+
+    private func runOnlyUnmovedToggleScenario() {
+        ensureMatchAndClassifyTab()
+        let toggle = uiElement("match-review-only-unmoved-toggle")
+        XCTAssertTrue(toggle.exists)
+        let initial = isToggleOn(toggle)
+        toggle.click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout) { isToggleOn(toggle) != initial })
+        toggle.click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout) { isToggleOn(toggle) == initial })
+    }
+
+    private func runRefreshButtonScenario() {
+        ensureMatchAndClassifyTab()
+        uiElement("refresh-button").click()
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) {
+                elementText(uiElement("status-text")).contains("Loaded")
+            }
+        )
     }
 
     private func runSelectionShowsTransactionIdScenario() {
@@ -140,6 +184,17 @@ final class TransactionClassifierUITests: XCTestCase {
         ensureUnclassifiedFilterDisabled()
         applyDiningToCoffeeRow()
         waitForRowClassification("txn_001", label: "Dining")
+    }
+
+    private func runClearSelectionScenario() {
+        ensureMatchAndClassifyTab()
+        ensureUnclassifiedFilterDisabled()
+        if rowShowsClassification("txn_001", label: "Unclassified") {
+            applyDiningToCoffeeRow()
+            waitForRowClassification("txn_001", label: "Dining")
+        }
+        uiElement("clear-selection-button").click()
+        waitForRowClassification("txn_001", label: "Unclassified")
     }
 
     private func runUndoRestoresUnclassifiedScenario() {
@@ -209,6 +264,68 @@ final class TransactionClassifierUITests: XCTestCase {
         )
     }
 
+    private func runLoadMoreButtonScenario() {
+        ensureMatchAndClassifyTab()
+        let loadMore = uiElement("load-more-button")
+        XCTAssertTrue(loadMore.exists)
+        let before = elementText(uiElement("status-text"))
+        loadMore.click()
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) {
+                let status = elementText(uiElement("status-text"))
+                return status.contains("Loaded") && status != before
+            }
+        )
+    }
+
+    private func runCandidatesAndEmailPaneScenario() {
+        ensureMatchAndClassifyTab()
+        selectTransactionRow("txn_001", label: "Coffee Roasters")
+        XCTAssertTrue(waitForElement(uiElement("candidate-row-msg_receipt_001"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("email-subject"), timeout: waitTimeout))
+        XCTAssertTrue(uiElement("email-body-text").exists || uiElement("email-body-html").exists)
+        XCTAssertTrue(uiElement("candidates-list").exists)
+    }
+
+    private func runMailcartSearchScenario() {
+        ensureMatchAndClassifyTab()
+        let field = uiElement("mailcart-search-field")
+        XCTAssertTrue(field.exists)
+        clearField(field)
+        pasteText("transit", into: field)
+        XCTAssertTrue(waitForElement(uiElement("mailcart-hit-row-msg_search_001"), timeout: waitTimeout * 3))
+        uiElement("mailcart-hit-row-msg_search_001").click()
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) {
+                elementText(uiElement("email-subject")).contains("Transit")
+            }
+        )
+        clearField(field)
+    }
+
+    private func runMatchActionsScenario() {
+        ensureMatchAndClassifyTab()
+        selectTransactionRow("txn_001", label: "Coffee Roasters")
+
+        let note = uiElement("override-note-field")
+        pasteText("fixture override note", into: note)
+        let overrideId = uiElement("override-email-message-id-field")
+        pasteText("msg_override_fixture", into: overrideId)
+
+        uiElement("match-override-button").click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { elementText(uiElement("match-review-status")).contains("Overrode") })
+
+        uiElement("match-no-email-button").click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { elementText(uiElement("match-review-status")).contains("no-email") })
+
+        uiElement("match-clear-button").click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { elementText(uiElement("match-review-status")).contains("Cleared match") })
+
+        uiElement("candidate-row-msg_receipt_001").click()
+        uiElement("match-confirm-button").click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { elementText(uiElement("match-review-status")).contains("Confirmed") })
+    }
+
     private func runHelpMenuListsHotkeysScenario() {
         // #R035
         dismissOpenMenus()
@@ -228,7 +345,7 @@ final class TransactionClassifierUITests: XCTestCase {
     private func runConnectTabLoadsConnectionsScenario() {
         // #R020 #R025
         ensureConnectTab()
-        XCTAssertTrue(uiElement("connect-context-list").waitForExistence(timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("connect-context-list"), timeout: waitTimeout))
         XCTAssertTrue(uiElement("connect-add-button").exists)
         XCTAssertTrue(uiElement("connect-edit-button").exists)
         XCTAssertTrue(uiElement("connect-delete-button").exists)
@@ -239,6 +356,81 @@ final class TransactionClassifierUITests: XCTestCase {
         // #R010 (connect tab)
         ensureConnectTab()
         XCTAssertFalse(nextUnclassifiedControlExists())
+    }
+
+    private func runConnectDeleteCancelScenario() {
+        ensureConnectTab()
+        XCTAssertTrue(app.staticTexts["inst_beta"].exists)
+        uiElement("connect-delete-button").click()
+        if !tapVisibleButton(named: "Cancel") {
+            app.typeKey(.escape, modifierFlags: [])
+        }
+        XCTAssertTrue(waitForElement(app.staticTexts["inst_beta"].firstMatch, timeout: waitTimeout))
+    }
+
+    private func runConnectDeleteConfirmScenario() {
+        ensureConnectTab()
+        XCTAssertTrue(app.staticTexts["inst_beta"].exists)
+        app.staticTexts["inst_beta"].firstMatch.click()
+        uiElement("connect-delete-button").click()
+        XCTAssertTrue(tapVisibleButton(named: "Delete"))
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) {
+                !app.staticTexts["inst_beta"].exists
+            }
+        )
+    }
+
+    private func runConnectAddAndEditButtonsScenario() {
+        ensureConnectTab()
+        let addButton = uiElement("connect-add-button")
+        let editButton = uiElement("connect-edit-button")
+        XCTAssertTrue(addButton.exists)
+        XCTAssertTrue(editButton.exists)
+
+        // Exercise Add and Edit without entering external Teller flow.
+        addButton.click()
+        dismissPresentedSheetIfVisible()
+        app.staticTexts["inst_alpha"].firstMatch.click()
+        editButton.click()
+        dismissPresentedSheetIfVisible()
+    }
+
+    private func runManageCategoriesLoadAndToolbarScenario() {
+        ensureManageCategoriesTab()
+        XCTAssertTrue(waitForElement(uiElement("category-manager-list"), timeout: waitTimeout))
+        app.buttons["Refresh"].firstMatch.click()
+        XCTAssertTrue(waitForElement(uiElement("category-status-text"), timeout: waitTimeout))
+        app.buttons["New"].firstMatch.click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout) {
+            elementText(uiElement("category-status-text")).contains("Creating a new category")
+        })
+    }
+
+    private func runManageCategoryEditAndSaveScenario() {
+        ensureManageCategoriesTab()
+        uiElement("category-row-101").click()
+
+        pasteText("L1", into: uiElement("category-field-level-1"))
+        pasteText("Primary", into: uiElement("category-field-level-1-name"))
+        pasteText("L2", into: uiElement("category-field-level-2"))
+        pasteText("Secondary", into: uiElement("category-field-level-2-name"))
+        pasteText("L3", into: uiElement("category-field-level-3"))
+        pasteText("L4", into: uiElement("category-field-level-4"))
+        pasteText("Dining Updated", into: uiElement("category-field-categorization"))
+        pasteText("General", into: uiElement("category-field-applicability"))
+
+        uiElement("category-save-button").click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) {
+            elementText(uiElement("category-status-text")).contains("Saved category 101")
+        })
+    }
+
+    private func runManageCategoryDeleteScenario() {
+        ensureManageCategoriesTab()
+        uiElement("category-row-103").click()
+        uiElement("category-bulk-delete-button").click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { !uiElement("category-row-103").exists })
     }
 
     // MARK: - Helpers
@@ -254,7 +446,7 @@ final class TransactionClassifierUITests: XCTestCase {
             return
         }
         selectTab(named: "Match & Classify")
-        XCTAssertTrue(uiElement("search-field").waitForExistence(timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("search-field"), timeout: waitTimeout))
         activeTab = .matchAndClassify
     }
 
@@ -270,6 +462,15 @@ final class TransactionClassifierUITests: XCTestCase {
         activeTab = .connect
     }
 
+    private func ensureManageCategoriesTab() {
+        if activeTab == .manageCategories, uiElement("category-manager-list").exists {
+            return
+        }
+        selectTab(named: "Manage Categories")
+        XCTAssertTrue(waitForElement(uiElement("category-manager-list"), timeout: launchTimeout * 2))
+        activeTab = .manageCategories
+    }
+
     private func selectTab(named name: String) {
         dismissOpenMenus()
         let candidates: [XCUIElement] = [
@@ -280,7 +481,7 @@ final class TransactionClassifierUITests: XCTestCase {
             app.staticTexts[name],
         ]
         for candidate in candidates {
-            if candidate.waitForExistence(timeout: 1) {
+            if waitForElement(candidate, timeout: 1) {
                 candidate.click()
                 return
             }
@@ -309,18 +510,39 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func waitForConnectTab(timeout: TimeInterval) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if connectTabIsReady() {
-                return true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-        return connectTabIsReady()
+        waitUntil(timeout: timeout) { connectTabIsReady() }
     }
 
     private func connectStatusOrErrorExists() -> Bool {
         uiElement("connect-status-text").exists || uiElement("connect-error-banner").exists
+    }
+
+    private func dismissPresentedSheetIfVisible() {
+        // Escape dismisses SwiftUI sheets in our fixture mode.
+        app.typeKey(.escape, modifierFlags: [])
+        _ = waitUntil(timeout: waitTimeout) { app.sheets.count == 0 }
+    }
+
+    @discardableResult
+    private func tapVisibleButton(named title: String) -> Bool {
+        let tapped = waitUntil(timeout: waitTimeout) {
+            self.visibleButton(named: title) != nil
+        }
+        guard tapped, let button = visibleButton(named: title) else {
+            return false
+        }
+        button.click()
+        return true
+    }
+
+    private func visibleButton(named title: String) -> XCUIElement? {
+        let candidates: [XCUIElement] = [
+            app.sheets.buttons[title].firstMatch,
+            app.dialogs.buttons[title].firstMatch,
+            app.windows.buttons[title].firstMatch,
+            app.buttons[title].firstMatch,
+        ]
+        return candidates.first(where: { $0.exists && $0.isHittable })
     }
 
     private func ensureUnclassifiedFilterDisabled() {
@@ -332,7 +554,7 @@ final class TransactionClassifierUITests: XCTestCase {
             toggle.click()
         }
         unclassifiedFilterDisabled = true
-        XCTAssertTrue(uiElement("transaction-row-txn_002").waitForExistence(timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout))
     }
 
     private func selectTransactionRow(_ transactionId: String, label: String) {
@@ -343,7 +565,7 @@ final class TransactionClassifierUITests: XCTestCase {
     private func assertSelectedTransactionId(_ transactionId: String) {
         XCTAssertTrue(elementText(uiElement("selection-count")).contains("1"))
         let row = uiElement("transaction-row-\(transactionId)")
-        XCTAssertTrue(row.waitForExistence(timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(row, timeout: waitTimeout))
         XCTAssertTrue(elementText(row).contains(transactionId))
     }
 
@@ -368,10 +590,12 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func waitForRowClassification(_ transactionId: String, label: String) {
-        let row = uiElement("transaction-row-\(transactionId)")
-        let predicate = NSPredicate(format: "label CONTAINS[c] %@", label)
-        let matchExpectation = expectation(for: predicate, evaluatedWith: row)
-        wait(for: [matchExpectation], timeout: 4)
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) {
+                rowShowsClassification(transactionId, label: label)
+            },
+            "Timed out waiting for \(transactionId) classification to become \(label)."
+        )
     }
 
     private func isToggleOn(_ toggle: XCUIElement) -> Bool {
@@ -388,22 +612,35 @@ final class TransactionClassifierUITests: XCTestCase {
     private func applyDiningToSelectedRow() {
         let typeahead = uiElement("category-typeahead-field")
         clearTypeaheadField(typeahead)
-        typeahead.typeText("Dining")
+        pasteText("Dining", into: typeahead)
         app.typeKey(.return, modifierFlags: [])
     }
 
+    private func selectMatchStateFilter(_ optionTitle: String) {
+        let picker = uiElement("match-review-state-picker")
+        XCTAssertTrue(waitForElement(picker, timeout: waitTimeout))
+        picker.click()
+        let option = app.menuItems[optionTitle].firstMatch
+        XCTAssertTrue(waitForElement(option, timeout: waitTimeout))
+        option.click()
+    }
+
     private func clearTypeaheadField(_ field: XCUIElement) {
-        field.click()
-        app.typeKey("a", modifierFlags: .command)
-        app.typeKey(.delete, modifierFlags: [])
+        clearField(field)
     }
 
     private func assertAssignedCategory(_ label: String, file: StaticString = #file, line: UInt = #line) {
         let assigned = uiElement("selected-assigned-category")
-        XCTAssertTrue(assigned.waitForExistence(timeout: waitTimeout), file: file, line: line)
-        let predicate = NSPredicate(format: "label CONTAINS[c] %@ OR value CONTAINS[c] %@", label, label)
-        let matchExpectation = expectation(for: predicate, evaluatedWith: assigned)
-        wait(for: [matchExpectation], timeout: 4)
+        XCTAssertTrue(waitForElement(assigned, timeout: waitTimeout), file: file, line: line)
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) {
+                let text = elementText(assigned).lowercased()
+                return text.contains(label.lowercased())
+            },
+            "Timed out waiting for selected category to become \(label).",
+            file: file,
+            line: line
+        )
     }
 
     private func pasteText(_ text: String, into element: XCUIElement) {
@@ -414,10 +651,14 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func clearSearchField(_ searchField: XCUIElement) {
-        searchField.click()
+        clearField(searchField)
+        app.typeKey(.return, modifierFlags: [])
+    }
+
+    private func clearField(_ field: XCUIElement) {
+        field.click()
         app.typeKey("a", modifierFlags: .command)
         app.typeKey(.delete, modifierFlags: [])
-        app.typeKey(.return, modifierFlags: [])
     }
 
     private func ensureAllTransactionsLoadedIntoList() {
@@ -427,12 +668,33 @@ final class TransactionClassifierUITests: XCTestCase {
         for _ in 0..<12 {
             if !loadMore.exists || !loadMore.isEnabled { break }
             loadMore.click()
-            _ = loadMore.waitForExistence(timeout: 1)
+            _ = waitUntil(timeout: 1) { !loadMore.exists || loadMore.isEnabled }
         }
     }
 
     private func nextUnclassifiedControlExists() -> Bool {
         uiElement("next-unclassified-button").exists || app.buttons["Next Unclassified"].exists
+    }
+
+    @discardableResult
+    private func waitForElement(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        waitUntil(timeout: timeout) { element.exists }
+    }
+
+    @discardableResult
+    private func waitUntil(timeout: TimeInterval, condition: () -> Bool) -> Bool {
+        if condition() {
+            return true
+        }
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(pollInterval))
+        }
+        return condition()
     }
 
     private static func applyOptionalLaunchEnvironment(_ key: String) {

@@ -40,9 +40,12 @@ actor UITestingFixtureAPI: ClassificationAPI {
     static let matchFixtureEmailId = "msg_receipt_001"
     static let matchFixtureTransactionId = "txn_001"
     static let matchFixtureMatchId = 501
+    static let searchFixtureEmailId = "msg_search_001"
 
     private let pageSize: Int
     private let matchFixtureEnabled: Bool
+    private var nextCategoryId = 200
+    private var nextMatchId = 900
     private var categories: [CategoryOption] = [
         .init(nys_snw_category_id: 101, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Dining", applicability: nil, display_label: "Dining"),
         .init(nys_snw_category_id: 102, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Utilities", applicability: nil, display_label: "Utilities"),
@@ -99,6 +102,66 @@ actor UITestingFixtureAPI: ClassificationAPI {
         """
     }
 
+    private static func displayLabel(for category: CategoryMutationRequest, fallbackId: Int) -> String {
+        let fields = [
+            category.categorization,
+            category.level_4,
+            category.level_3,
+            category.level_2_name,
+            category.level_1_name,
+        ]
+        if let first = fields.compactMap({ $0?.trimmingCharacters(in: .whitespacesAndNewlines) }).first(where: { !$0.isEmpty }) {
+            return first
+        }
+        return "Category \(fallbackId)"
+    }
+
+    private static func isoNow() -> String {
+        ISO8601DateFormatter().string(from: Date())
+    }
+
+    private func nextFixtureMatchId() -> Int {
+        defer { nextMatchId += 1 }
+        return nextMatchId
+    }
+
+    private func updateMatch(
+        on transactionId: String,
+        state: String,
+        selectedBy: String,
+        emailMessageId: String?,
+        preserveMatchId: Bool = true
+    ) throws -> MatchReviewActionResponse {
+        guard let index = rows.firstIndex(where: { $0.transaction_id == transactionId }) else {
+            throw APIError.requestFailed("Transaction \(transactionId) not found in fixture.")
+        }
+
+        let matchId: Int
+        if preserveMatchId, let existing = rows[index].match?.match_id {
+            matchId = existing
+        } else {
+            matchId = nextFixtureMatchId()
+        }
+
+        rows[index].match = TransactionMatchInfo(
+            match_id: matchId,
+            email_message_id: emailMessageId,
+            state: state,
+            ai_confidence: nil,
+            selected_by: selectedBy,
+            moved_to_matchy_at: nil,
+            match_count: emailMessageId == nil ? 0 : 1
+        )
+
+        return MatchReviewActionResponse(
+            match_id: matchId,
+            transaction_id: transactionId,
+            state: state,
+            selected_by: selectedBy,
+            updated_at: Self.isoNow()
+        )
+    }
+
     func fetchCategories() async throws -> [CategoryOption] {
         categories
     }
@@ -106,6 +169,45 @@ actor UITestingFixtureAPI: ClassificationAPI {
     func deleteCategory(id: Int) async throws -> CategoryDeleteResponse {
         categories.removeAll { $0.nys_snw_category_id == id }
         return CategoryDeleteResponse(nys_snw_category_id: id, deleted: true)
+    }
+
+    func createCategory(_ category: CategoryMutationRequest) async throws -> CategoryOption {
+        let id = nextCategoryId
+        nextCategoryId += 1
+        let created = CategoryOption(
+            nys_snw_category_id: id,
+            level_1: category.level_1,
+            level_1_name: category.level_1_name,
+            level_2: category.level_2,
+            level_2_name: category.level_2_name,
+            level_3: category.level_3,
+            level_4: category.level_4,
+            categorization: category.categorization,
+            applicability: category.applicability,
+            display_label: Self.displayLabel(for: category, fallbackId: id)
+        )
+        categories.append(created)
+        return created
+    }
+
+    func updateCategory(id: Int, category: CategoryMutationRequest) async throws -> CategoryOption {
+        guard let index = categories.firstIndex(where: { $0.nys_snw_category_id == id }) else {
+            throw APIError.requestFailed("Category \(id) not found in fixture.")
+        }
+        let updated = CategoryOption(
+            nys_snw_category_id: id,
+            level_1: category.level_1,
+            level_1_name: category.level_1_name,
+            level_2: category.level_2,
+            level_2_name: category.level_2_name,
+            level_3: category.level_3,
+            level_4: category.level_4,
+            categorization: category.categorization,
+            applicability: category.applicability,
+            display_label: Self.displayLabel(for: category, fallbackId: id)
+        )
+        categories[index] = updated
+        return updated
     }
 
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
@@ -129,18 +231,122 @@ actor UITestingFixtureAPI: ClassificationAPI {
     }
 
     func fetchMessage(emailMessageId: String) async throws -> EmailMessage {
-        guard matchFixtureEnabled, emailMessageId == Self.matchFixtureEmailId else {
+        if matchFixtureEnabled, emailMessageId == Self.matchFixtureEmailId {
+            return EmailMessage(
+                email_message_id: Self.matchFixtureEmailId,
+                subject: "Your Coffee Roasters receipt",
+                from: "receipts@coffee.example.com",
+                to: "you@example.com",
+                received_at: "2026-04-20T10:00:00+00:00",
+                html_body: nil,
+                text_body: Self.wideReceiptTextBody(orderTotalLine: "Order Total $16.24"),
+                snippet: "Order Total $16.24"
+            )
+        }
+        if emailMessageId == Self.searchFixtureEmailId {
+            return EmailMessage(
+                email_message_id: Self.searchFixtureEmailId,
+                subject: "Transit card payment confirmed",
+                from: "alerts@transit.example.com",
+                to: "you@example.com",
+                received_at: "2026-04-18T08:15:00+00:00",
+                html_body: nil,
+                text_body: "Thanks for riding with us.\nCharge posted: $44.10\nReference: txn_003",
+                snippet: "Charge posted: $44.10"
+            )
+        }
+        if emailMessageId == "msg_override_fixture" {
+            return EmailMessage(
+                email_message_id: "msg_override_fixture",
+                subject: "Override candidate fixture",
+                from: "override@example.com",
+                to: "you@example.com",
+                received_at: "2026-04-21T11:00:00+00:00",
+                html_body: nil,
+                text_body: "This fixture exists for override-action coverage.",
+                snippet: "fixture override candidate"
+            )
+        }
+        if emailMessageId.hasPrefix("manual_") {
+            return EmailMessage(
+                email_message_id: emailMessageId,
+                subject: "Manual fixture message",
+                from: "manual@example.com",
+                to: "you@example.com",
+                received_at: "2026-04-22T09:00:00+00:00",
+                html_body: nil,
+                text_body: "Synthetic manual message for UI testing.",
+                snippet: "Synthetic manual message"
+            )
+        }
+        guard matchFixtureEnabled else {
             throw APIError.requestFailed("Unknown fixture email \(emailMessageId)")
         }
-        return EmailMessage(
-            email_message_id: Self.matchFixtureEmailId,
-            subject: "Your Coffee Roasters receipt",
-            from: "receipts@coffee.example.com",
-            to: "you@example.com",
-            received_at: "2026-04-20T10:00:00+00:00",
-            html_body: nil,
-            text_body: Self.wideReceiptTextBody(orderTotalLine: "Order Total $16.24"),
-            snippet: "Order Total $16.24"
+        throw APIError.requestFailed("Unknown fixture email \(emailMessageId)")
+    }
+
+    func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse {
+        let allHits: [EmailSearchHit] = [
+            EmailSearchHit(
+                email_message_id: Self.searchFixtureEmailId,
+                subject: "Transit card payment confirmed",
+                from: "alerts@transit.example.com",
+                received_at: "2026-04-18T08:15:00+00:00",
+                snippet: "Charge posted: $44.10"
+            ),
+            EmailSearchHit(
+                email_message_id: "msg_search_002",
+                subject: "Coffee rewards update",
+                from: "offers@coffee.example.com",
+                received_at: "2026-04-20T12:30:00+00:00",
+                snippet: "Your latest Coffee Roasters points summary"
+            ),
+        ]
+        let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filtered = allHits.filter { hit in
+            guard !normalized.isEmpty else { return true }
+            return (hit.subject ?? "").lowercased().contains(normalized)
+                || (hit.from ?? "").lowercased().contains(normalized)
+                || (hit.snippet ?? "").lowercased().contains(normalized)
+                || hit.email_message_id.lowercased().contains(normalized)
+        }
+        return EmailSearchResponse(query: query, items: Array(filtered.prefix(max(0, limit))))
+    }
+
+    func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+        guard let row = rows.first(where: { $0.match?.match_id == matchId }) else {
+            throw APIError.requestFailed("Match \(matchId) not found in fixture.")
+        }
+        return try updateMatch(
+            on: row.transaction_id,
+            state: "human_confirmed_ai_match",
+            selectedBy: "human",
+            emailMessageId: row.match?.email_message_id ?? Self.matchFixtureEmailId
+        )
+    }
+
+    func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        _ = note
+        guard let row = rows.first(where: { $0.match?.match_id == matchId }) else {
+            throw APIError.requestFailed("Match \(matchId) not found in fixture.")
+        }
+        return try updateMatch(
+            on: row.transaction_id,
+            state: "human_overrode_ai_match",
+            selectedBy: "human",
+            emailMessageId: emailMessageId
+        )
+    }
+
+    func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse {
+        guard let row = rows.first(where: { $0.match?.match_id == matchId }) else {
+            throw APIError.requestFailed("Match \(matchId) not found in fixture.")
+        }
+        return try updateMatch(
+            on: row.transaction_id,
+            state: "ai_no_match_found",
+            selectedBy: "human",
+            emailMessageId: nil
         )
     }
 
@@ -171,6 +377,38 @@ actor UITestingFixtureAPI: ClassificationAPI {
             state: "human_confirmed_ai_match",
             selected_by: "human",
             updated_at: "2026-04-23T00:00:00Z"
+        )
+    }
+
+    func confirmTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        _ = note
+        return try updateMatch(
+            on: transactionId,
+            state: "human_confirmed_ai_match",
+            selectedBy: "human",
+            emailMessageId: emailMessageId,
+            preserveMatchId: false
+        )
+    }
+
+    func overrideTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        _ = note
+        return try updateMatch(
+            on: transactionId,
+            state: "human_overrode_ai_match",
+            selectedBy: "human",
+            emailMessageId: emailMessageId,
+            preserveMatchId: false
+        )
+    }
+
+    func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse {
+        return try updateMatch(
+            on: transactionId,
+            state: "ai_no_match_found",
+            selectedBy: "human",
+            emailMessageId: nil,
+            preserveMatchId: false
         )
     }
 
