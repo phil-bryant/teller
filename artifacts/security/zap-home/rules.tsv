@@ -1,7 +1,0 @@
-# ZAP Baseline policy tuning file.
-# Format: <plugin_id>\t<LEVEL>\t<description>
-# LEVEL values: IGNORE, INFO, WARN, FAIL
-#
-# Keep this file small and explicit. Add entries only after a reviewed triage decision.
-# Example:
-# 10038	WARN	Content Security Policy (CSP) Header Not Set

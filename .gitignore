@@ -19,7 +19,9 @@ archive/backup_extracts
 bin/*
 .cursor/rules/*
 artifacts/security/reports/
+artifacts/security/
 artifacts/security-dast/
+artifacts/macos-ui-regression/
 artifacts/parallel/
 artifacts/mutation/
 artifacts/fuzz/
@@ -30,3 +32,4 @@ src/macos-ui/.swiftpm-run.lock
 src/macos-ui/.swiftpm-run.lock.d/
 config/db-profiles.local.json
 config/db-profiles.json
+clutter.txt

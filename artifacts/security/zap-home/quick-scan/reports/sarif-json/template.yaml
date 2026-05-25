@@ -1,4 +1,0 @@
-name: SARIF JSON Report
-format: JSON
-mode: TEXT
-extension: json
