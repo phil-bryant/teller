@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #R001: Resolve repo root from script path for deterministic relative references.
 cd "$SCRIPT_DIR"
 
-REPORT_DIR="${DEPENDENCY_REPORT_DIR:-./.security-reports}"
+REPORT_DIR="${DEPENDENCY_REPORT_DIR:-./artifacts/security}"
 RUN_POSTGRES_FRESHNESS="${RUN_POSTGRES_FRESHNESS:-true}"
 RUN_TELLER_VERSION_FRESHNESS="${RUN_TELLER_VERSION_FRESHNESS:-true}"
 FAIL_ON_MAJOR="${DEPENDENCY_FAIL_ON_MAJOR:-false}"
@@ -24,8 +24,8 @@ POSTGRES_CHECK_SERVER_VERSION="${POSTGRES_CHECK_SERVER_VERSION:-true}"
 POSTGRES_CHECK_CVES="${POSTGRES_CHECK_CVES:-true}"
 POSTGRES_FAIL_ON_CVE="${POSTGRES_FAIL_ON_CVE:-true}"
 POSTGRES_REFRESH_CVE_SNAPSHOT="${POSTGRES_REFRESH_CVE_SNAPSHOT:-true}"
-POSTGRES_CVE_SNAPSHOT_FILE="${POSTGRES_CVE_SNAPSHOT_FILE:-./security/postgres-cve-snapshot.json}"
-POSTGRES_CVE_POLICY_FILE="${POSTGRES_CVE_POLICY_FILE:-./security/postgres-cve-policy.json}"
+POSTGRES_CVE_SNAPSHOT_FILE="${POSTGRES_CVE_SNAPSHOT_FILE:-./config/security/postgres-cve-snapshot.json}"
+POSTGRES_CVE_POLICY_FILE="${POSTGRES_CVE_POLICY_FILE:-./config/security/postgres-cve-policy.json}"
 POSTGRES_SERVER_PSQL_ARGS="${POSTGRES_SERVER_PSQL_ARGS:-}"
 POSTGRES_SERVER_PSA_ITEM="${POSTGRES_SERVER_PSA_ITEM:-localhost_postgres_teller}"
 POSTGRES_SERVER_PSA_FIELD="${POSTGRES_SERVER_PSA_FIELD:-password}"
@@ -63,7 +63,7 @@ fi
 echo && echo "▶ Running dependency freshness checks with ${PROJECT_PYTHON}"
 #R010: Emit machine-readable and text freshness reports with optional major-version gate.
 DEPENDENCY_FRESHNESS_ARGS=(
-  ./scripts/check_dependency_freshness.py
+  ./src/scripts/check_dependency_freshness.py
   --output-json "${REPORT_DIR}/dependency-freshness.json"
   --output-text "${REPORT_DIR}/dependency-freshness.txt"
 )
@@ -79,7 +79,7 @@ fi
 if [[ "$RUN_TELLER_VERSION_FRESHNESS" == "true" ]]; then
   echo && echo "▶ Running Teller API version freshness checks"
   TELLER_VERSION_ARGS=(
-    ./scripts/check_teller_api_version_freshness.py
+    ./src/scripts/check_teller_api_version_freshness.py
     --output-json "${REPORT_DIR}/teller-api-version-freshness.json"
     --output-text "${REPORT_DIR}/teller-api-version-freshness.txt"
     --version-sources "${TELLER_API_VERSION_SOURCES}"
@@ -132,7 +132,7 @@ if [[ "$RUN_POSTGRES_FRESHNESS" == "true" ]]; then
     echo "⚠️ PostgreSQL password source: not set (PGPASSWORD missing and 1psa unavailable)"
   fi
   POSTGRES_FRESHNESS_ARGS=(
-    ./scripts/check_postgres_freshness.py
+    ./src/scripts/check_postgres_freshness.py
     --output-json "${REPORT_DIR}/postgres-freshness.json"
     --output-text "${REPORT_DIR}/postgres-freshness.txt"
   )

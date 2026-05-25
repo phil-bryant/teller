@@ -10,6 +10,6 @@ Tests:
 - R001-T01: Run from a different working directory and verify the wrapper still succeeds.
 
 R005  Statement: Execute only the Python unit-test lane.
-Design: Invoke `scripts/run_unit_test_lanes.sh` with `RUN_PYTHON_TESTS=true` and all other unit lanes disabled.
+Design: Invoke `src/scripts/run_unit_test_lanes.sh` with `RUN_PYTHON_TESTS=true` and all other unit lanes disabled.
 Tests:
 - R005-T01: Verify the wrapper exports lane toggles with only Python tests enabled.

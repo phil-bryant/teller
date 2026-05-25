@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift`.
+Applies to `src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift`.
 
 R001  Statement: Discover local enrollment contexts from default and suffixed Teller files.
 Design: `fetchContexts()` reads default files (`auth_token.json`, `enrollment_id.txt`) plus suffixed pairs (`auth_token_<suffix>.json`, `enrollment_id_<suffix>.txt`) and returns deterministic context keys.

@@ -193,12 +193,12 @@ EOF
 @test "requires UI test lane for UI-testing requirements" {
   #R055 #R060 #R070 #R090
   mkdir -p "${FIXTURE_ROOT}/requirements/macos-ui"
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests/TransactionClassifierTests"
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/UITests"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Tests/TransactionClassifierTests"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/UITests"
   cat > "${FIXTURE_ROOT}/requirements/macos-ui/Feature-requirements.md" <<'EOF'
 ## Scope
-Applies to `macos-ui/Sources/TransactionClassifier/Feature.swift`.
+Applies to `src/macos-ui/Sources/TransactionClassifier/Feature.swift`.
 
 R001 Statement: Core behavior.
 Tests:
@@ -207,20 +207,20 @@ R002 Statement: UI-testing mode must toggle interactions.
 Tests:
 - R002-T01: UI lane traceability.
 EOF
-  cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/Feature.swift" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier/Feature.swift" <<'EOF'
 // #R001: Core behavior.
 // #R002: UI-testing mode must toggle interactions.
 EOF
-  cat > "${FIXTURE_ROOT}/macos-ui/Tests/TransactionClassifierTests/FeatureTests.swift" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/macos-ui/Tests/TransactionClassifierTests/FeatureTests.swift" <<'EOF'
 // #R001-T01: Model lane traceability.
 // #R001
 EOF
-  cat > "${FIXTURE_ROOT}/macos-ui/UITests/FeatureUITests.swift" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/macos-ui/UITests/FeatureUITests.swift" <<'EOF'
 // #R002-T01: UI lane traceability.
 // #R002
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh requirements/macos-ui/Feature-requirements.md macos-ui/Sources/TransactionClassifier/Feature.swift"
+  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh requirements/macos-ui/Feature-requirements.md src/macos-ui/Sources/TransactionClassifier/Feature.swift"
   [ "$status" -eq 0 ]
   [[ "$output" == *"PASS (test-traceability)"* ]]
 }
@@ -228,23 +228,23 @@ EOF
 @test "fails UI-testing requirement when only model lane has tags" {
   #R055 #R060 #R065
   mkdir -p "${FIXTURE_ROOT}/requirements/macos-ui"
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/Tests/TransactionClassifierTests"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Tests/TransactionClassifierTests"
   cat > "${FIXTURE_ROOT}/requirements/macos-ui/Feature-requirements.md" <<'EOF'
 ## Scope
-Applies to `macos-ui/Sources/TransactionClassifier/Feature.swift`.
+Applies to `src/macos-ui/Sources/TransactionClassifier/Feature.swift`.
 
 R001 Statement: UI testing must verify this behavior.
 EOF
-  cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/Feature.swift" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier/Feature.swift" <<'EOF'
 // #R001: UI testing must verify this behavior.
 EOF
-  cat > "${FIXTURE_ROOT}/macos-ui/Tests/TransactionClassifierTests/FeatureTests.swift" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/macos-ui/Tests/TransactionClassifierTests/FeatureTests.swift" <<'EOF'
 // #R001-T01: Model-only lane tag.
 // #R001
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh requirements/macos-ui/Feature-requirements.md macos-ui/Sources/TransactionClassifier/Feature.swift"
+  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh requirements/macos-ui/Feature-requirements.md src/macos-ui/Sources/TransactionClassifier/Feature.swift"
   [ "$status" -eq 1 ]
   [[ "$output" == *"FAIL (test-traceability)"* ]]
   [[ "$output" == *"R001"* ]]
@@ -252,14 +252,14 @@ EOF
 
 @test "teller module requirements map only to matching python test file" {
   #R050 #R065 #R070 #R090
-  mkdir -p "${FIXTURE_ROOT}/requirements/teller" "${FIXTURE_ROOT}/teller" "${FIXTURE_ROOT}/tests/py"
+  mkdir -p "${FIXTURE_ROOT}/requirements/teller" "${FIXTURE_ROOT}/src/teller" "${FIXTURE_ROOT}/tests/py"
   cat > "${FIXTURE_ROOT}/requirements/teller/teller_object-requirements.md" <<'EOF'
 ## Scope
-Applies to `teller/teller_object.py`.
+Applies to `src/teller/teller_object.py`.
 
 R001 Statement: One.
 EOF
-  cat > "${FIXTURE_ROOT}/teller/teller_object.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/teller/teller_object.py" <<'EOF'
 #R001: One.
 EOF
   cat > "${FIXTURE_ROOT}/tests/py/test_teller_object.py" <<'EOF'
@@ -269,7 +269,7 @@ EOF
 #R001
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh requirements/teller/teller_object-requirements.md teller/teller_object.py"
+  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh requirements/teller/teller_object-requirements.md src/teller/teller_object.py"
   [ "$status" -eq 1 ]
   [[ "$output" == *"- tests: ${FIXTURE_ROOT}/tests/py/test_teller_object.py"* ]]
   [[ "$output" != *"test_teller_classification_api.py"* ]]

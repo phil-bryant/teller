@@ -14,8 +14,8 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "98_destroy_database.sh"
-  mkdir -p "${FIXTURE_ROOT}/scripts"
-  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
 echo "PROFILE_TARGET=local"
@@ -28,7 +28,7 @@ echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=teller_write"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
 EOF
-  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 }
 
 teardown() {

@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-05-25T13:54:48.110653Z",
+  "status": "passed",
+  "gate_failed": false,
+  "strict_mode": true,
+  "canonical_seed_row_count": 116,
+  "canonical_seed_max_id": 116,
+  "invariants": [
+    {
+      "name": "missing_or_unflagged_seed_rows",
+      "description": "Canonical seed IDs [1..N] must remain present and tagged with is_seed=true.",
+      "count": 0,
+      "ok": true,
+      "examples": []
+    },
+    {
+      "name": "seed_flag_outside_canonical_range",
+      "description": "Rows marked as seed must remain within canonical seed ID range.",
+      "count": 0,
+      "ok": true,
+      "examples": []
+    },
+    {
+      "name": "seed_row_count_drift",
+      "description": "Seed taxonomy row count must remain exactly 116.",
+      "count": 0,
+      "ok": true,
+      "examples": []
+    },
+    {
+      "name": "control_characters_in_hierarchy",
+      "description": "Hierarchy text fields must not contain control/non-printable characters.",
+      "count": 0,
+      "ok": true,
+      "examples": []
+    },
+    {
+      "name": "empty_hierarchy_rows",
+      "description": "Category rows must include at least one non-empty hierarchy text field.",
+      "count": 0,
+      "ok": true,
+      "examples": []
+    },
+    {
+      "name": "orphaned_transaction_category_links",
+      "description": "Every transaction category mapping must reference an existing category row.",
+      "count": 0,
+      "ok": true,
+      "examples": []
+    }
+  ],
+  "errors": [],
+  "repair_script_available": "src/scripts/repair_nys_snw_category.sql"
+}

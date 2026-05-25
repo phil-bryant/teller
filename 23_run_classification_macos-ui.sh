@@ -3,7 +3,7 @@
 set -euo pipefail
 #R005: Resolve repository root from script location.
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-package_path="$repo_root/macos-ui"
+package_path="$repo_root/src/macos-ui"
 binary="$package_path/.build/debug/TransactionClassifier"
 # Connect now runs in-process inside macos-ui (no localhost token server).
 connect_api_url="inprocess://connect"

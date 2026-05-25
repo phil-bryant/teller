@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
+DB_PROFILE_HELPER="${SCRIPT_DIR}/src/scripts/db_profile_export.sh"
 
 #R050: Resolve target/profile so verification can adapt to local vs managed Postgres.
 PROFILE_NAME="local"
@@ -20,7 +20,7 @@ if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
   rm -f "$profile_exports_file"
   exit 1
 fi
-PROFILE_EXPORTS="$(<"$profile_exports_file")"
+PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
 rm -f "$profile_exports_file"
 eval "$PROFILE_EXPORTS"
 
@@ -49,7 +49,7 @@ if [[ -z "$DB_PASSWORD" ]]; then
   fi
   PSA_ITEM="${TELLER_PSA_ITEM:-${PG_ONEPSA_ITEM:-}}"
   if [[ -z "$PSA_ITEM" ]]; then
-    echo "❌ FAIL: No 1psa item resolved from db-profiles.json; cannot look up password."
+    echo "❌ FAIL: No 1psa item resolved from config/db-profiles.json; cannot look up password."
     exit 1
   fi
   DB_PASSWORD="$(1psa -p "$PSA_ITEM")"

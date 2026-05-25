@@ -1,0 +1,1 @@
+{"status": "passed", "created_category_id": 4736, "first_delete_status": 200, "second_delete_status": 404, "second_delete_payload": {"detail": "Unknown nys_snw_category_id: 4736"}}

@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-05-25T17:56:35.783734+00:00",
+  "policy": {
+    "min_client_version": null,
+    "min_server_version": null,
+    "check_server_version": true,
+    "fail_on_stale": false,
+    "check_cves": true,
+    "fail_on_cve": true,
+    "cve_snapshot": "./config/security/postgres-cve-snapshot.json",
+    "cve_policy": "./config/security/postgres-cve-policy.json"
+  },
+  "client": {
+    "available": true,
+    "version": "17.10",
+    "minimum_version": null,
+    "meets_minimum": null,
+    "status": "ok",
+    "error": null
+  },
+  "server": {
+    "checked": true,
+    "available": true,
+    "version": null,
+    "minimum_version": null,
+    "meets_minimum": null,
+    "status": "error",
+    "error": "psql: error: connection to server at \"localhost\" (::1), port 5432 failed: FATAL:  database \"prod\" does not exist"
+  },
+  "cve": {
+    "checked": true,
+    "policy_file": "./config/security/postgres-cve-policy.json",
+    "snapshot_file": "./config/security/postgres-cve-snapshot.json",
+    "snapshot_generated_at": "2026-05-25T17:56:35.777834Z",
+    "snapshot_age_hours": 0.0,
+    "snapshot_stale": false,
+    "severity_threshold": "medium",
+    "fail_on_cve": true,
+    "fail_on_stale_snapshot": true,
+    "max_snapshot_age_hours": 24,
+    "snapshot_cve_count": 25,
+    "vulnerabilities": [],
+    "warnings": [],
+    "status": "passed",
+    "assurance": "matched-against-snapshot",
+    "gate_failed": false
+  },
+  "summary": {
+    "stale_components": [],
+    "warnings": [
+      "Could not determine PostgreSQL server version (attempted psql args: -h localhost -U teller -d prod)."
+    ],
+    "gate_failed": false
+  }
+}

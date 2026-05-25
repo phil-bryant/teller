@@ -6,20 +6,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 echo "running DAST (Dynamic Application Security Testing)"
 
-REPORT_DIR="${SECURITY_REPORT_DIR:-./.security-reports}"
+REPORT_DIR="${SECURITY_REPORT_DIR:-./artifacts/security-dast}"
 RUN_SAST="${RUN_SAST:-false}"
 RUN_DAST="${RUN_DAST:-true}"
 RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 #R015: Support configurable execution lanes and report destination.
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
-SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
+SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./artifacts/venv/security}"
+SECURITY_REQUIREMENTS_FILE="${SECURITY_REQUIREMENTS_FILE:-./requirements/security/requirements-security.txt}"
 SECURITY_CONFIG_DIR="${SECURITY_CONFIG_DIR:-./config/security}"
+RUFF_CACHE_DIR="${RUFF_CACHE_DIR:-./artifacts/cache/ruff}"
+PYTEST_CACHE_DIR="${PYTEST_CACHE_DIR:-./artifacts/cache/pytest}"
+HYPOTHESIS_STORAGE_DIRECTORY="${HYPOTHESIS_STORAGE_DIRECTORY:-./artifacts/cache/hypothesis}"
 SEMGREP_CONFIG_PATH="${SEMGREP_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/semgrep.yml}"
 BANDIT_CONFIG_PATH="${BANDIT_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/bandit.yml}"
 GITLEAKS_IGNORE_PATH="${GITLEAKS_IGNORE_PATH:-${SECURITY_CONFIG_DIR}/gitleaksignore}"
 WRITE_TOKEN_PSA_ITEM="TELLER_CLASSIFIER_WRITE_TOKEN"
 
 mkdir -p "$REPORT_DIR"
+mkdir -p "$RUFF_CACHE_DIR" "$PYTEST_CACHE_DIR" "$HYPOTHESIS_STORAGE_DIRECTORY"
+export RUFF_CACHE_DIR PYTEST_CACHE_DIR HYPOTHESIS_STORAGE_DIRECTORY
 
 python_interpreter_usable() {
   local candidate="$1"
@@ -40,7 +46,7 @@ fi
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "❌ Missing required command: $1"
-    echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r requirements-security.txt"
+    echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r ${SECURITY_REQUIREMENTS_FILE}"
     exit 1
   fi
 }
@@ -69,17 +75,52 @@ print_tool_header() {
 
 ensure_security_venv() {
   #R005: Bootstrap isolated security toolchain environment before scanning.
+  local run_schemathesis="${RUN_SCHEMATHESIS:-true}"
+  local need_semgrep="false"
+  local need_schemathesis="false"
+  if [[ "$RUN_SAST" == "true" ]]; then
+    need_semgrep="true"
+  fi
+  if [[ "$RUN_DAST" == "true" && "$run_schemathesis" == "true" ]]; then
+    need_schemathesis="true"
+  fi
+  if [[ "$need_semgrep" != "true" && "$need_schemathesis" != "true" ]]; then
+    return 0
+  fi
+
+  local security_python="${SECURITY_VENV_DIR}/bin/python"
+  local security_semgrep="${SECURITY_VENV_DIR}/bin/semgrep"
+  local security_schemathesis="${SECURITY_VENV_DIR}/bin/schemathesis"
+
+  security_console_script_usable() {
+    local script_path="$1"
+    local probe_arg="${2:---version}"
+    [[ -x "$script_path" ]] || return 1
+    "$script_path" "$probe_arg" >/dev/null 2>&1
+  }
+
+  if [[ -d "$SECURITY_VENV_DIR" ]] && ! python_interpreter_usable "$security_python"; then
+    echo "⚠️  Recreating security virtualenv because interpreter is unusable: ${security_python}"
+    rm -rf "$SECURITY_VENV_DIR"
+  fi
+
   if [[ ! -d "$SECURITY_VENV_DIR" ]]; then
     echo "▶ Creating isolated security virtualenv at ${SECURITY_VENV_DIR}"
     python3 -m venv "$SECURITY_VENV_DIR"
   fi
 
-  local security_pip="${SECURITY_VENV_DIR}/bin/pip"
-  local security_semgrep="${SECURITY_VENV_DIR}/bin/semgrep"
-  if [[ ! -x "$security_semgrep" ]]; then
-    echo "▶ Installing security toolchain into ${SECURITY_VENV_DIR}"
-    "$security_pip" install --upgrade pip
-    "$security_pip" install -r requirements-security.txt
+  local needs_semgrep_repair="false"
+  local needs_schemathesis_repair="false"
+  if [[ "$need_semgrep" == "true" ]] && ( [[ ! -x "$security_semgrep" ]] || ! security_console_script_usable "$security_semgrep" "--version" ); then
+    needs_semgrep_repair="true"
+  fi
+  if [[ "$need_schemathesis" == "true" ]] && ( [[ ! -x "$security_schemathesis" ]] || ! security_console_script_usable "$security_schemathesis" "--version" ); then
+    needs_schemathesis_repair="true"
+  fi
+  if [[ "$needs_semgrep_repair" == "true" || "$needs_schemathesis_repair" == "true" ]]; then
+    echo "▶ Repairing security toolchain entrypoints in ${SECURITY_VENV_DIR}"
+    "$security_python" -m pip install --upgrade pip
+    "$security_python" -m pip install --force-reinstall -r "$SECURITY_REQUIREMENTS_FILE"
   fi
 }
 
@@ -221,7 +262,7 @@ read_classifier_write_token() {
 
 run_swift_sast() {
   local swift_report="$1"
-  local swift_ui_dir="${SWIFT_UI_DIR:-./macos-ui}"
+  local swift_ui_dir="${SWIFT_UI_DIR:-./src/macos-ui}"
   local swift_targets=()
 
   if [[ "$RUN_SWIFT_SAST" != "true" ]]; then
@@ -349,7 +390,7 @@ run_dast_checks() (
   run_category_integrity_checks() {
     local report_dir_abs="$1"
     local integrity_report_path="${report_dir_abs}/category-integrity.json"
-    local seed_sql_path="./sql/postgres/teller_nys_snw_category.sql"
+    local seed_sql_path="./src/sql/postgres/teller_nys_snw_category.sql"
     local strict_mode="${DAST_CATEGORY_INTEGRITY_STRICT:-true}"
 
     echo "▶ Running post-DAST category integrity checks"
@@ -679,7 +720,7 @@ else:
     report["status"] = "passed"
     report["gate_failed"] = False
 
-repair_script = pathlib.Path("./scripts/repair_nys_snw_category.sql")
+repair_script = pathlib.Path("./src/scripts/repair_nys_snw_category.sql")
 if repair_script.exists():
     report["repair_script_available"] = str(repair_script)
 
@@ -1183,6 +1224,11 @@ PY
 
   local dast_app_python="${DAST_APP_PYTHON:-./teller-venv/bin/python}"
   local dast_integrity_pythonpath="${PYTHONPATH:-}"
+  if [[ -n "$dast_integrity_pythonpath" ]]; then
+    dast_integrity_pythonpath="${PWD}/src:${PWD}:${dast_integrity_pythonpath}"
+  else
+    dast_integrity_pythonpath="${PWD}/src:${PWD}"
+  fi
 
   local schemathesis_seed="${SCHEMATHESIS_SEED:-424242}"
   local schemathesis_max_examples="${SCHEMATHESIS_MAX_EXAMPLES:-25}"
@@ -1490,7 +1536,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "https://github.com/Yelp/detect-secrets"
   echo "▶ Running detect-secrets"
   detect-secrets scan --all-files --force-use-all-plugins \
-    --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^backups/|^archive/backup_extracts/|^archive/legacy/teller-connect-ui/|^bank_statements/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/|^requirements/)' \
+    --exclude-files '(^\.git/|^teller-venv/|^artifacts/venv/security/|^artifacts/security/|^artifacts/security-dast/|^artifacts/parallel/|^artifacts/mutation/|^artifacts/fuzz/|^artifacts/cache/ruff/|^artifacts/cache/pytest/|^artifacts/cache/hypothesis/|^artifacts/cache/egg-info/|^backups/|^archive/backup_extracts/|^archive/legacy/teller-connect-ui/|^config/bank_statements/|^src/macos-ui/\.derivedData-ui-tests/|^src/macos-ui/\.build/|^requirements/)' \
     > "${REPORT_DIR}/detect-secrets.json"
 
   run_gitleaks_sast "${REPORT_DIR}/gitleaks.json"

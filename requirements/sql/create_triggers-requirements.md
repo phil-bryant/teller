@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `sql/postgres/create_triggers.sql`.
+Applies to `src/sql/postgres/create_triggers.sql`.
 
 ## Ownership Boundaries
 

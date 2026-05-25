@@ -10,13 +10,13 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "09_run_shell_unit_tests.sh"
-  mkdir -p "${FIXTURE_ROOT}/scripts"
-  cat > "${FIXTURE_ROOT}/scripts/run_unit_test_lanes.sh" <<'EOF'
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  cat > "${FIXTURE_ROOT}/src/scripts/run_unit_test_lanes.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "RUN_SHELL_TESTS=${RUN_SHELL_TESTS:-} RUN_PYTHON_TESTS=${RUN_PYTHON_TESTS:-} RUN_SQL_TESTS=${RUN_SQL_TESTS:-} RUN_SWIFT_TESTS=${RUN_SWIFT_TESTS:-}" >> "${CALLS_LOG}"
 exit 0
 EOF
-  chmod +x "${FIXTURE_ROOT}/scripts/run_unit_test_lanes.sh"
+  chmod +x "${FIXTURE_ROOT}/src/scripts/run_unit_test_lanes.sh"
 }
 
 teardown() {

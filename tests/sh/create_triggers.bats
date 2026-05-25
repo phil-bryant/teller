@@ -18,7 +18,7 @@ teardown() {
 }
 
 sql_file() {
-  printf '%s' "$(repo_root)/sql/postgres/create_triggers.sql"
+  printf '%s' "$(repo_root)/src/sql/postgres/create_triggers.sql"
 }
 
 @test "defines update updated_at trigger function" {

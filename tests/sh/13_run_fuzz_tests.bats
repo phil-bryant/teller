@@ -5,6 +5,9 @@
 # #R005-T01: Traceability anchor.
 # #R010-T01: Traceability anchor.
 # #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+# #R030-T01: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -64,6 +67,6 @@ teardown() {
   #R015-T01
   run env FUZZ_MIN_PROPERTY_TESTS=1 FUZZ_MIN_TOTAL_EXAMPLES=100 bash "${FIXTURE_ROOT}/13_run_fuzz_tests.sh"
   [ "$status" -eq 0 ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/fuzz-summary.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/fuzz/fuzz-summary.json" ]
   [[ "$output" == *"✅ PASS: Property-based fuzz tests completed"* ]]
 }

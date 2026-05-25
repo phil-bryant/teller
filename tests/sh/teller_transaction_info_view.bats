@@ -15,7 +15,7 @@ teardown() {
 }
 
 sql_file() {
-  printf '%s' "$(repo_root)/sql/postgres/teller_transaction_info_view.sql"
+  printf '%s' "$(repo_root)/src/sql/postgres/teller_transaction_info_view.sql"
 }
 
 @test "view joins transaction to related teller data" {

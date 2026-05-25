@@ -15,9 +15,9 @@ Tests:
 - R005-T01: Run from a non-root working directory and verify relative paths still resolve.
 
 R010  Statement: Bootstrap isolated security toolchain environment before scanning.
-Design: Create `SECURITY_VENV_DIR` when missing, install `requirements-security.txt` when `semgrep` is absent in that venv, and prepend `${SECURITY_VENV_DIR}/bin` to `PATH`.
+Design: Create `SECURITY_VENV_DIR` when missing, install `requirements/security/requirements-security.txt` when `semgrep` is absent in that venv, and prepend `${SECURITY_VENV_DIR}/bin` to `PATH`.
 Tests:
-- R010-T01: Remove `.security-venv`, run script, and verify venv creation plus tool installation path executes.
+- R010-T01: Remove `artifacts/venv/security`, run script, and verify venv creation plus tool installation path executes.
 
 R015  Statement: Run the static security lane by default.
 Design: Set `RUN_SAST=true` default and `RUN_DAST=false` default; run SAST scanners and centralized SAST gating when enabled.
@@ -43,9 +43,9 @@ Tests:
 - R030-T02: Verify `sast-summary.json` includes `ruff_high_critical` and contributes to `high_critical_total`.
 
 R035  Statement: Secret scanners must avoid generated scanner/cache artifacts while preserving strict source scanning.
-Design: Keep `detect-secrets` in the SAST lane but exclude generated paths such as `.security-reports`, `.ruff_cache`, `__pycache__`, and other runtime caches so scanner outputs do not become scanner inputs.
+Design: Keep `detect-secrets` in the SAST lane but exclude generated paths such as `artifacts/security/reports`, `artifacts/cache/ruff`, `__pycache__`, and other runtime caches so scanner outputs do not become scanner inputs.
 Tests:
-- R035-T01: Run SAST lane and verify detect-secrets invocation includes `.ruff_cache` in its exclusion pattern.
+- R035-T01: Run SAST lane and verify detect-secrets invocation includes `artifacts/cache/ruff` in its exclusion pattern.
 
 R040  Statement: gitleaks must scan tracked working-tree source, not mutable runtime directories.
 Design: Build a temporary snapshot of `git ls-files` from the current working tree and run `gitleaks detect --no-git` against that snapshot. This prevents feedback loops from report/cache directories while keeping modified tracked files in scope.

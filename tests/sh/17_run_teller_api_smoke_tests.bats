@@ -15,7 +15,7 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "17_run_teller_api_smoke_tests.sh"
-  mkdir -p "${FIXTURE_ROOT}/scripts"
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
 }
 
 teardown() {
@@ -42,16 +42,16 @@ done
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python"
-  cat > "${FIXTURE_ROOT}/scripts/check_teller_api_drift.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/check_teller_api_drift.py" <<'EOF'
 print("stub")
 EOF
 
   run bash -c "cd '${TEST_TMPDIR}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' '${FIXTURE_ROOT}/17_run_teller_api_smoke_tests.sh'"
   [ "$status" -eq 0 ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/teller-api-smoke.json" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/teller-api-smoke.txt" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/teller-api-smoke.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/teller-api-smoke.txt" ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./scripts/check_teller_api_drift.py"* ]]
+  [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./src/scripts/check_teller_api_drift.py"* ]]
   [[ "$calls" == *"--run-all-tokens"* ]]
 }
 
@@ -75,7 +75,7 @@ done
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python"
-  cat > "${FIXTURE_ROOT}/scripts/check_teller_api_drift.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/check_teller_api_drift.py" <<'EOF'
 print("stub")
 EOF
 

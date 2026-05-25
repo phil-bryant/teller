@@ -77,8 +77,9 @@ class _IsolatedEnvTest(unittest.TestCase):
         for key, value in self._saved_env.items():
             os.environ[key] = value
 
-    def _write_profile_file(self, payload, name="db-profiles.json"):
+    def _write_profile_file(self, payload, name="config/db-profiles.json"):
         path = Path(self._tempdir.name) / name
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload), encoding="utf-8")
         return path
 
@@ -88,7 +89,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
     def test_missing_profile_file_raises_with_copy_guidance(self):
         with self.assertRaises(ProfileError) as ctx:
             resolve_profile()
-        self.assertIn("cp db-profiles-EXAMPLE.json db-profiles.json", str(ctx.exception))
+        self.assertIn("cp config/db-profiles-EXAMPLE.json config/db-profiles.json", str(ctx.exception))
 
     # #R005: TELLER_DB_PROFILE_FILE wins over repo-local defaults.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
@@ -111,6 +112,24 @@ class ResolveProfileTests(_IsolatedEnvTest):
     def test_no_file_anywhere_raises(self):
         with self.assertRaises(ProfileError):
             resolve_profile()
+
+    # #R005: config profiles are preferred and used for local repository resolution.
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
+    def test_config_profile_used_for_resolution(self, _mock):
+        config_dir = Path(self._tempdir.name) / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        (config_dir / "db-profiles.local.json").write_text(
+            json.dumps(
+                {
+                    "default_profile": "remote-local",
+                    "profiles": {"remote-local": {"1psa_item": "local_config_item"}},
+                }
+            ),
+            encoding="utf-8",
+        )
+        profile = resolve_profile()
+        self.assertEqual(profile.name, "remote-local")
+        self.assertEqual(profile.onepsa_item, "local_config_item")
 
     # #R010: Missing 1psa_item field raises ProfileError.
     def test_missing_onepsa_item_rejected(self):

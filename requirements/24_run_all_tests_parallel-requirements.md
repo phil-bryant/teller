@@ -45,7 +45,7 @@ Tests:
 - R030-T02: Mixed run verifies overall FAIL line and non-zero exit code.
 
 R035  Statement: Persist per-check stdout/stderr log artifacts.
-Design: Write each child output to `${PARALLEL_CHECKS_REPORT_DIR:-./.parallel-checks-reports}/<script-stem>.log` and include the log path in FAIL summary lines.
+Design: Write each child output to `${PARALLEL_CHECKS_REPORT_DIR:-./artifacts/parallel}/<script-stem>.log` and include the log path in FAIL summary lines.
 Tests:
 - R035-T01: Verify stub output appears in the expected log file and FAIL lines reference the log path.
 

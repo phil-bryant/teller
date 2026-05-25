@@ -64,8 +64,8 @@ exit 0
 EOF
   chmod +x "${STUB_BIN}/curl"
   stub_cmd 1psa "echo dbpass"
-  mkdir -p "${FIXTURE_ROOT}/scripts"
-  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
 echo "PROFILE_TARGET=local"
@@ -78,7 +78,7 @@ echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=teller_write"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
 EOF
-  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   export PATH="${STUB_BIN}:/usr/bin:/bin"
 }
 
@@ -185,14 +185,14 @@ EOF
 
 @test "fails with setup guidance when db profile file is missing" {
   #R040
-  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
-echo "No DB profile file found. Create one with: cp db-profiles-EXAMPLE.json db-profiles.json" >&2
+echo "No DB profile file found. Create one with: cp config/db-profiles-EXAMPLE.json config/db-profiles.json" >&2
 exit 1
 EOF
-  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   run env TELLER_DB_PASSWORD=pw TXN_ID=txn1 CATEGORY_ID=7 \
     zsh "${FIXTURE_ROOT}/21_classification_persistence_verification_test.sh" --require-env-ids
   [ "$status" -ne 0 ]
-  [[ "$output" == *"cp db-profiles-EXAMPLE.json db-profiles.json"* ]]
+  [[ "$output" == *"cp config/db-profiles-EXAMPLE.json config/db-profiles.json"* ]]
 }

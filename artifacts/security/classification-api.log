@@ -1,0 +1,1616 @@
+INFO:     Started server process [68939]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8789 (Press CTRL+C to quit)
+INFO:     127.0.0.1:65290 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65375 - "GET /openapi.json HTTP/1.1" 200 OK
+1psa: 1Password rate limited (failed to list vaults: performing a vault operation: rate limit exceeded); falling back to /Users/phil/.env
+1psa: 1Password rate limited (failed to list vaults: performing a vault operation: rate limit exceeded); falling back to /Users/phil/.env
+1psa: 1Password rate limited (failed to list vaults: performing a vault operation: rate limit exceeded); falling back to /Users/phil/.env
+1psa: 1Password rate limited (failed to list vaults: performing a vault operation: rate limit exceeded); falling back to /Users/phil/.env
+1psa: 1Password rate limited (failed to list vaults: performing a vault operation: rate limit exceeded); falling back to /Users/phil/.env
+1psa: 1Password rate limited (failed to list vaults: performing a vault operation: rate limit exceeded); falling back to /Users/phil/.env
+2026-05-25 09:53:56 [info     ] Resolving DB password via 1Password env_fallback_key=LOCALHOST_POSTGRES_TELLER.password item=LOCALHOST_POSTGRES_TELLER onepsa_command='1psa -p LOCALHOST_POSTGRES_TELLER'
+1psa: 1Password rate limited (failed to list vaults: performing a vault operation: rate limit exceeded); falling back to /Users/phil/.env
+2026-05-25 09:53:56 [info     ] Database engine created        db=teller host=127.0.0.1 port=5432 profile=local runtime_role=None search_path=teller sslmode=require user=teller
+INFO:     127.0.0.1:65376 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65392 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65395 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65396 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65398 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65399 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65400 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65401 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65402 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65403 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65404 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65405 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65406 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65407 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65408 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65409 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65410 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65412 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65413 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65414 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65415 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65416 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65417 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65418 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65419 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65420 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65421 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65422 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65423 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65424 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65425 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65426 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65427 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65428 - "GET /v1/transactions?limit=1&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65429 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65430 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65431 - "DELETE /v1/categories/4736 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65432 - "DELETE /v1/categories/4736 HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     127.0.0.1:65437 - "POST /v1/transactions/classifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65437 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65437 - "PUT /v1/matchy/matches/305/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65437 - "PUT /v1/matchy/matches/305/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65437 - "PUT /v1/matchy/matches/305/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65437 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65437 - "PUT /v1/transactions/txn_pskipslvrh9oh59ecq002/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65437 - "DELETE /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65437 - "DELETE /v1/categories/4704 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "POST /v1/transactions/classifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/categories/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/messages/search?query= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/messages/search?query=&limit=99 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/messages/search?query=&limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/messages/search?query=&limit=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/messages/search?query=&limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/messages/search?query=&limit=25 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/messages/0 HTTP/1.1" 502 Bad Gateway
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?only_unmoved=true&limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?only_unmoved=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=&only_unmoved=true&limit=100&offset=999999 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=&only_unmoved=true&limit=100&offset=1000000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=&only_unmoved=true&limit=100&offset=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=&only_unmoved=true&limit=499&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=&only_unmoved=true&limit=500&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=&only_unmoved=true&limit=2&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=&only_unmoved=true&limit=1&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=&only_unmoved=false&limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=human_overrode_ai_match&only_unmoved=true&limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=human_confirmed_ai_match&only_unmoved=true&limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=ai_match_confident&only_unmoved=true&limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=ai_candidate_uncertain&only_unmoved=true&limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=ai_no_match_found&only_unmoved=true&limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/review?state=&only_unmoved=true&limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?only_unclassified=true&match_state=&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?match_state=&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?match_state=&limit=150 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?status= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?only_unmoved_match=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?only_unclassified=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?match_state= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?limit=150 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=999999 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=1000000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=499&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=500&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=2&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=1&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=&only_unmoved_match=false&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=human_overrode_ai_match&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=human_confirmed_ai_match&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=ai_match_confident&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=ai_candidate_uncertain&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=ai_no_match_found&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=no_email&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=unmatched&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=false&match_state=&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=pending&only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=posted&only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/transactions?search=&status=&only_unclassified=true&match_state=&only_unmoved_match=true&limit=150&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/298/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/299/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/300/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/301/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/302/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/303/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/304/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/298/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/300/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/301/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/302/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/303/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/304/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/298/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/300/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/301/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/302/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/303/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/304/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/298/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/299/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/300/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/301/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/302/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/303/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/304/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/no-email HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/matchy/transactions/0/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "PUT /v1/transactions/txn_pskipslvrh9oh59ecq002/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/transactions/txn_pskipslvrh9oh59ecq002/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "PUT /v1/transactions/txn_pskipslvrh9oh59ecq002/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "GET /v1/matchy/transactions/0/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4735 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4734 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4733 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4732 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4731 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4730 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4729 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4728 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4727 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4726 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4725 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4724 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4723 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4722 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4721 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4720 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4719 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4718 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4717 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4716 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4714 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4713 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4712 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4711 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4710 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4709 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4708 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4707 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4706 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4705 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65440 - "DELETE /v1/categories/4704 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/categories HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "POST /v1/transactions/classifications HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/categories/counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=%C2%8A%13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=%0B%C2%9D%ED%93%87%27%11%F3%BF%B1%85 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=%F1%A8%A8%BB%14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=%F4%89%9B%93%C2%A8%C3%BB%EF%A5%95h%C2%AA%F2%98%AE%A7%C3%AA%F1%B8%8E%81%C2%93 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=%C2%B6%F0%A3%B7%82&limit=55 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=%C2%AC HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=31 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=%F2%A2%AF%A0%13%E6%A7%BB%F0%98%94%8E%F2%8C%BA%9E%C3%BE%C2%9D%F3%A8%9F%82%C2%AEA%04%F0%99%AB%AA%C2%93%C2%98%2C%C3%91%C2%B2%C3%A7%C2%BC%C2%82%F3%B8%BA%9E%C2%80%C3%87%C2%9D%F0%A8%B3%80&limit=89 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=%C3%97%C2%9D8%C3%99 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=1%2F0&limit=11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=45 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=96 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=99 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=99 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=85 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=29 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=62 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=52 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/search?query=&limit=15 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/messages/0 HTTP/1.1" 502 Bad Gateway
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?only_unmoved=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?state=ai_no_match_found&only_unmoved=false&offset=694931&limit=60 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?state=&only_unmoved=false&offset=802333&limit=489 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?limit=36 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?state=human_overrode_ai_match&only_unmoved=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?offset=0&only_unmoved=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?limit=354&state=ai_candidate_uncertain&only_unmoved=false&offset=791956 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?limit=331&only_unmoved=false&state=human_confirmed_ai_match&offset=639081 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?offset=541754&limit=200&only_unmoved=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?offset=541754&limit=1&only_unmoved=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?offset=541754&limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?offset=1&limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?state=&only_unmoved=true&limit=459 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?offset=798501&state=&only_unmoved=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?state=ai_match_confident&limit=114&offset=714659&only_unmoved=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?limit=349&state= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?state=human_overrode_ai_match&only_unmoved=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?state=ai_match_confident&offset=191622&only_unmoved=true&limit=43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?state=ai_candidate_uncertain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?limit=370 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?limit=310&offset=188728&state=human_overrode_ai_match&only_unmoved=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?state=ai_match_confident&offset=73630&only_unmoved=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/review?only_unmoved=true&offset=7828&state=ai_no_match_found&limit=390 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?match_state= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?match_state=human_confirmed_ai_match&limit=312 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?offset=122233 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?only_unclassified=false&search=0-%7BX-&status=&offset=999999&only_unmoved_match=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?match_state=ai_no_match_found&limit=423&status=&only_unmoved_match=false&offset=362880&search=kPz%5B.v%2BPjd~ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?search=&only_unclassified=false&only_unmoved_match=false&limit=300&status=pending&offset=736380&match_state=human_overrode_ai_match HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?search=Gs%2A%5Ci%7C1&only_unclassified=true&limit=451&match_state=ai_no_match_found&status=posted&offset=905225&only_unmoved_match=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?only_unclassified=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?offset=834910&search=&status=pending&only_unclassified=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?offset=834910&search=0000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?offset=834910&search=00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?search=&limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?search=00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?search=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?search= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?limit=184&search=%5Ek9&match_state=ai_candidate_uncertain&only_unclassified=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?only_unclassified=false&status=posted&only_unmoved_match=true&search=LDH%3Do%7C HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?only_unmoved_match=true&limit=238&offset=131072 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?only_unclassified=false&only_unmoved_match=true&status=posted HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?only_unmoved_match=false&status=posted&limit=428 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?only_unmoved_match=true&limit=15&offset=84577&search=%3A~&status=posted&only_unclassified=true&match_state=human_overrode_ai_match HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?offset=362880 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/transactions?limit=237&match_state=unmatched&offset=969415&status=pending HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/1276 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/3860 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4678 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4678 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/3133 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4049 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/2173 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/18 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/18 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/18 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/18 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/18 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/18 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/categories/4661 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/304/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/297/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/231/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/300/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/297/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/304/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/301/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/231/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/304/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/301/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/231/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/231/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/297/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/302/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/301/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/231/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/304/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/300/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/301/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/300/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/297/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/304/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/confirm HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/304/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/297/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/231/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/300/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/297/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/304/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/304/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/298/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/231/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/297/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/301/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/302/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/302/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/300/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/303/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/299/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/304/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/matches/305/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pr14stm18g22l2p6k0001/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm7bh9oh59ecq007/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmdbh9oh59ecq00b/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq001/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/%F0%BF%91%80%E0%BB%B5%F1%94%99%9B%0F%F0%AE%BE%B7%C3%BC/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq003/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmibh9oh59ecq004/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm1bh9oh59ecq006/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmbbh9oh59ecq000/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmbbh9oh59ecq005/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmbrh9oh59ecq00b/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm5rh9oh59ecq006/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmebh9oh59ecq009/confirm-candidate HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pr14stm18g22l2p6k0001/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm7bh9oh59ecq000/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm5bh9oh59ecq00a/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq001/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/%F0%BF%91%80%E0%BB%B5%F1%94%99%9B%0F%F0%AE%BE%B7%C3%BC/no-email HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmfrh9oh59ecq006/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmibh9oh59ecq004/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm1bh9oh59ecq006/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmbbh9oh59ecq000/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmbbh9oh59ecq005/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/override-candidate HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/override-candidate HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsm5rh9oh59ecq006/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/matchy/transactions/txn_pskipsmebh9oh59ecq009/override-candidate HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsm3bh9oh59ecq006/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsm3rh9oh59ecq00c/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsm5bh9oh59ecq003/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmhbh9oh59ecq000/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsm5rh9oh59ecq002/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsm9bh9oh59ecq008/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsm7rh9oh59ecq002/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pr14stm18g22l2p6k0000/classification HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmfrh9oh59ecq002/classification HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/Z%F2%B9%84%924%C3%B67B%C2%8BU6%C2%8C%0Dab%C3%9D%08/classification HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmirh9oh59ecq004/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmarh9oh59ecq006/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsm3bh9oh59ecq006/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmarh9oh59ecq006/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsm7rh9oh59ecq009/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmhbh9oh59ecq000/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmebh9oh59ecq006/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_prb22u1mukcpdd1hdo001/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmhbh9oh59ecq000/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmebh9oh59ecq006/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_prb22u1mukcpdd1hdo001/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmhbh9oh59ecq000/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmebh9oh59ecq006/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_prb22u1mukcpdd1hdo001/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "PUT /v1/transactions/txn_pskipsmhbh9oh59ecq000/classification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pr14stm18g22l2p6k0001/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm7bh9oh59ecq000/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm5bh9oh59ecq00a/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq001/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/%F0%BF%91%80%E0%BB%B5%F1%94%99%9B%0F%F0%AE%BE%B7%C3%BC/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipslvrh9oh59ecq003/candidates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsmibh9oh59ecq004/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm1bh9oh59ecq006/candidates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsmbbh9oh59ecq000/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsmbbh9oh59ecq005/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsmbbh9oh59ecq003/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm3rh9oh59ecq00c/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm3bh9oh59ecq006/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm1bh9oh59ecq006/candidates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm8bh9oh59ecq002/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm1bh9oh59ecq006/candidates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm8bh9oh59ecq002/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm1bh9oh59ecq006/candidates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm8bh9oh59ecq002/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm1bh9oh59ecq006/candidates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "GET /v1/matchy/transactions/txn_pskipsm8bh9oh59ecq002/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/862 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/3681 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/1689 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/1169 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/2393 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4806 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/2131 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/3643 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4266 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4735 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4924 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4497 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4661 HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/1174 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/4610 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/932 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/5098 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/1282 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/932 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/5098 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65470 - "DELETE /v1/categories/1282 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5087 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5087 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5087 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5087 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5104 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5104 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5104 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5104 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/3860 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/3860 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/3860 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/3860 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/3860 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?limit=184&search=%5Ek9&match_state=ai_candidate_uncertain&only_unclassified=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=264&state=ai_match_confident&offset=73630&only_unmoved=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=412&offset=7828&state=ai_no_match_found&only_unmoved=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?only_unclassified=false&status=posted&limit=428 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?offset=941878&search=9%23nZc%5E0wd%3Fh0iP%7C0&status= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/confirm-candidate HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?only_unclassified=false&status=posted&limit=428 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?offset=941878&search=9%23nZc%5E0wd%3Fh0iP%7C0&status= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/confirm-candidate HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/%C3%B4%F2%9C%B4%A4i%C2%B7Zv%C3%96L%F3%BA%91%9A%C3%80%C2%B0%1B/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?only_unmoved=true&limit=496&state= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?only_unmoved=true&state=ai_match_confident HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/1276 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/1276 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/1276 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/1276 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/1276 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5085 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5085 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5085 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5085 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=1&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5083 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5083 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5083 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5083 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?offset=10835 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=117 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/316/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/316/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?offset=633136 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/4666 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/303/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/301/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/300/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?offset=24100&status=pending&only_unclassified=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?only_unmoved_match=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/e/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/confirm-candidate HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?offset=24100&status=pending&only_unclassified=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?only_unmoved_match=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/e/confirm-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/confirm-candidate HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?state=human_overrode_ai_match&only_unmoved=true&limit=114&offset=531380 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=427&state=&only_unmoved=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5088 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5088 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5088 HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5088 HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?offset=686081&state= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/301/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/298/override HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/300/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/4680 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/4680 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/4680 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/4680 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5102 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?only_unclassified=false&search=pK%2FJHmMuH%5B_%40Z0%240PH&offset=0&status=posted&only_unmoved_match=false&match_state=no_email&limit=18 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/%C2%A9%C2%BD/clear HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/S6/override-candidate HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?offset=864514&state=human_overrode_ai_match&limit=236&only_unmoved=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?only_unclassified=false&search= HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/candidates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/4704 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/4049 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/4276 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/4276 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions?only_unclassified=true&only_unmoved_match=false&status=pending&search=%3BK%5E~4%24%2AI HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/transactions/__main__/classification HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/transactions/%5E/candidates HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/5116 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5117 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/5117 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "DELETE /v1/categories/4678 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/categories/4678 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/316/clear HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/315/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/316/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "POST /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/315/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685053&state=human_overrode_ai_match HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685053&state=human_confirmed_ai_match HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685053&state=ai_match_confident HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685053&state=ai_match_confident HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685053&state=ai_candidate_uncertain HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685053&state=human_confirmed_ai_match HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685053&state=human_overrode_ai_match HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685053 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685054 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685056 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685059 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685063 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/transactions/txn_pskipslvrh9oh59ecq002/no-email HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/categories HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49212 - "PUT /v1/matchy/matches/317/confirm HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:49212 - "GET /v1/matchy/review?limit=284&only_unmoved=false&offset=685068 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49220 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49220 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49222 - "GET /robots.txt HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /sitemap.xml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /6184842510128300990 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /WEB-INF/web.xml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /WEB-INF/applicationContext.xml HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     127.0.0.1:49223 - "GET /health?-s HTTP/1.1" 200 OK
+WARNING:  Invalid HTTP request received.
+INFO:     127.0.0.1:49223 - "POST /health?-d+allow_url_include%3d1+-d+auto_prepend_file%3dphp://input HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:49223 - "POST /health?-d+allow_url_include%3d1+-d+auto_prepend_file%3dphp://input HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health?class.module.classLoader.DefaultAssertionStatus=nonsense HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "POST /health HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:49223 - "POST /health HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:49223 - "GET /latest/meta-data/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /latest/meta-data/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /computeMetadata/v1/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /computeMetadata/v1/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /opc/v1/instance/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /opc/v1/instance/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /latest/meta-data/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /latest/meta-data/ HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /metadata/instance HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /health/ HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+WARNING:  Invalid HTTP request received.
+INFO:     127.0.0.1:49223 - "GET /elmah.axd HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /trace.axd HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.htaccess HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.env HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /zap4474787284857443657 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.zap8804879297471502264 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49222 - "GET /actuator/health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49222 - "GET /actuator/health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /lfm.php HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.idea/WebServers.xml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /config/databases.yml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /config/database.yml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.git/config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.svn/entries HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.svn/wc.db HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /CVS/root HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /server-status HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /core HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /sftp-config.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /WS_FTP.ini HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /ws_ftp.ini HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /WS_FTP.INI HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /filezilla.xml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /sitemanager.xml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /FileZilla.xml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /winscp.ini HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /WinSCP.ini HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.DS_Store HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.php_cs.cache HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /DEADJOE HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /sites/default/private/files/backup_migrate/scheduled/test.txt HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /app/etc/local.xml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /server.key HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /privatekey.key HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /myserver.key HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /key.pem HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /id_rsa HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /id_dsa HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.ssh/id_rsa HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.ssh/id_dsa HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /adminer.php HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /vb_test.php HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /CHANGELOG.txt HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /sites/default/files/.ht.sqlite HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /composer.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /composer.lock HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /vim_settings.xml HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /server-info HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /phpinfo.php HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /info.php HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /i.php HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /test.php HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /_wpeprivate/config.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /_framework/blazor.boot.json HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.hg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /.bzr HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /._darcs HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /BitKeeper HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49223 - "GET /health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [68939]

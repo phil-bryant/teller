@@ -11,7 +11,7 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "23_run_classification_macos-ui.sh"
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/.build/debug"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/.build/debug"
 }
 
 teardown() {
@@ -26,12 +26,12 @@ echo "swift \$*" >> "${CALLS_LOG}"
 exit 0
 EOF
   chmod +x "${STUB_BIN}/swift"
-  cat > "${FIXTURE_ROOT}/macos-ui/.build/debug/TransactionClassifier" <<EOF
+  cat > "${FIXTURE_ROOT}/src/macos-ui/.build/debug/TransactionClassifier" <<EOF
 #!/usr/bin/env bash
 echo "TransactionClassifier \$*" >> "${CALLS_LOG}"
 exit 0
 EOF
-  chmod +x "${FIXTURE_ROOT}/macos-ui/.build/debug/TransactionClassifier"
+  chmod +x "${FIXTURE_ROOT}/src/macos-ui/.build/debug/TransactionClassifier"
 
   run env PATH="${STUB_BIN}:${PATH}" "${FIXTURE_ROOT}/23_run_classification_macos-ui.sh" --api-url http://127.0.0.1:8787 --dry-run
   [ "$status" -eq 0 ]

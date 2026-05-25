@@ -6,21 +6,27 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 echo "running SAST (Static Application Security Testing)"
 
-REPORT_DIR="${SECURITY_REPORT_DIR:-./.security-reports}"
+REPORT_DIR="${SECURITY_REPORT_DIR:-./artifacts/security/reports}"
 RUN_SAST="${RUN_SAST:-true}"
 RUN_DAST="${RUN_DAST:-false}"
 RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 #R015: Support configurable execution lanes and report destination.
 #R090: Default financial-app policy blocks medium-or-higher security findings.
 FAIL_ON_MEDIUM_OR_HIGHER="${SECURITY_FAIL_ON_MEDIUM_OR_HIGHER:-${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}}"
-SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
+SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./artifacts/venv/security}"
+SECURITY_REQUIREMENTS_FILE="${SECURITY_REQUIREMENTS_FILE:-./requirements/security/requirements-security.txt}"
 SECURITY_CONFIG_DIR="${SECURITY_CONFIG_DIR:-./config/security}"
+RUFF_CACHE_DIR="${RUFF_CACHE_DIR:-./artifacts/cache/ruff}"
+PYTEST_CACHE_DIR="${PYTEST_CACHE_DIR:-./artifacts/cache/pytest}"
+HYPOTHESIS_STORAGE_DIRECTORY="${HYPOTHESIS_STORAGE_DIRECTORY:-./artifacts/cache/hypothesis}"
 SEMGREP_CONFIG_PATH="${SEMGREP_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/semgrep.yml}"
 BANDIT_CONFIG_PATH="${BANDIT_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/bandit.yml}"
 GITLEAKS_IGNORE_PATH="${GITLEAKS_IGNORE_PATH:-${SECURITY_CONFIG_DIR}/gitleaksignore}"
 WRITE_TOKEN_PSA_ITEM="TELLER_CLASSIFIER_WRITE_TOKEN"
 
 mkdir -p "$REPORT_DIR"
+mkdir -p "$RUFF_CACHE_DIR" "$PYTEST_CACHE_DIR" "$HYPOTHESIS_STORAGE_DIRECTORY"
+export RUFF_CACHE_DIR PYTEST_CACHE_DIR HYPOTHESIS_STORAGE_DIRECTORY
 
 python_interpreter_usable() {
   local candidate="$1"
@@ -41,7 +47,7 @@ fi
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "❌ Missing required command: $1"
-    echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r requirements-security.txt"
+    echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r ${SECURITY_REQUIREMENTS_FILE}"
     exit 1
   fi
 }
@@ -143,11 +149,6 @@ print_tool_header() {
 
 ensure_security_venv() {
   #R005: Bootstrap isolated security toolchain environment before scanning.
-  if [[ ! -d "$SECURITY_VENV_DIR" ]]; then
-    echo "▶ Creating isolated security virtualenv at ${SECURITY_VENV_DIR}"
-    python3 -m venv "$SECURITY_VENV_DIR"
-  fi
-
   local security_pip="${SECURITY_VENV_DIR}/bin/pip"
   local security_semgrep="${SECURITY_VENV_DIR}/bin/semgrep"
   local security_ruff="${SECURITY_VENV_DIR}/bin/ruff"
@@ -159,10 +160,32 @@ ensure_security_venv() {
   elif [[ ! -x "$security_semgrep" ]]; then
     needs_toolchain="true"
   fi
+
+  if [[ ! -d "$SECURITY_VENV_DIR" || ! -x "$security_pip" ]]; then
+    # Only rebuild partial environments when install flow requires pip.
+    if [[ -d "$SECURITY_VENV_DIR" && ! -x "$security_pip" && "$needs_toolchain" != "true" ]]; then
+      :
+    else
+    echo "▶ Creating isolated security virtualenv at ${SECURITY_VENV_DIR}"
+    python3 -m venv "$SECURITY_VENV_DIR"
+    fi
+  fi
+
+  security_pip="${SECURITY_VENV_DIR}/bin/pip"
+  security_semgrep="${SECURITY_VENV_DIR}/bin/semgrep"
+  security_ruff="${SECURITY_VENV_DIR}/bin/ruff"
+  needs_toolchain="false"
+  if [[ "$RUN_SAST" == "true" ]]; then
+    if [[ ! -x "$security_semgrep" || ! -x "$security_ruff" ]]; then
+      needs_toolchain="true"
+    fi
+  elif [[ ! -x "$security_semgrep" ]]; then
+    needs_toolchain="true"
+  fi
   if [[ "$needs_toolchain" == "true" ]]; then
     echo "▶ Installing security toolchain into ${SECURITY_VENV_DIR}"
     "$security_pip" install --upgrade pip
-    "$security_pip" install -r requirements-security.txt
+    "$security_pip" install -r "$SECURITY_REQUIREMENTS_FILE"
   fi
 }
 
@@ -234,7 +257,7 @@ read_classifier_write_token() {
 
 run_swift_sast() {
   local swift_report="$1"
-  local swift_ui_dir="${SWIFT_UI_DIR:-./macos-ui}"
+  local swift_ui_dir="${SWIFT_UI_DIR:-./src/macos-ui}"
   local swift_targets=()
 
   if [[ "$RUN_SWIFT_SAST" != "true" ]]; then
@@ -342,6 +365,8 @@ run_ruff_sast() {
   set +e
   ruff check \
     --output-format json \
+    --force-exclude \
+    --exclude mutants,artifacts/security,artifacts/security-dast,.pytest_cache \
     . > "$ruff_report"
   RUFF_EXIT=$?
   set -e
@@ -414,7 +439,7 @@ run_dast_checks() (
   run_category_integrity_checks() {
     local report_dir_abs="$1"
     local integrity_report_path="${report_dir_abs}/category-integrity.json"
-    local seed_sql_path="./sql/postgres/teller_nys_snw_category.sql"
+    local seed_sql_path="./src/sql/postgres/teller_nys_snw_category.sql"
     local strict_mode="${DAST_CATEGORY_INTEGRITY_STRICT:-true}"
 
     echo "▶ Running post-DAST category integrity checks"
@@ -707,7 +732,7 @@ else:
     report["status"] = "passed"
     report["gate_failed"] = False
 
-repair_script = pathlib.Path("./scripts/repair_nys_snw_category.sql")
+repair_script = pathlib.Path("./src/scripts/repair_nys_snw_category.sql")
 if repair_script.exists():
     report["repair_script_available"] = str(repair_script)
 
@@ -1045,7 +1070,7 @@ PY
   local dast_write_token
   dast_write_token="$(read_classifier_write_token)"
   local zap_cli_cmd="${ZAP_CLI_CMD:-/Applications/ZAP.app/Contents/MacOS/ZAP.sh}"
-  local zap_home_dir="${ZAP_HOME_DIR:-${report_dir_abs}/zap-home}"
+  local zap_home_dir="${ZAP_HOME_DIR:-${SCRIPT_DIR}/artifacts/security/zap-home}"
   # Keep ZAP quick-scan output visible by default unless explicitly silenced.
   local zap_quiet="${ZAP_QUIET:-false}"
 
@@ -1328,7 +1353,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   echo "▶ Running detect-secrets"
   set +e
   detect-secrets scan --all-files --force-use-all-plugins \
-    --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^\.ruff_cache/|^__pycache__/|^\.pytest_cache/|^backups/|^archive/backup_extracts/|^archive/legacy/teller-connect-ui/|^bank_statements/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/|^requirements/)' \
+    --exclude-files '(^\.git/|^teller-venv/|^artifacts/venv/security/|^artifacts/security/|^artifacts/security-dast/|^artifacts/parallel/|^artifacts/mutation/|^artifacts/fuzz/|^artifacts/cache/ruff/|^artifacts/cache/pytest/|^artifacts/cache/hypothesis/|^artifacts/cache/egg-info/|^\.pytest_cache/|^__pycache__/|^backups/|^archive/backup_extracts/|^archive/legacy/teller-connect-ui/|^config/bank_statements/|^src/macos-ui/\.derivedData-ui-tests/|^src/macos-ui/\.build/|^requirements/)' \
     > "${REPORT_DIR}/detect-secrets.json"
   DETECT_SECRETS_EXIT=$?
   set -e

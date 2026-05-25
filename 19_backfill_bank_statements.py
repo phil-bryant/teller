@@ -5,12 +5,18 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from sqlalchemy import text
 import structlog
+
+REPO_ROOT = Path(__file__).resolve().parent
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 STATEMENTS_ROOT_ENV = "TELLER_BANK_STATEMENTS_ROOT"
 
@@ -250,7 +256,7 @@ def make_txn_id(account_id, date_str, amount, description, occurrence=1):
     return f"stmt_{h}"
 
 def statements_root(cli_root):
-    default = Path(__file__).resolve().parent / "bank_statements"
+    default = REPO_ROOT / "config" / "bank_statements"
     root = (cli_root or os.environ.get(STATEMENTS_ROOT_ENV) or "").strip()
     path = Path(root).expanduser().resolve() if root else default
     return path
@@ -318,7 +324,7 @@ def main():
     parser.add_argument('--institution-id', help='Limit to one teller.institution.institution_id; default: all in teller.account')
     parser.add_argument('--account-id', help='Optional: force all PDFs for --institution-id to this Teller account_id (skip auto-match)')
     parser.add_argument('--statements-root',
-                        help=f'Statement PDF root (default: ./bank_statements next to this script; override with {STATEMENTS_ROOT_ENV})')
+                        help=f'Statement PDF root (default: ./config/bank_statements relative to repo root; override with {STATEMENTS_ROOT_ENV})')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()

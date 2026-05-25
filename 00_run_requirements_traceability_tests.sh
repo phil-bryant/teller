@@ -255,7 +255,7 @@ for source_file in source_files:
     if base == "Makefile":
         add_path("tests/sh/Makefile.bats", "default")
     if ext == ".py":
-        if source_norm.startswith("teller/"):
+        if source_norm.startswith("src/teller/"):
             add_path(f"tests/py/test_{stem}.py", "default")
         elif source_norm.startswith(tuple(f"{n:02d}_" for n in range(100))):
             add_path(f"tests/sh/{stem}.bats", "default")
@@ -265,16 +265,16 @@ for source_file in source_files:
         add_path(f"tests/sh/{stem}.bats", "default")
         add_path(f"tests/sql/{stem}.sql", "default")
         add_path(f"tests/sql/test_{stem}.sql", "default")
-    if ext == ".swift" and source_norm.startswith("macos-ui/Sources/"):
-        collect_swift_lane("macos-ui/Tests", "default", stem=stem)
-        collect_swift_lane("macos-ui/UITests", "ui", stem=stem)
+    if ext == ".swift" and source_norm.startswith("src/macos-ui/Sources/"):
+        collect_swift_lane("src/macos-ui/Tests", "default", stem=stem)
+        collect_swift_lane("src/macos-ui/UITests", "ui", stem=stem)
 
 if requirements_file.startswith("requirements/macos-ui/"):
-    collect_swift_lane("macos-ui/UITests", "ui")
+    collect_swift_lane("src/macos-ui/UITests", "ui")
 
 # R020/R035 in 05 are marked as UI (XCUITest) in the requirements text; include UI lane.
 if os.path.basename(requirements_file) == "15_run_macos_ui_regression_tests-requirements.md":
-    collect_swift_lane("macos-ui/UITests", "ui")
+    collect_swift_lane("src/macos-ui/UITests", "ui")
 
 if requirements_file.startswith("requirements/") and os.path.basename(requirements_file)[:2].isdigit():
     tests_sh_root = os.path.join(repo_root, "tests/sh")
@@ -978,7 +978,7 @@ excluded_dirs = {
     "Tests",
     "bin",
     "backups",
-    ".security-reports",
+    "artifacts",
     ".gocache",
     ".gomodcache",
     ".build",
@@ -986,17 +986,13 @@ excluded_dirs = {
     ".venv",
     "venv",
     "site-packages",
-    ".ruff_cache",
-    ".hypothesis",
     ".mypy_cache",
-    ".pytest_cache",
     ".tox",
     "node_modules",
     ".gradle",
     "Pods",
     ".swiftpm",
     "teller-venv",
-    ".security-venv",
     ".derivedData-ui-tests",
 }
 excluded_dir_prefixes = (".derivedData",)
@@ -1004,10 +1000,10 @@ excluded_relative_paths = {"storage/schema.sql"}
 excluded_relative_prefixes = (
     "storage/sql/",
     "archive/",
-    "macos-ui/",
-    "scripts/",
-    "sql/postgres/",
-    "teller/",
+    "src/macos-ui/",
+    "src/scripts/",
+    "src/sql/postgres/",
+    "src/teller/",
 )
 files = set()
 for root, dirs, filenames in os.walk(repo_root):

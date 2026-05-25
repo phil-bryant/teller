@@ -16,7 +16,7 @@ Tests:
 - R005-T02: Set `DEPENDENCY_CHECK_PYTHON` to a bad path and verify script exits non-zero.
 
 R010  Statement: Run Teller API smoke checks and emit artifacts.
-Design: Execute `scripts/check_teller_api_drift.py` and always write `teller-api-smoke.json` and `teller-api-smoke.txt` to the resolved report directory.
+Design: Execute `src/scripts/check_teller_api_drift.py` and always write `teller-api-smoke.json` and `teller-api-smoke.txt` to the resolved report directory.
 Design: Use local token discovery by default (`~/.teller/auth_token*.json`) and run authenticated smoke checks (`/accounts`, `/identity`) across all discovered token contexts. Allow `TELLER_ACCESS_TOKEN` as an explicit single-token override/disambiguation path.
 Tests:
 - R010-T01: Run default lane and verify both smoke artifacts are generated.

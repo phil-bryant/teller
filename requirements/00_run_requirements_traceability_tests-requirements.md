@@ -60,7 +60,7 @@ Tests:
 - R045-T02: Point it back to matching `NN_` source and verify alignment pass output.
 
 R050  Statement: Discover candidate test files for each requirements document.
-Design: Infer test files from requirements path and scoped source conventions, including `tests/sh`, `tests/py`, Swift tests in `macos-ui/Tests` and `macos-ui/UITests`, plus SQL pgTAP path candidates under `tests/sql`, while canonicalizing symlinked test paths.
+Design: Infer test files from requirements path and scoped source conventions, including `tests/sh`, `tests/py`, Swift tests in `src/macos-ui/Tests` and `src/macos-ui/UITests`, plus SQL pgTAP path candidates under `tests/sql`, while canonicalizing symlinked test paths.
 Tests:
 - R050-T01: Verify shell-script requirements discover matching `tests/sh/*.bats` candidates.
 - R050-T02: Verify Swift requirements discover model/snapshot and UI test lanes without duplicate symlink entries.

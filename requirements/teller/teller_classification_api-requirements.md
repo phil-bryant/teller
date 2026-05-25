@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `teller/teller_classification_api.py`.
+Applies to `src/teller/teller_classification_api.py`.
 
 R001  Statement: Expose a FastAPI app factory for classification workflows.
 Design: `create_app()` constructs FastAPI app metadata (`title`, `version`) and registers health/read/write endpoints.
@@ -112,7 +112,7 @@ Tests:
 ## Changelog
 
 - 2026-05-25: Clarified R040 authz boundary for classification writes (constant-time token compare for mutations; read endpoints remain header-free).
-- 2026-04-22: Initial reverse-engineered requirements for `teller/teller_classification_api.py`.
+- 2026-04-22: Initial reverse-engineered requirements for `src/teller/teller_classification_api.py`.
 - 2026-05-09: Added R040/R045 for 1psa-backed write-token auth and stricter mutation payload validation.
 - 2026-05-10: Updated R030 single-write contract to path-only transaction identity and tightened R045 OpenAPI schema parity for category mutation payloads.
 - 2026-05-10: Added R050 to map duplicate category hierarchy integrity violations to HTTP 409 conflict responses.

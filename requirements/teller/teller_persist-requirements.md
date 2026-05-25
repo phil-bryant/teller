@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `teller/teller_persist.py`.
+Applies to `src/teller/teller_persist.py`.
 
 R001  Statement: Execute persistence queries through shared SQL helpers.
 Design: `_exec` executes SQL text with optional params; `_exec_returning` executes and returns a single row for insert/update-returning flows.
@@ -56,4 +56,4 @@ Tests:
 
 ## Changelog
 
-- 2026-04-22: Initial reverse-engineered requirements for `teller/teller_persist.py`.
+- 2026-04-22: Initial reverse-engineered requirements for `src/teller/teller_persist.py`.

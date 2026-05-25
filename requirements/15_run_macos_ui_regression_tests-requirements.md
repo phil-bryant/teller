@@ -15,7 +15,7 @@ Tests:
 - R005-T01: Run script from a different working directory and verify package paths resolve correctly.
 
 R010  Statement: Run snapshot regression tests when enabled.
-Design: Execute `swift test --package-path ./macos-ui --filter ContentViewSnapshotTests` when `RUN_SNAPSHOT_TESTS=true`.
+Design: Execute `swift test --package-path ./src/macos-ui --filter ContentViewSnapshotTests` when `RUN_SNAPSHOT_TESTS=true`.
 Tests:
 - R010-T01: Set `RUN_SNAPSHOT_TESTS=true` and verify snapshot test invocation occurs.
 - R010-T02: Set `RUN_SNAPSHOT_TESTS=false` and verify snapshot lane is skipped with informational output.
@@ -66,6 +66,6 @@ Tests:
 - 2026-05-20: Reworked XCUITest lane to a single-session `testMacOSUISmokeSuite` with 12 requirement-driven scenarios; R040/R045 now target scenario-step selection via `XCUITEST_STEPS`.
 - 2026-05-12: Replaced optional crash-reporter lane with R050 isolation requirement; verification is standalone `16_verify_macos_crash_test.sh`.
 - 2026-04-24: Initial requirements for `15_run_macos_ui_regression_tests.sh`.
-- 2026-04-24: Folded gate rollout guidance from `macos-ui/UI_REGRESSION_ROLLOUT.md` into script-scoped requirements.
+- 2026-04-24: Folded gate rollout guidance from `src/macos-ui/UI_REGRESSION_ROLLOUT.md` into script-scoped requirements.
 - 2026-05-02: Added optional numeric XCUITest selectors and strict out-of-range validation requirements.
 - 2026-05-07: Added optional PLCrashReporter smoke-verification lane (later removed; see 2026-05-12).

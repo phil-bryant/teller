@@ -6,17 +6,21 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-MACOS_UI_DIR="${MACOS_UI_DIR:-./macos-ui}"
+MACOS_UI_DIR="${MACOS_UI_DIR:-./src/macos-ui}"
 CRASH_REPORT_DIR="${CRASH_REPORT_DIR:-${HOME}/Library/Application Support/TransactionClassifier/CrashReports}"
-STARTUP_WAIT_SECONDS="${STARTUP_WAIT_SECONDS:-30}"
+STARTUP_WAIT_SECONDS="${STARTUP_WAIT_SECONDS:-20}"
+TIMEOUT_HELPER_PYTHON="${TIMEOUT_HELPER_PYTHON:-python3}"
 MACOS_UI_SWIFTPM_LOCK="${MACOS_UI_SWIFTPM_LOCK:-${MACOS_UI_DIR}/.swiftpm-run.lock}"
-MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS="${MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS:-600}"
+MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS="${MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS:-45}"
+CRASH_LAUNCH_TIMEOUT_SECONDS="${CRASH_LAUNCH_TIMEOUT_SECONDS:-45}"
 LAUNCH_LOG="$(mktemp)"
+RECOVERY_LOG="$(mktemp)"
 MARKER_FILE="$(mktemp)"
 latest_plcrash=""
 latest_json=""
 baseline_plcrash=""
 baseline_json=""
+relaunch_saw_persistence_log=0
 #R040: This script remains a standalone numbered entrypoint (not chained by other numbered runners).
 
 #R030: Fail clearly when required local tooling is unavailable.
@@ -30,31 +34,141 @@ if [[ ! -d "$MACOS_UI_DIR" ]]; then
   exit 1
 fi
 
-with_macos_ui_swift_lock() {
-  local lock_dir="${MACOS_UI_SWIFTPM_LOCK}.d"
-  local start_ts
-  start_ts="$(date +%s)"
-  mkdir -p "$MACOS_UI_DIR"
-  while ! mkdir "$lock_dir" 2>/dev/null; do
-    if [[ -f "${lock_dir}/pid" ]]; then
-      local owner_pid=""
-      owner_pid="$(<"${lock_dir}/pid")"
-      if [[ -n "$owner_pid" ]] && ! kill -0 "$owner_pid" 2>/dev/null; then
-        rm -rf "$lock_dir"
-        continue
-      fi
+MACOS_UI_SWIFT_LOCK_HELPER="./src/scripts/macos_ui_swift_lock.sh"
+if [[ ! -f "$MACOS_UI_SWIFT_LOCK_HELPER" ]]; then
+  echo "❌ macOS UI SwiftPM lock helper not found at ${MACOS_UI_SWIFT_LOCK_HELPER}."
+  exit 1
+fi
+# shellcheck disable=SC1090
+source "$MACOS_UI_SWIFT_LOCK_HELPER"
+
+run_with_timeout() {
+  local timeout_seconds="$1"
+  local timeout_label="$2"
+  shift 2
+  if ! command -v "$TIMEOUT_HELPER_PYTHON" >/dev/null 2>&1; then
+    echo "❌ ${TIMEOUT_HELPER_PYTHON} is required to enforce timeout for ${timeout_label}."
+    return 1
+  fi
+  local had_errexit=0
+  if [[ "$-" == *e* ]]; then
+    had_errexit=1
+  fi
+  set +e
+  "$TIMEOUT_HELPER_PYTHON" - "$timeout_seconds" "$@" <<'PY'
+import os
+import signal
+import subprocess
+import sys
+
+timeout_seconds = int(sys.argv[1])
+command = sys.argv[2:]
+if timeout_seconds <= 0:
+    timeout_seconds = 1
+
+proc = subprocess.Popen(command, preexec_fn=os.setsid)
+try:
+    proc.wait(timeout=timeout_seconds)
+    raise SystemExit(proc.returncode)
+except subprocess.TimeoutExpired:
+    os.killpg(proc.pid, signal.SIGTERM)
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait()
+    raise SystemExit(124)
+PY
+  local status=$?
+  if [[ "$had_errexit" -eq 1 ]]; then
+    set -e
+  else
+    set +e
+  fi
+  return "$status"
+}
+
+terminate_process_tree() {
+  local root_pid="$1"
+  local child_pid=""
+
+  if [[ -z "$root_pid" ]] || ! kill -0 "$root_pid" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  while IFS= read -r child_pid; do
+    terminate_process_tree "$child_pid"
+  done < <(pgrep -P "$root_pid" 2>/dev/null || true)
+
+  kill "$root_pid" >/dev/null 2>&1 || true
+  sleep 0.2
+  if kill -0 "$root_pid" >/dev/null 2>&1; then
+    kill -9 "$root_pid" >/dev/null 2>&1 || true
+  fi
+}
+
+run_relaunch() {
+  local relaunch_pid=""
+  local timed_out=0
+  local second=0
+
+  relaunch_saw_persistence_log=0
+  : > "$LAUNCH_LOG"
+
+  bash -c 'source "$1"; shift; macos_ui_with_swiftpm_lock "$@"' -- \
+    "$MACOS_UI_SWIFT_LOCK_HELPER" \
+    "$MACOS_UI_SWIFTPM_LOCK" \
+    "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" \
+    "16_verify_macos_crash_test:relaunch" \
+    sh -c "cd \"\$1\" && swift run TransactionClassifier" _ "$MACOS_UI_DIR" >"$LAUNCH_LOG" 2>&1 &
+  relaunch_pid=$!
+
+  #R050: Poll relaunch output and stop once persistence log appears.
+  for ((second=1; second<=STARTUP_WAIT_SECONDS; second++)); do
+    if grep -q "CrashReporter: saved pending crash report to" "$LAUNCH_LOG"; then
+      relaunch_saw_persistence_log=1
+      break
     fi
-    if (( $(date +%s) - start_ts >= MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS )); then
-      echo "❌ Timed out waiting for macOS UI SwiftPM lock at ${lock_dir}." >&2
-      return 1
+    if ! kill -0 "$relaunch_pid" >/dev/null 2>&1; then
+      break
     fi
     sleep 1
   done
-  echo $$ > "${lock_dir}/pid"
-  "$@"
-  local status=$?
-  rm -rf "$lock_dir"
-  return $status
+
+  if kill -0 "$relaunch_pid" >/dev/null 2>&1; then
+    if [[ "$relaunch_saw_persistence_log" -eq 1 ]]; then
+      terminate_process_tree "$relaunch_pid"
+    else
+      timed_out=1
+      terminate_process_tree "$relaunch_pid"
+    fi
+  fi
+  wait "$relaunch_pid" >/dev/null 2>&1 || true
+
+  if [[ "$relaunch_saw_persistence_log" -ne 1 ]] &&
+     grep -q "CrashReporter: saved pending crash report to" "$LAUNCH_LOG"; then
+    relaunch_saw_persistence_log=1
+  fi
+
+  #R050: Return timeout when persistence log is absent at deadline.
+  if [[ "$relaunch_saw_persistence_log" -eq 1 ]]; then
+    return 0
+  fi
+  if [[ "$timed_out" -eq 1 ]]; then
+    return 124
+  fi
+  return 1
+}
+
+recover_swiftpm_state() {
+  #R045: Rebuild SwiftPM state after stale checkout metadata errors.
+  run_with_timeout "$CRASH_LAUNCH_TIMEOUT_SECONDS" "macOS SwiftPM state recovery" \
+    bash -c 'source "$1"; shift; macos_ui_with_swiftpm_lock "$@"' -- \
+      "$MACOS_UI_SWIFT_LOCK_HELPER" \
+      "$MACOS_UI_SWIFTPM_LOCK" \
+      "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" \
+      "16_verify_macos_crash_test:swiftpm-recovery" \
+      sh -c "cd \"\$1\" && rm -rf .build && swift package resolve" _ "$MACOS_UI_DIR" >"$RECOVERY_LOG" 2>&1
 }
 
 refresh_latest_artifacts() {
@@ -105,46 +219,78 @@ baseline_json="$latest_json"
 
 echo "▶ Triggering intentional crash to seed pending crash report..."
 #R010: Require intentional crash run to fail non-zero.
-if with_macos_ui_swift_lock sh -c "cd \"\$1\" && TELLER_MACOS_FORCE_CRASH_ON_LAUNCH=1 swift run TransactionClassifier >/dev/null 2>&1" _ "$MACOS_UI_DIR"; then
+set +e
+run_with_timeout "$CRASH_LAUNCH_TIMEOUT_SECONDS" "macOS forced-crash launch" \
+  bash -c 'source "$1"; shift; macos_ui_with_swiftpm_lock "$@"' -- \
+    "$MACOS_UI_SWIFT_LOCK_HELPER" \
+    "$MACOS_UI_SWIFTPM_LOCK" \
+    "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" \
+    "16_verify_macos_crash_test:forced-crash" \
+    sh -c "cd \"\$1\" && TELLER_MACOS_FORCE_CRASH_ON_LAUNCH=1 swift run TransactionClassifier >/dev/null 2>&1" _ "$MACOS_UI_DIR"
+forced_crash_status=$?
+set -e
+
+if [[ "$forced_crash_status" -eq 0 ]]; then
   echo "❌ expected forced crash run to exit non-zero."
+  exit 1
+fi
+if [[ "$forced_crash_status" -eq 124 ]]; then
+  echo "❌ forced crash launch timed out after ${CRASH_LAUNCH_TIMEOUT_SECONDS}s."
   exit 1
 fi
 
 echo "▶ Relaunching app to process pending crash report..."
 touch "$MARKER_FILE"
 sleep 1
-with_macos_ui_swift_lock sh -c "cd \"\$1\" && swift run TransactionClassifier >\"\$2\" 2>&1" _ "$MACOS_UI_DIR" "$LAUNCH_LOG" &
-APP_PID=$!
-FOUND_SAVE_LOG="false"
-FOUND_FRESH_ARTIFACTS="false"
+set +e
+run_relaunch
+relaunch_status=$?
+set -e
 
-#R015: Confirm relaunch processes pending crash via log signal or fresh artifacts.
-for ((second=1; second<=STARTUP_WAIT_SECONDS; second++)); do
-  if [[ -f "$LAUNCH_LOG" ]] && grep -q "CrashReporter: saved pending crash report to" "$LAUNCH_LOG"; then
-    FOUND_SAVE_LOG="true"
+if [[ "$relaunch_status" -ne 0 ]] &&
+   grep -q "cannot be accessed" "$LAUNCH_LOG" &&
+   grep -q ".build/checkouts/" "$LAUNCH_LOG"; then
+  #R045: Retry once after stale-checkout recovery.
+  echo "ℹ️  Detected stale SwiftPM checkout state; repairing and retrying relaunch once..."
+  set +e
+  recover_swiftpm_state
+  recovery_status=$?
+  set -e
+  if [[ "$recovery_status" -ne 0 ]]; then
+    echo "❌ failed to recover SwiftPM state before relaunch retry."
+    echo "---- recovery output ----"
+    awk '{print}' "$RECOVERY_LOG"
+    echo "-------------------------"
+    exit 1
   fi
-  refresh_latest_artifacts
-  if artifacts_are_fresh; then
-    FOUND_FRESH_ARTIFACTS="true"
-    break
-  fi
-  if ! kill -0 "$APP_PID" >/dev/null 2>&1; then
-    :
-  fi
-  # Allow crash artifact persistence to complete even after process exit.
-  sleep 1
-done
 
-if kill -0 "$APP_PID" >/dev/null 2>&1; then
-  kill "$APP_PID" >/dev/null 2>&1 || true
-  wait "$APP_PID" >/dev/null 2>&1 || true
-else
-  wait "$APP_PID" >/dev/null 2>&1 || true
+  set +e
+  run_relaunch
+  relaunch_status=$?
+  set -e
 fi
-pkill -x "TransactionClassifier" >/dev/null 2>&1 || true
 
-if [[ "$FOUND_SAVE_LOG" != "true" && "$FOUND_FRESH_ARTIFACTS" != "true" ]]; then
-  echo "ℹ️  Did not observe persistence log line; validating via artifact timestamps instead."
+if [[ "$relaunch_status" -eq 124 ]]; then
+  echo "❌ relaunch timed out before crash persistence log was observed."
+  echo "---- launch output ----"
+  awk '{print}' "$LAUNCH_LOG"
+  echo "-----------------------"
+  exit 1
+elif [[ "$relaunch_status" -ne 0 ]]; then
+  echo "❌ relaunch run failed while processing pending crash report."
+  echo "---- launch output ----"
+  awk '{print}' "$LAUNCH_LOG"
+  echo "-----------------------"
+  exit 1
+fi
+
+#R015: Confirm relaunch persisted pending crash report.
+if ! grep -q "CrashReporter: saved pending crash report to" "$LAUNCH_LOG"; then
+  echo "❌ relaunch did not report pending crash persistence."
+  echo "---- launch output ----"
+  awk '{print}' "$LAUNCH_LOG"
+  echo "-----------------------"
+  exit 1
 fi
 
 #R020: Require newly written .plcrash and .json artifacts after marker timestamp.
@@ -156,16 +302,6 @@ fi
 
 if ! artifacts_are_fresh; then
   echo "❌ latest crash artifacts are not newer than this verification run."
-  echo "ℹ️  waited ${STARTUP_WAIT_SECONDS}s for relaunch persistence."
-  if [[ -n "$latest_plcrash" ]]; then
-    echo "ℹ️  latest .plcrash artifact: ${latest_plcrash}"
-  fi
-  if [[ -n "$latest_json" ]]; then
-    echo "ℹ️  latest .json artifact: ${latest_json}"
-  fi
-  echo "---- launch output ----"
-  cat "$LAUNCH_LOG"
-  echo "-----------------------"
   exit 1
 fi
 

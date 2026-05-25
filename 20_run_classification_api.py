@@ -1,8 +1,17 @@
 #! /usr/bin/env python3
 import os
 import subprocess
+import sys
+from pathlib import Path
+
 import uvicorn
-from teller.teller_classification_api import create_app
+
+REPO_ROOT = Path(__file__).resolve().parent
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from teller.teller_classification_api import create_app  # noqa: E402
 
 _WRITE_TOKEN_PSA_ITEM = "TELLER_CLASSIFIER_WRITE_TOKEN"
 

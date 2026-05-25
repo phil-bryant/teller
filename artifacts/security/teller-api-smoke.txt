@@ -1,0 +1,10 @@
+Teller API smoke report
+- Mode: live
+- Status: pass
+
+Checks:
+- [pass] institutions (http 200)
+- [pass] accounts[chase] (http 200)
+- [pass] identity[chase] (http 200)
+- [pass] accounts[first_ak_bank_trust] (http 200)
+- [pass] identity[first_ak_bank_trust] (http 200)

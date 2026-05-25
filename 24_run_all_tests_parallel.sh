@@ -28,7 +28,7 @@ fi
 #R040: Remain a standalone meta-runner; child check scripts must not invoke this script.
 
 #R035: Persist per-check stdout/stderr log artifacts.
-REPORT_DIR="${PARALLEL_CHECKS_REPORT_DIR:-./.parallel-checks-reports}"
+REPORT_DIR="${PARALLEL_CHECKS_REPORT_DIR:-./artifacts/parallel}"
 mkdir -p "$REPORT_DIR"
 PROGRESS_INTERVAL_SECONDS="${PARALLEL_CHECKS_PROGRESS_INTERVAL_SECONDS:-1}"
 if [[ ! "$PROGRESS_INTERVAL_SECONDS" =~ ^[0-9]+$ || "$PROGRESS_INTERVAL_SECONDS" -le 0 ]]; then
@@ -42,6 +42,13 @@ fi
 child_pids=()
 cleanup_finished=false
 signal_exit_code=""
+
+# Ensure trap cleanup can safely invoke this even before later function definitions.
+finish_progress_line() {
+  if [[ "$PROGRESS_INLINE" == "true" ]]; then
+    printf '\n'
+  fi
+}
 
 #R050: Prevent concurrent invocations of this orchestrator from the same repo root.
 release_single_run_lock() {
@@ -159,10 +166,34 @@ emit_result_line() {
   echo "$message"
 }
 
-finish_progress_line() {
-  if [[ "$PROGRESS_INLINE" == "true" ]]; then
-    printf '\n'
+derive_failure_reason() {
+  local log_file="$1"
+  if [[ ! -f "$log_file" ]]; then
+    echo "missing-log"
+    return
   fi
+  if grep -q "Timed out waiting for macOS UI SwiftPM lock" "$log_file"; then
+    echo "lock-timeout"
+    return
+  fi
+  if grep -q "Timed out after .* while running" "$log_file"; then
+    echo "lane-timeout"
+    return
+  fi
+  if grep -q "^❌" "$log_file"; then
+    echo "script-error"
+    return
+  fi
+  echo "nonzero-exit"
+}
+
+print_failure_excerpt() {
+  local log_file="$1"
+  if [[ ! -f "$log_file" ]]; then
+    return
+  fi
+  emit_result_line "   ↳ recent log lines:"
+  awk 'NF { lines[count % 3] = $0; count++ } END { start = (count > 3 ? count - 3 : 0); for (i = start; i < count; i++) { idx = i % 3; print "     " lines[idx]; } }' "$log_file"
 }
 
 for script in "${CHECKS[@]}"; do
@@ -187,7 +218,17 @@ for script in "${CHECKS[@]}"; do
   date +%s > "${log}.start"
   (
     set +e
-    "./${script}" >"${log}" 2>&1
+    crash_check_delay="${PARALLEL_CRASH_CHECK_DELAY_SECONDS:-0}"
+    if [[ "$script" == "16_verify_macos_crash_test.sh" && "$crash_check_delay" =~ ^[0-9]+$ && "$crash_check_delay" -gt 0 ]]; then
+      sleep "$crash_check_delay"
+    fi
+    if [[ "$script" == "08_deploy_database_verification_test.sh" || "$script" == "12_run_sql_unit_tests.sh" || "$script" == "21_classification_persistence_verification_test.sh" || "$script" == "22_run_dynamic_security_tests.sh" ]]; then
+      TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
+      TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
+        "./${script}" >"${log}" 2>&1
+    else
+      "./${script}" >"${log}" 2>&1
+    fi
     exit_code=$?
     echo "$exit_code" > "${log}.exit"
   ) &
@@ -235,7 +276,9 @@ while [[ "$reported" -lt "$total" ]]; do
       emit_result_line "✅ PASS: ${script} (${elapsed}s)"
       pass_count=$((pass_count + 1))
     else
-      emit_result_line "❌ FAIL: ${script} (exit ${completed_exit}, ${elapsed}s) — see ${log}"
+      failure_reason="$(derive_failure_reason "$log")"
+      emit_result_line "❌ FAIL: ${script} (exit ${completed_exit}, ${elapsed}s, reason=${failure_reason}) — see ${log}"
+      print_failure_excerpt "$log"
       fail_count=$((fail_count + 1))
     fi
   done

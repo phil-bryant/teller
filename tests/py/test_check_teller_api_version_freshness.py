@@ -6,7 +6,7 @@ from pathlib import Path
 
 def load_module():
     repo_root = Path(__file__).resolve().parents[2]
-    script_path = repo_root / "scripts" / "check_teller_api_version_freshness.py"
+    script_path = repo_root / "src" / "scripts" / "check_teller_api_version_freshness.py"
     spec = importlib.util.spec_from_file_location("check_teller_api_version_freshness", script_path)
     if spec is None or spec.loader is None:
         raise RuntimeError("Unable to load check_teller_api_version_freshness module")

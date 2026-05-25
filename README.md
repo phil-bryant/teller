@@ -51,8 +51,9 @@ source ./teller-venv/bin/activate
 ./04_run_dependency_freshness_tests.sh
 ./05_run_av_test.sh
 ./06_run_static_security_tests.sh
-cp db-profiles-EXAMPLE.json db-profiles.json
-# Edit db-profiles.json default_profile / 1psa_or_env_item for your environment.
+mkdir -p config/local
+cp config/db-profiles-EXAMPLE.json config/db-profiles.json
+# Edit config/db-profiles.json default_profile / 1psa_or_env_item for your environment.
 ./07_deploy_database.sh
 ./08_deploy_database_verification_test.sh
 ./09_run_shell_unit_tests.sh
@@ -77,9 +78,9 @@ Before `./07_deploy_database.sh`, ensure PostgreSQL is installed and running for
 
 ## Repository Layout
 
-- `teller/` - Python package (ORM models, DB profile/engine, ingest persistence, FastAPI classification API, Mailcart proxy client).
-- `macos-ui/` - SwiftUI desktop app (`TransactionClassifier`) for Match Review, category management, and Connect enrollment flows.
-- `sql/postgres/` - canonical schema objects, triggers, and views for the `teller` schema.
+- `src/teller/` - Python package (ORM models, DB profile/engine, ingest persistence, FastAPI classification API, Mailcart proxy client).
+- `src/macos-ui/` - SwiftUI desktop app (`TransactionClassifier`) for Match Review, category management, and Connect enrollment flows.
+- `src/sql/postgres/` - canonical schema objects, triggers, and views for the `teller` schema.
 - `tests/` - `py/` (`unittest`), `sh/` (`bats`), `sql/` (`pgTAP`) plus `macos-ui` snapshot/XCUITest lanes.
 - `requirements/` - requirements traceability docs mapped to source `#R...` tags.
 - `archive/legacy/` - archived legacy/demo assets (including the retired Teller Connect demo HTML and `teller-connect-ui` sample project).
@@ -99,16 +100,16 @@ Python backend layer
   - Main flows:
     * Ingest: 18_fetch_teller_api_data.py
     * Backfill: 19_backfill_bank_statements.py
-    * API: 20_run_classification_api.py -> teller/teller_classification_api.py
+    * API: 20_run_classification_api.py -> src/teller/teller_classification_api.py
 
 Data/persistence layer
   - PostgreSQL (local or managed profile via db profile config)
-  - Schema objects: sql/postgres/
-  - DB helpers: teller/teller_db.py, teller/teller_db_profile.py
+  - Schema objects: src/sql/postgres/
+  - DB helpers: src/teller/teller_db.py, src/teller/teller_db_profile.py
 
 macOS app/UI layer
   - Swift 5.9, SwiftUI, macOS 14+
-  - Package: macos-ui/Package.swift
+  - Package: src/macos-ui/Package.swift
   - App: TransactionClassifier (includes WKWebView Connect + crash reporting)
 ```
 
@@ -117,7 +118,7 @@ Testing stack:
 - Shell lane: `bats` (`tests/sh`)
 - Python lane: `unittest` (`tests/py`)
 - SQL lane: `pgTAP`/`pg_prove` (`tests/sql`)
-- Swift lane: `swift test` (`macos-ui/Tests`)
+- Swift lane: `swift test` (`src/macos-ui/Tests`)
 - macOS UI lane: snapshot + XCUITest
 
 Security stack:
@@ -224,14 +225,14 @@ These checks run as part of existing app/setup workflows:
 
 ### 5) Security Scanning (SAST/DAST)
 
-Security scanners are installed automatically into an isolated `.security-venv` when you run the security lane (avoids dependency conflicts with the app venv).
+Security scanners are installed automatically into an isolated `artifacts/venv/security` when you run the security lane (avoids dependency conflicts with the app venv).
 
-Manual install into `.security-venv` (optional):
+Manual install into `artifacts/venv/security` (optional):
 
 ```bash
-python3 -m venv .security-venv
-./.security-venv/bin/pip install --upgrade pip
-./.security-venv/bin/pip install -r requirements-security.txt
+python3 -m venv artifacts/venv/security
+./artifacts/venv/security/bin/pip install --upgrade pip
+./artifacts/venv/security/bin/pip install -r requirements/security/requirements-security.txt
 ```
 
 Run the SAST lane:
@@ -250,9 +251,9 @@ Useful flags:
 
 - `RUN_SAST=true|false` (default `true`)
 - `RUN_DAST=true|false` (default `true`)
-- `RUN_SWIFT_SAST=true|false` (default `true`; runs security-focused SwiftLint rules on first-party `./macos-ui` Swift code)
+- `RUN_SWIFT_SAST=true|false` (default `true`; runs security-focused SwiftLint rules on first-party `./src/macos-ui` Swift code)
 - `RUN_ZAP=true|false` (default `true`, requires local ZAP CLI executable, e.g. `ZAP.sh`)
-- `ZAP_HOME_DIR=/path` (default `${SECURITY_REPORT_DIR:-./.security-reports}/zap-home`; isolates ZAP state per repo to avoid global home-directory lock conflicts)
+- `ZAP_HOME_DIR=/path` (default `./artifacts/security/zap-home`; isolates ZAP state per repo to avoid global home-directory lock conflicts)
 - `ZAP_QUIET=true|false` (default `false`; when `false`, shows live ZAP quick-scan progress including attack phase output)
 - `DAST_REUSE_EXISTING_API=true|false` (default `false`; reuse already-running classification API instead of starting one)
 - `SECURITY_FAIL_ON_HIGH_CRITICAL=true|false` (default `true`)
@@ -271,6 +272,7 @@ Useful flags:
 
 - `RUN_CLAMAV=true|false` (default `true`; runs recursive ClamAV malware scan on repository files)
 - `AV_FAIL_ON_INFECTED=true|false` (default `true`; fails lane when infected files are detected)
+- `SECURITY_REPORT_DIR=/path` (default `./artifacts/security/reports`; output root for AV/SAST lane artifacts)
 - `CLAMAV_SCAN_TARGET=/path` (default `.`; scan root for ClamAV repository scan)
 - `CLAMAV_HEARTBEAT_SECONDS=15` (default `15`; emits periodic "still scanning" status lines during ClamAV scans)
 - `CLAMAV_SIGNATURE_MAX_AGE_HOURS=48` (default `48`; freshness threshold for signature age warning output)
@@ -295,7 +297,7 @@ Run locally:
 ./17_run_teller_api_smoke_tests.sh
 ```
 
-Artifacts are written to `./.security-reports/`:
+Artifacts are written to `./artifacts/security/`:
 
 - `dependency-freshness.json` and `dependency-freshness.txt` (outdated package summary with major/minor/patch classification)
 - `teller-api-version-freshness.json` and `teller-api-version-freshness.txt` (best-effort Teller API version metadata freshness check)
@@ -316,10 +318,10 @@ Useful flags:
 - `POSTGRES_FAIL_ON_STALE=true|false` (default `false`; fail when configured Postgres freshness policy is not met)
 - `POSTGRES_CHECK_CVES=true|false` (default `true`; evaluates versions against local CVE snapshot ranges)
 - `POSTGRES_FAIL_ON_CVE=true|false` (default `true`; fail when CVE policy is violated)
-- `POSTGRES_CVE_POLICY_FILE=/path/to/postgres-cve-policy.json` (default `./security/postgres-cve-policy.json`)
-- `POSTGRES_CVE_SNAPSHOT_FILE=/path/to/postgres-cve-snapshot.json` (default `./security/postgres-cve-snapshot.json`)
+- `POSTGRES_CVE_POLICY_FILE=/path/to/postgres-cve-policy.json` (default `./config/security/postgres-cve-policy.json`)
+- `POSTGRES_CVE_SNAPSHOT_FILE=/path/to/postgres-cve-snapshot.json` (default `./config/security/postgres-cve-snapshot.json`)
 - `POSTGRES_REFRESH_CVE_SNAPSHOT=true|false` (default `true`; refreshes CVE snapshot from postgresql.org at runtime)
-- `DEPENDENCY_REPORT_DIR=/path` (default `./.security-reports`)
+- `DEPENDENCY_REPORT_DIR=/path` (default `./artifacts/security`)
 - `DEPENDENCY_CHECK_PYTHON=/path/to/python` (default `./teller-venv/bin/python` when available)
 - `RUN_TELLER_VERSION_FRESHNESS=true|false` (default `true`)
 - `TELLER_API_VERSION_SOURCES=url1,url2` (default: `https://teller.io/docs/api,https://api.teller.io/openapi.json,https://api.teller.io/swagger.json`)
@@ -331,13 +333,13 @@ Useful flags:
 - `TELLER_API_VERSION_DASHBOARD_OTP_FIELD=one-time password` (optional 1psa TOTP/OTP field forwarded during dashboard login)
 - `TELLER_ACCESS_TOKEN=...` (optional for smoke checks; when omitted, smoke checks use local `~/.teller/auth_token*.json` discovery)
 - `TELLER_SMOKE_INSTITUTION_ID=<suffix>` (optional; passes `--institution-id` to smoke checks)
-- `TELLER_SMOKE_REPORT_DIR=/path` (default `./.security-reports`)
+- `TELLER_SMOKE_REPORT_DIR=/path` (default `./artifacts/security`)
 - `TELLER_SMOKE_TIMEOUT_SECONDS=<int>` (default `15`)
 
 PostgreSQL CVE policy files:
 
-- `./security/postgres-cve-policy.json` controls severity threshold and snapshot freshness requirements.
-- `./security/postgres-cve-snapshot.json` is the local advisory snapshot used by the freshness lane.
+- `./config/security/postgres-cve-policy.json` controls severity threshold and snapshot freshness requirements.
+- `./config/security/postgres-cve-snapshot.json` is the local advisory snapshot used by the freshness lane.
 
 Triage expectations:
 
@@ -390,7 +392,7 @@ Active secret and credential sources are:
   - Supports lane toggles with `RUN_SHELL_TESTS`, `RUN_PYTHON_TESTS`, `RUN_SQL_TESTS`, and `RUN_SWIFT_TESTS`.
 - `07_deploy_database.sh`
   - Creates/configures the `prod` database.
-  - Applies SQL schema objects in dependency order from `sql/postgres/`.
+  - Applies SQL schema objects in dependency order from `src/sql/postgres/`.
 - `08_deploy_database_verification_test.sh`
   - Verifies required database objects, trigger/FK invariants, and `updated_at` trigger coverage after deploy.
 - `15_run_macos_ui_regression_tests.sh`
@@ -400,7 +402,7 @@ Active secret and credential sources are:
   - Validates crash-reporter behavior and expected failure metadata for `macos-ui`.
 - `17_run_teller_api_smoke_tests.sh`
   - Runs Teller API smoke checks (`/institutions`, and token-backed `/accounts` / `/identity` when auth resolves).
-  - Writes smoke artifacts to `.security-reports/`.
+  - Writes smoke artifacts to `artifacts/security/`.
 - `18_fetch_teller_api_data.py`
   - Runs Teller API client operations.
 - `19_backfill_bank_statements.py`
@@ -414,10 +416,10 @@ Active secret and credential sources are:
 - `22_run_dynamic_security_tests.sh`
   - Runs DAST checks (Schemathesis + OWASP ZAP quick scan and related hardening checks) against running/local API targets.
 - `23_run_classification_macos-ui.sh`
-  - Builds and launches `macos-ui/.build/debug/TransactionClassifier` from the repo root.
+  - Builds and launches `src/macos-ui/.build/debug/TransactionClassifier` from the repo root.
   - Connect tab hosts native Teller Connect enrollment/reconnect/add/delete (WebView-backed, no standalone localhost server).
 - `24_run_all_tests_parallel.sh`
-  - Runs local parallel quality/security gate lanes and aggregates reports under `.parallel-checks-reports/`.
+  - Runs local parallel quality/security gate lanes and aggregates reports under `artifacts/parallel/`.
   - Includes traceability, dependency freshness, Teller smoke checks, AV, SAST, DB verify, unit tests, UI regression, crash reporter, and classification persistence checks.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
@@ -497,7 +499,7 @@ Why this flow matters: it makes reruns safe and clarifies where idempotency is e
       |      - pagination merge for full history
       |      - canonicalize duplicate transaction IDs (prefer posted over pending)
       |
-      +--> upsert via SQLAlchemy helper layer (teller/teller_persist.py)
+      +--> upsert via SQLAlchemy helper layer (src/teller/teller_persist.py)
       |      - account/institution/identity/account-identity upserts
       |      - transaction + transaction-links + transaction-details upserts
       |      - balances upserts
@@ -691,7 +693,7 @@ Optional Mailcart proxy target defaults to http://127.0.0.1:8788
 
 Config and secrets:
   - ~/.teller/auth_token*.json, enrollment_id*.txt, certificate.pem, private_key.pem
-  - db profile resolution: ~/.teller/db_profiles.json -> ./db-profiles.local.json -> ./db-profiles.json
+  - db profile resolution: ~/.teller/db_profiles.json -> ./config/db-profiles.local.json -> ./config/db-profiles.json
   - ~/.env fallbacks for ITEM.field profile entries
 ```
 
@@ -707,7 +709,7 @@ contract Mailcart exposes (see `mailcart/scripts/matchy_mailcart_api.py` and mat
 `{"message_id", "subject", "preview", "received_at", "sender", "recipients", "html_body", "text_body", "body_text"}`.
 - `POST /v1/messages/{message_id}/move` — used by matchy, not by Teller.
 
-Teller calls Mailcart via the proxy module `teller/teller_mailcart_client.py`:
+Teller calls Mailcart via the proxy module `src/teller/teller_mailcart_client.py`:
 
 - Base URL defaults to `http://127.0.0.1:8788` (Mailcart is a local-only service); override
 with the `MAILCART_SERVICE_BASE_URL` environment variable (the same name matchy uses).
@@ -749,7 +751,7 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │ Main flows:                                                                  │
  │   - Ingest: 18_fetch_teller_api_data.py                                      │
  │   - Backfill: 19_backfill_bank_statements.py                                 │
- │   - API: 20_run_classification_api.py -> teller/teller_classification_api.py │
+ │   - API: 20_run_classification_api.py -> src/teller/teller_classification_api.py │
  └───────────────────────────────┬──────────────────────────────────────────────┘
                                  |
                                  v
@@ -757,8 +759,8 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │                         DATA / PERSISTENCE LAYER                         │
  ├──────────────────────────────────────────────────────────────────────────┤
  │ PostgreSQL (local profile or managed profile via db profiles)            │
- │ Schema + SQL objects in: sql/postgres/                                   │
- │ DB helpers in: teller/teller_db.py, teller/teller_db_profile.py          │
+ │ Schema + SQL objects in: src/sql/postgres/                                   │
+ │ DB helpers in: src/teller/teller_db.py, src/teller/teller_db_profile.py          │
  └───────────────────────────────┬──────────────────────────────────────────┘
                                  ^
                                  |
@@ -766,7 +768,7 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │                         MACOS APP / UI LAYER                             │
  ├──────────────────────────────────────────────────────────────────────────┤
  │ Swift 5.9, SwiftUI, macOS 14+                                            │
- │ Package: macos-ui/Package.swift                                          │
+ │ Package: src/macos-ui/Package.swift                                          │
  │ App: TransactionClassifier                                               │
  │ Includes WKWebView Connect flows + PLCrashReporter                       │
  └──────────────────────────────────────────────────────────────────────────┘
@@ -794,7 +796,7 @@ TESTING STACK
   Shell lane      : bats            (tests/sh)
   Python lane     : unittest        (tests/py)
   SQL lane        : pgTAP/pg_prove  (tests/sql)
-  Swift lane      : swift test      (macos-ui/Tests)
+  Swift lane      : swift test      (src/macos-ui/Tests)
   macOS UI lane   : snapshot + XCUITest
 
 
@@ -968,7 +970,7 @@ Trust/authz boundaries:
 
 4) DATA MODEL ER DIAGRAM (CORE TABLES + RELATIONSHIPS)
 -------------------------------------------------------
-Why: Repo has rich SQL under `sql/postgres/`; a compact ER view speeds onboarding.
+Why: Repo has rich SQL under `src/sql/postgres/`; a compact ER view speeds onboarding.
 
 ```text
 Legend:
@@ -1046,7 +1048,7 @@ FK direction map (child -> parent):
 - `transaction_email_match_audit.match_id -> transaction_email_match.match_id` (ON DELETE CASCADE)
 
 Notes:
-- `enrollment` is currently modeled as `account.enrollment_id` (no `teller.enrollment` table in `sql/postgres/`).
+- `enrollment` is currently modeled as `account.enrollment_id` (no `teller.enrollment` table in `src/sql/postgres/`).
 - `transaction_classification` is implemented as `teller.transaction_nys_snw_category`.
 - Matchy tables (`transaction_email_match_run`, `transaction_email_candidate`, `transaction_email_match`, `transaction_email_match_audit`) are in active use by the classification API.
 
@@ -1089,8 +1091,8 @@ Why: Helpful for debugging "what should be running" and "where config comes from
 │                                                                                            │
 │  File/config + secret sources                                                              │
 │  - ~/.teller/auth_token*.json, enrollment_id*.txt, certificate.pem, private_key.pem        │
-│  - DB profile file search: ~/.teller/db_profiles.json -> ./db-profiles.local.json ->       │
-│    ./db-profiles.json (or TELLER_DB_PROFILE_FILE override)                                 │
+│  - DB profile file search: ~/.teller/db_profiles.json -> ./config/db-profiles.local.json -> │
+│    ./config/db-profiles.json (or TELLER_DB_PROFILE_FILE override) │
 │  - ~/.env (loaded by ingest/profile fallback paths for ITEM.field entries)                 │
 │  - Secret authority: 1psa (classifier write token + DB connection fields/password)         │
 └────────────────────────────────────────────────────────────────────────────────────────────┘

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `macos-ui/Sources/TransactionClassifier/ContentView.swift`.
+Applies to `src/macos-ui/Sources/TransactionClassifier/ContentView.swift`.
 
 R001  Statement: Render transaction triage UI as a split view.
 Design: `NavigationSplitView` presents transaction list controls on the primary side and selected transaction details on the secondary side.

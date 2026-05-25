@@ -55,7 +55,7 @@ Tests:
 - R035-T01: Verify successful run emits exactly one `✅ PASS:` line.
 
 R050  Statement: Skip teller-role existence checks on managed Postgres targets.
-Design: Resolve the active DB profile via `scripts/db_profile_export.sh`; when `PROFILE_TARGET=managed`, omit the `teller_read/teller_write/teller_admin/teller` role check that does not apply on Supabase.
+Design: Resolve the active DB profile via `src/scripts/db_profile_export.sh`; when `PROFILE_TARGET=managed`, omit the `teller_read/teller_write/teller_admin/teller` role check that does not apply on Supabase.
 Tests:
 - R050-T01: Run verification with `TELLER_DB_PROFILE=supabase` and verify the role check SQL is not executed.
 
@@ -72,7 +72,7 @@ Tests:
 - R060-T02: With `PG_SSLMODE=disable`, verify the SSL probe is skipped entirely.
 
 R065  Statement: Refuse verification when DB profile setup is missing.
-Design: If profile resolution fails (no `db-profiles.json`/candidate profile document), exit non-zero and print setup guidance to copy `db-profiles-EXAMPLE.json` instead of verifying with implicit local defaults.
+Design: If profile resolution fails (no `config/db-profiles.json`/candidate profile document), exit non-zero and print setup guidance to copy `config/db-profiles-EXAMPLE.json` instead of verifying with implicit local defaults.
 Tests:
 - R065-T01: Run with no candidate profile file and verify verification exits non-zero with copy-guidance text.
 

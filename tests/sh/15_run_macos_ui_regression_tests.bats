@@ -23,7 +23,9 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "15_run_macos_ui_regression_tests.sh"
-  mkdir -p "${FIXTURE_ROOT}/macos-ui"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui"
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  copy_script_to_fixture "src/scripts/macos_ui_swift_lock.sh"
 }
 
 teardown() {
@@ -53,7 +55,7 @@ EOF
 
 @test "resolves against repository root for relative paths" {
   #R005
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$@" >> "${CALLS_LOG}"
@@ -71,7 +73,7 @@ EOF
     RUN_SNAPSHOT_TESTS=true RUN_XCUITESTS=true \
     ${FIXTURE_ROOT}/15_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 0 ]
-  [[ "$(grep -F -- '--package-path ./macos-ui' "${CALLS_LOG}" | head -1)" != "" ]]
+  [[ "$(grep -F -- '--package-path ./src/macos-ui' "${CALLS_LOG}" | head -1)" != "" ]]
 }
 
 @test "snapshot lane honors RUN_SNAPSHOT_TESTS and snapshot record" {
@@ -153,8 +155,8 @@ EOF
 
 @test "defaults run snapshot and xcodebuild when env vars unset" {
   #R030
-  touch "${FIXTURE_ROOT}/macos-ui/TransactionClassifierUIAutomation.xcodeproj/placeholder" 2>/dev/null || \
-    mkdir -p "${FIXTURE_ROOT}/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  touch "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj/placeholder" 2>/dev/null || \
+    mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$@" >> "${CALLS_LOG}"
@@ -178,7 +180,7 @@ EOF
 
 @test "passes xcodebuild project scheme destination and derived data overrides" {
   #R035
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/proj.xcodeproj"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/proj.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$@" >> "${CALLS_LOG}"
@@ -194,21 +196,21 @@ EOF
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export PATH='${STUB_BIN}:'\${PATH} && \
     RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true \
-    XCUITEST_PROJECT=./macos-ui/proj.xcodeproj \
+    XCUITEST_PROJECT=./src/macos-ui/proj.xcodeproj \
     XCUITEST_SCHEME=CustomScheme \
     XCUITEST_DESTINATION=platform=macOS,arch=arm64 \
-    XCUITEST_DERIVED_DATA_PATH=./macos-ui/.dd-ui \
+    XCUITEST_DERIVED_DATA_PATH=./src/macos-ui/.dd-ui \
     ./15_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 0 ]
-  grep -F -- "-project" "${CALLS_LOG}" | grep -F "macos-ui/proj.xcodeproj"
+  grep -F -- "-project" "${CALLS_LOG}" | grep -F "src/macos-ui/proj.xcodeproj"
   grep -F "CustomScheme" "${CALLS_LOG}"
   grep -F "platform=macOS,arch=arm64" "${CALLS_LOG}"
-  grep -F "macos-ui/.dd-ui" "${CALLS_LOG}"
+  grep -F "src/macos-ui/.dd-ui" "${CALLS_LOG}"
 }
 
 @test "runs only selected XCUITest scenarios by numeric selectors" {
   #R040
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$@" >> "${CALLS_LOG}"
@@ -248,7 +250,7 @@ EOF
 
 @test "fails when selector references non-existent scenario numbers" {
   #R045
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$@" >> "${CALLS_LOG}"

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift`.
+Applies to `src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift`.
 
 R001  Statement: Load categories and initial transaction page together.
 Design: `loadAll()` concurrently fetches categories and first-page transactions, then updates derived picker and status state.

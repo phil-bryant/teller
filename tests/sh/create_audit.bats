@@ -18,7 +18,7 @@ teardown() {
 }
 
 sql_file() {
-  printf '%s' "$(repo_root)/sql/postgres/create_audit.sql"
+  printf '%s' "$(repo_root)/src/sql/postgres/create_audit.sql"
 }
 
 @test "define audit log table" {

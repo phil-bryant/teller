@@ -81,7 +81,7 @@ Tests:
 - R055-T01: Verify deploy invokes `grant_ingest_reconcile_privileges.sql` against `prod` as teller role.
 
 R060  Statement: Resolve the active DB profile and target before deploy.
-Design: Source `scripts/db_profile_export.sh` to populate `PROFILE_TARGET`, `PG_HOST`, `PG_PORT`, `PG_DBNAME`, `PG_USER`, `PG_SSLMODE`, and `PG_ONEPSA_ITEM`; re-resolve as `supabase_direct` for managed deploys so DDL bypasses the transaction pooler.
+Design: Source `src/scripts/db_profile_export.sh` to populate `PROFILE_TARGET`, `PG_HOST`, `PG_PORT`, `PG_DBNAME`, `PG_USER`, `PG_SSLMODE`, and `PG_ONEPSA_ITEM`; re-resolve as `supabase_direct` for managed deploys so DDL bypasses the transaction pooler.
 Tests:
 - R060-T01: Set `TELLER_DB_PROFILE=supabase` and verify managed-deploy path is taken with the direct host.
 
@@ -111,7 +111,7 @@ Tests:
 - R085-T01: Run deploy twice in succession against a stub psql and verify both runs exit zero.
 
 R090  Statement: Refuse deploy when no DB profile file is configured.
-Design: If `scripts/db_profile_export.sh` cannot resolve a profile document, exit non-zero and surface explicit setup guidance (`cp db-profiles-EXAMPLE.json db-profiles.json`) instead of silently defaulting to local.
+Design: If `src/scripts/db_profile_export.sh` cannot resolve a profile document, exit non-zero and surface explicit setup guidance (`cp config/db-profiles-EXAMPLE.json config/db-profiles.json`) instead of silently defaulting to local.
 Tests:
 - R090-T01: Run with no candidate profile file and verify deploy exits non-zero with copy-guidance text.
 

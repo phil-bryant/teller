@@ -1,0 +1,9 @@
+Teller API version freshness report
+- Status: ok
+- Baseline version: not configured
+- Latest version: 2020-10-12
+- Version source: https://teller.io/docs/api
+- Dashboard status: not-configured
+- Dashboard current version: unknown
+- Dashboard on latest: unknown
+- Newer version available: unknown

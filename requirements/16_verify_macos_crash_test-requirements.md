@@ -12,7 +12,7 @@ Tests:
 R005  Statement: Execute from repository root regardless of caller directory.
 Design: Resolve script directory and `cd` into it before running verification commands.
 Tests:
-- R005-T01: Run script from a different working directory and verify relative `./macos-ui` path resolves.
+- R005-T01: Run script from a different working directory and verify relative `./src/macos-ui` path resolves.
 
 R010  Statement: Confirm forced crash path exits non-zero.
 Design: Invoke `swift run TransactionClassifier` with `TELLER_MACOS_FORCE_CRASH_ON_LAUNCH=1` and fail if it exits zero.
@@ -47,7 +47,18 @@ Design: This script is invoked directly (or from ad-hoc automation), not from ot
 Tests:
 - R040-T01: Covered by static grep tests in `tests/sh/09_run_shell_unit_tests.bats` and `tests/sh/15_run_macos_ui_regression_tests.bats`.
 
+R045  Statement: Recover once from stale SwiftPM checkout metadata during relaunch.
+Design: When relaunch fails with missing `.build/checkouts/...` dependency paths, repair SwiftPM state with `rm -rf .build && swift package resolve` under the macOS UI lock and retry relaunch exactly once.
+Tests:
+- R045-T01: Simulate stale checkout error on first relaunch, ensure recovery path runs `swift package resolve`, and verify script succeeds on retry.
+
+R050  Statement: Fail quickly when relaunch does not report crash persistence.
+Design: Relaunch in the background and stop as soon as the persistence log appears; if the log is still absent at `STARTUP_WAIT_SECONDS`, terminate relaunch process tree and fail with timeout output.
+Tests:
+- R050-T01: Simulate relaunch with no persistence log and verify timeout failure is emitted without hanging.
+
 ## Changelog
 
+- 2026-05-25: Added R045/R050 for stale SwiftPM recovery and bounded relaunch timeout behavior.
 - 2026-05-12: Added R040 documenting standalone use and forbidding chained invocation from `05_`/`06_` runners.
 - 2026-05-07: Initial requirements for `16_verify_macos_crash_test.sh`.

@@ -5,6 +5,12 @@
 # #R005-T01: Traceability anchor.
 # #R010-T01: Traceability anchor.
 # #R015-T01: Traceability anchor.
+# #R020-T01: Traceability anchor.
+# #R022-T01: Traceability anchor.
+# #R025-T01: Traceability anchor.
+# #R030-T01: Traceability anchor.
+# #R035-T01: Traceability anchor.
+# #R040-T01: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -12,7 +18,7 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "11_run_mutation_tests.sh"
-  mkdir -p "${FIXTURE_ROOT}/teller-venv/bin" "${FIXTURE_ROOT}/scripts" "${FIXTURE_ROOT}/tests/py"
+  mkdir -p "${FIXTURE_ROOT}/teller-venv/bin" "${FIXTURE_ROOT}/src/scripts" "${FIXTURE_ROOT}/tests/py"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python3" <<'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "--version" ]; then
@@ -22,15 +28,15 @@ if [ "${1:-}" = "-m" ] && [ "${2:-}" = "pytest" ]; then
   exit 0
 fi
 if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "run" ]; then
-  mkdir -p mutants
-  cat > mutants/mutmut-cicd-stats.json <<'JSON'
+  mkdir -p artifacts/mutation/mutants
+  cat > artifacts/mutation/mutants/mutmut-cicd-stats.json <<'JSON'
 {"killed":90,"survived":10,"total":100}
 JSON
   exit 0
 fi
 if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "export-cicd-stats" ]; then
-  mkdir -p mutants
-  cat > mutants/mutmut-cicd-stats.json <<'JSON'
+  mkdir -p artifacts/mutation/mutants
+  cat > artifacts/mutation/mutants/mutmut-cicd-stats.json <<'JSON'
 {"killed":90,"survived":10,"total":100}
 JSON
   exit 0
@@ -56,12 +62,12 @@ fi
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python3"
-  cat > "${FIXTURE_ROOT}/scripts/mutmut_darwin.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/mutmut_darwin.py" <<'EOF'
 #!/usr/bin/env bash
 exit 0
 EOF
-  chmod +x "${FIXTURE_ROOT}/scripts/mutmut_darwin.py"
-  cat > "${FIXTURE_ROOT}/scripts/mutmut_darwin_stub.py" <<'EOF'
+  chmod +x "${FIXTURE_ROOT}/src/scripts/mutmut_darwin.py"
+  cat > "${FIXTURE_ROOT}/src/scripts/mutmut_darwin_stub.py" <<'EOF'
 # stub
 EOF
 }
@@ -106,6 +112,6 @@ EOF
   #R015-T01
   run bash "${FIXTURE_ROOT}/11_run_mutation_tests.sh"
   [ "$status" -eq 0 ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/mutation-summary.json" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/mutmut-cicd-stats.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutation-summary.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutmut-cicd-stats.json" ]
 }

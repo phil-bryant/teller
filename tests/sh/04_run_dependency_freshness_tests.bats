@@ -25,7 +25,7 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "04_run_dependency_freshness_tests.sh"
-  mkdir -p "${FIXTURE_ROOT}/scripts"
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
 }
 
 teardown() {
@@ -52,25 +52,25 @@ done
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python"
-  cat > "${FIXTURE_ROOT}/scripts/check_dependency_freshness.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/check_dependency_freshness.py" <<'EOF'
 print("stub")
 EOF
 
   run bash -c "cd '${TEST_TMPDIR}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' '${FIXTURE_ROOT}/04_run_dependency_freshness_tests.sh'"
   [ "$status" -eq 0 ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/dependency-freshness.json" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/dependency-freshness.txt" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/teller-api-version-freshness.json" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/teller-api-version-freshness.txt" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/postgres-freshness.json" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/postgres-freshness.txt" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/dependency-freshness.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/dependency-freshness.txt" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/teller-api-version-freshness.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/teller-api-version-freshness.txt" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/postgres-freshness.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/postgres-freshness.txt" ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./scripts/check_dependency_freshness.py"* ]]
+  [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./src/scripts/check_dependency_freshness.py"* ]]
   [[ "$calls" == *"--fail-on-direct-outdated"* ]]
-  [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./scripts/check_teller_api_version_freshness.py"* ]]
-  [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./scripts/check_postgres_freshness.py"* ]]
+  [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./src/scripts/check_teller_api_version_freshness.py"* ]]
+  [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./src/scripts/check_postgres_freshness.py"* ]]
   [[ "$calls" == *"--check-server-version --server-psql-args -h localhost -U teller -d prod"* ]]
-  [[ "$calls" == *"--check-cves --cve-snapshot ./security/postgres-cve-snapshot.json --cve-policy ./security/postgres-cve-policy.json"* ]]
+  [[ "$calls" == *"--check-cves --cve-snapshot ./config/security/postgres-cve-snapshot.json --cve-policy ./config/security/postgres-cve-policy.json"* ]]
   [[ "$calls" == *"--refresh-cve-snapshot"* ]]
   [[ "$calls" == *"--fail-on-cve"* ]]
 }
@@ -95,14 +95,14 @@ done
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python"
-  cat > "${FIXTURE_ROOT}/scripts/check_dependency_freshness.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/check_dependency_freshness.py" <<'EOF'
 print("stub")
 EOF
 
   run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=false ./04_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"./scripts/check_dependency_freshness.py"* ]]
+  [[ "$calls" == *"./src/scripts/check_dependency_freshness.py"* ]]
   [[ "$calls" != *"--fail-on-direct-outdated"* ]]
 }
 
@@ -126,7 +126,7 @@ done
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python"
-  cat > "${FIXTURE_ROOT}/scripts/check_dependency_freshness.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/check_dependency_freshness.py" <<'EOF'
 print("stub")
 EOF
 
@@ -163,16 +163,16 @@ done
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python"
-  cat > "${FIXTURE_ROOT}/scripts/check_dependency_freshness.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/check_dependency_freshness.py" <<'EOF'
 print("stub")
 EOF
 
   run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false ./04_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
-  [ ! -f "${FIXTURE_ROOT}/.security-reports/postgres-freshness.json" ]
-  [ ! -f "${FIXTURE_ROOT}/.security-reports/postgres-freshness.txt" ]
+  [ ! -f "${FIXTURE_ROOT}/artifacts/security/postgres-freshness.json" ]
+  [ ! -f "${FIXTURE_ROOT}/artifacts/security/postgres-freshness.txt" ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" != *"./scripts/check_postgres_freshness.py"* ]]
+  [[ "$calls" != *"./src/scripts/check_postgres_freshness.py"* ]]
 }
 
 @test "skips Teller API version freshness lane when disabled" {
@@ -195,14 +195,14 @@ done
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python"
-  cat > "${FIXTURE_ROOT}/scripts/check_dependency_freshness.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/check_dependency_freshness.py" <<'EOF'
 print("stub")
 EOF
 
   run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_TELLER_VERSION_FRESHNESS=false RUN_POSTGRES_FRESHNESS=false ./04_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" != *"./scripts/check_teller_api_version_freshness.py"* ]]
+  [[ "$calls" != *"./src/scripts/check_teller_api_version_freshness.py"* ]]
 }
 
 @test "prints PostgreSQL server-check target diagnostics for explicit args" {
@@ -225,7 +225,7 @@ done
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python"
-  cat > "${FIXTURE_ROOT}/scripts/check_dependency_freshness.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/check_dependency_freshness.py" <<'EOF'
 print("stub")
 EOF
 
@@ -254,14 +254,14 @@ done
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python"
-  cat > "${FIXTURE_ROOT}/scripts/check_dependency_freshness.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/check_dependency_freshness.py" <<'EOF'
 print("stub")
 EOF
 
   run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' POSTGRES_CHECK_CVES=false ./04_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"./scripts/check_postgres_freshness.py"* ]]
+  [[ "$calls" == *"./src/scripts/check_postgres_freshness.py"* ]]
   [[ "$calls" != *"--check-cves"* ]]
   [[ "$calls" != *"--cve-snapshot"* ]]
   [[ "$calls" != *"--cve-policy"* ]]

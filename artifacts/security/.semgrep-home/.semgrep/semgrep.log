@@ -1,0 +1,15 @@
+2026-05-25 10:45:25,732 - semgrep.output - INFO - ✅ Scan completed successfully.
+ • Findings: 0 (0 blocking)
+ • Rules run: 231
+ • Targets scanned: 717
+ • Parsed lines: ~99.9%
+ • Scan skipped: 
+   ◦ Files larger than  files 1.0 MB: 27
+   ◦ Files matching .semgrepignore patterns: 117
+ • Scan was limited to files tracked by git
+ • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
+Ran 231 rules on 717 files: 0 findings.
+(need more rules? `semgrep login` for additional free Semgrep Registry rules)
+
+2026-05-25 10:45:25,736 - semgrep.commands.scan - INFO - If Semgrep missed a finding, please send us feedback to let us know!
+See https://semgrep.dev/docs/reporting-false-negatives/

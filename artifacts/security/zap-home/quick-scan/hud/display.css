@@ -1,0 +1,29 @@
+body {
+  background-color: transparent;
+}
+.site-tree-node {
+  list-style: none;
+  margin-left: 0;
+  padding-left: 1em;
+  text-indent: -1em;
+}
+
+.site-tree-control {
+  cursor: pointer;
+}
+
+span.errorMessages {
+  color: red;
+}
+
+.hidden {
+  display: none
+}
+
+.accordion-header {
+  cursor: pointer;
+}
+
+.menu-item {
+  cursor: pointer;
+}

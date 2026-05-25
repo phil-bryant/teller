@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `macos-ui/Sources/TransactionClassifier/ConnectView.swift` and `macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift`.
+Applies to `src/macos-ui/Sources/TransactionClassifier/ConnectView.swift` and `src/macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift`.
 
 R001  Statement: Connect tab must present a plain-language connections list.
 Design: `ConnectView` renders a single `Financial Institution Connections` list with institution and connection ID rows bound to `selectedContextKey`.

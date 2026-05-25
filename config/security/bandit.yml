@@ -2,7 +2,7 @@ exclude_dirs:
   - tests
   - archive
   - teller-venv
-  - .security-venv
+  - artifacts/venv/security
   - bank_statements
 skips:
   - B101

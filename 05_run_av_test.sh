@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 #R005: Support configurable report destination and AV gating behavior.
-REPORT_DIR="${SECURITY_REPORT_DIR:-./.security-reports}"
+REPORT_DIR="${SECURITY_REPORT_DIR:-./artifacts/security/reports}"
 RUN_CLAMAV="${RUN_CLAMAV:-true}"
 FAIL_ON_INFECTED="${AV_FAIL_ON_INFECTED:-true}"
 
@@ -135,20 +135,23 @@ run_clamscan_once() {
     --recursive \
     --infected \
     --exclude-dir='\.git(/|$)' \
-    --exclude-dir='teller-venv(/|$)' \
-    --exclude-dir='\.security-venv(/|$)' \
-    --exclude-dir='\.security-reports(/|$)' \
-    --exclude-dir='\.parallel-checks-reports(/|$)' \
-    --exclude-dir='\.build(/|$)' \
+    --exclude-dir='artifacts/security/reports(/|$)' \
+    --exclude-dir='artifacts/security(/|$)' \
+    --exclude-dir='artifacts/parallel(/|$)' \
+    --exclude-dir='artifacts/mutation(/|$)' \
+    --exclude-dir='artifacts/fuzz(/|$)' \
+    --exclude-dir='artifacts/macos-ui-regression(/|$)' \
     --exclude-dir='\.derivedData-ui-tests(/|$)' \
-    --exclude-dir='\.hypothesis(/|$)' \
-    --exclude-dir='\.ruff_cache(/|$)' \
+    --exclude-dir='artifacts/cache/hypothesis(/|$)' \
+    --exclude-dir='artifacts/cache/ruff(/|$)' \
+    --exclude-dir='artifacts/security-dast(/|$)' \
     --exclude-dir='__pycache__' \
+    --exclude-dir='\.ruff_cache(/|$)' \
+    --exclude-dir='\.pytest_cache(/|$)' \
     --exclude-dir='\.cursor(/|$)' \
     --exclude-dir='\.semgrep-home(/|$)' \
     --exclude-dir='/backups(/|$)' \
     --exclude-dir='/archive(/|$)' \
-    --exclude-dir='/bank_statements(/|$)' \
     "$scan_target" > "$report_path" 2>&1 &
   local clamav_pid=$!
   echo "▶ ClamAV scan in progress (started) target=${scan_target_abs}"

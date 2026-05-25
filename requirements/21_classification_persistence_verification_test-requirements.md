@@ -60,7 +60,7 @@ Tests:
 - R030-T04: On all outcomes after API call, verify output includes `API response:` and `Persisted row:` detail lines.
 
 R040  Statement: Refuse persistence verification when DB profile setup is missing.
-Design: Profile resolution must fail fast when no profile document exists and print setup guidance to copy `db-profiles-EXAMPLE.json` instead of falling back to implicit local defaults.
+Design: Profile resolution must fail fast when no profile document exists and print setup guidance to copy `config/db-profiles-EXAMPLE.json` instead of falling back to implicit local defaults.
 Tests:
 - R040-T01: Run with no candidate profile file and verify script exits non-zero with copy-guidance text.
 

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `macos-ui/Sources/TransactionClassifier/TellerSetupService.swift` and `macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift`.
+Applies to `src/macos-ui/Sources/TransactionClassifier/TellerSetupService.swift` and `src/macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift`.
 
 R001  Statement: Native setup must report local Teller file readiness without shell scripts.
 Design: `TellerSetupService.loadSnapshot()` inspects `~/.teller` paths and returns availability for app id, cert, key, and token to drive Connect setup status.

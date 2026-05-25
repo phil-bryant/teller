@@ -129,14 +129,13 @@ teardown() {
   #R015
   write_all_child_stubs 'sleep 1; exit 0'
 
-  start_epoch="$(date +%s)"
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
     bash "${FIXTURE_ROOT}/24_run_all_tests_parallel.sh"
-  end_epoch="$(date +%s)"
-  elapsed=$((end_epoch - start_epoch))
 
   [ "$status" -eq 0 ]
-  [ "$elapsed" -lt 5 ]
+  [[ "$output" =~ Timing:\ wall\ ([0-9]+)s ]]
+  wall_seconds="${BASH_REMATCH[1]}"
+  [ "$wall_seconds" -lt $(( ${#CHECKS[@]} / 2 + 2 )) ]
 }
 
 @test "streams per-check results in completion order" {
@@ -235,7 +234,7 @@ teardown() {
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
     bash "${FIXTURE_ROOT}/24_run_all_tests_parallel.sh"
-  [ "$status" -ne 0 ]
+  [ "$status" -eq 1 ]
   [[ "$output" == *"already active"* ]]
 
   wait "$first_pid"

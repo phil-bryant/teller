@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `teller/teller_db.py`.
+Applies to `src/teller/teller_db.py`.
 
 R025  Statement: Resolve the DB password through env or libonepsa fallback.
 Design: `TELLER_DB_PASSWORD` wins; otherwise `_read_password` reads from libonepsa using the resolved profile's `onepsa_item`. Empty results raise `RuntimeError`.

@@ -15,9 +15,9 @@ Tests:
 - R005-T01: Run from a non-root working directory and verify relative paths still resolve.
 
 R010  Statement: Bootstrap isolated security toolchain environment before running DAST dependencies.
-Design: Create `SECURITY_VENV_DIR` when missing, install `requirements-security.txt` when `semgrep` is absent in that venv, and prepend `${SECURITY_VENV_DIR}/bin` to `PATH`.
+Design: Create `SECURITY_VENV_DIR` when missing, install `requirements/security/requirements-security.txt` when `semgrep` is absent in that venv, and prepend `${SECURITY_VENV_DIR}/bin` to `PATH`.
 Tests:
-- R010-T01: Remove `.security-venv`, run script, and verify venv creation plus tool installation path executes.
+- R010-T01: Remove `artifacts/venv/security`, run script, and verify venv creation plus tool installation path executes.
 
 R015  Statement: Run the dynamic security lane by default.
 Design: Set `RUN_DAST=true` default and `RUN_SAST=false` default; run DAST scanners and DAST gate checks when enabled.

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `macos-ui/Sources/TransactionClassifier/APIClient.swift`.
+Applies to `src/macos-ui/Sources/TransactionClassifier/APIClient.swift`.
 
 R001  Statement: Fetch categories and paginated transactions from the local classifier API.
 Design: `ClassificationAPI` exposes `fetchCategories(...)` and `fetchTransactions(...)`, and `APIClient` resolves base URL from `TELLER_CLASSIFIER_API_URL` with localhost default.

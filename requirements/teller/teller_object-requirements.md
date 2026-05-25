@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `teller/teller_object.py`.
+Applies to `src/teller/teller_object.py`.
 
 R001  Statement: Provide a shared Teller ORM base with timestamp columns in the `teller` schema.
 Design: Define `TimestampMixin` with timezone-aware `created_at` and `updated_at`, and define `TellerObject` as an abstract model with `__table_args__ = {"schema": "teller"}`.
@@ -45,4 +45,4 @@ Tests:
 
 ## Changelog
 
-- 2026-04-22: Initial reverse-engineered requirements for `teller/teller_object.py`.
+- 2026-04-22: Initial reverse-engineered requirements for `src/teller/teller_object.py`.

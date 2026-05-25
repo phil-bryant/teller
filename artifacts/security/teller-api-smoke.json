@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-05-25T17:56:29.324636+00:00",
+  "mode": "live",
+  "status": "pass",
+  "warnings": [],
+  "checks": [
+    {
+      "name": "institutions",
+      "url": "https://api.teller.io/institutions",
+      "status": "pass",
+      "http_status": 200,
+      "error": ""
+    },
+    {
+      "name": "accounts[chase]",
+      "url": "https://api.teller.io/accounts",
+      "status": "pass",
+      "http_status": 200,
+      "error": ""
+    },
+    {
+      "name": "identity[chase]",
+      "url": "https://api.teller.io/identity",
+      "status": "pass",
+      "http_status": 200,
+      "error": ""
+    },
+    {
+      "name": "accounts[first_ak_bank_trust]",
+      "url": "https://api.teller.io/accounts",
+      "status": "pass",
+      "http_status": 200,
+      "error": ""
+    },
+    {
+      "name": "identity[first_ak_bank_trust]",
+      "url": "https://api.teller.io/identity",
+      "status": "pass",
+      "http_status": 200,
+      "error": ""
+    }
+  ]
+}

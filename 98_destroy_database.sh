@@ -5,7 +5,7 @@ set -e
 SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 # Resolve the active DB profile so we know whether to tear down a local DB or a managed schema.
-DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
+DB_PROFILE_HELPER="${SCRIPT_DIR}/src/scripts/db_profile_export.sh"
 
 #R005: Require 1psa before any credential lookup.
 if ! command -v 1psa >/dev/null 2>&1; then
@@ -24,7 +24,7 @@ if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
     rm -f "$profile_exports_file"
     exit 1
 fi
-PROFILE_EXPORTS="$(<"$profile_exports_file")"
+PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
 rm -f "$profile_exports_file"
 eval "$PROFILE_EXPORTS"
 
@@ -39,7 +39,7 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
             rm -f "$profile_exports_file"
             exit 1
         fi
-        PROFILE_EXPORTS="$(<"$profile_exports_file")"
+        PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
         rm -f "$profile_exports_file"
         eval "$PROFILE_EXPORTS"
     fi
@@ -57,7 +57,7 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
     MANAGED_PASSWORD="${TELLER_DB_PASSWORD:-}"
     if [[ -z "$MANAGED_PASSWORD" ]]; then
         if [[ -z "${PG_ONEPSA_ITEM:-}" ]]; then
-            echo "Managed destroy requires PG_ONEPSA_ITEM (from db-profiles.json) or TELLER_DB_PASSWORD."
+            echo "Managed destroy requires PG_ONEPSA_ITEM (from config/db-profiles.json) or TELLER_DB_PASSWORD."
             exit 1
         fi
         MANAGED_PASSWORD="$(1psa -p "$PG_ONEPSA_ITEM")"

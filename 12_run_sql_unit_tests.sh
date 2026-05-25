@@ -11,4 +11,4 @@ RUN_PYTHON_TESTS=false \
 RUN_SQL_TESTS=true \
 RUN_SWIFT_TESTS=false \
 RUN_MACOS_UI_REGRESSION_TESTS=false \
-  "${SCRIPT_DIR}/scripts/run_unit_test_lanes.sh"
+  "${SCRIPT_DIR}/src/scripts/run_unit_test_lanes.sh"

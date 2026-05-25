@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `sql/postgres/teller_transaction_info_view.sql`.
+Applies to `src/sql/postgres/teller_transaction_info_view.sql`.
 
 ## Ownership Boundaries
 

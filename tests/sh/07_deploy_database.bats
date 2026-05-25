@@ -50,7 +50,7 @@ EOF
 setup_06_fixture() {
   create_repo_fixture
   copy_script_to_fixture "07_deploy_database.sh"
-  mkdir -p "${FIXTURE_ROOT}/sql/postgres"
+  mkdir -p "${FIXTURE_ROOT}/src/sql/postgres"
   for f in create_database configure_database teller_enums teller_institution \
     teller_account_links teller_account teller_identity teller_identity_name \
     teller_identity_email teller_identity_phone_number teller_identity_address_data \
@@ -62,11 +62,11 @@ setup_06_fixture() {
     teller_transaction_email_match_run teller_transaction_email_candidate \
     teller_transaction_email_match teller_transaction_email_match_audit create_triggers \
     teller_transaction_info_view create_audit grant_ingest_reconcile_privileges; do
-    echo "-- $f" > "${FIXTURE_ROOT}/sql/postgres/${f}.sql"
+    echo "-- $f" > "${FIXTURE_ROOT}/src/sql/postgres/${f}.sql"
   done
   stub_cmd 1psa "echo fakesecret"
-  mkdir -p "${FIXTURE_ROOT}/scripts"
-  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
 echo "PROFILE_TARGET=local"
@@ -79,7 +79,7 @@ echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=teller_write"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
 EOF
-  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   export CALLS_LOG
 }
 
@@ -205,8 +205,8 @@ EOF
 }
 
 stub_managed_profile_helper() {
-  mkdir -p "${FIXTURE_ROOT}/scripts"
-  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=supabase_direct"
 echo "PROFILE_TARGET=managed"
@@ -219,7 +219,7 @@ echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=''"
 echo "PG_ONEPSA_ITEM=eggnest_supabase"
 EOF
-  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 }
 
 @test "managed profile drives deploy through profile helper" {
@@ -269,13 +269,13 @@ EOF
 @test "fails with setup guidance when db profile file is missing" {
   #R090
   export PATH="${STUB_BIN}:/usr/bin:/bin"
-  cat > "${FIXTURE_ROOT}/scripts/db_profile_export.sh" <<'EOF'
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
-echo "No DB profile file found. Create one with: cp db-profiles-EXAMPLE.json db-profiles.json" >&2
+echo "No DB profile file found. Create one with: cp config/db-profiles-EXAMPLE.json config/db-profiles.json" >&2
 exit 1
 EOF
-  chmod +x "${FIXTURE_ROOT}/scripts/db_profile_export.sh"
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   run bash "${FIXTURE_ROOT}/07_deploy_database.sh"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"cp db-profiles-EXAMPLE.json db-profiles.json"* ]]
+  [[ "$output" == *"cp config/db-profiles-EXAMPLE.json config/db-profiles.json"* ]]
 }

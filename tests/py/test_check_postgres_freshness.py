@@ -10,7 +10,7 @@ from pathlib import Path
 class CheckPostgresFreshnessTests(unittest.TestCase):
     def setUp(self) -> None:
         self.repo_root = Path(__file__).resolve().parents[2]
-        self.script_path = self.repo_root / "scripts" / "check_postgres_freshness.py"
+        self.script_path = self.repo_root / "src" / "scripts" / "check_postgres_freshness.py"
         self.temp_dir = tempfile.TemporaryDirectory()
         self.tmp_path = Path(self.temp_dir.name)
         self.stub_bin = self.tmp_path / "bin"

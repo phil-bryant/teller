@@ -111,20 +111,22 @@ EOS
 copy_security_project_files() {
   create_repo_fixture
   copy_script_to_fixture "06_run_static_security_tests.sh"
-  cp "$(repo_root)/requirements-security.txt" "${FIXTURE_ROOT}/"
+  mkdir -p "${FIXTURE_ROOT}/requirements/security"
+  cp "$(repo_root)/requirements/security/requirements-security.txt" "${FIXTURE_ROOT}/requirements/security/requirements-security.txt"
   mkdir -p "${FIXTURE_ROOT}/config/security"
   cp "$(repo_root)/config/security/semgrep.yml" "${FIXTURE_ROOT}/config/security/"
   cp "$(repo_root)/config/security/bandit.yml" "${FIXTURE_ROOT}/config/security/"
   cp "$(repo_root)/config/security/gitleaksignore" "${FIXTURE_ROOT}/config/security/"
-  mkdir -p "${FIXTURE_ROOT}/teller"
-  echo 'x = 1' > "${FIXTURE_ROOT}/teller/safe_test.py"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security"
+  mkdir -p "${FIXTURE_ROOT}/src/teller"
+  echo 'x = 1' > "${FIXTURE_ROOT}/src/teller/safe_test.py"
   write_dast_13_stub "${FIXTURE_ROOT}"
   write_macos_ui_regression_stub "${FIXTURE_ROOT}"
   stub_cmd 1psa "echo write-token"
 }
 
 install_passing_sast_stubs_in_venv() {
-  local vbin="${FIXTURE_ROOT}/.security-venv/bin"
+  local vbin="${FIXTURE_ROOT}/artifacts/venv/security/bin"
   mkdir -p "$vbin"
   cat > "${vbin}/semgrep" <<'EOF'
 #!/usr/bin/env bash
@@ -209,7 +211,7 @@ EOF
 }
 
 install_sast_gate_fail_semgrep() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/semgrep" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep" <<'EOF'
 #!/usr/bin/env bash
 out=""
 set -- "$@"
@@ -224,11 +226,11 @@ done
 printf '%s' '{"results":[{"check_id":"r","path":"f.py","start":{"line":1},"end":{"line":1},"extra":{"message":"e","severity":"ERROR"}}]}' > "$out"
 exit 0
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
 }
 
 install_sast_gate_fail_semgrep_warning() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/semgrep" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep" <<'EOF'
 #!/usr/bin/env bash
 out=""
 set -- "$@"
@@ -243,11 +245,11 @@ done
 printf '%s' '{"results":[{"check_id":"r-warning","path":"f.py","start":{"line":7},"end":{"line":7},"extra":{"message":"warning finding","severity":"WARNING"}}]}' > "$out"
 exit 0
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
 }
 
 install_bandit_medium_finding() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/bandit" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/bandit" <<'EOF'
 #!/usr/bin/env bash
 out=""
 set -- "$@"
@@ -262,27 +264,27 @@ done
 printf '%s' '{"results":[{"issue_severity":"MEDIUM","issue_text":"medium risk call"}]}' > "$out"
 exit 1
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/bandit"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/bandit"
 }
 
 install_bandit_exit_2() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/bandit" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/bandit" <<'EOF'
 #!/usr/bin/env bash
 exit 2
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/bandit"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/bandit"
 }
 
 install_pip_audit_exit_2() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/pip-audit" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/pip-audit" <<'EOF'
 #!/usr/bin/env bash
 exit 2
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/pip-audit"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/pip-audit"
 }
 
 install_pip_audit_vulnerability() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/pip-audit" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/pip-audit" <<'EOF'
 #!/usr/bin/env bash
 out=""
 set -- "$@"
@@ -297,36 +299,36 @@ done
 printf '%s' '[{"name":"example-pkg","version":"1.0.0","vulns":[{"id":"PYSEC-2026-001","fix_versions":["1.0.1"]}]}]' > "$out"
 exit 1
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/pip-audit"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/pip-audit"
 }
 
 install_ruff_exit_2() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/ruff" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/ruff" <<'EOF'
 #!/usr/bin/env bash
 exit 2
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/ruff"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/ruff"
 }
 
 install_ruff_findings() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/ruff" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/ruff" <<'EOF'
 #!/usr/bin/env bash
-printf '%s' '[{"code":"F401","filename":"./teller/safe_test.py","location":{"row":1,"column":1},"message":"unused import"}]'
+printf '%s' '[{"code":"F401","filename":"./src/teller/safe_test.py","location":{"row":1,"column":1},"message":"unused import"}]'
 exit 1
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/ruff"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/ruff"
 }
 
 install_gitleaks_exit_2() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/gitleaks" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/gitleaks" <<'EOF'
 #!/usr/bin/env bash
 exit 2
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/gitleaks"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/gitleaks"
 }
 
 install_gitleaks_findings() {
-  cat > "${FIXTURE_ROOT}/.security-venv/bin/gitleaks" <<'EOF'
+  cat > "${FIXTURE_ROOT}/artifacts/venv/security/bin/gitleaks" <<'EOF'
 #!/usr/bin/env bash
 report=""
 set -- "$@"
@@ -338,10 +340,10 @@ while [ $# -gt 0 ]; do
   fi
   shift
 done
-printf '%s' '[{"Description":"Hardcoded secret","File":"./teller/safe_test.py"}]' > "$report"
+printf '%s' '[{"Description":"Hardcoded secret","File":"./src/teller/safe_test.py"}]' > "$report"
 exit 1
 EOF
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/gitleaks"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/gitleaks"
 }
 
 stub_curl_success() {
@@ -556,14 +558,14 @@ teardown() {
   #R001
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  echo '#!/bin/bash' > "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  echo '#!/bin/bash' > "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   mkdir -p "${TEST_TMPDIR}/elsewhere"
   run env RUN_SAST=false RUN_DAST=false \
     bash -c "cd '${TEST_TMPDIR}/elsewhere' && exec bash '${FIXTURE_ROOT}/06_run_static_security_tests.sh'"
   [ "$status" -eq 0 ]
-  [ -d "${FIXTURE_ROOT}/.security-reports" ]
+  [ -d "${FIXTURE_ROOT}/artifacts/security/reports" ]
   [[ "$output" == *"running SAST (Static Application Security Testing)"* ]]
   [[ "$output" == *"Security checks completed"* ]]
 }
@@ -597,9 +599,9 @@ EOS
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Creating isolated security virtualenv"* ]]
-  [ -d "${FIXTURE_ROOT}/.security-venv" ]
+  [ -d "${FIXTURE_ROOT}/artifacts/venv/security" ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"python3 -m venv ./.security-venv"* ]]
+  [[ "$calls" == *"python3 -m venv ./artifacts/venv/security"* ]]
   [[ "$output" != *"Installing security toolchain into"* ]]
 }
 
@@ -611,9 +613,9 @@ EOS
   run env RUN_SAST=false RUN_DAST=false \
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Installing security toolchain into ./.security-venv"* ]]
+  [[ "$output" == *"Installing security toolchain into ./artifacts/venv/security"* ]]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"pip install -r requirements-security.txt"* ]]
+  [[ "$calls" == *"pip install -r ./requirements/security/requirements-security.txt"* ]]
 }
 
 @test "sets pip-audit to project venv when teller-venv is present" {
@@ -633,9 +635,9 @@ EOS
   #R015
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   run env RUN_SAST=false RUN_DAST=false SECURITY_REPORT_DIR="${FIXTURE_ROOT}/.custom-rep" \
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
@@ -652,13 +654,13 @@ EOS
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" ruff.json gitleaks.json shellcheck.json swiftlint.json sast-summary.json; do
-    [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
+    [ -f "${FIXTURE_ROOT}/artifacts/security/reports/${f}" ]
   done
-  ruff_total="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("ruff_total",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
-  ruff_high="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("ruff_high_critical",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
-  shellcheck_total="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_total",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
-  shellcheck_high="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_high_critical",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
-  gitleaks_findings="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("gitleaks_findings",-1))' "${FIXTURE_ROOT}/.security-reports/sast-summary.json")"
+  ruff_total="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("ruff_total",-1))' "${FIXTURE_ROOT}/artifacts/security/reports/sast-summary.json")"
+  ruff_high="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("ruff_high_critical",-1))' "${FIXTURE_ROOT}/artifacts/security/reports/sast-summary.json")"
+  shellcheck_total="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_total",-1))' "${FIXTURE_ROOT}/artifacts/security/reports/sast-summary.json")"
+  shellcheck_high="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("shellcheck_high_critical",-1))' "${FIXTURE_ROOT}/artifacts/security/reports/sast-summary.json")"
+  gitleaks_findings="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("gitleaks_findings",-1))' "${FIXTURE_ROOT}/artifacts/security/reports/sast-summary.json")"
   [ "$ruff_total" = "0" ]
   [ "$ruff_high" = "0" ]
   [ "$shellcheck_total" = "0" ]
@@ -705,7 +707,7 @@ EOS
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Semgrep detailed status: exit_code=0;"* ]]
-  [[ "$output" == *"report=./.security-reports/semgrep.json"* ]]
+  [[ "$output" == *"report=./artifacts/security/reports/semgrep.json"* ]]
 }
 
 @test "Bandit prints detailed status when output is unsuppressed" {
@@ -718,7 +720,7 @@ EOS
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Bandit detailed status: exit_code=0;"* ]]
-  [[ "$output" == *"report=./.security-reports/bandit.json"* ]]
+  [[ "$output" == *"report=./artifacts/security/reports/bandit.json"* ]]
 }
 
 @test "pip-audit prints detailed status when output is unsuppressed" {
@@ -731,7 +733,7 @@ EOS
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"pip-audit detailed status: exit_code=0;"* ]]
-  [[ "$output" == *"report=./.security-reports/pip-audit.json"* ]]
+  [[ "$output" == *"report=./artifacts/security/reports/pip-audit.json"* ]]
 }
 
 @test "detect-secrets prints detailed status when output is unsuppressed" {
@@ -744,7 +746,7 @@ EOS
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"detect-secrets detailed status: exit_code=0;"* ]]
-  [[ "$output" == *"report=./.security-reports/detect-secrets.json"* ]]
+  [[ "$output" == *"report=./artifacts/security/reports/detect-secrets.json"* ]]
 }
 
 @test "Ruff prints detailed status when output is unsuppressed" {
@@ -757,7 +759,7 @@ EOS
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Ruff detailed status: exit_code=0;"* ]]
-  [[ "$output" == *"report=./.security-reports/ruff.json"* ]]
+  [[ "$output" == *"report=./artifacts/security/reports/ruff.json"* ]]
 }
 
 @test "ShellCheck prints detailed status when output is unsuppressed" {
@@ -770,7 +772,7 @@ EOS
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"ShellCheck detailed status: exit_code=0;"* ]]
-  [[ "$output" == *"report=./.security-reports/shellcheck.json"* ]]
+  [[ "$output" == *"report=./artifacts/security/reports/shellcheck.json"* ]]
 }
 
 @test "detect-secrets scan excludes Ruff cache artifacts" {
@@ -783,7 +785,7 @@ EOS
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"detect-secrets scan --all-files --force-use-all-plugins --exclude-files"* ]]
-  [[ "$calls" == *".ruff_cache/"* ]]
+  [[ "$calls" == *"artifacts/cache/ruff/"* ]]
 }
 
 @test "gitleaks scans tracked-file snapshot source instead of repo root" {
@@ -818,18 +820,18 @@ EOS
   copy_security_project_files
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
-  cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier"
+  cat > "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
 import Foundation
 EOF
   stub_swiftlint_ok
   run env RUN_DAST=false RUN_SWIFT_SAST=true \
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/swiftlint.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/reports/swiftlint.json" ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"swiftlint lint --quiet --reporter json --force-exclude --only-rule force_cast --only-rule force_try --only-rule force_unwrapping"* ]]
-  [[ "$calls" == *"./macos-ui/Sources"* ]]
+  [[ "$calls" == *"./src/macos-ui/Sources"* ]]
 }
 
 @test "SwiftLint exit code 2 is an execution failure" {
@@ -837,8 +839,8 @@ EOF
   copy_security_project_files
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
-  cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier"
+  cat > "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
 import Foundation
 EOF
   stub_swiftlint_exit_2
@@ -1041,8 +1043,8 @@ EOF
   copy_security_project_files
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
-  mkdir -p "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier"
-  cat > "${FIXTURE_ROOT}/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier"
+  cat > "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier/App.swift" <<'EOF'
 import Foundation
 EOF
   stub_swiftlint_warning
@@ -1057,9 +1059,9 @@ EOF
   #R035 #R070 #R080
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false \
     DAST_CATEGORY_INTEGRITY_STRICT=false \
@@ -1068,9 +1070,9 @@ EOF
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Starting local classification API for Dynamic Application Security Testing (DAST)"* ]]
-  [ -f "${FIXTURE_ROOT}/.security-reports/classification-api.log" ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/category-integrity.json" ]
-  category_integrity_status="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("status",""))' "${FIXTURE_ROOT}/.security-reports/category-integrity.json")"
+  [ -f "${FIXTURE_ROOT}/artifacts/security/reports/classification-api.log" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/reports/category-integrity.json" ]
+  category_integrity_status="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("status",""))' "${FIXTURE_ROOT}/artifacts/security/reports/category-integrity.json")"
   [ "$category_integrity_status" = "error" ]
   [[ "$output" == *"Category integrity report:"* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
@@ -1080,9 +1082,9 @@ EOF
   #R040
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false \
     DAST_CATEGORY_INTEGRITY_STRICT=false \
@@ -1098,9 +1100,9 @@ EOF
   #R045
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false \
     DAST_CATEGORY_INTEGRITY_STRICT=false \
@@ -1116,9 +1118,9 @@ EOF
   #R045 #R070
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   stub_curl_success
   stub_schemathesis_ok
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
@@ -1131,9 +1133,9 @@ EOF
     DAST_OPENAPI_URL="http://127.0.0.1:18791/openapi.json" \
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
-  [ -f "${FIXTURE_ROOT}/.security-reports/zap-classification.log" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security/reports/zap-classification.log" ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"zap -cmd -dir ${FIXTURE_ROOT}/.security-reports/zap-home"* ]]
+  [[ "$calls" == *"zap -cmd -dir ${FIXTURE_ROOT}/artifacts/security/zap-home"* ]]
   [[ "$calls" != *"--exclude-path /v1/categories"* ]]
   [[ "$calls" != *"--exclude-path /v1/categories/{nys_snw_category_id}"* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
@@ -1142,9 +1144,9 @@ EOF
 @test "DAST honors custom ZAP_HOME_DIR override" {
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   stub_curl_success
   stub_schemathesis_ok
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
@@ -1168,9 +1170,9 @@ EOF
   #R085
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   stub_curl_success
   stub_schemathesis_ok
   local zap_path="${TEST_TMPDIR}/ZAP.sh"
@@ -1185,16 +1187,16 @@ EOF
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"zap -cmd -dir ${FIXTURE_ROOT}/.security-reports/zap-home"* ]]
+  [[ "$calls" == *"zap -cmd -dir ${FIXTURE_ROOT}/artifacts/security/zap-home"* ]]
   [[ "$calls" != *" -silent"* ]]
 }
 
 @test "Schemathesis findings do not abort DAST lane" {
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   stub_curl_success
   stub_schemathesis_findings
   run env RUN_SAST=false RUN_DAST=true RUN_ZAP=false \
@@ -1212,11 +1214,11 @@ EOF
   #R050
   setup_shell_test
   copy_security_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   run env RUN_SAST=false RUN_DAST=false \
     bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Security checks completed. Reports:"*".security-reports"* ]]
+  [[ "$output" == *"Security checks completed. Reports:"*"artifacts/security/reports"* ]]
 }

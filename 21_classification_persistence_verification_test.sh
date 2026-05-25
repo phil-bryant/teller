@@ -19,7 +19,7 @@ done
 #R010: Resolve API and DB connection from the active profile (1psa+~/.env via the helper).
 SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-DB_PROFILE_HELPER="${SCRIPT_DIR}/scripts/db_profile_export.sh"
+DB_PROFILE_HELPER="${SCRIPT_DIR}/src/scripts/db_profile_export.sh"
 PG_HOST=""
 PG_PORT=""
 PG_DBNAME=""
@@ -36,7 +36,7 @@ if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
   rm -f "$profile_exports_file"
   exit 1
 fi
-PROFILE_EXPORTS="$(<"$profile_exports_file")"
+PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
 rm -f "$profile_exports_file"
 eval "$PROFILE_EXPORTS"
 

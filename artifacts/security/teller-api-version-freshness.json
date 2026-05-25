@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-05-25T17:56:32.555781+00:00",
+  "status": "ok",
+  "baseline_version": null,
+  "latest_version": "2020-10-12",
+  "source_url": "https://teller.io/docs/api",
+  "dashboard": {
+    "checked": false,
+    "status": "not-configured",
+    "source_url": "https://teller.io/settings/application",
+    "latest_version": null,
+    "current_version": null,
+    "on_latest": null
+  },
+  "version_sources": [
+    "https://teller.io/docs/api",
+    "https://api.teller.io/openapi.json",
+    "https://api.teller.io/swagger.json"
+  ],
+  "newer_available": null,
+  "fail_on_new": false,
+  "gate_failed": false,
+  "warnings": []
+}

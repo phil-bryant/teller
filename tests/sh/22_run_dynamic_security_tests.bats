@@ -44,6 +44,9 @@ PYS
 copy_dast_project_files() {
   create_repo_fixture
   copy_script_to_fixture "22_run_dynamic_security_tests.sh"
+  mkdir -p "${FIXTURE_ROOT}/requirements/security"
+  cp "$(repo_root)/requirements/security/requirements-security.txt" "${FIXTURE_ROOT}/requirements/security/requirements-security.txt"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security"
   write_dast_13_stub "${FIXTURE_ROOT}"
   stub_cmd 1psa "echo write-token"
 }
@@ -80,9 +83,9 @@ teardown() {
   #R001
   setup_shell_test
   copy_dast_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/22_run_dynamic_security_tests.sh"
   [ "$status" -eq 0 ]
@@ -93,9 +96,9 @@ teardown() {
   #R005 #R010 #R015 #R020
   setup_shell_test
   copy_dast_project_files
-  mkdir -p "${FIXTURE_ROOT}/.security-venv/bin"
-  echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
-  chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   stub_curl_success
   run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false \
     DAST_CATEGORY_INTEGRITY_STRICT=false \

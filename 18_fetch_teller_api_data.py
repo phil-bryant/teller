@@ -7,14 +7,20 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List
-import requests
-import structlog
-from dotenv import load_dotenv
-from teller.teller_object import TellerObject
-from teller.teller_account import TellerAccount
-from teller.teller_account_identities import TellerAccountIdentities  # noqa: F401 — registers class with SQLAlchemy mapper
-from teller.teller_identity import TellerIdentity
-from teller.teller_transaction import TellerTransaction
+
+REPO_ROOT = Path(__file__).resolve().parent
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+import requests  # noqa: E402
+import structlog  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+from teller.teller_object import TellerObject  # noqa: E402
+from teller.teller_account import TellerAccount  # noqa: E402
+from teller.teller_account_identities import TellerAccountIdentities  # noqa: F401,E402 — registers class with SQLAlchemy mapper
+from teller.teller_identity import TellerIdentity  # noqa: E402
+from teller.teller_transaction import TellerTransaction  # noqa: E402
 
 log = structlog.get_logger()
 TELLER_DIR = Path.home() / ".teller"

@@ -16,7 +16,7 @@ Tests:
 - R005-T02: Set `DEPENDENCY_CHECK_PYTHON` to a bad path and verify script exits non-zero.
 
 R010  Statement: Produce dependency freshness artifacts and fail when direct requirements are stale.
-Design: Execute `scripts/check_dependency_freshness.py` and always write `dependency-freshness.json` and `dependency-freshness.txt` to resolved report directory; pass `--fail-on-direct-outdated` by default (unless `DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=false`) and pass `--fail-on-major` when `DEPENDENCY_FAIL_ON_MAJOR=true`.
+Design: Execute `src/scripts/check_dependency_freshness.py` and always write `dependency-freshness.json` and `dependency-freshness.txt` to resolved report directory; pass `--fail-on-direct-outdated` by default (unless `DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=false`) and pass `--fail-on-major` when `DEPENDENCY_FAIL_ON_MAJOR=true`.
 Design: Treat transitive outdated packages as informational report output only; default failure gating remains limited to direct `requirements.txt` entries (and optional major-update gate).
 Tests:
 - R010-T01: Run default lane and verify both freshness artifacts are generated.
@@ -25,7 +25,7 @@ Tests:
 - R010-T04: Enable `DEPENDENCY_FAIL_ON_MAJOR=true` and verify major-update failure gating is enabled.
 
 R015  Statement: Optionally evaluate Teller API version freshness.
-Design: Execute `scripts/check_teller_api_version_freshness.py` when `RUN_TELLER_VERSION_FRESHNESS=true`, always writing `teller-api-version-freshness.json` and `teller-api-version-freshness.txt` to the resolved report directory.
+Design: Execute `src/scripts/check_teller_api_version_freshness.py` when `RUN_TELLER_VERSION_FRESHNESS=true`, always writing `teller-api-version-freshness.json` and `teller-api-version-freshness.txt` to the resolved report directory.
 Design: Prefer dashboard-derived version state by reading Teller dashboard credentials from `1psa` (`TELLER_API_VERSION_DASHBOARD_PSA_ITEM`) and parsing the API Version section at `TELLER_API_VERSION_DASHBOARD_URL`; fall back to machine-readable public metadata sources from `TELLER_API_VERSION_SOURCES` when dashboard auth is unavailable.
 Design: When `TELLER_API_BASELINE_VERSION` is set, evaluate whether a newer version appears available and optionally fail when `TELLER_API_VERSION_FAIL_ON_NEW=true`.
 Tests:
@@ -33,7 +33,7 @@ Tests:
 - R015-T02: Run with `RUN_TELLER_VERSION_FRESHNESS=false` and verify version freshness checker is skipped.
 
 R020  Statement: Support optional PostgreSQL version freshness checks.
-Design: Execute `scripts/check_postgres_freshness.py` only when `RUN_POSTGRES_FRESHNESS=true`, always write `postgres-freshness.json` and `postgres-freshness.txt`, and pass configured minimum versions / gating flags through environment-backed options.
+Design: Execute `src/scripts/check_postgres_freshness.py` only when `RUN_POSTGRES_FRESHNESS=true`, always write `postgres-freshness.json` and `postgres-freshness.txt`, and pass configured minimum versions / gating flags through environment-backed options.
 Design: When server-version checks are enabled, emit the resolved connection target mode (`POSTGRES_SERVER_PSQL_ARGS` explicit/default or `POSTGRES_SERVER_DSN`) and observable PostgreSQL password source (`PGPASSWORD` env, `1psa`, or unresolved) before running freshness evaluation.
 Tests:
 - R020-T01: Run default lane and verify PostgreSQL freshness artifacts are generated.
@@ -41,7 +41,7 @@ Tests:
 - R020-T03: Run with explicit `POSTGRES_SERVER_PSQL_ARGS` and verify connection target diagnostics are printed.
 
 R025  Statement: Evaluate PostgreSQL freshness against local CVE policy/snapshot data.
-Design: Default `04_run_dependency_freshness_tests.sh` behavior passes CVE evaluation flags and repository policy/snapshot paths to `scripts/check_postgres_freshness.py`, refreshes snapshot data from PostgreSQL security advisories, and evaluates both client/server versions. Snapshot refresh writes `postgres-cve-snapshot.json` only when advisory payload content changes (not when only `generated_at` changes). Support disabling CVE checks via `RUN_POSTGRES_FRESHNESS` or `POSTGRES_CHECK_CVES=false`.
+Design: Default `04_run_dependency_freshness_tests.sh` behavior passes CVE evaluation flags and repository policy/snapshot paths to `src/scripts/check_postgres_freshness.py`, refreshes snapshot data from PostgreSQL security advisories, and evaluates both client/server versions. Snapshot refresh writes `postgres-cve-snapshot.json` only when advisory payload content changes (not when only `generated_at` changes). Support disabling CVE checks via `RUN_POSTGRES_FRESHNESS` or `POSTGRES_CHECK_CVES=false`.
 Tests:
 - R025-T01: Run default lane and verify CVE policy/snapshot flags are passed to PostgreSQL freshness script.
 - R025-T02: Run with `POSTGRES_CHECK_CVES=false` and verify CVE flags are not passed.

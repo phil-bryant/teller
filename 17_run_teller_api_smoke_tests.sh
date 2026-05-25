@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #R001: Resolve repo root from script path for deterministic relative references.
 cd "$SCRIPT_DIR"
 
-REPORT_DIR="${TELLER_SMOKE_REPORT_DIR:-./.security-reports}"
+REPORT_DIR="${TELLER_SMOKE_REPORT_DIR:-./artifacts/security}"
 TELLER_TIMEOUT_SECONDS="${TELLER_SMOKE_TIMEOUT_SECONDS:-15}"
 TELLER_INSTITUTION_ID="${TELLER_SMOKE_INSTITUTION_ID:-}"
 
@@ -44,7 +44,7 @@ echo "ℹ️ Teller auth mode: use TELLER_ACCESS_TOKEN when set, otherwise disco
 #R010: Run Teller API smoke checks and emit JSON/text report artifacts.
 echo "▶ Running Teller API smoke checks with ${PROJECT_PYTHON}"
 TELLER_SMOKE_ARGS=(
-  ./scripts/check_teller_api_drift.py
+  ./src/scripts/check_teller_api_drift.py
   --run-all-tokens
   --timeout-seconds "${TELLER_TIMEOUT_SECONDS}"
   --output-json "${REPORT_DIR}/teller-api-smoke.json"

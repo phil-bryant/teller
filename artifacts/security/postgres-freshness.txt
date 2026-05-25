@@ -1,0 +1,19 @@
+PostgreSQL freshness report
+- Client status: ok
+- Client version: 17.10
+- Client minimum: not configured
+- Server check enabled: yes
+- Server status: error
+- Server version: unknown
+- Server minimum: not configured
+- CVE checks enabled: yes
+- CVE severity threshold: medium
+- CVE snapshot entries: 25
+- CVE snapshot generated at: 2026-05-25T17:56:35.777834Z
+- CVE snapshot age hours: 0.0
+- CVE evaluation status: passed
+- CVE assurance: matched-against-snapshot
+- CVE vulnerabilities found: 0
+- Warnings:
+  - Could not determine PostgreSQL server version (attempted psql args: -h localhost -U teller -d prod).
+- Stale components: none

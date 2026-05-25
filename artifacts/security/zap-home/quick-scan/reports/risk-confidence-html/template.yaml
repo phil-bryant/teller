@@ -1,0 +1,23 @@
+name: Risk and Confidence HTML
+format: HTML
+mode: HTML
+extension: html
+sections:
+ - contents
+ - aboutThisReport
+ - reportDescription
+ - reportParameters
+ - summaries
+ - riskConfidenceCounts
+ - siteRiskCounts
+ - alertTypeCounts
+ - insights
+ - alerts
+ - requestHeader
+ - requestBody
+ - responseHeader
+ - responseBody
+ - appendix
+ - alertTypes
+themes:
+ - original

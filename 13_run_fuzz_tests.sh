@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
 PYTHON_BIN="${REPO_ROOT}/teller-venv/bin/python3"
-REPORT_DIR="${FUZZ_REPORT_DIR:-./.security-reports}"
+REPORT_DIR="${FUZZ_REPORT_DIR:-./artifacts/fuzz}"
 #R030: Fuzz teller Python test targets with Hypothesis statistics enabled.
 FUZZ_TEST_PATHS="${FUZZ_TEST_PATHS:-tests/py}"
 FUZZ_MAX_EXAMPLES="${FUZZ_MAX_EXAMPLES:-500}"
@@ -96,7 +96,7 @@ echo "  max_examples=${FUZZ_MAX_EXAMPLES} deadline_ms=${FUZZ_DEADLINE_MS} min_to
 FUZZ_OUTPUT="$(mktemp)"
 set +e
 run_with_timeout "$FUZZ_TIMEOUT_SECONDS" \
-  env PYTHONPATH="$REPO_ROOT" \
+  env PYTHONPATH="$REPO_ROOT/src:$REPO_ROOT" \
     HYPOTHESIS_MAX_EXAMPLES="$FUZZ_MAX_EXAMPLES" \
     HYPOTHESIS_DEADLINE="$FUZZ_DEADLINE_MS" \
     "$PYTHON_BIN" -m pytest -p hypothesis "$FUZZ_TEST_PATHS" -q --hypothesis-show-statistics \
