@@ -105,7 +105,7 @@ baseline_json="$latest_json"
 
 echo "▶ Triggering intentional crash to seed pending crash report..."
 #R010: Require intentional crash run to fail non-zero.
-if with_macos_ui_swift_lock sh -c 'cd "$1" && TELLER_MACOS_FORCE_CRASH_ON_LAUNCH=1 swift run TransactionClassifier >/dev/null 2>&1' _ "$MACOS_UI_DIR"; then
+if with_macos_ui_swift_lock sh -c "cd \"\$1\" && TELLER_MACOS_FORCE_CRASH_ON_LAUNCH=1 swift run TransactionClassifier >/dev/null 2>&1" _ "$MACOS_UI_DIR"; then
   echo "❌ expected forced crash run to exit non-zero."
   exit 1
 fi
@@ -113,7 +113,7 @@ fi
 echo "▶ Relaunching app to process pending crash report..."
 touch "$MARKER_FILE"
 sleep 1
-with_macos_ui_swift_lock sh -c 'cd "$1" && swift run TransactionClassifier >"$2" 2>&1' _ "$MACOS_UI_DIR" "$LAUNCH_LOG" &
+with_macos_ui_swift_lock sh -c "cd \"\$1\" && swift run TransactionClassifier >\"\$2\" 2>&1" _ "$MACOS_UI_DIR" "$LAUNCH_LOG" &
 APP_PID=$!
 FOUND_SAVE_LOG="false"
 FOUND_FRESH_ARTIFACTS="false"

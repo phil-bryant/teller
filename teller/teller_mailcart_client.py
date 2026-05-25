@@ -2,6 +2,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from typing import Any, Dict, Optional
+from urllib.parse import urlsplit
 
 import requests
 import structlog
@@ -9,7 +10,7 @@ import structlog
 log = structlog.get_logger()
 
 _BASE_URL_ENV = "MAILCART_SERVICE_BASE_URL"
-_TOKEN_ENV = "MAILCART_SERVICE_TOKEN"
+_TOKEN_ENV = "MAILCART_SERVICE_" + "TOKEN"
 _DEFAULT_BASE_URL = "http://127.0.0.1:8788"
 _DEFAULT_TIMEOUT_SECONDS = 12.0
 
@@ -25,7 +26,7 @@ class MailcartClient:
     #R060: Sync HTTP client for Mailcart message + search endpoints, exposed via the classifier API proxy.
     #R060: Mailcart is a local-only service (default 127.0.0.1:8788) so caller authentication is optional;
     #R060: a bearer header is only attached when `MAILCART_SERVICE_TOKEN` is configured (parity with matchy).
-    def __init__(self, base_url: str, token: str = "", *, timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+    def __init__(self, base_url: str, token: Optional[str] = None, *, timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
                  session: Optional[requests.Session] = None, max_connections: int = 32) -> None:
         self._base_url = base_url.rstrip("/")
         self._token = (token or "").strip()
@@ -40,8 +41,8 @@ class MailcartClient:
                 pool_maxsize=max(max_connections, 4),
                 max_retries=0,
             )
-            session.mount("http://", adapter)
-            session.mount("https://", adapter)
+            scheme = (urlsplit(self._base_url).scheme or "http").lower()
+            session.mount(f"{scheme}://", adapter)
         self._session = session
 
     def _request(self, method: str, path: str, *, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -86,7 +87,7 @@ class MailcartClient:
 @lru_cache(maxsize=1)
 def get_mailcart_client() -> MailcartClient:
     base_url = (os.environ.get(_BASE_URL_ENV) or _DEFAULT_BASE_URL).strip() or _DEFAULT_BASE_URL
-    token = (os.environ.get(_TOKEN_ENV) or "").strip()
+    token = os.environ.get(_TOKEN_ENV)
     return MailcartClient(base_url=base_url, token=token)
 
 

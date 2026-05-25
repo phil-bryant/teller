@@ -50,7 +50,7 @@ Tests:
 - R035-T02: Submit multiple updates and verify response cardinality and per-item write results.
 
 R040  Statement: Require authenticated write token for all mutating classification endpoints.
-Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, require `X-Teller-Write-Token` for category/classification mutations, and return 401 for missing or invalid tokens.
+Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, require `X-Teller-Write-Token` for category/classification mutations, compare supplied token using constant-time equality, and return 401 for missing or invalid tokens while read endpoints remain accessible without the header.
 Tests:
 - R040-T01: Submit write requests without `X-Teller-Write-Token` and verify 401 response.
 - R040-T02: Submit write requests with mismatched token and verify 401 response.
@@ -111,6 +111,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-25: Clarified R040 authz boundary for classification writes (constant-time token compare for mutations; read endpoints remain header-free).
 - 2026-04-22: Initial reverse-engineered requirements for `teller/teller_classification_api.py`.
 - 2026-05-09: Added R040/R045 for 1psa-backed write-token auth and stricter mutation payload validation.
 - 2026-05-10: Updated R030 single-write contract to path-only transaction identity and tightened R045 OpenAPI schema parity for category mutation payloads.

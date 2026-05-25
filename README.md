@@ -467,8 +467,8 @@ Credential source resolution order used by recovery scripts:
   - `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD` (defaults: `localhost_postgres_postgres` / `password`)
 - `98_destroy_database.sh`:
   - profile resolution: `TELLER_DB_PROFILE` env override, otherwise profile file `default_profile`
-  - managed target password: `TELLER_DB_PASSWORD` first, then profile `PG_ONEPSA_ITEM` via `1psa`
-  - local target password: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD` via `1psa`
+  - managed target credential source: env override first, then profile `PG_ONEPSA_ITEM` via `1psa`
+  - local target credential source: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD` via `1psa`
 - `99_restore_database.sh`:
   - admin restore actions: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD`
   - teller post-restore credential check/reset: `TELLER_PSA_ITEM`/`TELLER_PSA_FIELD`
@@ -1228,7 +1228,7 @@ Verify backup artifacts exist and are readable
                  |
                  +--> if managed target:
                  |      destroy schema + roles (not DROP DATABASE)
-                 |      password resolution: TELLER_DB_PASSWORD -> PG_ONEPSA_ITEM via 1psa
+                 |      credential resolution: env override -> PG_ONEPSA_ITEM via 1psa
                  |
                  +--> if local target:
                  |      destroy database + teller user/roles

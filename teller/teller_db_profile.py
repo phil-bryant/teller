@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
+import ctypes
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -48,26 +48,34 @@ class ProfileError(RuntimeError):
 
 def _read_onepsa_fields(item: str, fields: tuple[str, ...]) -> dict[str, str]:
     """Read multiple fields from a 1psa item in a single CLI call. Returns field→value map."""
-    try:
-        result = subprocess.run(  # noqa: S603, S607
-            ["1psa", "-m", item, *fields],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return {}
     parsed: dict[str, str] = {}
-    for line in result.stdout.splitlines():
-        line = line.strip()
-        if not line or "=" not in line:
+    lib_path = os.environ.get("ONEPSA_LIB_PATH", "/usr/local/lib/libonepsa.dylib")
+    try:
+        lib = ctypes.CDLL(lib_path)
+    except OSError:
+        return {}
+    lib.OnepsaStringFree.argtypes = [ctypes.c_void_p]
+    lib.OnepsaStringFree.restype = None
+    lib.OnepsaGetField.argtypes = [
+        ctypes.c_char_p,
+        ctypes.c_char_p,
+        ctypes.POINTER(ctypes.c_char_p),
+    ]
+    lib.OnepsaGetField.restype = ctypes.c_void_p
+
+    for field in fields:
+        err = ctypes.c_char_p()
+        out_ptr = lib.OnepsaGetField(item.encode("utf-8"), field.encode("utf-8"), ctypes.byref(err))
+        if err.value is not None:
+            lib.OnepsaStringFree(err)
             continue
-        field_name, _, value = line.partition("=")
-        field_name = field_name.strip()
-        value = value.strip()
-        if field_name:
-            parsed[field_name] = value
+        if not out_ptr:
+            continue
+        out = ctypes.cast(out_ptr, ctypes.c_char_p).value
+        lib.OnepsaStringFree(out_ptr)
+        value = (out or b"").decode("utf-8").strip()
+        if value:
+            parsed[field] = value
     return parsed
 
 

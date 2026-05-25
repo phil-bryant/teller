@@ -1,4 +1,5 @@
 from __future__ import annotations
+import hmac
 import os
 import re
 import shutil
@@ -291,7 +292,8 @@ def _require_write_access(request: Request) -> None:
             status_code=401,
             detail="Missing write token header: X-Teller-Write-Token",
         )
-    if candidate != _configured_write_token():
+    #R040: Compare supplied and configured tokens in constant time.
+    if not hmac.compare_digest(candidate, _configured_write_token()):
         raise HTTPException(status_code=401, detail="Invalid write token")
 
 

@@ -38,7 +38,7 @@ def _read_password_from_onepsa(item: str) -> str:
 #R025: Resolve the connection password. ``TELLER_DB_PASSWORD`` overrides everything;
 #R025: otherwise fall back to libonepsa, then ~/.env, using the profile's item name.
 def _read_password(profile: ResolvedProfile) -> str:
-    password = os.environ.get("TELLER_DB_PASSWORD", "")
+    password = os.environ.get("TELLER_DB_PASSWORD")
     if password:
         return password
     item = profile.onepsa_item
@@ -49,12 +49,12 @@ def _read_password(profile: ResolvedProfile) -> str:
     try:
         password = _read_password_from_onepsa(item)
     except Exception:
-        password = ""
+        password = None
     if password:
         return password
     from teller.teller_db_profile import _read_env_file_fields
     env_fields = _read_env_file_fields(item)
-    password = env_fields.get("password", "")
+    password = env_fields.get("password")
     if not password:
         raise RuntimeError(f"Could not read DB password from 1psa or ~/.env for item: {item}")
     return password

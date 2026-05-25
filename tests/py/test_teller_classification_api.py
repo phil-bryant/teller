@@ -505,6 +505,52 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 401)
 
     @patch("teller.teller_classification_api.get_session")
+    def test_batch_classification_endpoint_requires_write_token(self, get_session_mock):
+        #R040
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions/classifications", "POST")
+        get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=SimpleNamespace(headers={}),
+                body=ClassificationBatchRequest(updates=[ClassificationMutation(transaction_id="txn_1", nys_snw_category_id=2)]),
+            )
+        self.assertEqual(ctx.exception.status_code, 401)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_batch_classification_endpoint_rejects_invalid_write_token(self, get_session_mock):
+        #R040
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions/classifications", "POST")
+        get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=SimpleNamespace(headers={"x-teller-write-token": "wrong-token"}),
+                body=ClassificationBatchRequest(updates=[ClassificationMutation(transaction_id="txn_1", nys_snw_category_id=2)]),
+            )
+        self.assertEqual(ctx.exception.status_code, 401)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_list_endpoint_does_not_require_write_token(self, get_session_mock):
+        #R040
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        session = _FakeSession(rows=[_Result(scalar=0), _Result(rows=[])])
+        get_session_mock.return_value = _SessionContext(session)
+        response = endpoint(
+            request=SimpleNamespace(headers={}, query_params={}),
+            search="",
+            status="",
+            only_unclassified=False,
+            match_state="",
+            only_unmoved_match=False,
+            limit=100,
+            offset=0,
+        )
+        self.assertEqual(response.total, 0)
+        self.assertEqual(response.items, [])
+
+    @patch("teller.teller_classification_api.get_session")
     def test_update_category_endpoint_404s_for_unknown_id(self, get_session_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories/{nys_snw_category_id:int}", "PUT")

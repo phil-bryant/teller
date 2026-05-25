@@ -102,15 +102,6 @@ terminate_child_checks() {
   done
 }
 
-finish_run_cleanup() {
-  if [[ "$cleanup_finished" == "true" ]]; then
-    return 0
-  fi
-  cleanup_finished=true
-  finish_progress_line
-  release_single_run_lock
-}
-
 stop_on_signal() {
   local exit_code="$1"
   if [[ "$cleanup_finished" == "true" ]]; then
@@ -130,17 +121,9 @@ check_for_signal() {
   fi
 }
 
-record_sigint() {
-  signal_exit_code=130
-}
-
-record_sigterm() {
-  signal_exit_code=143
-}
-
-trap finish_run_cleanup EXIT
-trap record_sigint INT
-trap record_sigterm TERM
+trap 'if [[ "$cleanup_finished" != "true" ]]; then cleanup_finished=true; finish_progress_line; release_single_run_lock; fi' EXIT
+trap 'signal_exit_code=130' INT
+trap 'signal_exit_code=143' TERM
 acquire_single_run_lock
 
 render_progress() {
