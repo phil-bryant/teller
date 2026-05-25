@@ -14,6 +14,10 @@ RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 #R090: Default financial-app policy blocks medium-or-higher security findings.
 FAIL_ON_MEDIUM_OR_HIGHER="${SECURITY_FAIL_ON_MEDIUM_OR_HIGHER:-${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./.security-venv}"
+SECURITY_CONFIG_DIR="${SECURITY_CONFIG_DIR:-./config/security}"
+SEMGREP_CONFIG_PATH="${SEMGREP_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/semgrep.yml}"
+BANDIT_CONFIG_PATH="${BANDIT_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/bandit.yml}"
+GITLEAKS_IGNORE_PATH="${GITLEAKS_IGNORE_PATH:-${SECURITY_CONFIG_DIR}/gitleaksignore}"
 WRITE_TOKEN_PSA_ITEM="TELLER_CLASSIFIER_WRITE_TOKEN"
 
 mkdir -p "$REPORT_DIR"
@@ -38,6 +42,13 @@ require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "❌ Missing required command: $1"
     echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r requirements-security.txt"
+    exit 1
+  fi
+}
+
+require_file() {
+  if [[ ! -f "$1" ]]; then
+    echo "❌ Missing required file: $1"
     exit 1
   fi
 }
@@ -378,7 +389,7 @@ run_gitleaks_sast() {
   gitleaks detect \
     --source "$gitleaks_source_dir" \
     --no-git \
-    --gitleaks-ignore-path ".gitleaksignore" \
+    --gitleaks-ignore-path "$GITLEAKS_IGNORE_PATH" \
     --report-format json \
     --report-path "$gitleaks_report"
   GITLEAKS_EXIT=$?
@@ -1060,7 +1071,7 @@ PY
   else
     echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
     TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
-      "$dast_app_python" "./18_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
+      "$dast_app_python" "./20_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
     classifier_api_pid="$!"
   fi
   wait_for_http "${base_url}/health" 45
@@ -1225,6 +1236,9 @@ if [[ "$RUN_SAST" == "true" ]]; then
   require_command ruff
   require_command shellcheck
   require_command gitleaks
+  require_file "$SEMGREP_CONFIG_PATH"
+  require_file "$BANDIT_CONFIG_PATH"
+  require_file "$GITLEAKS_IGNORE_PATH"
 
   print_tool_header \
     "Semgrep" \
@@ -1239,17 +1253,17 @@ if [[ "$RUN_SAST" == "true" ]]; then
   HOME="$SEMGREP_HOME_DIR" semgrep scan \
     --config "p/security-audit" \
     --config "p/python" \
-    --config ".semgrep.yml" \
+    --config "$SEMGREP_CONFIG_PATH" \
     --json \
     --output "${REPORT_DIR}/semgrep.json" \
     . 2>"$semgrep_stderr_log"
   SEMGREP_EXIT=$?
   set -e
   if [[ "$SEMGREP_EXIT" -gt 1 ]]; then
-    echo "⚠️  Semgrep remote config fetch failed; retrying with local .semgrep.yml only."
+    echo "⚠️  Semgrep remote config fetch failed; retrying with local config only (${SEMGREP_CONFIG_PATH})."
     set +e
     HOME="$SEMGREP_HOME_DIR" semgrep scan \
-      --config ".semgrep.yml" \
+      --config "$SEMGREP_CONFIG_PATH" \
       --json \
       --output "${REPORT_DIR}/semgrep.json" \
       . 2>>"$semgrep_stderr_log"
@@ -1277,7 +1291,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   echo "▶ Running Bandit"
   # Distinguish scanner findings from scanner execution failures.
   set +e
-  bandit -r ./teller -c ./.bandit -f json -o "${REPORT_DIR}/bandit.json"
+  bandit -r ./teller -c "$BANDIT_CONFIG_PATH" -f json -o "${REPORT_DIR}/bandit.json"
   BANDIT_EXIT=$?
   set -e
   if [[ "$BANDIT_EXIT" -gt 1 ]]; then
@@ -1314,7 +1328,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   echo "▶ Running detect-secrets"
   set +e
   detect-secrets scan --all-files --force-use-all-plugins \
-    --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^\.ruff_cache/|^__pycache__/|^\.pytest_cache/|^backups/|^archive/backup_extracts/|^bank_statements/|^teller-connect-ui/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/|^requirements/)' \
+    --exclude-files '(^\.git/|^teller-venv/|^\.security-venv/|^\.security-reports/|^\.ruff_cache/|^__pycache__/|^\.pytest_cache/|^backups/|^archive/backup_extracts/|^archive/legacy/teller-connect-ui/|^bank_statements/|^macos-ui/\.derivedData-ui-tests/|^macos-ui/\.build/|^requirements/)' \
     > "${REPORT_DIR}/detect-secrets.json"
   DETECT_SECRETS_EXIT=$?
   set -e

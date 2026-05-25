@@ -9,7 +9,7 @@ todos:
     content: Replace TransactionClassifierUITests.swift with class-level single launch, 12 ordered requirement-driven scenarios, accessibility-ID assertions
     status: completed
   - id: update-runner
-    content: "Update 13_run_macos_ui_regression_tests.sh: XCUITEST_SCENARIOS, testMacOSUISmokeSuite target, XCUITEST_STEPS env passthrough"
+    content: "Update 15_run_macos_ui_regression_tests.sh: XCUITEST_SCENARIOS, testMacOSUISmokeSuite target, XCUITEST_STEPS env passthrough"
     status: completed
   - id: update-reqs-bats
     content: Revise requirements/10 R040/R045 + bats tests for new scenario model
@@ -24,7 +24,7 @@ isProject: false
 
 ## Problem
 
-`[13_run_macos_ui_regression_tests.sh](13_run_macos_ui_regression_tests.sh)` orchestrates two lanes correctly (snapshots pass), but the XCUITest lane is broken and obsolete:
+`[15_run_macos_ui_regression_tests.sh](15_run_macos_ui_regression_tests.sh)` orchestrates two lanes correctly (snapshots pass), but the XCUITest lane is broken and obsolete:
 
 1. **Build failure**: Xcode test host is missing `[AppActivation.swift](macos-ui/Sources/TransactionClassifier/AppActivation.swift)` (and likely `[EmailAmountScrollSupport.swift](macos-ui/Sources/TransactionClassifier/EmailAmountScrollSupport.swift)`) from `[project.pbxproj](macos-ui/TransactionClassifierUIAutomation.xcodeproj/project.pbxproj)` — SPM builds fine, Xcode does not.
 2. **UI drift**: Tests assert old copy/structure (`Assigned: Dining`, `Teller Category: food`, list/detail split) but the app is now a **TabView** with a **3-pane Match & Classify** layout (`[ContentView.swift](macos-ui/Sources/TransactionClassifier/ContentView.swift)`).
@@ -38,7 +38,7 @@ Snapshot lane stays as-is (already green and still valuable for layout regressio
 
 ```mermaid
 sequenceDiagram
-    participant Script as 13_run_macos_ui_regression_tests.sh
+    participant Script as 15_run_macos_ui_regression_tests.sh
     participant XCTest as TransactionClassifierUITests
     participant App as UITestHost.app
 
@@ -131,20 +131,20 @@ Update assertions to current UI:
 - `status-text` for save confirmations (keep `Saved N classification(s)` where still emitted)
 - Connect navigation via tab bar + `connect-token-field` (not `secureTextFields.firstMatch`)
 
-### 3. Update runner script — `[13_run_macos_ui_regression_tests.sh](13_run_macos_ui_regression_tests.sh)`
+### 3. Update runner script — `[15_run_macos_ui_regression_tests.sh](15_run_macos_ui_regression_tests.sh)`
 
 - Replace `XCUITEST_METHODS` array with `XCUITEST_SCENARIOS` (12 step names above)
 - Default invocation: `-only-testing:TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite`
 - When positional selector provided: validate against scenario list, export `XCUITEST_STEPS=…` to xcodebuild env instead of multiple `-only-testing` args
 - Keep all existing env gates (`RUN_SNAPSHOT_TESTS`, `RUN_XCUITESTS`, `XCUITEST_PROJECT`, etc.)
 
-### 4. Update requirements — `[requirements/13_run_macos_ui_regression_tests-requirements.md](requirements/13_run_macos_ui_regression_tests-requirements.md)`
+### 4. Update requirements — `[requirements/15_run_macos_ui_regression_tests-requirements.md](requirements/15_run_macos_ui_regression_tests-requirements.md)`
 
 - Revise **R040/R045** to describe scenario-step selection inside the single smoke suite (not per-XCTest-method `-only-testing` entries)
 - Add changelog entry noting UI rework + single-session model
 - Cross-reference macos-ui requirement IDs that drive scenario content
 
-### 5. Update bats tests — `[tests/sh/13_run_macos_ui_regression_tests.bats](tests/sh/13_run_macos_ui_regression_tests.bats)`
+### 5. Update bats tests — `[tests/sh/15_run_macos_ui_regression_tests.bats](tests/sh/15_run_macos_ui_regression_tests.bats)`
 
 - R040 test: verify `XCUITEST_STEPS` exported and single `-only-testing:…/testMacOSUISmokeSuite` (not 4 separate method entries)
 - R045 test: update valid range to 12
@@ -160,9 +160,9 @@ Update assertions to current UI:
 ## Verification
 
 1. `xcodebuild test -project macos-ui/TransactionClassifierUIAutomation.xcodeproj -scheme TransactionClassifierUITestHost-CI -destination 'platform=macOS' -only-testing:TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite` — passes
-2. `./13_run_macos_ui_regression_tests.sh` — snapshot + XCUITest green
-3. `./13_run_macos_ui_regression_tests.sh 3,6` — runs subset via `XCUITEST_STEPS` without relaunching between steps
-4. `bats tests/sh/13_run_macos_ui_regression_tests.bats` — all requirement-tagged tests pass
+2. `./15_run_macos_ui_regression_tests.sh` — snapshot + XCUITest green
+3. `./15_run_macos_ui_regression_tests.sh 3,6` — runs subset via `XCUITEST_STEPS` without relaunching between steps
+4. `bats tests/sh/15_run_macos_ui_regression_tests.bats` — all requirement-tagged tests pass
 
 ---
 

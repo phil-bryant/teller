@@ -18,18 +18,20 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `08_deploy_database_verification_test.sh` (includes updated_at trigger coverage verification)
 - `09_run_shell_unit_tests.sh`
 - `10_run_python_unit_tests.sh`
-- `11_run_sql_unit_tests.sh`
-- `12_run_swift_unit_tests.sh`
-- `13_run_macos_ui_regression_tests.sh` (recommended pre-merge gate)
-- `14_verify_macos_crash_test.sh`
-- `15_run_teller_api_smoke_tests.sh`
-- `16_fetch_teller_api_data.py`
-- `17_backfill_bank_statements.py`
-- `18_run_classification_api.py`
-- `19_classification_persistence_verification_test.sh`
-- `20_run_dynamic_security_tests.sh`
-- `21_run_classification_macos-ui.sh`
-- `22_run_all_tests_parallel.sh`
+- `11_run_mutation_tests.sh`
+- `12_run_sql_unit_tests.sh`
+- `13_run_fuzz_tests.sh`
+- `14_run_swift_unit_tests.sh`
+- `15_run_macos_ui_regression_tests.sh` (recommended pre-merge gate)
+- `16_verify_macos_crash_test.sh`
+- `17_run_teller_api_smoke_tests.sh`
+- `18_fetch_teller_api_data.py`
+- `19_backfill_bank_statements.py`
+- `20_run_classification_api.py`
+- `21_classification_persistence_verification_test.sh`
+- `22_run_dynamic_security_tests.sh`
+- `23_run_classification_macos-ui.sh`
+- `24_run_all_tests_parallel.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -55,18 +57,20 @@ cp db-profiles-EXAMPLE.json db-profiles.json
 ./08_deploy_database_verification_test.sh
 ./09_run_shell_unit_tests.sh
 ./10_run_python_unit_tests.sh
-./11_run_sql_unit_tests.sh
-./12_run_swift_unit_tests.sh
-./13_run_macos_ui_regression_tests.sh
-./14_verify_macos_crash_test.sh
-./15_run_teller_api_smoke_tests.sh
-./16_fetch_teller_api_data.py
-./17_backfill_bank_statements.py
-./18_run_classification_api.py
-./19_classification_persistence_verification_test.sh
-./20_run_dynamic_security_tests.sh
-./21_run_classification_macos-ui.sh
-./22_run_all_tests_parallel.sh
+./11_run_mutation_tests.sh
+./12_run_sql_unit_tests.sh
+./13_run_fuzz_tests.sh
+./14_run_swift_unit_tests.sh
+./15_run_macos_ui_regression_tests.sh
+./16_verify_macos_crash_test.sh
+./17_run_teller_api_smoke_tests.sh
+./18_fetch_teller_api_data.py
+./19_backfill_bank_statements.py
+./20_run_classification_api.py
+./21_classification_persistence_verification_test.sh
+./22_run_dynamic_security_tests.sh
+./23_run_classification_macos-ui.sh
+./24_run_all_tests_parallel.sh
 ```
 
 Before `./07_deploy_database.sh`, ensure PostgreSQL is installed and running for your selected profile target (for local runs, start your local server/service first).
@@ -78,6 +82,7 @@ Before `./07_deploy_database.sh`, ensure PostgreSQL is installed and running for
 - `sql/postgres/` - canonical schema objects, triggers, and views for the `teller` schema.
 - `tests/` - `py/` (`unittest`), `sh/` (`bats`), `sql/` (`pgTAP`) plus `macos-ui` snapshot/XCUITest lanes.
 - `requirements/` - requirements traceability docs mapped to source `#R...` tags.
+- `archive/legacy/` - archived legacy/demo assets (including the retired Teller Connect demo HTML and `teller-connect-ui` sample project).
 
 ## Tech Stack Overview
 
@@ -92,9 +97,9 @@ Python backend layer
   - Frameworks/libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,
     psycopg2-binary, requests, structlog, python-dotenv
   - Main flows:
-    * Ingest: 16_fetch_teller_api_data.py
-    * Backfill: 17_backfill_bank_statements.py
-    * API: 18_run_classification_api.py -> teller/teller_classification_api.py
+    * Ingest: 18_fetch_teller_api_data.py
+    * Backfill: 19_backfill_bank_statements.py
+    * API: 20_run_classification_api.py -> teller/teller_classification_api.py
 
 Data/persistence layer
   - PostgreSQL (local or managed profile via db profile config)
@@ -129,7 +134,8 @@ Run these checks from the project root after activating the project virtual envi
 source ./teller-venv/bin/activate
 ```
 
-Security scanning runs via `06_run_static_security_tests.sh` (SAST) and `20_run_dynamic_security_tests.sh` (DAST).
+Security scanning runs via `06_run_static_security_tests.sh` (SAST) and `22_run_dynamic_security_tests.sh` (DAST).
+Security policy defaults live under `config/security/` (`semgrep.yml`, `bandit.yml`, `gitleaksignore`) and can be overridden with `SEMGREP_CONFIG_PATH`, `BANDIT_CONFIG_PATH`, and `GITLEAKS_IGNORE_PATH`.
 Antivirus scanning runs via `05_run_av_test.sh` (ClamAV lane).
 Dependency freshness automation runs via `04_run_dependency_freshness_tests.sh`.
 
@@ -144,7 +150,7 @@ Verifies every requirement ID in `requirements/**/*-requirements.md` is mapped t
 Optional single-pair mode:
 
 ```bash
-./00_run_requirements_traceability_tests.sh requirements/19_classification_persistence_verification_test-requirements.md 19_classification_persistence_verification_test.sh
+./00_run_requirements_traceability_tests.sh requirements/21_classification_persistence_verification_test-requirements.md 21_classification_persistence_verification_test.sh
 ```
 
 ### 2) Unit Tests
@@ -154,8 +160,8 @@ Runs split unit lanes so each suite can run independently (and in parallel under
 ```bash
 ./09_run_shell_unit_tests.sh
 ./10_run_python_unit_tests.sh
-./11_run_sql_unit_tests.sh
-./12_run_swift_unit_tests.sh
+./12_run_sql_unit_tests.sh
+./14_run_swift_unit_tests.sh
 ```
 
 Equivalent direct Python unittest invocation:
@@ -173,7 +179,7 @@ Runs deterministic snapshot tests and macOS XCUITest smoke flows for `macos-ui`.
 This lane can run before full Connect enrollment and before script `18`.
 
 ```bash
-./13_run_macos_ui_regression_tests.sh
+./15_run_macos_ui_regression_tests.sh
 ```
 
 Common flags:
@@ -191,28 +197,28 @@ The verifier auto-starts the API by default if `/health` is unavailable (`CLASSI
 1. Start the API in one terminal (optional):
 
 ```bash
-./18_run_classification_api.py
+./20_run_classification_api.py
 ```
 
 1. Run the verifier:
 
 ```bash
-./19_classification_persistence_verification_test.sh
+./21_classification_persistence_verification_test.sh
 ```
 
 Strict/CI-style mode requiring explicit IDs:
 
 ```bash
-TXN_ID=txn_xxx CATEGORY_ID=123 ./19_classification_persistence_verification_test.sh --require-env-ids
+TXN_ID=txn_xxx CATEGORY_ID=123 ./21_classification_persistence_verification_test.sh --require-env-ids
 ```
 
-Mutation endpoints require a write token from the `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` (checked by `18_run_classification_api.py`).
+Mutation endpoints require a write token from the `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` (checked by `20_run_classification_api.py`).
 
 ### 4) Built-In Smoke Verifications in Setup Scripts
 
 These checks run as part of existing app/setup workflows:
 
-- `./21_run_classification_macos-ui.sh`
+- `./23_run_classification_macos-ui.sh`
   - Builds and launches the native macOS app; Connect tab owns enrollment add/reconnect/delete and token persistence.
   - Connect setup smoke checks are handled in-app by `TellerSetupService` (`GET /institutions`, and optionally `GET /accounts` when token is present).
 
@@ -237,7 +243,7 @@ Run the SAST lane:
 Run the DAST lane:
 
 ```bash
-./20_run_dynamic_security_tests.sh
+./22_run_dynamic_security_tests.sh
 ```
 
 Useful flags:
@@ -276,7 +282,7 @@ ClamAV AV-lane notes:
 - During long scans, it emits periodic heartbeat lines so the run is not silent.
 - On first run, if malware signature databases are missing, the script automatically attempts a one-time `freshclam --stdout` update and retries the scan.
 
-For policy and behavior details, see `requirements/06_run_static_security_tests-requirements.md`, `requirements/20_run_dynamic_security_tests-requirements.md`, and `requirements/05_run_av_test-requirements.md`.
+For policy and behavior details, see `requirements/06_run_static_security_tests-requirements.md`, `requirements/22_run_dynamic_security_tests-requirements.md`, and `requirements/05_run_av_test-requirements.md`.
 
 ### 6) Dependency Freshness + Teller API Smoke
 
@@ -286,7 +292,7 @@ Run locally:
 
 ```bash
 ./04_run_dependency_freshness_tests.sh
-./15_run_teller_api_smoke_tests.sh
+./17_run_teller_api_smoke_tests.sh
 ```
 
 Artifacts are written to `./.security-reports/`:
@@ -362,7 +368,7 @@ Active secret and credential sources are:
   - `localhost_postgres_postgres` / `localhost_postgres_teller` by default for DB scripts
   - `TELLER_CLASSIFIER_WRITE_TOKEN` for classification API writes
 - Environment variables passed to scripts (for example `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`, `TELLER_DB_PROFILE`, `TELLER_DB_PROFILE_FILE`)
-- `~/.env` for local runtime settings loaded by `16_fetch_teller_api_data.py`
+- `~/.env` for local runtime settings loaded by `18_fetch_teller_api_data.py`
 
 ## What Each Core Script Does
 
@@ -387,30 +393,30 @@ Active secret and credential sources are:
   - Applies SQL schema objects in dependency order from `sql/postgres/`.
 - `08_deploy_database_verification_test.sh`
   - Verifies required database objects, trigger/FK invariants, and `updated_at` trigger coverage after deploy.
-- `13_run_macos_ui_regression_tests.sh`
+- `15_run_macos_ui_regression_tests.sh`
   - Runs `macos-ui` snapshot regression tests and the macOS XCUITest smoke suite.
   - Supports selective gates with `RUN_SNAPSHOT_TESTS`, `SNAPSHOT_RECORD`, and `RUN_XCUITESTS`.
-- `14_verify_macos_crash_test.sh`
+- `16_verify_macos_crash_test.sh`
   - Validates crash-reporter behavior and expected failure metadata for `macos-ui`.
-- `15_run_teller_api_smoke_tests.sh`
+- `17_run_teller_api_smoke_tests.sh`
   - Runs Teller API smoke checks (`/institutions`, and token-backed `/accounts` / `/identity` when auth resolves).
   - Writes smoke artifacts to `.security-reports/`.
-- `16_fetch_teller_api_data.py`
+- `18_fetch_teller_api_data.py`
   - Runs Teller API client operations.
-- `17_backfill_bank_statements.py`
+- `19_backfill_bank_statements.py`
   - Backfills statements data.
-- `18_run_classification_api.py`
+- `20_run_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
   - Requires `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` before serving.
-- `19_classification_persistence_verification_test.sh`
+- `21_classification_persistence_verification_test.sh`
   - End-to-end check: writes one classification via API then confirms DB persistence.
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
-- `20_run_dynamic_security_tests.sh`
+- `22_run_dynamic_security_tests.sh`
   - Runs DAST checks (Schemathesis + OWASP ZAP quick scan and related hardening checks) against running/local API targets.
-- `21_run_classification_macos-ui.sh`
+- `23_run_classification_macos-ui.sh`
   - Builds and launches `macos-ui/.build/debug/TransactionClassifier` from the repo root.
   - Connect tab hosts native Teller Connect enrollment/reconnect/add/delete (WebView-backed, no standalone localhost server).
-- `22_run_all_tests_parallel.sh`
+- `24_run_all_tests_parallel.sh`
   - Runs local parallel quality/security gate lanes and aggregates reports under `.parallel-checks-reports/`.
   - Includes traceability, dependency freshness, Teller smoke checks, AV, SAST, DB verify, unit tests, UI regression, crash reporter, and classification persistence checks.
 - `97_backup_database.sh`
@@ -458,7 +464,7 @@ optional destructive teardown?
 post-restore verification
       |
       +--> ./08_deploy_database_verification_test.sh
-      +--> ./19_classification_persistence_verification_test.sh
+      +--> ./21_classification_persistence_verification_test.sh
 ```
 
 Credential source resolution order used by recovery scripts:
@@ -475,7 +481,7 @@ Credential source resolution order used by recovery scripts:
 
 ## Ingest + Normalization + Persistence
 
-### Sequence (`16_fetch_teller_api_data.py`)
+### Sequence (`18_fetch_teller_api_data.py`)
 
 Why this flow matters: it makes reruns safe and clarifies where idempotency is enforced before data lands in Postgres.
 
@@ -483,7 +489,7 @@ Why this flow matters: it makes reruns safe and clarifies where idempotency is e
 [scheduler/manual]
       |
       v
-16_fetch_teller_api_data.py
+18_fetch_teller_api_data.py
       |
       +--> fetch institutions/accounts/transactions (+ balances/identity per account)
       |
@@ -531,7 +537,7 @@ Local app-based enrollment and token refresh:
 After completing Teller Connect in the native app, the returned token is saved under `~/.teller`:
 
 ```bash
-./21_run_classification_macos-ui.sh
+./23_run_classification_macos-ui.sh
 ```
 
 Connect behavior:
@@ -539,12 +545,12 @@ Connect behavior:
 - Open the **Connect** tab to add, reconnect, or delete local enrollment contexts.
 - Successful Connect writes `auth_token*.json` and `enrollment_id*.txt` with restrictive permissions.
 - Local setup checks for Teller connectivity are available via in-app setup/smoke actions backed by `TellerSetupService`.
-- `16_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
+- `18_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
 
 Quality/security aggregate checks are available through:
 
 ```bash
-./22_run_all_tests_parallel.sh
+./24_run_all_tests_parallel.sh
 ```
 
 ## 1psa Items Used by Database Scripts
@@ -666,16 +672,16 @@ macOS UI action
   -> _require_write_access enforces X-Teller-Write-Token on mutation routes
   -> Pydantic validates payload
   -> SQLAlchemy persists to teller.transaction_nys_snw_category
-  -> 19_classification_persistence_verification_test.sh confirms API->DB write/read
+  -> 21_classification_persistence_verification_test.sh confirms API->DB write/read
 ```
 
 #### Local Runtime Topology (processes, ports, configs)
 
 ```text
-TransactionClassifier (SwiftUI app, launched by 21_run_classification_macos-ui.sh)
+TransactionClassifier (SwiftUI app, launched by 23_run_classification_macos-ui.sh)
   -> talks to FastAPI at TELLER_CLASSIFIER_API_URL (default http://127.0.0.1:8787)
 
-18_run_classification_api.py (FastAPI)
+20_run_classification_api.py (FastAPI)
   -> binds TELLER_CLASSIFIER_API_HOST/PORT (default 127.0.0.1:8787)
   -> requires 1psa-backed TELLER_CLASSIFIER_WRITE_TOKEN for mutation startup gate
   -> persists via SQLAlchemy to profile-resolved PostgreSQL target
@@ -741,9 +747,9 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │ Frameworks/Libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,          │
  │                  psycopg2-binary, requests, structlog, python-dotenv         │
  │ Main flows:                                                                  │
- │   - Ingest: 16_fetch_teller_api_data.py                                      │
- │   - Backfill: 17_backfill_bank_statements.py                                 │
- │   - API: 18_run_classification_api.py -> teller/teller_classification_api.py │
+ │   - Ingest: 18_fetch_teller_api_data.py                                      │
+ │   - Backfill: 19_backfill_bank_statements.py                                 │
+ │   - API: 20_run_classification_api.py -> teller/teller_classification_api.py │
  └───────────────────────────────┬──────────────────────────────────────────────┘
                                  |
                                  v
@@ -815,7 +821,7 @@ INGEST + NORMALIZATION + PERSISTENCE (SCRIPT 16)
 [scheduler/manual]
       |
       v
-16_fetch_teller_api_data.py
+18_fetch_teller_api_data.py
       |
       +--> fetch institutions/accounts/transactions
       +--> normalize/transform (pagination + duplicate transaction canonicalization)
@@ -867,7 +873,7 @@ Trust boundaries:
 │                                  v                                                 │
 │  3) API usage path                                                 4) disconnected │
 │  ┌──────────────────────────────────────────────────────────────┐     enrollment   │
-│  │ 16_fetch_teller_api_data.py                                  │                  │
+│  │ 18_fetch_teller_api_data.py                                  │                  │
 │  │ - builds contexts from default/suffix/metadata files         │ ----repair---┐   │
 │  │ - sends cert/key (mTLS) + token (basic user token:blank)     │              │   │
 │  │ - retries once after local repair workflow                   │              │   │
@@ -881,14 +887,14 @@ Trust boundaries:
                          └───────────────┬───────────────┘                       │
                                          │ enrollment.disconnected               │
                                          └───────────────────────────────────────┘
-                                                        launches 21_run_classification_macos-ui.sh
+                                                        launches 23_run_classification_macos-ui.sh
 ```
 
 Token and credential lifecycle notes:
 - Initial connect/add: token returned by Connect is written to `auth_token*.json`; enrollment id is written to matching `enrollment_id*.txt`.
 - Reconnect/rotate token: reconnect action updates the selected existing context files in place.
 - Multi-context support: add action allocates unique suffixed file pairs so multiple enrollments can coexist.
-- Runtime consumption: `16_fetch_teller_api_data.py` reads local contexts, then calls Teller with local cert/key plus per-context token.
+- Runtime consumption: `18_fetch_teller_api_data.py` reads local contexts, then calls Teller with local cert/key plus per-context token.
 - Disconnected enrollment recovery: when Teller returns `enrollment.disconnected`, script triggers the macOS Connect repair flow and retries once.
 - Cert/key rotation boundary: certificate/private key issuance and revocation happen in Teller dashboard; local app/scripts only read local `certificate.pem` / `private_key.pem`.
 
@@ -900,7 +906,7 @@ Why: Shows exact order and idempotency points for data movement into Postgres.
 [scheduler/manual]
       |
       v
-16_fetch_teller_api_data.py
+18_fetch_teller_api_data.py
       |
       +--> fetch institutions/accounts/transactions
       |
@@ -935,7 +941,7 @@ Trust/authz boundaries:
 │         │  POST /v1/transactions/classifications (write path)           │    │
 │         v                                                               │    │
 │  ┌────────────────────────────────────────────────────────────────────┐ │    │
-│  │ FastAPI app (`18_run_classification_api.py` -> `create_app`)       │ │    │
+│  │ FastAPI app (`20_run_classification_api.py` -> `create_app`)       │ │    │
 │  │                                                                    │ │    │
 │  │ 1) Startup preflight: resolve `TELLER_CLASSIFIER_WRITE_TOKEN`      │ │    │
 │  │    from 1psa before serving mutation traffic.                      │ │    │
@@ -956,7 +962,7 @@ Trust/authz boundaries:
                                 └───────────────┬────────────────┘        │
                                                 │                         │
                                                 └── verified by           │
-                                                   `19_classification_persistence_verification_test.sh`
+                                                   `21_classification_persistence_verification_test.sh`
 ```
 
 
@@ -1056,14 +1062,14 @@ Why: Helpful for debugging "what should be running" and "where config comes from
 │  App/UI process                                                                            │
 │  ┌──────────────────────────────────────────────────────────┐                              │
 │  │ SwiftUI app: TransactionClassifier                       │                              │
-│  │ launcher: 21_run_classification_macos-ui.sh              │                              │
+│  │ launcher: 23_run_classification_macos-ui.sh              │                              │
 │  │ Connect runs in-process (no localhost Connect server)    │                              │
 │  └───────────────────────────────┬──────────────────────────┘                              │
 │                                  │ HTTP: TELLER_CLASSIFIER_API_URL                         │
 │                                  │ default http://127.0.0.1:8787                           │
 │                                  v                                                         │
 │  API process                     ┌───────────────────────────────────────────────────────┐ │
-│  ┌───────────────────────────────│ FastAPI: 18_run_classification_api.py                 │ │
+│  ┌───────────────────────────────│ FastAPI: 20_run_classification_api.py                 │ │
 │  │                               │ bind env: TELLER_CLASSIFIER_API_HOST/PORT             │ │
 │  │                               │ defaults: 127.0.0.1:8787                              │ │
 │  │                               │ startup gate: requires 1psa item                      │ │
@@ -1159,7 +1165,7 @@ Legend:
 │  [B3 secrets boundary]                 [AS] shell script execution path
 │  ┌────────────────────────────────┐     ┌──────────────────────────────────────────────────┐
 │  │ 1psa CLI + ~/.teller files     │<--->│ numbered scripts + python entrypoints            │
-│  │ cert/key/auth_token/enrollment │ F3  │ 16_fetch_teller_api_data.py / 18_run_* / 20_*    │
+│  │ cert/key/auth_token/enrollment │ F3  │ 18_fetch_teller_api_data.py / 18_run_* / 20_*    │
 │  └──────────────┬─────────────────┘     └───────────────────────────────┬──────────────────┘
 │                 │ F5 token/cert/key read [TB]                           │ F6 SQL writes/reads [TB]
 │                 v                                                       v
@@ -1257,7 +1263,7 @@ Run 99_restore_database.sh
 Post-restore verification
       |
       +--> ./08_deploy_database_verification_test.sh
-      +--> ./19_classification_persistence_verification_test.sh
+      +--> ./21_classification_persistence_verification_test.sh
 ```
 
 Operational notes:

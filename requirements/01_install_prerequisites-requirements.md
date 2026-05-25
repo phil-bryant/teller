@@ -74,10 +74,10 @@ Tests:
 - R045-T01: Inspect script text and verify no embedded secret values.
 
 R050  Statement: Print final readiness guidance for local setup.
-Design: End with success banner and example path references for `../1psa` and `../pg_install`, plus optional PLCrashReporter smoke verification entrypoint (`./14_verify_macos_crash_test.sh`, run separately—not from other numbered scripts).
+Design: End with success banner and example path references for `../1psa` and `../pg_install`, plus optional PLCrashReporter smoke verification entrypoint (`./16_verify_macos_crash_test.sh`, run separately—not from other numbered scripts).
 Tests:
 - R050-T01: On successful run, verify final message includes `../1psa` and `../pg_install`.
-- R050-T02: On successful run, verify final guidance includes `./14_verify_macos_crash_test.sh`.
+- R050-T02: On successful run, verify final guidance includes `./16_verify_macos_crash_test.sh`.
 
 R055  Statement: Ensure shell unit-test runner dependency is available.
 Design: Install Homebrew formula `bats-core` and verify `bats` resolves on `PATH`.
@@ -167,7 +167,7 @@ Tests:
 
 ## Changelog
 
-- 2026-05-12: R050 guidance references `./14_verify_macos_crash_test.sh` (standalone; not chained from other numbered scripts).
+- 2026-05-12: R050 guidance references `./16_verify_macos_crash_test.sh` (standalone; not chained from other numbered scripts).
 - 2026-05-07: Updated R050 guidance to include optional PLCrashReporter smoke verification entrypoint.
 - 2026-04-23: Added R055 to require `bats-core` installation for shell unit-test support.
 - 2026-04-26: Added R095 to require Homebrew `clamav` (`clamscan`) for repository malware scans.

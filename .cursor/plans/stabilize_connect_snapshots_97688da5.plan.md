@@ -26,7 +26,7 @@ Make `testConnectTabSnapshot` and `testConnectTabErrorSnapshot` stable across en
 - Update snapshot test setup in [macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift](macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift) to inject a deterministic `TellerSetupAPI` fixture into `ConnectViewModel` instead of relying on default real-disk `TellerSetupService`.
 - Add a local snapshot fixture implementation in the same test target (or a nearby test helper file) that returns fixed setup status values for both normal and error connect snapshots.
 - Strengthen `normalizeRecursiveDescription(_:)` in [macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift](macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift) to strip or canonicalize known volatile lines (`SwiftUI.KeyViewProxy`, selected focus-ring/internal graphics wrappers) while keeping semantic structure and user-visible control hierarchy checks intact.
-- Re-run `./13_run_macos_ui_regression_tests.sh` and only re-record connect snapshot baselines if normalized deterministic output still differs for legitimate structure changes.
+- Re-run `./15_run_macos_ui_regression_tests.sh` and only re-record connect snapshot baselines if normalized deterministic output still differs for legitimate structure changes.
 
 ## Guardrails
 - Keep production UI code unchanged in [macos-ui/Sources/TransactionClassifier/ConnectView.swift](macos-ui/Sources/TransactionClassifier/ConnectView.swift) and [macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift](macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift) unless tests reveal a true functional regression.

@@ -35,8 +35,8 @@ Introduce `[18_run_all_checks_parallel.sh](18_run_all_checks_parallel.sh)` as a 
 | 06  | `06_run_static_security_tests.sh`                          |
 | 08  | `08_deploy_database_verification_test.sh`            |
 | 09  | `09_run_shell_unit_tests.sh`                    |
-| 10  | `13_run_macos_ui_regression_tests.sh`     |
-| 11  | `14_verify_macos_crash_test.sh`       |
+| 10  | `15_run_macos_ui_regression_tests.sh`     |
+| 11  | `16_verify_macos_crash_test.sh`       |
 | 15  | `15_verify_classification_persistence.sh` |
 
 
@@ -136,7 +136,7 @@ set -e
 
 Print a short “starting parallel checks…” banner before launch; suppress interleaved child stdout (logs only in files) to keep the summary readable.
 
-**Side fix:** Update stale comment in `[09_run_shell_unit_tests.sh](09_run_shell_unit_tests.sh)` line 14 (`#R030: ... dedicated script 18`) → reference `14_verify_macos_crash_test.sh` instead.
+**Side fix:** Update stale comment in `[09_run_shell_unit_tests.sh](09_run_shell_unit_tests.sh)` line 14 (`#R030: ... dedicated script 18`) → reference `16_verify_macos_crash_test.sh` instead.
 
 ## 3. Bats tests
 
@@ -148,7 +148,7 @@ Create `[tests/sh/18_run_all_checks_parallel.bats](tests/sh/18_run_all_checks_pa
 - Helper `write_child_stub(name, body)` that copies minimal executable stubs for all nine children into `FIXTURE_ROOT`
 - Default stubs: echo script name to stdout, exit 0
 
-**Test cases** (with traceability header comments + inline `#Rxxx` tags, same pattern as `[tests/sh/14_verify_macos_crash_test.bats](tests/sh/14_verify_macos_crash_test.bats)`):
+**Test cases** (with traceability header comments + inline `#Rxxx` tags, same pattern as `[tests/sh/16_verify_macos_crash_test.bats](tests/sh/16_verify_macos_crash_test.bats)`):
 
 1. **all pass** — nine stubs exit 0 → status 0, nine `✅ PASS:` lines, overall PASS
 2. **single failure** — `09_run_shell_unit_tests.sh` stub exits 1 → status 1, that script FAIL, others PASS, overall FAIL

@@ -13,3 +13,18 @@ requires-python = ">=3.8"
 
 [tool.setuptools]
 packages = ["teller"]
+
+[tool.mutmut]
+paths_to_mutate = ["teller/"]
+only_mutate = ["teller/teller_classification_api.py", "teller/teller_db_profile.py"]
+tests_dir = [
+  "tests/py/test_teller_classification_api.py",
+  "tests/py/test_teller_db_profile.py",
+  "tests/py/test_teller_properties.py",
+]
+pytest_add_cli_args = ["-p", "no:hypothesis"]
+do_not_mutate = [
+  "teller/teller_db.py",
+  "teller/teller_persist.py",
+  "teller/teller_mailcart_client.py",
+]

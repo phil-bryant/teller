@@ -1,6 +1,6 @@
 ---
 name: hover-help-coverage-and-verification
-overview: Add macOS hover-help text to all interactive controls in the TransactionClassifier UI launched by `21_run_classification_macos-ui.sh`, then add XCUITest coverage so `13_run_macos_ui_regression_tests.sh` verifies tooltip display behavior.
+overview: Add macOS hover-help text to all interactive controls in the TransactionClassifier UI launched by `23_run_classification_macos-ui.sh`, then add XCUITest coverage so `15_run_macos_ui_regression_tests.sh` verifies tooltip display behavior.
 todos:
   - id: inventory-controls
     content: Catalog all interactive controls across Match & Classify, Manage Categories, and Connect tabs.
@@ -15,7 +15,7 @@ todos:
     content: Implement XCUITest scenario that hovers each control and asserts tooltip display/content.
     status: completed
   - id: wire-10-runner
-    content: Update `13_run_macos_ui_regression_tests.sh` scenario mapping/count if required for new hover scenario.
+    content: Update `15_run_macos_ui_regression_tests.sh` scenario mapping/count if required for new hover scenario.
     status: completed
   - id: update-requirements
     content: Update requirements docs for ContentView, ConnectView, and 10_ regression script to reflect hover-help requirement and tests.
@@ -31,11 +31,11 @@ isProject: false
   - [`/Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ConnectView.swift`](/Users/phil/local/src/teller/macos-ui/Sources/TransactionClassifier/ConnectView.swift)
 - Hover-verification in regression flow will be implemented in:
   - [`/Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift`](/Users/phil/local/src/teller/macos-ui/UITests/TransactionClassifierUITests.swift)
-  - [`/Users/phil/local/src/teller/13_run_macos_ui_regression_tests.sh`](/Users/phil/local/src/teller/13_run_macos_ui_regression_tests.sh) (scenario list wiring if needed)
+  - [`/Users/phil/local/src/teller/15_run_macos_ui_regression_tests.sh`](/Users/phil/local/src/teller/15_run_macos_ui_regression_tests.sh) (scenario list wiring if needed)
 - Requirements traceability updates will be made in:
   - [`/Users/phil/local/src/teller/requirements/macos-ui/ContentView-requirements.md`](/Users/phil/local/src/teller/requirements/macos-ui/ContentView-requirements.md)
   - [`/Users/phil/local/src/teller/requirements/macos-ui/ConnectView-requirements.md`](/Users/phil/local/src/teller/requirements/macos-ui/ConnectView-requirements.md)
-  - [`/Users/phil/local/src/teller/requirements/13_run_macos_ui_regression_tests-requirements.md`](/Users/phil/local/src/teller/requirements/13_run_macos_ui_regression_tests-requirements.md)
+  - [`/Users/phil/local/src/teller/requirements/15_run_macos_ui_regression_tests-requirements.md`](/Users/phil/local/src/teller/requirements/15_run_macos_ui_regression_tests-requirements.md)
 
 ## Implementation approach
 - Inventory every interactive control currently exposed in all 3 tabs (Match & Classify, Manage Categories, Connect), including toolbar actions, form fields, toggles, pickers, and action buttons.
@@ -45,10 +45,10 @@ isProject: false
   - navigates through all tabs,
   - hovers each targeted control,
   - asserts tooltip visibility/content for each control.
-- Update `13_run_macos_ui_regression_tests.sh` scenario mapping if a new smoke step is introduced (and keep selector semantics `N`, `N,M`, `N-M` intact).
+- Update `15_run_macos_ui_regression_tests.sh` scenario mapping if a new smoke step is introduced (and keep selector semantics `N`, `N,M`, `N-M` intact).
 
 ## Verification strategy (requested: UI hover assertions)
-- Run the XCUITest smoke suite via `13_run_macos_ui_regression_tests.sh` with the hover-help step included.
+- Run the XCUITest smoke suite via `15_run_macos_ui_regression_tests.sh` with the hover-help step included.
 - Prefer focused iteration using numeric scenario selection during development, then run the full suite for final confirmation.
 - Confirm no regressions to existing smoke scenarios and shortcut/help-menu checks.
 

@@ -21,7 +21,7 @@ bin/*
 .security-reports/
 .security-venv/
 .parallel-checks-reports/
-.22_run_all_tests_parallel.lock
+.24_run_all_tests_parallel.lock
 macos-ui/.swiftpm-run.lock
 macos-ui/.swiftpm-run.lock.d/
 db-profiles.json

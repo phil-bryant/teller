@@ -33,7 +33,7 @@ load "helpers/common.bash"
 # Minimal OpenAPI/health server for DAST (stdlib only, no Teller/FastAPI deps).
 write_dast_13_stub() {
   local root="$1"
-  cat > "${root}/18_run_classification_api.py" <<'PY'
+  cat > "${root}/20_run_classification_api.py" <<'PY'
 #!/usr/bin/env python3
 import http.server
 import os
@@ -60,17 +60,17 @@ if __name__ == "__main__":
   with socketserver.TCPServer((host, port), H) as s:
     s.serve_forever()
 PY
-  chmod +x "${root}/18_run_classification_api.py"
+  chmod +x "${root}/20_run_classification_api.py"
 }
 
 write_macos_ui_regression_stub() {
   local root="$1"
-  cat > "${root}/13_run_macos_ui_regression_tests.sh" <<'SH'
+  cat > "${root}/15_run_macos_ui_regression_tests.sh" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 echo "macos-ui-regression-stub RUN_SNAPSHOT_TESTS=${RUN_SNAPSHOT_TESTS:-unset} RUN_XCUITESTS=${RUN_XCUITESTS:-unset} TELLER_CLASSIFIER_API_URL=${TELLER_CLASSIFIER_API_URL:-unset} TELLER_CLASSIFIER_HTTP_PROXY=${TELLER_CLASSIFIER_HTTP_PROXY:-unset}"
 SH
-  chmod +x "${root}/13_run_macos_ui_regression_tests.sh"
+  chmod +x "${root}/15_run_macos_ui_regression_tests.sh"
 }
 
 # Delegates to system Python3 except for a fake "python3 -m venv" (R005).
@@ -112,8 +112,10 @@ copy_security_project_files() {
   create_repo_fixture
   copy_script_to_fixture "06_run_static_security_tests.sh"
   cp "$(repo_root)/requirements-security.txt" "${FIXTURE_ROOT}/"
-  cp "$(repo_root)/.semgrep.yml" "${FIXTURE_ROOT}/"
-  cp "$(repo_root)/.bandit" "${FIXTURE_ROOT}/"
+  mkdir -p "${FIXTURE_ROOT}/config/security"
+  cp "$(repo_root)/config/security/semgrep.yml" "${FIXTURE_ROOT}/config/security/"
+  cp "$(repo_root)/config/security/bandit.yml" "${FIXTURE_ROOT}/config/security/"
+  cp "$(repo_root)/config/security/gitleaksignore" "${FIXTURE_ROOT}/config/security/"
   mkdir -p "${FIXTURE_ROOT}/teller"
   echo 'x = 1' > "${FIXTURE_ROOT}/teller/safe_test.py"
   write_dast_13_stub "${FIXTURE_ROOT}"
@@ -126,6 +128,7 @@ install_passing_sast_stubs_in_venv() {
   mkdir -p "$vbin"
   cat > "${vbin}/semgrep" <<'EOF'
 #!/usr/bin/env bash
+echo "semgrep $*" >> "${CALLS_LOG}"
 out=""
 set -- "$@"
 while [ $# -gt 0 ]; do
@@ -142,6 +145,7 @@ EOF
   chmod +x "${vbin}/semgrep"
   cat > "${vbin}/bandit" <<'EOF'
 #!/usr/bin/env bash
+echo "bandit $*" >> "${CALLS_LOG}"
 out=""
 set -- "$@"
 while [ $# -gt 0 ]; do
@@ -793,6 +797,20 @@ EOS
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"gitleaks detect --source /"* ]]
   [[ "$calls" != *"gitleaks detect --source . --no-git"* ]]
+}
+
+@test "SAST uses config/security policy file defaults" {
+  setup_shell_test
+  copy_security_project_files
+  install_passing_sast_stubs_in_venv
+  stub_shellcheck_clean
+  run env RUN_DAST=false RUN_SWIFT_SAST=false \
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"semgrep scan --config p/security-audit --config p/python --config ./config/security/semgrep.yml"* ]]
+  [[ "$calls" == *"bandit -r ./teller -c ./config/security/bandit.yml -f json"* ]]
+  [[ "$calls" == *"--gitleaks-ignore-path ./config/security/gitleaksignore"* ]]
 }
 
 @test "Swift SAST runs SwiftLint when Swift sources are present" {

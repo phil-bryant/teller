@@ -29,7 +29,7 @@ Clear the current blockers reported by `./06_run_static_security_tests.sh` and r
 - `detect-secrets` gate blockers (2 findings) in [README.md](/Users/phil/local/src/teller/README.md) on credential-related wording.
 - Semgrep info finding in [teller/teller_mailcart_client.py](/Users/phil/local/src/teller/teller/teller_mailcart_client.py) for literal `session.mount("http://", ...)`.
 - Bandit low-severity findings in [teller/teller_mailcart_client.py](/Users/phil/local/src/teller/teller/teller_mailcart_client.py), [teller/teller_db.py](/Users/phil/local/src/teller/teller/teller_db.py), and [teller/teller_db_profile.py](/Users/phil/local/src/teller/teller/teller_db_profile.py) (mostly false positives around token/password naming and controlled `subprocess` usage).
-- ShellCheck info findings in [14_verify_macos_crash_test.sh](/Users/phil/local/src/teller/14_verify_macos_crash_test.sh) and [22_run_all_tests_parallel.sh](/Users/phil/local/src/teller/22_run_all_tests_parallel.sh).
+- ShellCheck info findings in [16_verify_macos_crash_test.sh](/Users/phil/local/src/teller/16_verify_macos_crash_test.sh) and [24_run_all_tests_parallel.sh](/Users/phil/local/src/teller/24_run_all_tests_parallel.sh).
 
 ## Implementation Plan
 1. Update documentation wording in [README.md](/Users/phil/local/src/teller/README.md) to avoid secret-keyword false positives while preserving operator intent (use neutral `credential` terminology where currently using `password` in non-secret examples).
@@ -39,8 +39,8 @@ Clear the current blockers reported by `./06_run_static_security_tests.sh` and r
 - In [teller/teller_mailcart_client.py](/Users/phil/local/src/teller/teller/teller_mailcart_client.py), avoid empty-string token default in signature where practical and add narrow `# nosec` only if a rule remains unavoidable.
 - In [teller/teller_db_profile.py](/Users/phil/local/src/teller/teller/teller_db_profile.py), keep `subprocess.run` hardening (`shell=False`, argument list, timeout) and apply targeted Bandit suppressions/comments for trap rules that cannot be meaningfully eliminated (B404/B603/B607), rather than broad policy disables.
 4. Resolve ShellCheck info findings with behavior-preserving cleanup:
-- In [14_verify_macos_crash_test.sh](/Users/phil/local/src/teller/14_verify_macos_crash_test.sh), replace `sh -c` deferred-parameter pattern with subshell `cd` invocation (or targeted SC2016 suppression if needed).
-- In [22_run_all_tests_parallel.sh](/Users/phil/local/src/teller/22_run_all_tests_parallel.sh), inline simple signal trap handlers and add narrowly scoped SC2329 suppression for EXIT-trap-only cleanup function if still flagged.
+- In [16_verify_macos_crash_test.sh](/Users/phil/local/src/teller/16_verify_macos_crash_test.sh), replace `sh -c` deferred-parameter pattern with subshell `cd` invocation (or targeted SC2016 suppression if needed).
+- In [24_run_all_tests_parallel.sh](/Users/phil/local/src/teller/24_run_all_tests_parallel.sh), inline simple signal trap handlers and add narrowly scoped SC2329 suppression for EXIT-trap-only cleanup function if still flagged.
 5. Re-run `./06_run_static_security_tests.sh` and verify:
 - `sast-summary.json` reports `gate_failed: false`.
 - No new medium-or-higher findings introduced.
