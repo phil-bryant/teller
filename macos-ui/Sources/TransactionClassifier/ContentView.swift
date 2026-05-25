@@ -326,7 +326,6 @@ private struct EmailCountBadge: View {
             .background(Color.purple.opacity(0.18))
             .foregroundStyle(Color.purple)
             .clipShape(Capsule())
-            .help("Matchy linked \(count) emails to this single transaction")
             .accessibilityIdentifier("match-email-count-badge")
     }
 }
@@ -381,7 +380,6 @@ private struct ConfidencePill: View {
             .background(Color.accentColor.opacity(0.16))
             .foregroundStyle(.primary)
             .clipShape(Capsule())
-            .help("Claude's self-reported confidence in its selected match (ai_confidence)")
     }
 }
 
@@ -523,7 +521,6 @@ private struct CandidateRowView: View {
                 Text(String(format: "rank %.2f", candidate.score))
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
-                    .help("Matchy's deterministic rank score (merchant + amount + date + time-proximity heuristics). Separate from the AI's confidence — the AI uses this as one signal among many, then decides which candidate(s) to actually match.")
                 if candidate.is_unmatched_email_priority {
                     Text("priority")
                         .font(.caption2)
@@ -544,12 +541,6 @@ private struct CandidateRowView: View {
             }
         }
         .padding(.vertical, 4)
-        .help(reasonTooltip)
-    }
-
-    private var reasonTooltip: String {
-        guard let reason = candidate.reason_json else { return candidate.email_message_id }
-        return reason.prettyDescription
     }
 }
 
@@ -919,8 +910,10 @@ private struct CategoryManagerView: View {
                     Spacer()
                     Button("Refresh") { Task { await viewModel.reloadCategories() } }
                         .disabled(viewModel.categoryEditorBusy)
+                        .accessibilityIdentifier("category-refresh-button")
                     Button("New") { viewModel.beginNewCategoryDraft() }
                         .disabled(viewModel.categoryEditorBusy)
+                        .accessibilityIdentifier("category-new-button")
                     // #R040: Bulk delete is available whenever one or more categories are selected.
                     Button("Delete") { Task { await viewModel.deleteSelectedCategories() } }
                         .disabled(viewModel.categoryEditorBusy || viewModel.categoryEditorSelection.isEmpty)
@@ -1137,7 +1130,6 @@ private struct SaveStateDot: View {
         Circle()
             .fill(color)
             .frame(width: 8, height: 8)
-            .help(label)
             .accessibilityIdentifier("save-state-dot-\(state.uiToken)")
     }
     private var color: Color {
@@ -1146,14 +1138,6 @@ private struct SaveStateDot: View {
         case .saving: return .orange
         case .saved: return .green
         case .failed: return .red
-        }
-    }
-    private var label: String {
-        switch state {
-        case .idle: return "Idle"
-        case .saving: return "Saving"
-        case .saved(let date): return "Saved \(date.formatted(date: .omitted, time: .shortened))"
-        case .failed(let reason): return "Failed: \(reason)"
         }
     }
 }

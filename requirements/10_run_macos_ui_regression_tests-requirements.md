@@ -47,12 +47,12 @@ Tests:
 - R035-T01: Set non-default destination and derived data path overrides and verify values are propagated into `xcodebuild test`.
 
 R040  Statement: Allow selecting specific smoke-suite scenario steps by numeric selector argument.
-Design: Accept an optional positional selector argument with forms `N`, comma-separated lists (`N,M`), and ranges (`N-M`) mapped to an ordered list of 12 known scenarios inside `testMacOSUISmokeSuite`. When selectors are provided, export `XCUITEST_STEPS` to the test runner and invoke a single `-only-testing:TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite` entry (one app launch per run).
+Design: Accept an optional positional selector argument with forms `N`, comma-separated lists (`N,M`), and ranges (`N-M`) mapped to an ordered list of known scenarios inside `testMacOSUISmokeSuite`. When selectors are provided, export `XCUITEST_STEPS` to the test runner and invoke a single `-only-testing:TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite` entry (one app launch per run).
 Tests:
 - R040-T01: Run `10_run_macos_ui_regression_tests.sh 1,3,5-6` and verify `XCUITEST_STEPS=1,3,5,6` is exported and only `testMacOSUISmokeSuite` is passed to `xcodebuild test`.
 
 R045  Statement: Fail fast when selectors reference non-existent scenario numbers.
-Design: Validate each parsed selector index against the known scenario list (1–12) and exit non-zero with an explicit error before invoking `xcodebuild` when out of range.
+Design: Validate each parsed selector index against the known scenario list and exit non-zero with an explicit error before invoking `xcodebuild` when out of range.
 Tests:
 - R045-T01: Run `10_run_macos_ui_regression_tests.sh 99` and verify the script exits non-zero with an unknown-scenario-number error and does not call `xcodebuild`.
 

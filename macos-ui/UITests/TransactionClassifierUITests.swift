@@ -308,9 +308,9 @@ final class TransactionClassifierUITests: XCTestCase {
         selectTransactionRow("txn_001", label: "Coffee Roasters")
 
         let note = uiElement("override-note-field")
-        pasteText("fixture override note", into: note)
+        replaceText(in: note, with: "fixture override note")
         let overrideId = uiElement("override-email-message-id-field")
-        pasteText("msg_override_fixture", into: overrideId)
+        replaceText(in: overrideId, with: "msg_override_fixture")
 
         uiElement("match-override-button").click()
         XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { elementText(uiElement("match-review-status")).contains("Overrode") })
@@ -411,14 +411,14 @@ final class TransactionClassifierUITests: XCTestCase {
         ensureManageCategoriesTab()
         uiElement("category-row-101").click()
 
-        pasteText("L1", into: uiElement("category-field-level-1"))
-        pasteText("Primary", into: uiElement("category-field-level-1-name"))
-        pasteText("L2", into: uiElement("category-field-level-2"))
-        pasteText("Secondary", into: uiElement("category-field-level-2-name"))
-        pasteText("L3", into: uiElement("category-field-level-3"))
-        pasteText("L4", into: uiElement("category-field-level-4"))
-        pasteText("Dining Updated", into: uiElement("category-field-categorization"))
-        pasteText("General", into: uiElement("category-field-applicability"))
+        replaceText(in: uiElement("category-field-level-1"), with: "L1")
+        replaceText(in: uiElement("category-field-level-1-name"), with: "Primary")
+        replaceText(in: uiElement("category-field-level-2"), with: "L2")
+        replaceText(in: uiElement("category-field-level-2-name"), with: "Secondary")
+        replaceText(in: uiElement("category-field-level-3"), with: "L3")
+        replaceText(in: uiElement("category-field-level-4"), with: "L4")
+        replaceText(in: uiElement("category-field-categorization"), with: "Dining Updated")
+        replaceText(in: uiElement("category-field-applicability"), with: "General")
 
         uiElement("category-save-button").click()
         XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) {
@@ -648,6 +648,11 @@ final class TransactionClassifierUITests: XCTestCase {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
         app.typeKey("v", modifierFlags: .command)
+    }
+
+    private func replaceText(in element: XCUIElement, with text: String) {
+        clearField(element)
+        pasteText(text, into: element)
     }
 
     private func clearSearchField(_ searchField: XCUIElement) {

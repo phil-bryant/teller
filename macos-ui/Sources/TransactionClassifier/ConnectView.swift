@@ -29,6 +29,7 @@ struct ConnectView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityIdentifier("connect-context-row-\(context.key)")
                     .tag(Optional(context.key))
                 }
             }
