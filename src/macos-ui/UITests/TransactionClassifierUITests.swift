@@ -412,13 +412,13 @@ final class TransactionClassifierUITests: XCTestCase {
         uiElement("category-row-101").click()
 
         replaceText(in: uiElement("category-field-level-1"), with: "L1")
-        replaceText(in: uiElement("category-field-level-1-name"), with: "Primary")
-        replaceText(in: uiElement("category-field-level-2"), with: "L2")
-        replaceText(in: uiElement("category-field-level-2-name"), with: "Secondary")
-        replaceText(in: uiElement("category-field-level-3"), with: "L3")
-        replaceText(in: uiElement("category-field-level-4"), with: "L4")
-        replaceText(in: uiElement("category-field-categorization"), with: "Dining Updated")
-        replaceText(in: uiElement("category-field-applicability"), with: "General")
+        pasteText("Primary", into: uiElement("category-field-level-1-name"))
+        pasteText("L2", into: uiElement("category-field-level-2"))
+        pasteText("Secondary", into: uiElement("category-field-level-2-name"))
+        pasteText("L3", into: uiElement("category-field-level-3"))
+        pasteText("L4", into: uiElement("category-field-level-4"))
+        pasteText("Dining Updated", into: uiElement("category-field-categorization"))
+        pasteText("General", into: uiElement("category-field-applicability"))
 
         uiElement("category-save-button").click()
         XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) {

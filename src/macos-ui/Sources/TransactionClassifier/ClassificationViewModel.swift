@@ -712,7 +712,8 @@ final class ClassificationViewModel {
     }
 
     private func setCategories(_ fetched: [CategoryOption]) {
-        allCategories = fetched
-        categories = fetched.filter { (($0.applicability ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased() != "N/A") }
+        let sortedById = fetched.sorted { $0.nys_snw_category_id < $1.nys_snw_category_id }
+        allCategories = sortedById
+        categories = sortedById.filter { (($0.applicability ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased() != "N/A") }
     }
 }
