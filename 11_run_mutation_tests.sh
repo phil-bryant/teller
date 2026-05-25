@@ -51,8 +51,8 @@ if ! "$PYTHON_BIN" -m mutmut --version >/dev/null 2>&1; then
   exit 1
 fi
 
-MUTMUT_DARWIN_STUB="${REPO_ROOT}/tools/mutmut_darwin_stub.py"
-MUTMUT_DARWIN_DRIVER="${REPO_ROOT}/tools/mutmut_darwin.py"
+MUTMUT_DARWIN_STUB="${REPO_ROOT}/scripts/mutmut_darwin_stub.py"
+MUTMUT_DARWIN_DRIVER="${REPO_ROOT}/scripts/mutmut_darwin.py"
 MUTATION_USE_SUBPROCESS="${MUTATION_USE_SUBPROCESS:-}"
 if [ -z "$MUTATION_USE_SUBPROCESS" ]; then
   if [ "$(uname -s)" = "Darwin" ]; then

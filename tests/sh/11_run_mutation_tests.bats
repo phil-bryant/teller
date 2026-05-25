@@ -12,7 +12,7 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "11_run_mutation_tests.sh"
-  mkdir -p "${FIXTURE_ROOT}/teller-venv/bin" "${FIXTURE_ROOT}/tools" "${FIXTURE_ROOT}/tests/py"
+  mkdir -p "${FIXTURE_ROOT}/teller-venv/bin" "${FIXTURE_ROOT}/scripts" "${FIXTURE_ROOT}/tests/py"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python3" <<'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "--version" ]; then
@@ -56,12 +56,12 @@ fi
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python3"
-  cat > "${FIXTURE_ROOT}/tools/mutmut_darwin.py" <<'EOF'
+  cat > "${FIXTURE_ROOT}/scripts/mutmut_darwin.py" <<'EOF'
 #!/usr/bin/env bash
 exit 0
 EOF
-  chmod +x "${FIXTURE_ROOT}/tools/mutmut_darwin.py"
-  cat > "${FIXTURE_ROOT}/tools/mutmut_darwin_stub.py" <<'EOF'
+  chmod +x "${FIXTURE_ROOT}/scripts/mutmut_darwin.py"
+  cat > "${FIXTURE_ROOT}/scripts/mutmut_darwin_stub.py" <<'EOF'
 # stub
 EOF
 }
