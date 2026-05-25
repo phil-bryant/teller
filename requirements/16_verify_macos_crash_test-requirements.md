@@ -57,8 +57,20 @@ Design: Relaunch in the background and stop as soon as the persistence log appea
 Tests:
 - R050-T01: Simulate relaunch with no persistence log and verify timeout failure is emitted without hanging.
 
+R060  Statement: Prewarm the TransactionClassifier build before crash verification timing begins.
+Design: Run a bounded `swift build --product TransactionClassifier` warm-up under the macOS UI SwiftPM lock before the forced-crash launch so relaunch timeout checks measure app startup behavior instead of cold dependency/build work.
+Tests:
+- R060-T01: Stub `swift` and verify the first invocation is `swift build --product TransactionClassifier` before forced-crash and relaunch runs.
+
+R065  Statement: Verify unclean termination marker persistence on relaunch.
+Design: Simulate a prior unclean exit by writing `session-active.json` in the crash-report directory, relaunch once, and require log output containing `CrashReporter: saved unclean termination marker to` plus a fresh `unclean-exit-*.json` artifact.
+Tests:
+- R065-T01: Stub relaunch output/artifacts for unclean-marker replay and verify script succeeds only when both marker log and fresh `unclean-exit-*.json` are observed.
+
 ## Changelog
 
+- 2026-05-25: Added R065 to validate unclean-termination fallback marker replay.
+- 2026-05-25: Added R060 requiring prewarm build before forced-crash/relaunch verification timing.
 - 2026-05-25: Added R045/R050 for stale SwiftPM recovery and bounded relaunch timeout behavior.
 - 2026-05-12: Added R040 documenting standalone use and forbidding chained invocation from `05_`/`06_` runners.
 - 2026-05-07: Initial requirements for `16_verify_macos_crash_test.sh`.

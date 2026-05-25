@@ -6,6 +6,8 @@
 # #R030-T02: Traceability anchor.
 # #R045-T01: Traceability anchor.
 # #R050-T01: Traceability anchor.
+# #R060-T01: Traceability anchor.
+# #R065-T01: Traceability anchor.
 
 # Traceability numbered tags for requirements/16_verify_macos_crash_test-requirements.md
 # #R001-T01: Traceability anchor.
@@ -18,6 +20,8 @@
 # #R040-T01: Traceability anchor.
 # #R045-T01: Traceability anchor.
 # #R050-T01: Traceability anchor.
+# #R060-T01: Traceability anchor.
+# #R065-T01: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -46,6 +50,10 @@ if [[ "\${TELLER_MACOS_FORCE_CRASH_ON_LAUNCH:-}" == "1" ]]; then
   exit 134
 fi
 mkdir -p "${report_dir}"
+if [[ -f "${report_dir}/session-active.json" ]]; then
+echo "{\"format\":\"unclean_exit\"}" > "${report_dir}/unclean-exit-smoke.json"
+echo "CrashReporter: saved unclean termination marker to ${report_dir}/unclean-exit-smoke.json"
+fi
 echo "crash" > "${report_dir}/crash-smoke.plcrash"
 echo "{}" > "${report_dir}/crash-smoke.json"
 echo "CrashReporter: saved pending crash report to ${report_dir}/crash-smoke.plcrash"
@@ -69,6 +77,10 @@ if [[ "\${TELLER_MACOS_FORCE_CRASH_ON_LAUNCH:-}" == "1" ]]; then
   exit 134
 fi
 mkdir -p "${report_dir}"
+if [[ -f "${report_dir}/session-active.json" ]]; then
+echo "{\"format\":\"unclean_exit\"}" > "${report_dir}/unclean-exit-timeout.json"
+echo "CrashReporter: saved unclean termination marker to ${report_dir}/unclean-exit-timeout.json"
+fi
 echo "crash" > "${report_dir}/crash-timeout.plcrash"
 echo "{}" > "${report_dir}/crash-timeout.json"
 echo "CrashReporter: saved pending crash report to ${report_dir}/crash-timeout.plcrash"
@@ -91,6 +103,9 @@ EOF
   state_file="${TEST_TMPDIR}/recovery_state"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
+if [[ "\$1" == "build" ]]; then
+  exit 0
+fi
 if [[ "\$1" == "package" && "\$2" == "resolve" ]]; then
   echo resolved > "${state_file}"
   exit 0
@@ -104,6 +119,10 @@ if [[ ! -f "${state_file}" ]]; then
   exit 1
 fi
 mkdir -p "${report_dir}"
+if [[ -f "${report_dir}/session-active.json" ]]; then
+echo "{\"format\":\"unclean_exit\"}" > "${report_dir}/unclean-exit-recovery.json"
+echo "CrashReporter: saved unclean termination marker to ${report_dir}/unclean-exit-recovery.json"
+fi
 echo "crash" > "${report_dir}/crash-recovery.plcrash"
 echo "{}" > "${report_dir}/crash-recovery.json"
 echo "CrashReporter: saved pending crash report to ${report_dir}/crash-recovery.plcrash"
@@ -137,6 +156,69 @@ EOF
     bash "${FIXTURE_ROOT}/16_verify_macos_crash_test.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"relaunch timed out before crash persistence log was observed"* ]]
+}
+
+@test "prewarms build before forced crash and relaunch runs" {
+  #R060
+  report_dir="${TEST_TMPDIR}/reports-prewarm"
+  cat > "${STUB_BIN}/swift" <<EOF
+#!/usr/bin/env bash
+echo swift "\$*" >> "${CALLS_LOG}"
+if [[ "\$1" == "build" ]]; then
+  exit 0
+fi
+if [[ "\${TELLER_MACOS_FORCE_CRASH_ON_LAUNCH:-}" == "1" ]]; then
+  exit 134
+fi
+mkdir -p "${report_dir}"
+if [[ -f "${report_dir}/session-active.json" ]]; then
+echo "{\"format\":\"unclean_exit\"}" > "${report_dir}/unclean-exit-prewarm.json"
+echo "CrashReporter: saved unclean termination marker to ${report_dir}/unclean-exit-prewarm.json"
+fi
+echo "crash" > "${report_dir}/crash-prewarm.plcrash"
+echo "{}" > "${report_dir}/crash-prewarm.json"
+echo "CrashReporter: saved pending crash report to ${report_dir}/crash-prewarm.plcrash"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swift"
+
+  run env MACOS_UI_DIR="${FIXTURE_ROOT}/src/macos-ui" \
+    CRASH_REPORT_DIR="${report_dir}" \
+    STARTUP_WAIT_SECONDS=2 \
+    bash "${FIXTURE_ROOT}/16_verify_macos_crash_test.sh"
+  [ "$status" -eq 0 ]
+
+  first_call="$(sed -n '1p' "${CALLS_LOG}")"
+  [[ "$first_call" == "swift build --product TransactionClassifier" ]]
+  run_count="$(grep -c '^swift run TransactionClassifier$' "${CALLS_LOG}")"
+  [ "$run_count" -eq 3 ]
+}
+
+@test "fails when unclean-marker replay log/artifact are missing" {
+  #R065
+  report_dir="${TEST_TMPDIR}/reports-unclean-missing"
+  cat > "${STUB_BIN}/swift" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "build" ]]; then
+  exit 0
+fi
+if [[ "\${TELLER_MACOS_FORCE_CRASH_ON_LAUNCH:-}" == "1" ]]; then
+  exit 134
+fi
+mkdir -p "${report_dir}"
+echo "crash" > "${report_dir}/crash-unclean-missing.plcrash"
+echo "{}" > "${report_dir}/crash-unclean-missing.json"
+echo "CrashReporter: saved pending crash report to ${report_dir}/crash-unclean-missing.plcrash"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swift"
+
+  run env MACOS_UI_DIR="${FIXTURE_ROOT}/src/macos-ui" \
+    CRASH_REPORT_DIR="${report_dir}" \
+    STARTUP_WAIT_SECONDS=1 \
+    bash "${FIXTURE_ROOT}/16_verify_macos_crash_test.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unclean-marker relaunch"* ]]
 }
 
 @test "fails when forced-crash run exits zero" {

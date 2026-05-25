@@ -4,6 +4,7 @@ import Darwin
 
 enum CrashReporterService {
     private static let storageDirectoryName = "CrashReports"
+    private static let sessionMarkerFileName = "session-active.json"
 
     static func start() {
         guard let crashReporter = makeCrashReporter() else {
@@ -12,6 +13,7 @@ enum CrashReporterService {
         }
 
         persistPendingCrashReportIfPresent(crashReporter)
+        persistUncleanTerminationIfPresent()
 
         do {
             try crashReporter.enableAndReturnError()
@@ -19,10 +21,23 @@ enum CrashReporterService {
             log("CrashReporter: failed to enable reporter: \(error)")
         }
 
+        markSessionActive()
+
         // Deliberate crash toggle for local validation of collection flow.
         if ProcessInfo.processInfo.environment["TELLER_MACOS_FORCE_CRASH_ON_LAUNCH"] == "1" {
             // Deliberate fatal crash for launch-replay validation.
             fatalError("Intentional crash for PLCrashReporter verification")
+        }
+    }
+
+    static func markGracefulShutdown() {
+        do {
+            let markerURL = try sessionMarkerURL()
+            if FileManager.default.fileExists(atPath: markerURL.path) {
+                try FileManager.default.removeItem(at: markerURL)
+            }
+        } catch {
+            log("CrashReporter: failed to clear session marker: \(error)")
         }
     }
 
@@ -52,6 +67,58 @@ enum CrashReporterService {
             crashReporter.purgePendingCrashReport()
         } catch {
             log("CrashReporter: failed handling pending report: \(error)")
+        }
+    }
+
+    private static func markSessionActive() {
+        do {
+            let markerURL = try sessionMarkerURL()
+            let marker = [
+                "pid": Int(getpid()),
+                "started_at": ISO8601DateFormatter().string(from: Date()),
+                "bundle_id": Bundle.main.bundleIdentifier ?? "unknown",
+                "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
+                "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown",
+            ] as [String: Any]
+            let markerData = try JSONSerialization.data(withJSONObject: marker, options: [.prettyPrinted, .sortedKeys])
+            try markerData.write(to: markerURL, options: .atomic)
+        } catch {
+            log("CrashReporter: failed to write session marker: \(error)")
+        }
+    }
+
+    private static func persistUncleanTerminationIfPresent() {
+        do {
+            let markerURL = try sessionMarkerURL()
+            guard FileManager.default.fileExists(atPath: markerURL.path) else {
+                return
+            }
+
+            let markerData = try Data(contentsOf: markerURL)
+            let markerJSON = (try JSONSerialization.jsonObject(with: markerData)) as? [String: Any]
+
+            let outputDirectory = try crashReportDirectory()
+            let basename = "unclean-exit-\(timestamp())"
+            let outputURL = outputDirectory.appendingPathComponent("\(basename).json")
+
+            var payload: [String: Any] = [
+                "format": "unclean_exit",
+                "captured_at": ISO8601DateFormatter().string(from: Date()),
+                "bundle_id": Bundle.main.bundleIdentifier ?? "unknown",
+                "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
+                "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown",
+                "message": "Detected previous app session without graceful shutdown; likely force quit, hang kill, or OS/process termination.",
+            ]
+            if let markerJSON {
+                payload["previous_session"] = markerJSON
+            }
+
+            let payloadData = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
+            try payloadData.write(to: outputURL, options: .atomic)
+            try FileManager.default.removeItem(at: markerURL)
+            log("CrashReporter: saved unclean termination marker to \(outputURL.path)")
+        } catch {
+            log("CrashReporter: failed handling unclean termination marker: \(error)")
         }
     }
 
@@ -95,6 +162,11 @@ enum CrashReporterService {
 
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
+    }
+
+    private static func sessionMarkerURL() throws -> URL {
+        let directory = try crashReportDirectory()
+        return directory.appendingPathComponent(sessionMarkerFileName)
     }
 
     private static func timestamp() -> String {

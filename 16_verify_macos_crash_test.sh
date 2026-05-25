@@ -13,14 +13,22 @@ TIMEOUT_HELPER_PYTHON="${TIMEOUT_HELPER_PYTHON:-python3}"
 MACOS_UI_SWIFTPM_LOCK="${MACOS_UI_SWIFTPM_LOCK:-${MACOS_UI_DIR}/.swiftpm-run.lock}"
 MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS="${MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS:-45}"
 CRASH_LAUNCH_TIMEOUT_SECONDS="${CRASH_LAUNCH_TIMEOUT_SECONDS:-45}"
+PREWARM_BUILD_TIMEOUT_SECONDS="${PREWARM_BUILD_TIMEOUT_SECONDS:-180}"
 LAUNCH_LOG="$(mktemp)"
 RECOVERY_LOG="$(mktemp)"
+PREWARM_LOG="$(mktemp)"
+UNCLEAN_LOG="$(mktemp)"
+UNCLEAN_MARKER_FILE_NAME="${UNCLEAN_MARKER_FILE_NAME:-session-active.json}"
 MARKER_FILE="$(mktemp)"
+UNCLEAN_MARKER_TIMESTAMP_FILE="$(mktemp)"
 latest_plcrash=""
 latest_json=""
+latest_unclean_json=""
 baseline_plcrash=""
 baseline_json=""
+baseline_unclean_json=""
 relaunch_saw_persistence_log=0
+relaunch_saw_unclean_log=0
 #R040: This script remains a standalone numbered entrypoint (not chained by other numbered runners).
 
 #R030: Fail clearly when required local tooling is unavailable.
@@ -41,6 +49,8 @@ if [[ ! -f "$MACOS_UI_SWIFT_LOCK_HELPER" ]]; then
 fi
 # shellcheck disable=SC1090
 source "$MACOS_UI_SWIFT_LOCK_HELPER"
+
+mkdir -p "$CRASH_REPORT_DIR"
 
 run_with_timeout() {
   local timeout_seconds="$1"
@@ -160,6 +170,58 @@ run_relaunch() {
   return 1
 }
 
+run_unclean_marker_relaunch() {
+  local relaunch_pid=""
+  local timed_out=0
+  local second=0
+
+  relaunch_saw_unclean_log=0
+  : > "$UNCLEAN_LOG"
+
+  bash -c 'source "$1"; shift; macos_ui_with_swiftpm_lock "$@"' -- \
+    "$MACOS_UI_SWIFT_LOCK_HELPER" \
+    "$MACOS_UI_SWIFTPM_LOCK" \
+    "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" \
+    "16_verify_macos_crash_test:unclean-relaunch" \
+    sh -c "cd \"\$1\" && swift run TransactionClassifier" _ "$MACOS_UI_DIR" >"$UNCLEAN_LOG" 2>&1 &
+  relaunch_pid=$!
+
+  #R065: Poll relaunch output and stop once unclean-termination marker persistence appears.
+  for ((second=1; second<=STARTUP_WAIT_SECONDS; second++)); do
+    if grep -q "CrashReporter: saved unclean termination marker to" "$UNCLEAN_LOG"; then
+      relaunch_saw_unclean_log=1
+      break
+    fi
+    if ! kill -0 "$relaunch_pid" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+
+  if kill -0 "$relaunch_pid" >/dev/null 2>&1; then
+    if [[ "$relaunch_saw_unclean_log" -eq 1 ]]; then
+      terminate_process_tree "$relaunch_pid"
+    else
+      timed_out=1
+      terminate_process_tree "$relaunch_pid"
+    fi
+  fi
+  wait "$relaunch_pid" >/dev/null 2>&1 || true
+
+  if [[ "$relaunch_saw_unclean_log" -ne 1 ]] &&
+     grep -q "CrashReporter: saved unclean termination marker to" "$UNCLEAN_LOG"; then
+    relaunch_saw_unclean_log=1
+  fi
+
+  if [[ "$relaunch_saw_unclean_log" -eq 1 ]]; then
+    return 0
+  fi
+  if [[ "$timed_out" -eq 1 ]]; then
+    return 124
+  fi
+  return 1
+}
+
 recover_swiftpm_state() {
   #R045: Rebuild SwiftPM state after stale checkout metadata errors.
   run_with_timeout "$CRASH_LAUNCH_TIMEOUT_SECONDS" "macOS SwiftPM state recovery" \
@@ -169,6 +231,47 @@ recover_swiftpm_state() {
       "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" \
       "16_verify_macos_crash_test:swiftpm-recovery" \
       sh -c "cd \"\$1\" && rm -rf .build && swift package resolve" _ "$MACOS_UI_DIR" >"$RECOVERY_LOG" 2>&1
+}
+
+prewarm_swiftpm_build() {
+  #R060: Warm the TransactionClassifier build once so relaunch timeout measures startup, not cold compile.
+  run_with_timeout "$PREWARM_BUILD_TIMEOUT_SECONDS" "macOS prewarm build" \
+    bash -c 'source "$1"; shift; macos_ui_with_swiftpm_lock "$@"' -- \
+      "$MACOS_UI_SWIFT_LOCK_HELPER" \
+      "$MACOS_UI_SWIFTPM_LOCK" \
+      "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" \
+      "16_verify_macos_crash_test:prewarm-build" \
+      sh -c "cd \"\$1\" && swift build --product TransactionClassifier" _ "$MACOS_UI_DIR" >"$PREWARM_LOG" 2>&1
+}
+
+refresh_latest_unclean_artifact() {
+  shopt -s nullglob
+  local unclean_files=("$CRASH_REPORT_DIR"/unclean-exit-*.json)
+  shopt -u nullglob
+
+  latest_unclean_json=""
+  if [[ "${#unclean_files[@]}" -eq 0 ]]; then
+    return
+  fi
+
+  latest_unclean_json="${unclean_files[0]}"
+  for candidate in "${unclean_files[@]}"; do
+    if [[ "$candidate" -nt "$latest_unclean_json" ]]; then
+      latest_unclean_json="$candidate"
+    fi
+  done
+}
+
+unclean_artifact_is_fresh() {
+  if [[ -z "$latest_unclean_json" ]]; then
+    return 1
+  fi
+
+  if [[ -n "$baseline_unclean_json" && "$latest_unclean_json" != "$baseline_unclean_json" ]]; then
+    return 0
+  fi
+
+  [[ "$latest_unclean_json" -nt "$UNCLEAN_MARKER_TIMESTAMP_FILE" ]]
 }
 
 refresh_latest_artifacts() {
@@ -216,6 +319,27 @@ artifacts_are_fresh() {
 refresh_latest_artifacts
 baseline_plcrash="$latest_plcrash"
 baseline_json="$latest_json"
+refresh_latest_unclean_artifact
+baseline_unclean_json="$latest_unclean_json"
+
+echo "▶ Prewarming TransactionClassifier build cache..."
+set +e
+prewarm_swiftpm_build
+prewarm_status=$?
+set -e
+if [[ "$prewarm_status" -eq 124 ]]; then
+  echo "❌ prewarm build timed out after ${PREWARM_BUILD_TIMEOUT_SECONDS}s."
+  echo "---- prewarm output ----"
+  awk '{print}' "$PREWARM_LOG"
+  echo "------------------------"
+  exit 1
+elif [[ "$prewarm_status" -ne 0 ]]; then
+  echo "❌ prewarm build failed before crash verification."
+  echo "---- prewarm output ----"
+  awk '{print}' "$PREWARM_LOG"
+  echo "------------------------"
+  exit 1
+fi
 
 echo "▶ Triggering intentional crash to seed pending crash report..."
 #R010: Require intentional crash run to fail non-zero.
@@ -305,7 +429,53 @@ if ! artifacts_are_fresh; then
   exit 1
 fi
 
+#R065: Simulate prior unclean termination and require fallback marker persistence on relaunch.
+echo "▶ Simulating unclean termination replay marker and relaunching..."
+touch "$UNCLEAN_MARKER_TIMESTAMP_FILE"
+sleep 1
+cat > "${CRASH_REPORT_DIR}/${UNCLEAN_MARKER_FILE_NAME}" <<EOF
+{
+  "bundle_id": "TransactionClassifier",
+  "started_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "pid": 99999
+}
+EOF
+set +e
+run_unclean_marker_relaunch
+unclean_relaunch_status=$?
+set -e
+if [[ "$unclean_relaunch_status" -eq 124 ]]; then
+  echo "❌ unclean-marker relaunch timed out before fallback marker log was observed."
+  echo "---- unclean launch output ----"
+  awk '{print}' "$UNCLEAN_LOG"
+  echo "-------------------------------"
+  exit 1
+elif [[ "$unclean_relaunch_status" -ne 0 ]]; then
+  echo "❌ unclean-marker relaunch failed before fallback marker log was observed."
+  echo "---- unclean launch output ----"
+  awk '{print}' "$UNCLEAN_LOG"
+  echo "-------------------------------"
+  exit 1
+fi
+if ! grep -q "CrashReporter: saved unclean termination marker to" "$UNCLEAN_LOG"; then
+  echo "❌ unclean-marker relaunch did not report fallback marker persistence."
+  echo "---- unclean launch output ----"
+  awk '{print}' "$UNCLEAN_LOG"
+  echo "-------------------------------"
+  exit 1
+fi
+refresh_latest_unclean_artifact
+if [[ -z "$latest_unclean_json" ]]; then
+  echo "❌ expected unclean termination marker artifact under ${CRASH_REPORT_DIR}."
+  exit 1
+fi
+if ! unclean_artifact_is_fresh; then
+  echo "❌ latest unclean termination marker artifact is not newer than this verification run."
+  exit 1
+fi
+
 #R035: Print clear success output with artifact paths.
 echo "✅ PLCrashReporter verification passed."
 echo "   - crash report: ${latest_plcrash}"
 echo "   - metadata: ${latest_json}"
+echo "   - unclean marker: ${latest_unclean_json}"

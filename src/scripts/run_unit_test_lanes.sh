@@ -257,10 +257,6 @@ if [[ "$RUN_SWIFT_TESTS" == "true" ]]; then
       exit 1
     fi
     echo "▶ Running Swift unit tests (swift test)..."
-    #R020: Clear stale SPM build cache to avoid module-cache path mismatches after folder renames.
-    if ! rm -rf ./src/macos-ui/.build; then
-      echo "⚠️  Unable to fully clear ./src/macos-ui/.build in restricted runtime; continuing with existing cache."
-    fi
     MACOS_UI_SWIFT_LOCK_HELPER="./src/scripts/macos_ui_swift_lock.sh"
     if [[ ! -f "$MACOS_UI_SWIFT_LOCK_HELPER" ]]; then
       echo "❌ macOS UI SwiftPM lock helper not found at ${MACOS_UI_SWIFT_LOCK_HELPER}."
@@ -268,17 +264,33 @@ if [[ "$RUN_SWIFT_TESTS" == "true" ]]; then
     fi
     # shellcheck disable=SC1090
     source "$MACOS_UI_SWIFT_LOCK_HELPER"
-    set +e
-    swift_test_output="$(
+    run_swift_tests_with_lock() {
       macos_ui_with_swiftpm_lock "$MACOS_UI_SWIFTPM_LOCK" "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" "run_unit_test_lanes:swift-test" \
         swift test --package-path ./src/macos-ui 2>&1
-    )"
+    }
+    set +e
+    swift_test_output="$(run_swift_tests_with_lock)"
     swift_test_exit=$?
     set -e
     printf '%s\n' "$swift_test_output"
     if [[ "$swift_test_exit" -ne 0 ]]; then
       if [[ "$swift_test_output" == *"sandbox_apply: Operation not permitted"* ]]; then
         echo "⚠️  Skipping Swift unit tests in restricted runtime (swift sandbox apply permission denied)."
+      elif [[ "$swift_test_output" == *"cannot be accessed"* && "$swift_test_output" == *".build/"* ]]; then
+        #R020: Recover only on stale-cache/moved-worktree style errors instead of deleting .build preemptively.
+        echo "ℹ️  Detected stale SwiftPM cache state; clearing ./src/macos-ui/.build and retrying swift test once..."
+        if ! rm -rf ./src/macos-ui/.build; then
+          echo "⚠️  Unable to fully clear ./src/macos-ui/.build in restricted runtime; continuing with original failure."
+          exit "$swift_test_exit"
+        fi
+        set +e
+        swift_test_output="$(run_swift_tests_with_lock)"
+        swift_test_exit=$?
+        set -e
+        printf '%s\n' "$swift_test_output"
+        if [[ "$swift_test_exit" -ne 0 ]]; then
+          exit "$swift_test_exit"
+        fi
       else
         exit "$swift_test_exit"
       fi

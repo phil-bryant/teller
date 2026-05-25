@@ -59,6 +59,8 @@ The app now initializes `PLCrashReporter` on startup. If a prior run crashed, th
 
 The `.plcrash` file is suitable for downstream symbolication/hand-off; the `.json` file stores minimal routing metadata (`bundle_id`, `version`, `build`, `captured_at`, `format`).
 
+When the app exits ungracefully (for example Force Quit or a kill while hung), PLCrashReporter may not emit a `.plcrash` file. To keep that path observable, the app now writes an `unclean-exit-*.json` marker on next launch when it detects the previous session did not terminate cleanly.
+
 ### Local verification
 
 1. Launch once with an intentional crash toggle:
