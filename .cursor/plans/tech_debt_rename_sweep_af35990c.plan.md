@@ -12,7 +12,7 @@ todos:
     content: Convert macOS reclassifier plan into `requirements/*-requirements.md` docs mapped to source files and rename existing classification requirement docs.
     status: completed
   - id: repair-traceability
-    content: Update traceability source mappings and run/fix `00_verify_requirements_traceability.sh` for all requirement docs.
+    content: Update traceability source mappings and run/fix `00_run_requirements_traceability_tests.sh` for all requirement docs.
     status: completed
   - id: docs-and-test-sweep
     content: Update README/requirements/test docs and run targeted tests plus unit-test harness to validate rename integrity.
@@ -25,7 +25,7 @@ isProject: false
 ## Scope And Outcomes
 - Standardize naming from `reclassification` to `classification` across code, scripts, requirements, tests, and docs (broad scope as requested).
 - Replace the plan artifact at [`./.cursor/plans/macos_transaction_reclassifier_1e326d42.plan.md`](./.cursor/plans/macos_transaction_reclassifier_1e326d42.plan.md) with one or more `requirements/*-requirements.md` files aligned to existing conventions.
-- Keep requirements traceability green by updating source-path discovery and references used by [`./00_verify_requirements_traceability.sh`](./00_verify_requirements_traceability.sh), requirement docs, and `#R...` mappings.
+- Keep requirements traceability green by updating source-path discovery and references used by [`./00_run_requirements_traceability_tests.sh`](./00_run_requirements_traceability_tests.sh), requirement docs, and `#R...` mappings.
 
 ## Planned Changes
 
@@ -55,7 +55,7 @@ isProject: false
 - Remove or archive the plan markdown after requirements are fully represented and linked from project docs.
 
 ### 4) Update Traceability Pipeline For New Names
-- Update references and usage/help text in [`./00_verify_requirements_traceability.sh`](./00_verify_requirements_traceability.sh) where old requirement/source names are embedded.
+- Update references and usage/help text in [`./00_run_requirements_traceability_tests.sh`](./00_run_requirements_traceability_tests.sh) where old requirement/source names are embedded.
 - Ensure all renamed requirement docs still expose valid `## Scope` backticked source paths so auto-discovery works.
 - Update requirement IDs / `#R...` tags only where source moves or file rewrites require it; preserve existing IDs where possible to keep diff noise low.
 
@@ -72,7 +72,7 @@ isProject: false
 
 ## Verification Plan
 - Run targeted grep checks for old names to confirm no stale references remain (`reclassification`, old script names, old `macos/` path, old token-server location).
-- Run [`./00_verify_requirements_traceability.sh`](./00_verify_requirements_traceability.sh) in all-requirements mode and fix any missing/extra `#R` tags.
+- Run [`./00_run_requirements_traceability_tests.sh`](./00_run_requirements_traceability_tests.sh) in all-requirements mode and fix any missing/extra `#R` tags.
 - Run shell and python unit tests most affected by renames (especially `tests/sh/*` for renamed scripts and `tests/py/*classification*` for API module rename).
 - Run `04_run_unit_tests.sh` flow after `macos-ui` migration to verify Swift test path updates.
 

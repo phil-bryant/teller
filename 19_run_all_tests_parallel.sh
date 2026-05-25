@@ -7,19 +7,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #R005: Execute from repository root regardless of caller directory.
 cd "$SCRIPT_DIR"
 
-#R010: Fixed checklist of ten numbered check scripts.
-CHECKS=(
-  "00_verify_requirements_traceability.sh"
-  "04_run_dependency_freshness_checks.sh"
-  "12_run_teller_api_smoke_checks.sh"
-  "05_run_av_checks.sh"
-  "06_run_sast.sh"
-  "08_verify_deploy_database.sh"
-  "09_run_unit_tests.sh"
-  "10_run_macos_ui_regression_tests.sh"
-  "11_verify_macos_crash_reporter.sh"
-  "16_verify_classification_persistence.sh"
-)
+#R010: Discover numbered check scripts dynamically by basename.
+SELF_SCRIPT_BASENAME="$(basename "${BASH_SOURCE[0]}")"
+CHECKS=()
+for candidate in ./*.sh; do
+  script="$(basename "$candidate")"
+  if [[ "$script" == "$SELF_SCRIPT_BASENAME" ]]; then
+    continue
+  fi
+  if [[ "$script" =~ ^[0-9]{2}_.*$ && "$script" =~ (^|_)tests?(_|\.sh$) ]]; then
+    CHECKS+=("$script")
+  fi
+done
+
+if [[ "${#CHECKS[@]}" -eq 0 ]]; then
+  echo "❌ FAIL: no numbered test scripts found (expected names containing test or tests)." >&2
+  exit 1
+fi
 
 #R040: Remain a standalone meta-runner; child check scripts must not invoke this script.
 
@@ -30,7 +34,7 @@ PROGRESS_INTERVAL_SECONDS="${PARALLEL_CHECKS_PROGRESS_INTERVAL_SECONDS:-1}"
 if [[ ! "$PROGRESS_INTERVAL_SECONDS" =~ ^[0-9]+$ || "$PROGRESS_INTERVAL_SECONDS" -le 0 ]]; then
   PROGRESS_INTERVAL_SECONDS=1
 fi
-LOCK_FILE="${SCRIPT_DIR}/.19_run_all_checks_parallel.lock"
+LOCK_FILE="${SCRIPT_DIR}/.19_run_all_tests_parallel.lock"
 PROGRESS_INLINE=false
 if [[ -t 1 ]]; then
   PROGRESS_INLINE=true
@@ -59,7 +63,7 @@ acquire_single_run_lock() {
     existing_lock_pid="$(<"$LOCK_FILE")"
   fi
   if [[ -n "$existing_lock_pid" ]] && kill -0 "$existing_lock_pid" 2>/dev/null; then
-    echo "❌ FAIL: another 19_run_all_checks_parallel.sh run is already active (pid ${existing_lock_pid})." >&2
+    echo "❌ FAIL: another 19_run_all_tests_parallel.sh run is already active (pid ${existing_lock_pid})." >&2
     return 1
   fi
   rm -f "$LOCK_FILE"
@@ -187,11 +191,17 @@ done
 
 echo "▶ Starting parallel checks (${#CHECKS[@]} scripts)..."
 
+#R060: Record orchestrator wall-clock start for long-pole timing.
+run_start_epoch="$(date +%s)"
+long_pole_script=""
+long_pole_seconds=0
+
 #R015: Launch all check scripts concurrently.
 #R020: Capture each child exit code independently.
 for script in "${CHECKS[@]}"; do
   log="${REPORT_DIR}/${script%.sh}.log"
-  rm -f "${log}" "${log}.exit" "${log}.exit.reported"
+  rm -f "${log}" "${log}.exit" "${log}.exit.reported" "${log}.start"
+  date +%s > "${log}.start"
   (
     set +e
     "./${script}" >"${log}" 2>&1
@@ -224,12 +234,25 @@ while [[ "$reported" -lt "$total" ]]; do
     : >"$reported_file"
     reported=$((reported + 1))
     log="${REPORT_DIR}/${script%.sh}.log"
+    start_file="${log}.start"
+    start_epoch=0
+    if [[ -f "$start_file" ]]; then
+      start_epoch="$(<"$start_file")"
+    fi
+    elapsed=0
+    if [[ "$start_epoch" -gt 0 ]]; then
+      elapsed=$(( $(date +%s) - start_epoch ))
+    fi
     completed_exit="$(<"$exit_file")"
+    if [[ "$elapsed" -gt "$long_pole_seconds" ]]; then
+      long_pole_seconds="$elapsed"
+      long_pole_script="$script"
+    fi
     if [[ "$completed_exit" -eq 0 ]]; then
-      emit_result_line "✅ PASS: ${script}"
+      emit_result_line "✅ PASS: ${script} (${elapsed}s)"
       pass_count=$((pass_count + 1))
     else
-      emit_result_line "❌ FAIL: ${script} (exit ${completed_exit}) — see ${log}"
+      emit_result_line "❌ FAIL: ${script} (exit ${completed_exit}, ${elapsed}s) — see ${log}"
       fail_count=$((fail_count + 1))
     fi
   done
@@ -245,6 +268,10 @@ for pid in "${child_pids[@]}"; do
   wait "$pid"
 done
 set -e
+
+#R060: Report wall time and longest lane before overall gate.
+wall_elapsed=$(( $(date +%s) - run_start_epoch ))
+echo "Timing: wall ${wall_elapsed}s; long pole ${long_pole_script} (${long_pole_seconds}s)"
 
 #R030: Print overall pass/fail gate and exit code.
 if [[ "$fail_count" -eq 0 ]]; then

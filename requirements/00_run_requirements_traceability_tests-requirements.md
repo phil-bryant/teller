@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `00_verify_requirements_traceability.sh` and requirement/test traceability policy in this repository.
+Applies to `00_run_requirements_traceability_tests.sh` and requirement/test traceability policy in this repository.
 
 R001  Statement: Run in strict shell mode with temporary working files.
 Design: Use `umask 007`, `set -euo pipefail`, and `mktemp` files for set operations.

@@ -49,18 +49,18 @@ isProject: false
   - Use explicit executable resolution (absolute path) for `1psa` invocation.
   - Refactor token/header constants and retrieval flow to avoid hardcoded-secret heuristics while preserving behavior.
   - Keep subprocess usage constrained to fixed argv and strict error handling.
-- Eliminate scanner feedback-loop findings in [`06_run_sast.sh`](/Users/phil/local/src/teller/06_run_sast.sh):
+- Eliminate scanner feedback-loop findings in [`06_run_static_security_tests.sh`](/Users/phil/local/src/teller/06_run_static_security_tests.sh):
   - Ensure scanners do not scan generated scanner outputs in `.security-reports`.
   - Ensure cache/runtime artifacts (for example `.ruff_cache`) are cleaned or excluded before secret scans.
   - Preserve strict scanning of source/config inputs.
-- Update test coverage in [`tests/sh/06_run_sast.bats`](/Users/phil/local/src/teller/tests/sh/06_run_sast.bats):
+- Update test coverage in [`tests/sh/06_run_static_security_tests.bats`](/Users/phil/local/src/teller/tests/sh/06_run_static_security_tests.bats):
   - Add regression tests that scanner output artifacts do not self-trigger gitleaks/detect-secrets.
   - Keep strict gate-fail tests for real findings.
-- Update SAST documentation in [`requirements/06_run_sast-requirements.md`](/Users/phil/local/src/teller/requirements/06_run_sast-requirements.md) with root-cause rationale and expected scanner sequencing.
+- Update SAST documentation in [`requirements/06_run_static_security_tests-requirements.md`](/Users/phil/local/src/teller/requirements/06_run_static_security_tests-requirements.md) with root-cause rationale and expected scanner sequencing.
 
 ## Validation
-- Run shell tests for SAST script behavior in [`tests/sh/06_run_sast.bats`](/Users/phil/local/src/teller/tests/sh/06_run_sast.bats).
-- Re-run `./06_run_sast.sh` and verify summary target:
+- Run shell tests for SAST script behavior in [`tests/sh/06_run_static_security_tests.bats`](/Users/phil/local/src/teller/tests/sh/06_run_static_security_tests.bats).
+- Re-run `./06_run_static_security_tests.sh` and verify summary target:
   - `bandit_total = 0`,
   - `ruff_total = 0`,
   - `detect_secrets_findings = 0`,

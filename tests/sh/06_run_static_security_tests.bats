@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/06_run_sast-requirements.md
+# Requirement test-case tags for requirements/06_run_static_security_tests-requirements.md
 # #R015-T02: Traceability anchor.
 # #R025-T02: Traceability anchor.
 # #R030-T02: Traceability anchor.
@@ -9,7 +9,7 @@
 # #R090-T04: Traceability anchor.
 # #R090-T05: Traceability anchor.
 
-# Traceability numbered tags for requirements/06_run_sast-requirements.md
+# Traceability numbered tags for requirements/06_run_static_security_tests-requirements.md
 # #R001-T01: Traceability anchor.
 # #R005-T01: Traceability anchor.
 # #R010-T01: Traceability anchor.
@@ -110,7 +110,7 @@ EOS
 
 copy_security_project_files() {
   create_repo_fixture
-  copy_script_to_fixture "06_run_sast.sh"
+  copy_script_to_fixture "06_run_static_security_tests.sh"
   cp "$(repo_root)/requirements-security.txt" "${FIXTURE_ROOT}/"
   cp "$(repo_root)/.semgrep.yml" "${FIXTURE_ROOT}/"
   cp "$(repo_root)/.bandit" "${FIXTURE_ROOT}/"
@@ -423,7 +423,7 @@ stub_shellcheck_error_findings() {
   cat > "${STUB_BIN}/shellcheck" <<'EOF'
 #!/usr/bin/env bash
 echo "shellcheck $*" >> "${CALLS_LOG}"
-printf '%s' '[{"file":"./06_run_sast.sh","line":1,"level":"error","code":2086,"message":"Double quote to prevent globbing"}]'
+printf '%s' '[{"file":"./06_run_static_security_tests.sh","line":1,"level":"error","code":2086,"message":"Double quote to prevent globbing"}]'
 exit 1
 EOF
   chmod +x "${STUB_BIN}/shellcheck"
@@ -433,7 +433,7 @@ stub_shellcheck_warning_findings() {
   cat > "${STUB_BIN}/shellcheck" <<'EOF'
 #!/usr/bin/env bash
 echo "shellcheck $*" >> "${CALLS_LOG}"
-printf '%s' '[{"file":"./06_run_sast.sh","line":1,"level":"warning","code":2154,"message":"variable referenced but not assigned"}]'
+printf '%s' '[{"file":"./06_run_static_security_tests.sh","line":1,"level":"warning","code":2154,"message":"variable referenced but not assigned"}]'
 exit 1
 EOF
   chmod +x "${STUB_BIN}/shellcheck"
@@ -557,7 +557,7 @@ teardown() {
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   mkdir -p "${TEST_TMPDIR}/elsewhere"
   run env RUN_SAST=false RUN_DAST=false \
-    bash -c "cd '${TEST_TMPDIR}/elsewhere' && exec bash '${FIXTURE_ROOT}/06_run_sast.sh'"
+    bash -c "cd '${TEST_TMPDIR}/elsewhere' && exec bash '${FIXTURE_ROOT}/06_run_static_security_tests.sh'"
   [ "$status" -eq 0 ]
   [ -d "${FIXTURE_ROOT}/.security-reports" ]
   [[ "$output" == *"running SAST (Static Application Security Testing)"* ]]
@@ -590,7 +590,7 @@ EOS
   copy_security_project_files
   write_python3_venv_stub
   run env RUN_SAST=false RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Creating isolated security virtualenv"* ]]
   [ -d "${FIXTURE_ROOT}/.security-venv" ]
@@ -605,7 +605,7 @@ EOS
   copy_security_project_files
   write_python3_venv_stub_no_sast_tools
   run env RUN_SAST=false RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Installing security toolchain into ./.security-venv"* ]]
   calls="$(<"${CALLS_LOG}")"
@@ -620,7 +620,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"pip-audit target interpreter:"*teller-venv* ]]
 }
@@ -633,7 +633,7 @@ EOS
   touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   run env RUN_SAST=false RUN_DAST=false SECURITY_REPORT_DIR="${FIXTURE_ROOT}/.custom-rep" \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [ -d "${FIXTURE_ROOT}/.custom-rep" ]
 }
@@ -645,7 +645,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" ruff.json gitleaks.json shellcheck.json swiftlint.json sast-summary.json; do
     [ -f "${FIXTURE_ROOT}/.security-reports/${f}" ]
@@ -671,7 +671,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"+==============================================================================+"* ]]
   [[ "$output" == *"Security Tool: Semgrep"* ]]
@@ -698,7 +698,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Semgrep detailed status: exit_code=0;"* ]]
   [[ "$output" == *"report=./.security-reports/semgrep.json"* ]]
@@ -711,7 +711,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Bandit detailed status: exit_code=0;"* ]]
   [[ "$output" == *"report=./.security-reports/bandit.json"* ]]
@@ -724,7 +724,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"pip-audit detailed status: exit_code=0;"* ]]
   [[ "$output" == *"report=./.security-reports/pip-audit.json"* ]]
@@ -737,7 +737,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"detect-secrets detailed status: exit_code=0;"* ]]
   [[ "$output" == *"report=./.security-reports/detect-secrets.json"* ]]
@@ -750,7 +750,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Ruff detailed status: exit_code=0;"* ]]
   [[ "$output" == *"report=./.security-reports/ruff.json"* ]]
@@ -763,7 +763,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"ShellCheck detailed status: exit_code=0;"* ]]
   [[ "$output" == *"report=./.security-reports/shellcheck.json"* ]]
@@ -775,7 +775,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"detect-secrets scan --all-files --force-use-all-plugins --exclude-files"* ]]
@@ -788,7 +788,7 @@ EOS
   install_passing_sast_stubs_in_venv
   stub_shellcheck_clean
   run env RUN_DAST=false RUN_SWIFT_SAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"gitleaks detect --source /"* ]]
@@ -806,7 +806,7 @@ import Foundation
 EOF
   stub_swiftlint_ok
   run env RUN_DAST=false RUN_SWIFT_SAST=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/swiftlint.json" ]
   calls="$(<"${CALLS_LOG}")"
@@ -825,7 +825,7 @@ import Foundation
 EOF
   stub_swiftlint_exit_2
   run env RUN_DAST=false RUN_SWIFT_SAST=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"SwiftLint failed to execute."* ]]
 }
@@ -838,7 +838,7 @@ EOF
   stub_shellcheck_clean
   install_bandit_exit_2
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Bandit failed to execute."* ]]
 }
@@ -851,7 +851,7 @@ EOF
   stub_shellcheck_clean
   install_pip_audit_exit_2
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pip-audit failed to execute."* ]]
 }
@@ -864,7 +864,7 @@ EOF
   stub_shellcheck_clean
   install_ruff_exit_2
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Ruff failed to execute."* ]]
 }
@@ -877,7 +877,7 @@ EOF
   stub_shellcheck_clean
   install_ruff_findings
   run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Ruff reported findings"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
@@ -891,7 +891,7 @@ EOF
   stub_shellcheck_clean
   install_gitleaks_exit_2
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"gitleaks failed to execute."* ]]
 }
@@ -904,7 +904,7 @@ EOF
   stub_shellcheck_clean
   install_sast_gate_fail_semgrep
   run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
 }
@@ -917,7 +917,7 @@ EOF
   stub_shellcheck_clean
   install_sast_gate_fail_semgrep_warning
   run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Semgrep findings (1)"* ]]
   [[ "$output" == *"[WARNING] r-warning @ f.py:7"* ]]
@@ -932,7 +932,7 @@ EOF
   stub_shellcheck_clean
   install_sast_gate_fail_semgrep_warning
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Medium-or-higher findings detected."* ]]
 }
@@ -945,7 +945,7 @@ EOF
   stub_shellcheck_clean
   install_bandit_medium_finding
   run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Bandit detailed status: exit_code=1; findings=1"* ]]
   [[ "$output" == *"Medium-or-higher findings detected."* ]]
@@ -959,7 +959,7 @@ EOF
   stub_shellcheck_clean
   install_pip_audit_vulnerability
   run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pip-audit detailed status: exit_code=1; vulnerabilities=1"* ]]
   [[ "$output" == *"Medium-or-higher findings detected."* ]]
@@ -973,7 +973,7 @@ EOF
   stub_shellcheck_clean
   install_gitleaks_findings
   run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"gitleaks reported findings"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
@@ -986,7 +986,7 @@ EOF
   install_passing_sast_stubs_in_venv
   stub_shellcheck_warning_findings
   run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"ShellCheck reported findings"* ]]
   [[ "$output" == *"Medium-or-higher findings detected."* ]]
@@ -999,7 +999,7 @@ EOF
   install_passing_sast_stubs_in_venv
   stub_shellcheck_exit_2
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"ShellCheck failed to execute."* ]]
 }
@@ -1011,7 +1011,7 @@ EOF
   install_passing_sast_stubs_in_venv
   stub_shellcheck_error_findings
   run env RUN_DAST=false SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"ShellCheck reported findings"* ]]
   [[ "$output" == *"Static Application Security Testing (SAST) gate failed"* ]]
@@ -1029,7 +1029,7 @@ import Foundation
 EOF
   stub_swiftlint_warning
   run env RUN_DAST=false RUN_SWIFT_SAST=true SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Running SwiftLint (security-focused rules)"* ]]
   [[ "$output" == *"Medium-or-higher findings detected."* ]]
@@ -1047,7 +1047,7 @@ EOF
     DAST_CATEGORY_INTEGRITY_STRICT=false \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Starting local classification API for Dynamic Application Security Testing (DAST)"* ]]
   [ -f "${FIXTURE_ROOT}/.security-reports/classification-api.log" ]
@@ -1071,7 +1071,7 @@ EOF
     RUN_TOKEN_CAPTURE_DAST=auto \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18788 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Token capture Dynamic Application Security Testing (DAST) skipped"* ]]
 }
@@ -1089,7 +1089,7 @@ EOF
     ZAP_CLI_CMD="/no/such/zap" \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18789 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Missing ZAP CLI executable:"* ]]
 }
@@ -1111,7 +1111,7 @@ EOF
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18791 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     DAST_OPENAPI_URL="http://127.0.0.1:18791/openapi.json" \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.security-reports/zap-classification.log" ]
   calls="$(<"${CALLS_LOG}")"
@@ -1139,7 +1139,7 @@ EOF
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18794 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     DAST_OPENAPI_URL="http://127.0.0.1:18794/openapi.json" \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [ -d "$custom_zap_home" ]
   calls="$(<"${CALLS_LOG}")"
@@ -1164,7 +1164,7 @@ EOF
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18795 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     DAST_OPENAPI_URL="http://127.0.0.1:18795/openapi.json" \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"zap -cmd -dir ${FIXTURE_ROOT}/.security-reports/zap-home"* ]]
@@ -1184,7 +1184,7 @@ EOF
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18793 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     DAST_OPENAPI_URL="http://127.0.0.1:18793/openapi.json" \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
@@ -1198,7 +1198,7 @@ EOF
   touch "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   run env RUN_SAST=false RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/06_run_sast.sh"
+    bash "${FIXTURE_ROOT}/06_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Security checks completed. Reports:"*".security-reports"* ]]
 }

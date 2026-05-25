@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `12_run_teller_api_smoke_checks.sh`.
+Applies to `12_run_teller_api_smoke_tests.sh`.
 
 R001  Statement: Run from repository root regardless of caller working directory.
 Design: Resolve script directory from `${BASH_SOURCE[0]}` and `cd` into it before invoking local scripts.
@@ -24,4 +24,4 @@ Tests:
 
 ## Changelog
 
-- 2026-05-24: Initial requirements for `12_run_teller_api_smoke_checks.sh`.
+- 2026-05-24: Initial requirements for `12_run_teller_api_smoke_tests.sh`.

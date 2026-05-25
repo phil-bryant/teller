@@ -18,7 +18,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
-from urllib.request import HTTPCookieProcessor, Request, build_opener, urlopen
+from urllib.request import HTTPCookieProcessor, Request, build_opener
+
+try:
+    import requests
+except ModuleNotFoundError:  # pragma: no cover - dependency availability varies by runtime
+    requests = None
 
 DEFAULT_VERSION_URLS = (
     "https://teller.io/docs/api",
@@ -51,11 +56,16 @@ def compare_versions(left: str | None, right: str | None) -> int | None:
 
 
 def fetch_json(url: str, timeout_seconds: int) -> tuple[dict[str, Any] | None, str]:
-    request = Request(url, headers={"User-Agent": "teller-api-version-freshness/1.0"})
+    if requests is None:
+        return None, "requests is required for Teller API version checks."
+    parsed = urlsplit(url)
+    if parsed.scheme.lower() != "https":
+        return None, f"unsupported scheme for version source: {url}"
     try:
-        with urlopen(request, timeout=timeout_seconds) as response:  # nosec B310
-            payload = response.read().decode("utf-8")
-    except URLError as exc:
+        response = requests.get(url, headers={"User-Agent": "teller-api-version-freshness/1.0"}, timeout=timeout_seconds)
+        response.raise_for_status()
+        payload = response.text
+    except requests.RequestException as exc:
         return None, str(exc)
     try:
         parsed = json.loads(payload)
@@ -67,11 +77,16 @@ def fetch_json(url: str, timeout_seconds: int) -> tuple[dict[str, Any] | None, s
 
 
 def fetch_text(url: str, timeout_seconds: int) -> tuple[str | None, str]:
-    request = Request(url, headers={"User-Agent": "teller-api-version-freshness/1.0"})
+    if requests is None:
+        return None, "requests is required for Teller API version checks."
+    parsed = urlsplit(url)
+    if parsed.scheme.lower() != "https":
+        return None, f"unsupported scheme for version source: {url}"
     try:
-        with urlopen(request, timeout=timeout_seconds) as response:  # nosec B310
-            payload = response.read().decode("utf-8")
-    except URLError as exc:
+        response = requests.get(url, headers={"User-Agent": "teller-api-version-freshness/1.0"}, timeout=timeout_seconds)
+        response.raise_for_status()
+        payload = response.text
+    except requests.RequestException as exc:
         return None, str(exc)
     return payload, ""
 

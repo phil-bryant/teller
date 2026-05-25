@@ -12,7 +12,7 @@ todos:
     content: Add/extend unit tests for match state transitions and match review filtering/pagination behavior
     status: completed
   - id: verify-sast-gate
-    content: Run classification API tests and 06_run_sast.sh; confirm Semgrep blockers are eliminated
+    content: Run classification API tests and 06_run_static_security_tests.sh; confirm Semgrep blockers are eliminated
     status: completed
 isProject: false
 ---
@@ -20,7 +20,7 @@ isProject: false
 # Eliminate Dynamic SQL Semgrep Blockers
 
 ## What is failing now
-- `./06_run_sast.sh` fails only on Semgrep high/critical findings (6 total), all in [`teller/teller_classification_api.py`](teller/teller_classification_api.py).
+- `./06_run_static_security_tests.sh` fails only on Semgrep high/critical findings (6 total), all in [`teller/teller_classification_api.py`](teller/teller_classification_api.py).
 - The failures map to three dynamic SQL call sites using `text(f"...")`: one in `_transition_match_state` and two in `list_matchy_review` (`COUNT(*)` + row query).
 
 ## Implementation plan
@@ -36,13 +36,13 @@ isProject: false
   - Verify `_transition_match_state` behavior for both override/no-email branches still commits and returns expected model values.
   - Verify `/v1/matchy/review` still applies `state` and `only_unmoved` filters and preserves pagination semantics.
   - Assert generated SQL call signatures no longer rely on f-string/interpolated SQL for these paths (behavioral guard against regression).
-- Keep scanner policy unchanged in [`06_run_sast.sh`](06_run_sast.sh) and [`.semgrep.yml`](.semgrep.yml); this is a code fix, not a suppression change.
+- Keep scanner policy unchanged in [`06_run_static_security_tests.sh`](06_run_static_security_tests.sh) and [`.semgrep.yml`](.semgrep.yml); this is a code fix, not a suppression change.
 
 ## Validation steps
 - Run focused unit tests for classification API module:
   - `python -m unittest tests/py/test_teller_classification_api.py`
 - Re-run SAST gate:
-  - `./06_run_sast.sh`
+  - `./06_run_static_security_tests.sh`
 - Confirm Semgrep findings for `teller.dynamic-sql-fstring-in-text` and `python.sqlalchemy.security.audit.avoid-sqlalchemy-text` are removed from `./.security-reports/semgrep.json`.
 
 ## Notes

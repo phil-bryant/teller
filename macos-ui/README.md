@@ -88,9 +88,9 @@ From repo root:
 
 - `./09_run_unit_tests.sh` (API/unit tests)
 - `./10_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
-- `./05_run_av_checks.sh` (standalone ClamAV antivirus lane)
-- `./16_verify_classification_persistence.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./16_verify_classification_persistence.sh --require-env-ids` (strict CI mode)
+- `./05_run_av_test.sh` (standalone ClamAV antivirus lane)
+- `./16_classification_persistence_verification_test.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./16_classification_persistence_verification_test.sh --require-env-ids` (strict CI mode)
 
 ## 5) Automated UI regression testing
 

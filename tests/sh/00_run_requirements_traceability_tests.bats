@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/00_verify_requirements_traceability-requirements.md
+# Requirement test-case tags for requirements/00_run_requirements_traceability_tests-requirements.md
 # #R015-T02: Traceability anchor.
 # #R030-T02: Traceability anchor.
 # #R035-T02: Traceability anchor.
@@ -26,8 +26,8 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "00_verify_requirements_traceability.sh"
-  mv "${FIXTURE_ROOT}/00_verify_requirements_traceability.sh" "${FIXTURE_ROOT}/verify_requirements_traceability.sh"
+  copy_script_to_fixture "00_run_requirements_traceability_tests.sh"
+  mv "${FIXTURE_ROOT}/00_run_requirements_traceability_tests.sh" "${FIXTURE_ROOT}/verify_requirements_traceability.sh"
 }
 
 teardown() {

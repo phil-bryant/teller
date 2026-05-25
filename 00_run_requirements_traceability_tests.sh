@@ -1076,8 +1076,8 @@ verify_repository_source_requirements_coverage() {
 
 print_usage() {
     echo "Usage:"
-    echo "  ./00_verify_requirements_traceability.sh"
-    echo "  ./00_verify_requirements_traceability.sh <requirements_file> <source_file>"
+    echo "  ./00_run_requirements_traceability_tests.sh"
+    echo "  ./00_run_requirements_traceability_tests.sh <requirements_file> <source_file>"
     echo ""
     echo "Checks:"
     echo "  - Requirements IDs <-> source #R tags (strict)"

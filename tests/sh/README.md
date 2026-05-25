@@ -4,7 +4,7 @@ This directory contains `bats-core` unit tests for repository shell scripts.
 
 ## Tier 1 (implemented first)
 
-- `00_verify_requirements_traceability.bats` -> `00_verify_requirements_traceability.sh`
+- `00_run_requirements_traceability_tests.bats` -> `00_run_requirements_traceability_tests.sh`
   - Requirement IDs: `R001`, `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R035`
 - `01_install_prerequisites.bats` -> `01_install_prerequisites.sh`
   - Requirement IDs: `R005`, `R010`, `R012`, `R020`, `R025`, `R035`, `R040`, `R050`

@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/17_run_dast-requirements.md
+# Requirement test-case tags for requirements/17_run_dynamic_security_tests-requirements.md
 
-# Traceability numbered tags for requirements/17_run_dast-requirements.md
+# Traceability numbered tags for requirements/17_run_dynamic_security_tests-requirements.md
 # #R001-T01: Traceability anchor.
 # #R005-T01: Traceability anchor.
 # #R010-T01: Traceability anchor.
@@ -43,7 +43,7 @@ PYS
 
 copy_dast_project_files() {
   create_repo_fixture
-  copy_script_to_fixture "17_run_dast.sh"
+  copy_script_to_fixture "17_run_dynamic_security_tests.sh"
   write_dast_13_stub "${FIXTURE_ROOT}"
   stub_cmd 1psa "echo write-token"
 }
@@ -84,7 +84,7 @@ teardown() {
   echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/.security-venv/bin/semgrep"
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/17_run_dast.sh"
+    bash "${FIXTURE_ROOT}/17_run_dynamic_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"running DAST (Dynamic Application Security Testing)"* ]]
 }
@@ -101,7 +101,7 @@ teardown() {
     DAST_CATEGORY_INTEGRITY_STRICT=false \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=19787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/17_run_dast.sh"
+    bash "${FIXTURE_ROOT}/17_run_dynamic_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"running DAST (Dynamic Application Security Testing)"* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
@@ -110,7 +110,7 @@ teardown() {
 @test "category integrity gate asserts seed protection invariants" {
   setup_shell_test
   copy_dast_project_files
-  run /usr/bin/python3 - <<'PY' "${FIXTURE_ROOT}/17_run_dast.sh"
+  run /usr/bin/python3 - <<'PY' "${FIXTURE_ROOT}/17_run_dynamic_security_tests.sh"
 import pathlib
 import sys
 

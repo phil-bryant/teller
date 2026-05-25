@@ -6,7 +6,7 @@ todos:
     content: Remove macOS UI DAST block and related helpers/vars from 16_run_dast.sh; rename reuse-existing-api env
     status: completed
   - id: strip-06-sast-dast
-    content: Remove duplicate macOS UI DAST block from 06_run_sast.sh run_dast_checks()
+    content: Remove duplicate macOS UI DAST block from 06_run_static_security_tests.sh run_dast_checks()
     status: completed
   - id: update-requirements
     content: Delete R025/R030/R035 from requirements/16_run_dast-requirements.md and add changelog
@@ -27,7 +27,7 @@ isProject: false
 2. **OWASP ZAP quick scan** (CLI against `/health`)
 3. **macOS UI DAST** — ZAP daemon proxy + `./10_run_macos_ui_regression_tests.sh` with `RUN_XCUITESTS=true` (this is what failed on the missing `activateTransactionClassifierForInput` symbol and what you want removed)
 
-The same macOS UI block is **duplicated** in `[06_run_sast.sh](06_run_sast.sh)` when `RUN_DAST=true` (off by default). Both copies should be removed so the feature cannot be re-enabled accidentally.
+The same macOS UI block is **duplicated** in `[06_run_static_security_tests.sh](06_run_static_security_tests.sh)` when `RUN_DAST=true` (off by default). Both copies should be removed so the feature cannot be re-enabled accidentally.
 
 **Out of scope (unchanged):**
 
@@ -85,7 +85,7 @@ Delete the entire macOS UI DAST block (~lines 1386–1482): `RUN_MACOS_UI_DAST`,
 
 Remove all `RUN_MACOS_UI_DAST`, `MACOS_UI_DAST_ZAP_PROXY_*` references.
 
-### 2. `[06_run_sast.sh](06_run_sast.sh)`
+### 2. `[06_run_static_security_tests.sh](06_run_static_security_tests.sh)`
 
 Mirror the same deletion inside `run_dast_checks()` (~~lines 1167–1222) and the `zap-macos-ui.json` references in the DAST gating loop (~~1242, 1271). Apply the same `DAST_REUSE_EXISTING_API` rename for consistency.
 
@@ -101,7 +101,7 @@ Retain **R001, R005, R010, R015, R020** (banner, strict shell, venv, default DAS
 
 Add changelog entry: removed macOS UI / XCUITest DAST integration (2026-05-19).
 
-No changes needed in `[requirements/06_run_sast-requirements.md](requirements/06_run_sast-requirements.md)` (macOS UI DAST was never specified there).
+No changes needed in `[requirements/06_run_static_security_tests-requirements.md](requirements/06_run_static_security_tests-requirements.md)` (macOS UI DAST was never specified there).
 
 ### 4. Bats tests
 
@@ -112,7 +112,7 @@ No changes needed in `[requirements/06_run_sast-requirements.md](requirements/06
 - Update traceability header comments (`#R025`, `#R030`, `#R035` anchors)
 - In remaining tests, drop `RUN_MACOS_UI_DAST=false` from `env` (no longer meaningful)
 
-`**[tests/sh/06_run_sast.bats](tests/sh/06_run_sast.bats)`**
+`**[tests/sh/06_run_static_security_tests.bats](tests/sh/06_run_static_security_tests.bats)`**
 
 - Delete: `macOS UI DAST requires RUN_ZAP=true`, `macOS UI DAST runs regression through proxy and writes artifacts`
 - Remove `RUN_MACOS_UI_DAST=false` from surviving DAST tests
@@ -127,7 +127,7 @@ No changes needed in `[requirements/06_run_sast-requirements.md](requirements/06
 After implementation:
 
 ```bash
-bats tests/sh/16_run_dast.bats tests/sh/06_run_sast.bats
+bats tests/sh/16_run_dast.bats tests/sh/06_run_static_security_tests.bats
 ```
 
 Optional manual smoke (should no longer build Xcode or mention XCUITest):

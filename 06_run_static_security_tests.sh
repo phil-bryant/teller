@@ -432,46 +432,16 @@ TEXT_FIELDS = [
 ]
 
 def parse_seed_row_count(sql_text: str) -> int:
-    match = re.search(r"INSERT\s+INTO\s+teller\.nys_snw_category.*?\bVALUES\b", sql_text, flags=re.IGNORECASE | re.DOTALL)
+    match = re.search(
+        r"SELECT\s+\*\s+FROM\s+\(VALUES(?P<rows>.*?)\)\s+AS\s+seed_rows\s*\(",
+        sql_text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     if not match:
-        raise ValueError("Could not locate INSERT ... VALUES block in seed SQL.")
+        raise ValueError("Could not locate canonical seed VALUES block in seed SQL.")
 
-    i = match.end()
-    depth = 0
-    in_string = False
-    row_count = 0
-    saw_row_open = False
-
-    while i < len(sql_text):
-        ch = sql_text[i]
-        if in_string:
-            if ch == "'":
-                if i + 1 < len(sql_text) and sql_text[i + 1] == "'":
-                    i += 2
-                    continue
-                in_string = False
-            i += 1
-            continue
-
-        if ch == "'":
-            in_string = True
-            i += 1
-            continue
-        if ch == "(":
-            depth += 1
-            if depth == 1:
-                row_count += 1
-                saw_row_open = True
-            i += 1
-            continue
-        if ch == ")":
-            depth = max(0, depth - 1)
-            i += 1
-            continue
-        if ch == ";" and saw_row_open and depth == 0:
-            break
-        i += 1
-
+    rows_block = match.group("rows")
+    row_count = len(re.findall(r"^\s*\(", rows_block, flags=re.MULTILINE))
     if row_count <= 0:
         raise ValueError("Seed SQL parser found zero inserted category rows.")
     return row_count

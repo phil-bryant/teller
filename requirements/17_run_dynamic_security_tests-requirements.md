@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `17_run_dast.sh`.
+Applies to `17_run_dynamic_security_tests.sh`.
 
 R001  Statement: Print an explicit DAST startup banner.
 Design: Emit `running DAST (Dynamic Application Security Testing)` at script startup before scanner orchestration begins.
@@ -31,6 +31,6 @@ Tests:
 
 ## Changelog
 
-- 2026-05-10: Split former combined security lane into `06_run_sast.sh` and `17_run_dast.sh`.
+- 2026-05-10: Split former combined security lane into `06_run_static_security_tests.sh` and `17_run_dynamic_security_tests.sh`.
 - 2026-05-15: Added R025/R030/R035 for ZAP proxy resilience, lane state isolation, and startup diagnostics.
 - 2026-05-19: Removed macOS UI / XCUITest DAST integration (R025, R030, R035); DAST is Schemathesis + ZAP quick scan only.

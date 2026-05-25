@@ -276,6 +276,6 @@ EOF
 
 @test "does not invoke macOS crash reporter verification script" {
   #R050
-  run grep -E 'verify_macos_crash_reporter|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/10_run_macos_ui_regression_tests.sh"
+  run grep -E 'verify_macos_crash_test|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/10_run_macos_ui_regression_tests.sh"
   [ "$status" -ne 0 ]
 }

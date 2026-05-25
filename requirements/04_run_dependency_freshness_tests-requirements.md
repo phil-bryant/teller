@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `04_run_dependency_freshness_checks.sh`.
+Applies to `04_run_dependency_freshness_tests.sh`.
 
 R001  Statement: Run from repository root regardless of caller working directory.
 Design: Resolve script directory from `${BASH_SOURCE[0]}` and `cd` into it before invoking local scripts.
@@ -41,7 +41,7 @@ Tests:
 - R020-T03: Run with explicit `POSTGRES_SERVER_PSQL_ARGS` and verify connection target diagnostics are printed.
 
 R025  Statement: Evaluate PostgreSQL freshness against local CVE policy/snapshot data.
-Design: Default `04_run_dependency_freshness_checks.sh` behavior passes CVE evaluation flags and repository policy/snapshot paths to `scripts/check_postgres_freshness.py`, refreshes snapshot data from PostgreSQL security advisories, and evaluates both client/server versions. Snapshot refresh writes `postgres-cve-snapshot.json` only when advisory payload content changes (not when only `generated_at` changes). Support disabling CVE checks via `RUN_POSTGRES_FRESHNESS` or `POSTGRES_CHECK_CVES=false`.
+Design: Default `04_run_dependency_freshness_tests.sh` behavior passes CVE evaluation flags and repository policy/snapshot paths to `scripts/check_postgres_freshness.py`, refreshes snapshot data from PostgreSQL security advisories, and evaluates both client/server versions. Snapshot refresh writes `postgres-cve-snapshot.json` only when advisory payload content changes (not when only `generated_at` changes). Support disabling CVE checks via `RUN_POSTGRES_FRESHNESS` or `POSTGRES_CHECK_CVES=false`.
 Tests:
 - R025-T01: Run default lane and verify CVE policy/snapshot flags are passed to PostgreSQL freshness script.
 - R025-T02: Run with `POSTGRES_CHECK_CVES=false` and verify CVE flags are not passed.
@@ -49,7 +49,7 @@ Tests:
 
 ## Changelog
 
-- 2026-04-26: Initial requirements for `04_run_dependency_freshness_checks.sh`.
+- 2026-04-26: Initial requirements for `04_run_dependency_freshness_tests.sh`.
 - 2026-04-26: Added optional PostgreSQL freshness requirements and test coverage.
 - 2026-04-26: Added CVE policy/snapshot integration requirements for PostgreSQL freshness checks.
 - 2026-05-12: Updated R010 to fail by default when direct `requirements.txt` entries are outdated.

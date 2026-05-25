@@ -24,14 +24,14 @@ Using the hybrid approach (your `c` response): `bats-core` for shell unit tests 
 
 ## Constraints From Current Project Rules/Docs
 - Source of truth for behavior is per-script requirements docs in [`requirements/`](requirements/) and workflow guidance in [`README.md`](README.md).
-- Traceability gate in [`00_verify_requirements_traceability.sh`](00_verify_requirements_traceability.sh) must remain green when test-relevant requirements are updated.
+- Traceability gate in [`00_run_requirements_traceability_tests.sh`](00_run_requirements_traceability_tests.sh) must remain green when test-relevant requirements are updated.
 - [`03_load_requirements.sh`](03_load_requirements.sh) is locked for edits, so tests must treat it as black-box behavior.
 - No existing CI workflows; runner design should support local-first execution now and CI adoption later.
 
 ## Script Testability Tiers (What Should Have Unit Tests)
 
 ### Tier 1: High-value shell unit tests (add now)
-- [`00_verify_requirements_traceability.sh`](00_verify_requirements_traceability.sh)
+- [`00_run_requirements_traceability_tests.sh`](00_run_requirements_traceability_tests.sh)
   - Why: Pure parsing/diff logic; deterministic and safety-critical.
   - Unit tests:
     - discovers requirement IDs and source `#R` tags correctly
@@ -106,7 +106,7 @@ Rationale: these primarily validate real Postgres/API state; best tested with in
 - Add negative-path tests for each required failure condition documented in `requirements/*.md`.
 
 ## Test Runner Plan
-- Add shell test suite under [`tests/sh/`](tests/sh/) with one file per target script (e.g., `00_verify_requirements_traceability.bats`, `08_capture_teller_token.bats`).
+- Add shell test suite under [`tests/sh/`](tests/sh/) with one file per target script (e.g., `00_run_requirements_traceability_tests.bats`, `08_capture_teller_token.bats`).
 - Add shared helpers under [`tests/sh/helpers/`](tests/sh/helpers/) for sandbox setup, PATH stubs, and assertion utilities.
 - Keep existing Python tests under [`tests/`](tests/) unchanged.
 - Update [`04_run_unit_tests.sh`](04_run_unit_tests.sh) to orchestrate both suites in order:

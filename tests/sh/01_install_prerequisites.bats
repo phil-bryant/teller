@@ -82,7 +82,7 @@ teardown() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"[1psa] Available on PATH"* ]]
   [[ "$output" == *"[pg_install] Repository present"* ]]
-  [[ "$output" == *"./11_verify_macos_crash_reporter.sh"* ]]
+  [[ "$output" == *"./11_verify_macos_crash_test.sh"* ]]
 }
 
 @test "clones pg_install when missing" {

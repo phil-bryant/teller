@@ -313,7 +313,7 @@ EOF
 
 @test "does not invoke macOS crash reporter verification script" {
   #R030
-  run grep -E 'verify_macos_crash_reporter|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/09_run_unit_tests.sh"
+  run grep -E 'verify_macos_crash_test|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/09_run_unit_tests.sh"
   [ "$status" -ne 0 ]
 }
 

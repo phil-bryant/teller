@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `08_verify_deploy_database.sh`.
+Applies to `08_deploy_database_verification_test.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `zsh` shebang and `set -euo pipefail`.
@@ -81,5 +81,5 @@ Tests:
 - 2026-05-23: Added R065 to require explicit DB profile setup before verification.
 - 2026-05-22: Added R060 to confirm live TLS when the resolved profile requires SSL.
 - 2026-05-21: Added R050 and R055 for profile-aware verification on managed Postgres targets.
-- 2026-05-14: Combined updated_at coverage verification into `08_verify_deploy_database.sh` (absorbed former `09` lane behavior).
-- 2026-04-22: Initial requirements for `08_verify_deploy_database.sh`.
+- 2026-05-14: Combined updated_at coverage verification into `08_deploy_database_verification_test.sh` (absorbed former `09` lane behavior).
+- 2026-04-22: Initial requirements for `08_deploy_database_verification_test.sh`.

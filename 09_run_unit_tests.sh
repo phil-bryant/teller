@@ -51,6 +51,31 @@ python_interpreter_usable() {
   "$candidate" -c "import site" >/dev/null 2>&1
 }
 
+resolve_bats_jobs() {
+  local default_jobs cap
+  default_jobs="$(sysctl -n hw.ncpu 2>/dev/null || echo 8)"
+  if [[ "${PARALLEL_LANES:-1}" =~ ^[0-9]+$ ]] && [[ "${PARALLEL_LANES:-1}" -gt 1 ]]; then
+    default_jobs=$(( default_jobs / PARALLEL_LANES ))
+    if [[ "$default_jobs" -lt 1 ]]; then
+      default_jobs=1
+    fi
+  fi
+  BATS_JOBS_RESOLVED="${BATS_JOBS:-$default_jobs}"
+  cap="${BATS_JOBS_CAP:-8}"
+  if [[ "$cap" =~ ^[0-9]+$ ]] && [[ "$cap" -gt 0 ]] && [[ "$BATS_JOBS_RESOLVED" -gt "$cap" ]]; then
+    BATS_JOBS_RESOLVED="$cap"
+  fi
+}
+
+run_single_bats_file() {
+  local bats_file="$1"
+  if [[ -n "$BATS_FILTER" ]]; then
+    env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats --filter "$BATS_FILTER" "$bats_file"
+  else
+    env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats "$bats_file"
+  fi
+}
+
 #R005: Prefer project venv when available.
 if [[ -d "./teller-venv" ]] && [[ -f "./teller-venv/bin/activate" ]]; then
   if ! python_interpreter_usable "./teller-venv/bin/python"; then
@@ -67,11 +92,32 @@ if [[ "$RUN_SHELL_TESTS" == "true" ]]; then
       echo "❌ bats is required for shell unit tests. Install bats-core and rerun."
       exit 1
     fi
-    echo "▶ Running shell unit tests (bats)..."
-    if [[ -n "$BATS_FILTER" ]]; then
-      env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats --filter "$BATS_FILTER" ./tests/sh
+    shopt -s nullglob
+    bats_files=(./tests/sh/*.bats)
+    shopt -u nullglob
+    if [[ "${#bats_files[@]}" -eq 0 ]]; then
+      echo "ℹ️  Skipping shell unit tests: no *.bats files found in ./tests/sh."
     else
-      env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats ./tests/sh
+      resolve_bats_jobs
+      if [[ "$BATS_JOBS_RESOLVED" -le 1 || "${#bats_files[@]}" -le 1 ]]; then
+        echo "▶ Running shell unit tests (bats, serial)..."
+        for bats_file in "${bats_files[@]}"; do
+          run_single_bats_file "$bats_file"
+        done
+      else
+        echo "▶ Running shell unit tests (bats, parallel by file; jobs=${BATS_JOBS_RESOLVED})..."
+        printf '%s\0' "${bats_files[@]}" | \
+          BATS_FILTER="$BATS_FILTER" \
+          xargs -0 -P "$BATS_JOBS_RESOLVED" -I {} bash -c '
+            set -euo pipefail
+            file="$1"
+            if [[ -n "${BATS_FILTER:-}" ]]; then
+              env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats --filter "$BATS_FILTER" "$file"
+            else
+              env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats "$file"
+            fi
+          ' _ {}
+      fi
     fi
   else
     echo "ℹ️  Skipping shell unit tests: ./tests/sh not found."

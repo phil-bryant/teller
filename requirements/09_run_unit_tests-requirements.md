@@ -45,9 +45,9 @@ Tests:
 - R025-T09: Disable SQL tests and verify runner skips SQL invocation.
 
 R030  Statement: Do not chain other numbered verification scripts from this runner.
-Design: `09_run_unit_tests.sh` must not invoke `./11_verify_macos_crash_reporter.sh`, reference `verify_macos_crash_reporter`, or define `RUN_MACOS_CRASH_REPORTER_SMOKE_TEST`. Run that verification as its own numbered entrypoint when needed.
+Design: `09_run_unit_tests.sh` must not invoke `./11_verify_macos_crash_test.sh`, reference `verify_macos_crash_test`, or define `RUN_MACOS_CRASH_REPORTER_SMOKE_TEST`. Run that verification as its own numbered entrypoint when needed.
 Tests:
-- R030-T01: Grep the script text and verify it contains no `verify_macos_crash_reporter` substring and no `CRASH_REPORTER_SMOKE` token.
+- R030-T01: Grep the script text and verify it contains no `verify_macos_crash_test` substring and no `CRASH_REPORTER_SMOKE` token.
 
 R035  Statement: Refuse SQL unit-test execution when DB profile setup is missing.
 Design: SQL preflight profile resolution must fail fast when no profile file is configured and surface setup guidance to copy `db-profiles-EXAMPLE.json` rather than silently defaulting to local DB coordinates.
@@ -57,7 +57,7 @@ Tests:
 ## Changelog
 
 - 2026-05-23: Added R035 to require explicit DB profile setup before SQL test preflight.
-- 2026-05-12: Replaced opt-in crash-reporter lane with R030 isolation requirement; verification is standalone `11_verify_macos_crash_reporter.sh`.
+- 2026-05-12: Replaced opt-in crash-reporter lane with R030 isolation requirement; verification is standalone `11_verify_macos_crash_test.sh`.
 - 2026-05-07: Added R030 for optional PLCrashReporter smoke lane (later removed; see 2026-05-12).
 - 2026-04-26: Added R025 to run SQL unit tests from `tests/sql`.
 - 2026-04-23: Added R020 to run Swift package tests from `./macos-ui`.

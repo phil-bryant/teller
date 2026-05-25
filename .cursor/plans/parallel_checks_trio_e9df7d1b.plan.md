@@ -15,7 +15,7 @@ todos:
     content: Add tests/sh/18_run_all_checks_parallel.bats with stubbed child scripts covering all requirement tests
     status: completed
   - id: verify
-    content: Run bats + targeted 00_verify_requirements_traceability pair check for script 18
+    content: Run bats + targeted 00_run_requirements_traceability_tests pair check for script 18
     status: completed
 isProject: false
 ---
@@ -29,18 +29,18 @@ Introduce `[18_run_all_checks_parallel.sh](18_run_all_checks_parallel.sh)` as a 
 
 | #   | Script                                    |
 | --- | ----------------------------------------- |
-| 00  | `00_verify_requirements_traceability.sh`  |
-| 04  | `04_run_dependency_freshness_checks.sh`   |
-| 05  | `05_run_av_checks.sh`                     |
-| 06  | `06_run_sast.sh`                          |
-| 08  | `08_verify_deploy_database.sh`            |
+| 00  | `00_run_requirements_traceability_tests.sh`  |
+| 04  | `04_run_dependency_freshness_tests.sh`   |
+| 05  | `05_run_av_test.sh`                     |
+| 06  | `06_run_static_security_tests.sh`                          |
+| 08  | `08_deploy_database_verification_test.sh`            |
 | 09  | `09_run_unit_tests.sh`                    |
 | 10  | `10_run_macos_ui_regression_tests.sh`     |
-| 11  | `11_verify_macos_crash_reporter.sh`       |
+| 11  | `11_verify_macos_crash_test.sh`       |
 | 15  | `15_verify_classification_persistence.sh` |
 
 
-Output contract (matches existing scripts like `[08_verify_deploy_database.sh](08_verify_deploy_database.sh)` and `[15_verify_classification_persistence.sh](15_verify_classification_persistence.sh)`):
+Output contract (matches existing scripts like `[08_deploy_database_verification_test.sh](08_deploy_database_verification_test.sh)` and `[15_verify_classification_persistence.sh](15_verify_classification_persistence.sh)`):
 
 - **9 lines**: one `✅ PASS:` or `❌ FAIL:` per child script
 - **1 line**: overall `✅ PASS:` (all green) or `❌ FAIL:` (any red)
@@ -100,7 +100,7 @@ Create `[18_run_all_checks_parallel.sh](18_run_all_checks_parallel.sh)`:
 **Shell conventions** (match neighbors):
 
 - `#!/usr/bin/env bash`, `umask 007`, `set -euo pipefail`
-- `#Rxxx:` scoped tags on each requirement block (required by `[00_verify_requirements_traceability.sh](00_verify_requirements_traceability.sh)`)
+- `#Rxxx:` scoped tags on each requirement block (required by `[00_run_requirements_traceability_tests.sh](00_run_requirements_traceability_tests.sh)`)
 
 **Core algorithm:**
 
@@ -129,14 +129,14 @@ set -e
 
 **Output format** (stable for tests):
 
-- `✅ PASS: 00_verify_requirements_traceability.sh`
+- `✅ PASS: 00_run_requirements_traceability_tests.sh`
 - `❌ FAIL: 09_run_unit_tests.sh (exit 1) — see ./.parallel-checks-reports/09_run_unit_tests.log`
 - `✅ PASS: all parallel checks succeeded (9/9)`
 - `❌ FAIL: parallel checks: 8/9 passed`
 
 Print a short “starting parallel checks…” banner before launch; suppress interleaved child stdout (logs only in files) to keep the summary readable.
 
-**Side fix:** Update stale comment in `[09_run_unit_tests.sh](09_run_unit_tests.sh)` line 14 (`#R030: ... dedicated script 18`) → reference `11_verify_macos_crash_reporter.sh` instead.
+**Side fix:** Update stale comment in `[09_run_unit_tests.sh](09_run_unit_tests.sh)` line 14 (`#R030: ... dedicated script 18`) → reference `11_verify_macos_crash_test.sh` instead.
 
 ## 3. Bats tests
 
@@ -148,7 +148,7 @@ Create `[tests/sh/18_run_all_checks_parallel.bats](tests/sh/18_run_all_checks_pa
 - Helper `write_child_stub(name, body)` that copies minimal executable stubs for all nine children into `FIXTURE_ROOT`
 - Default stubs: echo script name to stdout, exit 0
 
-**Test cases** (with traceability header comments + inline `#Rxxx` tags, same pattern as `[tests/sh/11_verify_macos_crash_reporter.bats](tests/sh/11_verify_macos_crash_reporter.bats)`):
+**Test cases** (with traceability header comments + inline `#Rxxx` tags, same pattern as `[tests/sh/11_verify_macos_crash_test.bats](tests/sh/11_verify_macos_crash_test.bats)`):
 
 1. **all pass** — nine stubs exit 0 → status 0, nine `✅ PASS:` lines, overall PASS
 2. **single failure** — `09_run_unit_tests.sh` stub exits 1 → status 1, that script FAIL, others PASS, overall FAIL
@@ -162,7 +162,7 @@ Do **not** invoke real check scripts in unit tests (they are integration-heavy);
 
 ## 4. Traceability / docs touch-ups
 
-After the trio lands, `[00_verify_requirements_traceability.sh](00_verify_requirements_traceability.sh)` will automatically enforce:
+After the trio lands, `[00_run_requirements_traceability_tests.sh](00_run_requirements_traceability_tests.sh)` will automatically enforce:
 
 - `requirements/18_*-requirements.md` exists for `18_*.sh`
 - Scope references `18_run_all_checks_parallel.sh`
@@ -180,7 +180,7 @@ Optional follow-ups (out of scope unless you want them in the same PR):
 bats tests/sh/18_run_all_checks_parallel.bats
 
 # Traceability gate (will include 18 once trio exists)
-./00_verify_requirements_traceability.sh requirements/18_run_all_checks_parallel-requirements.md 18_run_all_checks_parallel.sh
+./00_run_requirements_traceability_tests.sh requirements/18_run_all_checks_parallel-requirements.md 18_run_all_checks_parallel.sh
 
 # Full local run (real integrations — long, needs env)
 ./18_run_all_checks_parallel.sh
