@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Append teller cache-env exports to a venv activate script (idempotent).
 
+#R001: Append teller cache-env exports to a venv activate script idempotently.
+#R005: Fail when the venv activate script is missing.
 install_venv_test_cache_env() {
   local venv_dir="${1:?venv directory required}"
   local activate_script="${venv_dir}/bin/activate"
@@ -41,3 +43,7 @@ unset -f _teller_repo_root_for_cache
 # <<< teller test cache env <<<
 EOF
 }
+
+if [[ "${BASH_SOURCE[0]:-}" == "${0}" ]]; then
+  install_venv_test_cache_env "$@" || exit $?
+fi

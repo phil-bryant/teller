@@ -25,7 +25,7 @@ teardown() {
 }
 
 @test "prefers python3.12 when both interpreters exist" {
-  #R010-T01 #R010-T02 #R035-T01
+  #R010-T01 #R010-T02 #R035-T01 #R038-T01
   touch "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   cat > "${STUB_BIN}/python3.12" <<'EOF'
 #!/usr/bin/env bash
