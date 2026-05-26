@@ -43,10 +43,12 @@ _SUPABASE_FIELDS = {
 }
 
 
-class _IsolatedEnvTest(unittest.TestCase):
+def _make_onepsa_stub(fields):
     """Return a function that mimics _read_onepsa_fields for the given field dict."""
+
     def stub(item, field_names):  # noqa: ARG001
         return {name: fields[name] for name in field_names if name in fields}
+
     return stub
 
 

@@ -25,7 +25,7 @@ Tests:
 - R015-T01: Run fuzz lane and verify summary report plus PASS output.
 
 R020  Statement: Gate on pytest failures and minimum fuzz example budget.
-Design: Parse Hypothesis statistics blocks from pytest output. Require at least `FUZZ_MIN_PROPERTY_TESTS` property tests and `FUZZ_MIN_TOTAL_EXAMPLES` passing examples. Also require each property test to meet an 80% per-test passing floor based on `FUZZ_MAX_EXAMPLES`. Fail when pytest exits non-zero, timeout occurs, or any budget gate is not met.
+Design: Parse Hypothesis statistics blocks from pytest output. Require at least `FUZZ_MIN_PROPERTY_TESTS` property tests and `FUZZ_MIN_TOTAL_EXAMPLES` passing examples. Also require each property test to meet a 90% per-test passing floor based on `FUZZ_MAX_EXAMPLES` (configurable through `FUZZ_MIN_PER_TEST_RATIO_PERCENT`). Fail when pytest exits non-zero, timeout occurs, or any budget gate is not met.
 Tests:
 - R020-T01: Shell test fails when total passing examples are below configured budget.
 

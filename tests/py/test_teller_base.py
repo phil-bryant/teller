@@ -1,36 +1,8 @@
 import unittest
 
-from teller.teller_base import Base
-
-
-class TellerBaseTests(unittest.TestCase):
-    def test_base_has_registry(self):
-        self.assertIsNotNone(Base.registry)
-
-    def test_registry_contains_metadata(self):
-        self.assertIsNotNone(Base.metadata)
-
-
-if __name__ == "__main__":
-    unittest.main()
-import unittest
-
-
-
-class TellerBaseTests(unittest.TestCase):
-    def test_base_has_registry(self):
-        self.assertIsNotNone(Base.registry)
-
-    def test_registry_contains_metadata(self):
-        self.assertIsNotNone(Base.metadata)
-
-
-if __name__ == "__main__":
-    unittest.main()
-import unittest
-
 from sqlalchemy.orm import Mapped, mapped_column
 
+from teller.teller_base import Base
 
 
 class TellerBaseTests(unittest.TestCase):

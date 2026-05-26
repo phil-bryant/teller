@@ -326,8 +326,13 @@ final class APIClientTests: XCTestCase {
 
     func testShouldPinLocalCertOnlyForLoopbackHTTPS() {
         // #R020-T04
-        XCTAssertTrue(LocalClassifierTLS.shouldPinLocalCert(for: URL(string: "https://127.0.0.1:8787")!))
-        XCTAssertFalse(LocalClassifierTLS.shouldPinLocalCert(for: URL(string: "https://example.com")!))
+        guard let loopbackURL = URL(string: "https://127.0.0.1:8787"),
+              let remoteURL = URL(string: "https://example.com") else {
+            XCTFail("Failed to build test URLs")
+            return
+        }
+        XCTAssertTrue(LocalClassifierTLS.shouldPinLocalCert(for: loopbackURL))
+        XCTAssertFalse(LocalClassifierTLS.shouldPinLocalCert(for: remoteURL))
     }
 
     func testLoadPinnedCertificateFromInstalledDefaultCert() throws {

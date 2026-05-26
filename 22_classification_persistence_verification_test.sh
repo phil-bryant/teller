@@ -41,6 +41,12 @@ rm -f "$profile_exports_file"
 eval "$PROFILE_EXPORTS"
 
 API_URL="${TELLER_CLASSIFIER_API_URL:-http://127.0.0.1:8787}"
+API_SCHEME="$(python3 - <<'PY' "$API_URL"
+import sys
+from urllib.parse import urlparse
+print((urlparse(sys.argv[1]).scheme or "http").lower())
+PY
+)"
 DB_HOST="${TELLER_DB_HOST:-${PG_HOST:-localhost}}"
 DB_PORT="${TELLER_DB_PORT:-${PG_PORT:-5432}}"
 DB_NAME="${TELLER_DB_NAME:-${PG_DBNAME:-}}"
@@ -69,8 +75,11 @@ fi
 CLASSIFICATION_PERSISTENCE_START_API="${CLASSIFICATION_PERSISTENCE_START_API:-true}"
 CLASSIFICATION_PERSISTENCE_API_PYTHON="${CLASSIFICATION_PERSISTENCE_API_PYTHON:-./teller-venv/bin/python}"
 CLASSIFICATION_PERSISTENCE_API_STARTUP_SECONDS="${CLASSIFICATION_PERSISTENCE_API_STARTUP_SECONDS:-45}"
+CLASSIFICATION_PERSISTENCE_REPORT_DIR="${CLASSIFICATION_PERSISTENCE_REPORT_DIR:-./artifacts/classification-persistence}"
 classifier_api_pid=""
 classifier_api_started="false"
+classifier_api_log=""
+mkdir -p "$CLASSIFICATION_PERSISTENCE_REPORT_DIR"
 
 cleanup_classifier_api() {
   if [[ "$classifier_api_started" != "true" ]]; then
@@ -103,15 +112,14 @@ PY
 wait_for_classifier_api() {
   local url="$1"
   local timeout_seconds="$2"
-  local api_host="${3:-}"
-  local api_port="${4:-}"
+  local curl_insecure_flag=""
+  if [[ "$API_SCHEME" == "https" ]]; then
+    curl_insecure_flag="-k"
+  fi
   local start_ts
   start_ts="$(date +%s)"
   while true; do
-    if curl -fsS "$url" >/dev/null 2>&1; then
-      return 0
-    fi
-    if [[ -n "$api_host" && -n "$api_port" ]] && classifier_api_port_open "$api_host" "$api_port"; then
+    if curl ${curl_insecure_flag:+"$curl_insecure_flag"} -fsS "$url" >/dev/null 2>&1; then
       return 0
     fi
     if (( "$(date +%s)" - start_ts >= timeout_seconds )); then
@@ -124,7 +132,11 @@ wait_for_classifier_api() {
 
 ensure_classifier_api() {
   local health_url="${API_URL%/}/health"
-  if curl -fsS "$health_url" >/dev/null 2>&1; then
+  local curl_insecure_flag=""
+  if [[ "$API_SCHEME" == "https" ]]; then
+    curl_insecure_flag="-k"
+  fi
+  if curl ${curl_insecure_flag:+"$curl_insecure_flag"} -fsS "$health_url" >/dev/null 2>&1; then
     return 0
   fi
   if [[ "$CLASSIFICATION_PERSISTENCE_START_API" != "true" ]]; then
@@ -149,13 +161,50 @@ parsed = urlparse(sys.argv[1])
 print(parsed.port or 8787)
 PY
 )"
+  if classifier_api_port_open "$api_host" "$api_port"; then
+    local alternate_port
+    alternate_port="$(python3 - <<'PY' "$api_host" "$api_port"
+import socket
+import sys
+
+host = sys.argv[1]
+start_port = int(sys.argv[2])
+# Skip the immediate adjacent range to avoid colliding with DAST's dedicated default port.
+for candidate in range(start_port + 10, start_port + 110):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind((host, candidate))
+        except OSError:
+            continue
+        print(candidate)
+        break
+PY
+)"
+    if [[ -n "$alternate_port" ]]; then
+      api_port="$alternate_port"
+      API_URL="${API_SCHEME}://${api_host}:${api_port}"
+      health_url="${API_URL%/}/health"
+      echo "ℹ️  Classification API port ${api_host}:${api_port} selected because the default port is in use."
+    fi
+  fi
   echo "▶ Starting classification API for persistence verification at ${API_URL}"
+  classifier_api_log="${CLASSIFICATION_PERSISTENCE_REPORT_DIR}/classification-api-startup.log"
+  local insecure_http_flag="false"
+  if [[ "$API_SCHEME" == "http" ]]; then
+    insecure_http_flag="true"
+  fi
+  echo "  classifier startup log: ${classifier_api_log}"
   TELLER_CLASSIFIER_API_HOST="$api_host" TELLER_CLASSIFIER_API_PORT="$api_port" \
-    "$CLASSIFICATION_PERSISTENCE_API_PYTHON" "./21_run_classification_api.py" >/dev/null 2>&1 &
+    TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP="$insecure_http_flag" \
+    "$CLASSIFICATION_PERSISTENCE_API_PYTHON" "./21_run_classification_api.py" >"$classifier_api_log" 2>&1 &
   classifier_api_pid="$!"
   classifier_api_started="true"
-  if ! wait_for_classifier_api "$health_url" "$CLASSIFICATION_PERSISTENCE_API_STARTUP_SECONDS" "$api_host" "$api_port"; then
+  if ! wait_for_classifier_api "$health_url" "$CLASSIFICATION_PERSISTENCE_API_STARTUP_SECONDS"; then
     echo "❌ FAIL: classification API failed to become ready at ${API_URL}" >&2
+    if [[ -n "$classifier_api_log" ]]; then
+      echo "Classifier startup log: ${classifier_api_log}" >&2
+    fi
     exit 1
   fi
 }
@@ -190,12 +239,19 @@ fi
 
 #R020: Submit classification update payload to classifier API.
 API_RESPONSE="<request failed>"
-if ! API_RESPONSE="$(curl -f -sS -X POST "${API_URL}/v1/transactions/classifications" \
+request_curl_insecure_flag=""
+if [[ "$API_SCHEME" == "https" ]]; then
+  request_curl_insecure_flag="-k"
+fi
+if ! API_RESPONSE="$(curl ${request_curl_insecure_flag:+"$request_curl_insecure_flag"} -f -sS -X POST "${API_URL}/v1/transactions/classifications" \
   -H "Content-Type: application/json" \
   -H "X-Teller-Write-Token: ${WRITE_TOKEN}" \
   -d "{\"updates\":[{\"transaction_id\":\"${TXN_ID}\",\"nys_snw_category_id\":${CATEGORY_ID}}]}")"; then
   echo "API response: ${API_RESPONSE}"
   echo "Persisted row: <not checked>"
+  if [[ -n "$classifier_api_log" ]]; then
+    echo "Classifier startup log: ${classifier_api_log}" >&2
+  fi
   echo "❌ FAIL: classification API request failed for transaction_id=${TXN_ID} nys_snw_category_id=${CATEGORY_ID}" >&2
   exit 1
 fi

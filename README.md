@@ -236,8 +236,9 @@ Useful flags:
 - `FUZZ_MAX_EXAMPLES=500` (default per-property budget)
 - `FUZZ_DEADLINE_MS=1000` (default Hypothesis deadline in ms; set `0` to disable)
 - `FUZZ_TIMEOUT_SECONDS=300` (default lane timeout)
-- `FUZZ_MIN_PROPERTY_TESTS=2` (default minimum collected property tests)
-- `FUZZ_MIN_TOTAL_EXAMPLES=<int>` (default derived from `FUZZ_MIN_PROPERTY_TESTS * FUZZ_MAX_EXAMPLES * 80%`)
+- `FUZZ_MIN_PROPERTY_TESTS=4` (default minimum collected property tests)
+- `FUZZ_MIN_PER_TEST_RATIO_PERCENT=90` (default per-test passing floor percentage)
+- `FUZZ_MIN_TOTAL_EXAMPLES=<int>` (default derived from `FUZZ_MIN_PROPERTY_TESTS * FUZZ_MAX_EXAMPLES * FUZZ_MIN_PER_TEST_RATIO_PERCENT / 100`)
 - `FUZZ_REPORT_DIR=./artifacts/fuzz` (summary + replay log output root)
 - `HYPOTHESIS_STORAGE_DIRECTORY=./artifacts/cache/hypothesis` (example database path)
 
