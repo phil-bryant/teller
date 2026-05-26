@@ -2,6 +2,8 @@
 # Strip invalid pytest --cache-dir CLI flags from PYTEST_ADDOPTS.
 # pytest expects cache_dir via pyproject.toml or -o cache_dir=..., not --cache-dir=.
 
+#R001: Leave PYTEST_ADDOPTS unchanged when no invalid --cache-dir flag is present.
+#R005: Strip invalid --cache-dir from PYTEST_ADDOPTS and warn the operator.
 normalize_pytest_addopts() {
   if [[ "${PYTEST_ADDOPTS:-}" != *"--cache-dir="* ]]; then
     return 0

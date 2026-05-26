@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 #R001: Run tests from repository root regardless of caller working directory.
 cd "$REPO_ROOT"
 
-# Keep runtime caches out of the repository root.
+#R038: Keep Hypothesis and other Python tool caches out of the repository root.
 # shellcheck disable=SC1091
 source "${REPO_ROOT}/src/scripts/export_test_cache_env.sh"
 export_test_cache_env "$REPO_ROOT"

@@ -11,6 +11,7 @@ fi
 cd "$REPO_ROOT"
 
 #R005: Execute only the Python unit-test lane.
+#R008: Keep Hypothesis storage out of the repository root during Python unit tests.
 RUN_SHELL_TESTS=false \
 RUN_PYTHON_TESTS=true \
 RUN_SQL_TESTS=false \

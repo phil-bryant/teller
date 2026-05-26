@@ -29,6 +29,13 @@ create_repo_fixture() {
   mkdir -p "$FIXTURE_ROOT"
 }
 
+copy_test_cache_env_scripts_to_fixture() {
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  cp "$(repo_root)/src/scripts/export_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh"
+  cp "$(repo_root)/src/scripts/normalize_pytest_addopts.sh" "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh"
+  chmod +x "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh"
+}
+
 copy_script_to_fixture() {
   local script_name="$1"
   local mapped_script_name="$script_name"
@@ -59,6 +66,11 @@ copy_script_to_fixture() {
   fi
   cp "$source_path" "${FIXTURE_ROOT}/${script_name}"
   chmod +x "${FIXTURE_ROOT}/${script_name}"
+  case "$script_name" in
+    07_run_static_security_tests.sh|12_run_mutation_tests.sh|14_run_fuzz_tests.sh|23_run_dynamic_security_tests.sh)
+      copy_test_cache_env_scripts_to_fixture
+      ;;
+  esac
 }
 
 stub_cmd() {

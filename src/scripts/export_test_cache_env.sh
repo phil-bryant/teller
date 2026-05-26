@@ -2,6 +2,8 @@
 # Export cache locations so pytest, ruff, Hypothesis, and bytecode caches stay under artifacts/cache/.
 # Must be sourced (or called) before pytest/hypothesis import when possible.
 
+#R001: Export canonical cache locations for Python test tooling.
+#R005: Default Hypothesis storage away from repository-root .hypothesis.
 export_test_cache_env() {
   local repo_root="${1:-}"
   if [[ -z "$repo_root" ]]; then
