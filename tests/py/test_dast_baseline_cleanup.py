@@ -1,4 +1,4 @@
-# Requirement test-case tags for requirements/22_run_dynamic_security_tests-requirements.md
+# Requirement test-case tags for requirements/23_run_dynamic_security_tests-requirements.md
 # #R025-T02: Verify dast_baseline.py captures a snapshot and dast_cleanup.py
 #            restores the database back to that snapshot end-to-end.
 
@@ -8,7 +8,7 @@ Skipped by default. Enable by setting `RUN_DAST_DB_HYGIENE_TEST=true` and
 ensuring the active `teller_db` profile points at a writable dev database
 (typically `local`). The test:
     1. Captures a baseline via `src/scripts/dast_baseline.py`.
-    2. Mutates the database the same way `22_` does (INSERT a non-seed
+    2. Mutates the database the same way `23_` does (INSERT a non-seed
        category, UPDATE an existing non-seed category if any, mutate or
        insert a `transaction_email_match` row).
     3. Runs `src/scripts/dast_cleanup.py` and asserts that the post-cleanup

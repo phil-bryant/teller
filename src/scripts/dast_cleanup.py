@@ -4,7 +4,7 @@
 #R010: Handle missing/non-captured baselines as non-fatal skips with diagnostics.
 """Restore the database to the pre-DAST baseline captured by dast_baseline.py.
 
-The companion to 22_run_dynamic_security_tests.sh's EXIT trap. Runs:
+The companion to 23_run_dynamic_security_tests.sh's EXIT trap. Runs:
     1. Restore mutated transaction_email_match rows back to baseline state.
     2. Delete audit rows inserted during the run.
     3. Delete transaction_email_match rows inserted during the run (cascades audit).

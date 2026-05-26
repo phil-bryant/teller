@@ -2,7 +2,7 @@
 #R001: Capture baseline maxima and mutable-row snapshots for DAST-affected tables.
 #R005: Degrade safely to skipped payload when DB dependencies are unavailable.
 #R010: Emit concise JSON summary output after writing baseline artifacts.
-"""Capture a pre-DAST snapshot of every database row 22_run_dynamic_security_tests.sh may touch.
+"""Capture a pre-DAST snapshot of every database row 23_run_dynamic_security_tests.sh may touch.
 
 Writes a JSON document containing:
     - profile_name: active TELLER_DB_PROFILE for safety matching at cleanup time.

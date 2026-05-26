@@ -178,7 +178,7 @@ class CheckPostgresFreshnessTests(unittest.TestCase):
         self.assertEqual(report["cve"]["assurance"], "empty-snapshot")
         self.assertFalse(report["summary"]["gate_failed"])
 
-    def test_server_version_num_for_pg15_parses_minor_correctly(self) -> None:
+    def test_server_version_num_for_pg16_parses_minor_correctly(self) -> None:
         #R025
         snapshot = {
             "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),

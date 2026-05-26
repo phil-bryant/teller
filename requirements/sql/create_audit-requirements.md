@@ -6,7 +6,7 @@ Applies to `src/sql/postgres/create_audit.sql`.
 
 ## Ownership Boundaries
 
-Deployment sequencing and invocation remain defined in `requirements/07_deploy_database-requirements.md`, and ORM/table naming contracts remain defined in `requirements/teller_object-requirements.md`.
+Deployment sequencing and invocation remain defined in `requirements/08_deploy_database-requirements.md`, and ORM/table naming contracts remain defined in `requirements/teller_object-requirements.md`.
 
 R001  Statement: Persist row-level audit events in a dedicated log table.
 Design: Create `teller.audit_log` with action metadata, record identifier, actor, timestamp, and JSON payload columns for old/new row data.
