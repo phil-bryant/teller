@@ -71,10 +71,9 @@ def _resolve_transport() -> tuple[str, str | None, str | None]:
     key_path = Path(keyfile)
     if not cert_path.is_file() or not key_path.is_file():
         raise RuntimeError(
-            "HTTPS mode requires readable TLS cert/key files. "
-            f"Missing cert={cert_path} key={key_path}. "
-            "Run ./04_install_classifier_api_tls.sh to generate local defaults, or "
-            "Set TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true only for controlled local development."
+            "\n\nHTTPS mode requires readable TLS cert/key files. "
+            f"\n\nMissing cert={cert_path} key={key_path}. "
+            "\n\nRun ./04_install_classifier_api_tls.sh to install TLS cert/key files."
         )
     return ("https", str(cert_path), str(key_path))
 
