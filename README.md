@@ -839,17 +839,17 @@ usable when Mailcart is partially unavailable.
 TELLER TECH STACK (repo: /Users/phil/local/src/teller)
 =======================================================
 
-                              ┌──────────────────────────────────────┐
-                              │          EXTERNAL SYSTEMS            │
-                              ├──────────────────────────────────────┤
-                              │ - Teller API (api.teller.io)         │
-                              │ - 1psa secret store CLI              │
-                              │ - Mailcart local service (optional)  │
-                              └──────────────────┬───────────────────┘
-                                                 |
-                                                 v
  ┌──────────────────────────────────────────────────────────────────────────────┐
- │                            PYTHON BACKEND LAYER                              │
+ │                                EXTERNAL SYSTEMS                              │
+ ├──────────────────────────────────────────────────────────────────────────────┤
+ │ - Teller API (api.teller.io)                                                 │
+ │ - 1psa secret store CLI                                                      │
+ │ - Mailcart local service (optional)                                          │
+ └───────────────────────────────────────┬──────────────────────────────────────┘
+                                         |
+                                         v
+ ┌──────────────────────────────────────────────────────────────────────────────┐
+ │                              PYTHON BACKEND LAYER                            │
  ├──────────────────────────────────────────────────────────────────────────────┤
  │ Runtime: Python 3.8+ (venv; prefers 3.12 in setup script)                    │
  │ Frameworks/Libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,          │
@@ -857,27 +857,29 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │ Main flows:                                                                  │
  │   - Ingest: 18_fetch_teller_api_data.py                                      │
  │   - Backfill: 19_backfill_bank_statements.py                                 │
- │   - API: 08_run_classification_api.py -> src/teller/teller_classification_api.py │
- └───────────────────────────────┬──────────────────────────────────────────────┘
-                                 |
-                                 v
- ┌──────────────────────────────────────────────────────────────────────────┐
- │                         DATA / PERSISTENCE LAYER                         │
- ├──────────────────────────────────────────────────────────────────────────┤
- │ PostgreSQL (local profile or managed profile via db profiles)            │
+ │   - API: 08_run_classification_api.py ->                                     │
+ │          src/teller/teller_classification_api.py                             │
+ └───────────────────────────────────────┬──────────────────────────────────────┘
+                                         |
+                                         v
+ ┌──────────────────────────────────────────────────────────────────────────────┐
+ │                            DATA / PERSISTENCE LAYER                          │
+ ├──────────────────────────────────────────────────────────────────────────────┤
+ │ PostgreSQL (local profile or managed profile via db profiles)                │
  │ Schema + SQL objects in: src/sql/postgres/                                   │
- │ DB helpers in: src/teller/teller_db.py, src/teller/teller_db_profile.py          │
- └───────────────────────────────┬──────────────────────────────────────────┘
-                                 ^
-                                 |
- ┌───────────────────────────────┬──────────────────────────────────────────┐
- │                         MACOS APP / UI LAYER                             │
- ├──────────────────────────────────────────────────────────────────────────┤
- │ Swift 5.9, SwiftUI, macOS 14+                                            │
+ │ DB helpers in: src/teller/teller_db.py,                                      │
+ │                  src/teller/teller_db_profile.py                             │
+ └───────────────────────────────────────┬──────────────────────────────────────┘
+                                         ^
+                                         |
+ ┌───────────────────────────────────────┴──────────────────────────────────────┐
+ │                              MACOS APP / UI LAYER                            │
+ ├──────────────────────────────────────────────────────────────────────────────┤
+ │ Swift 5.9, SwiftUI, macOS 14+                                                │
  │ Package: src/macos-ui/Package.swift                                          │
- │ App: TransactionClassifier                                               │
- │ Includes WKWebView Connect flows + PLCrashReporter                       │
- └──────────────────────────────────────────────────────────────────────────┘
+ │ App: TransactionClassifier                                                   │
+ │ Includes WKWebView Connect flows + PLCrashReporter                           │
+ └──────────────────────────────────────────────────────────────────────────────┘
 
 
 AUTOMATION AND OPERATIONS
@@ -1019,6 +1021,7 @@ Trust boundaries:
 ```
 
 Token and credential lifecycle notes:
+
 - Initial connect/add: token returned by Connect is written to `auth_token*.json`; enrollment id is written to matching `enrollment_id*.txt`.
 - Reconnect/rotate token: reconnect action updates the selected existing context files in place.
 - Multi-context support: add action allocates unique suffixed file pairs so multiple enrollments can coexist.
@@ -1026,9 +1029,10 @@ Token and credential lifecycle notes:
 - Disconnected enrollment recovery: when Teller returns `enrollment.disconnected`, script triggers the macOS Connect repair flow and retries once.
 - Cert/key rotation boundary: certificate/private key issuance and revocation happen in Teller dashboard; local app/scripts only read local `certificate.pem` / `private_key.pem`.
 
+1. INGEST + NORMALIZATION + PERSISTENCE SEQUENCE
 
-2) INGEST + NORMALIZATION + PERSISTENCE SEQUENCE
--------------------------------------------------
+---
+
 Why: Shows exact order and idempotency points for data movement into Postgres.
 
 [scheduler/manual]
@@ -1047,55 +1051,52 @@ PostgreSQL (teller schema)
       |
       +--> views/triggers/audit paths
 
+1. CLASSIFICATION WRITE PATH + AUTHZ BOUNDARY
 
-3) CLASSIFICATION WRITE PATH + AUTHZ BOUNDARY
-----------------------------------------------
+---
+
 Why: Makes mutation protection and persistence verification explicit.
 
 ```text
 Trust/authz boundaries:
-- UI boundary: macOS client can invoke read + write routes on localhost FastAPI.
-- Mutation boundary: write routes require `X-Teller-Write-Token` that matches 1psa-backed secret.
+- UI boundary: macOS client invokes localhost FastAPI routes.
+- Auth boundary: `/v1/*` routes (reads + writes) require `X-Teller-Write-Token` from 1psa-backed secret.
 - Persistence boundary: only validated writes reach Postgres via SQLAlchemy session.
 
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ Local host (macOS)                                                           │
-│                                                                              │
-│ User action in macOS UI (TransactionClassifier/APIClient)                    │
-│         │                                                                    │
-│         │  GET /v1/transactions (read path; no write-token required)         │
-│         ├───────────────────────────────────────────────────────────────┐    │
-│         │                                                               │    │
-│         │  POST /v1/transactions/classifications (write path)           │    │
-│         v                                                               │    │
-│  ┌────────────────────────────────────────────────────────────────────┐ │    │
-│  │ FastAPI app (`08_run_classification_api.py` -> `create_app`)       │ │    │
-│  │                                                                    │ │    │
-│  │ 1) Startup preflight: resolve `TELLER_CLASSIFIER_WRITE_TOKEN`      │ │    │
-│  │    from 1psa before serving mutation traffic.                      │ │    │
-│  │ 2) Request authz: `_require_write_access` enforces                 │ │    │
-│  │    `X-Teller-Write-Token` on mutating endpoints only.              │ │    │
-│  │ 3) Input validation: Pydantic models (`ClassificationBatchRequest`,│ │    │
-│  │    `ClassificationMutation`) reject malformed payloads.            │ │    │
-│  │ 4) Persistence: `_write_one` performs SQLAlchemy-backed            │ │    │
-│  │    update/insert/delete in `teller.transaction_nys_snw_category`.  │ │    │
-│  └───────────────────────────────────────┬────────────────────────────┘ │    │
-│                                          │                              │    │
-└──────────────────────────────────────────┼──────────────────────────────┼────┘
-                                           │                              │
-                                           v                              │
-                                ┌────────────────────────────────┐        │
-                                │ PostgreSQL (teller schema)     │        │
-                                │ classification row is persisted│        │
-                                └───────────────┬────────────────┘        │
-                                                │                         │
-                                                └── verified by           │
-                                                   `21_classification_persistence_verification_test.sh`
+┌────────────────────────────────────────────────────────────────────┐
+│ Local host (macOS)                                                 │
+│                                                                    │
+│ User action in macOS UI (TransactionClassifier/APIClient)          │
+│   ├─ GET  /v1/transactions                                         │
+│   └─ POST /v1/transactions/classifications                         │
+│                     │                                              │
+│                     v                                              │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ FastAPI app (`08_run_classification_api.py` -> `create_app`) │  │
+│  │                                                              │  │
+│  │ 1) Startup preflight resolves `TELLER_CLASSIFIER_WRITE_TOKEN`│  │
+│  │    from 1psa before serving `/v1/*` traffic.                 │  │
+│  │ 2) Request authz enforces `X-Teller-Write-Token` on `/v1/*`; │  │
+│  │    `/health` remains unauthenticated.                        │  │
+│  │ 3) Pydantic validation rejects malformed payloads.           │  │
+│  │ 4) `_write_one` persists classification mutations via        │  │
+│  │    SQLAlchemy into `teller.transaction_nys_snw_category`.    │  │
+│  └───────────────────────────────┬──────────────────────────────┘  │
+└──────────────────────────────────┼─────────────────────────────────┘
+                                   v
+                     ┌────────────────────────────────┐
+                     │ PostgreSQL (teller schema)     │
+                     │ classification row is persisted│
+                     └───────────────┬────────────────┘
+                                     │ verified by
+                                     v
+          `tests/t16_classification_persistence_verification_test.sh`
 ```
 
+1. DATA MODEL ER DIAGRAM (CORE TABLES + RELATIONSHIPS)
 
-4) DATA MODEL ER DIAGRAM (CORE TABLES + RELATIONSHIPS)
--------------------------------------------------------
+---
+
 Why: Repo has rich SQL under `src/sql/postgres/`; a compact ER view speeds onboarding.
 
 ```text
@@ -1105,64 +1106,74 @@ Legend:
 - [M] mixed
 - PK/FK only shown in each box
 
-                            ┌─────────────────────────────────────────┐
-                            │ teller.institution [R]                  │
-                            │ PK institution_id                       │
-                            └─────────────────────────────────────────┘
-                                               ^
-                                               | FK account.institution_id
-                            ┌─────────────────────────────────────────┐
-                            │ teller.account [W]                      │
-                            │ PK account_id                           │
-                            │ FK institution_id -> institution.id     │
-                            │ enrollment_id (logical; no local FK)    │
-                            └─────────────────────────────────────────┘
-                                               ^
-                                               | FK transaction.account_id
-                            ┌─────────────────────────────────────────┐
-                            │ teller.transaction [W]                  │
-                            │ PK transaction_id                       │
-                            │ FK account_id -> account.id             │
-                            └─────────────────────────────────────────┘
-                                  ^                  ^                ^
-                                  |                  |                |
-                                  |                  |                +-----------------------------------+
-                                  |                  |                                                    |
-                                  |                  +-----------------------------------+                |
-                                  |                                                      |                |
-┌─────────────────────────────────────────┐                          ┌─────────────────────────────────────────┐
-│ teller.nys_snw_category [R]             │                          │ teller.transaction_email_match [W]      │
-│ PK nys_snw_category_id                  │                          │ PK match_id                             │
-└─────────────────────────────────────────┘                          │ FK transaction_id -> transaction.id     │
-               ^                                                     └─────────────────────────────────────────┘
-               | FK transaction_nys_snw_category.nys_snw_category_id             ^
-               |                                                                 | FK transaction_email_match_audit.match_id
-┌─────────────────────────────────────────┐                          ┌─────────────────────────────────────────┐
-│ teller.transaction_nys_snw_category [W] │                          │ teller.transaction_email_match_audit [W]│
-│ PK/FK transaction_id -> transaction.id  │                          │ PK match_audit_id                       │
-│ FK nys_snw_category_id -> category.id   │                          │ FK match_id -> email_match.id           │
-└─────────────────────────────────────────┘                          └─────────────────────────────────────────┘
-                                  ^
-                                  | FK transaction_email_match_run.transaction_id
-┌─────────────────────────────────────────┐
-│ teller.transaction_email_match_run [W]  │
-│ PK match_run_id                         │
-│ FK transaction_id -> transaction.id     │
-└─────────────────────────────────────────┘
-               ^
-               | FK transaction_email_candidate.match_run_id
-┌─────────────────────────────────────────┐
-│ teller.transaction_email_candidate [W]  │
-│ PK candidate_id                         │
-│ FK match_run_id -> match_run.id         │
-│ FK transaction_id -> transaction.id     │
-└─────────────────────────────────────────┘
-               ^
-               | FK transaction_email_candidate.transaction_id
-               +-----------------------------------------------> teller.transaction.transaction_id
+┌──────────────────────────────────────────────────────────────┐
+│ teller.institution [R]                                       │
+│ PK institution_id                                            │
+└──────────────────────────────────────────────────────────────┘
+                         ^
+                         | FK account.institution_id
+┌──────────────────────────────────────────────────────────────┐
+│ teller.account [W]                                           │
+│ PK account_id                                                │
+│ FK institution_id -> institution.id                          │
+│ enrollment_id (logical; no local FK)                         │
+└──────────────────────────────────────────────────────────────┘
+                         ^
+                         | FK transaction.account_id
+┌──────────────────────────────────────────────────────────────┐
+│ teller.transaction [W]                                       │
+│ PK transaction_id                                            │
+│ FK account_id -> account.id                                  │
+└──────────────────────────────────────────────────────────────┘
+
+Classification branch (child -> parent):
+
+┌──────────────────────────────────────────────────────────────┐
+│ teller.transaction_nys_snw_category [W]                      │
+│ PK/FK transaction_id -> transaction.id                       │
+│ FK nys_snw_category_id -> nys_snw_category.id                │
+└──────────────────────────────────────────────────────────────┘
+            parents:
+            - transaction.transaction_id
+            - nys_snw_category.nys_snw_category_id
+
+┌───────────────────────────────┐
+│ teller.nys_snw_category [R]   │
+│ PK nys_snw_category_id        │
+└───────────────────────────────┘
+
+Matchy branch (child -> parent):
+
+┌──────────────────────────────────────────────────────────────┐
+│ teller.transaction_email_match_run [W]                       │
+│ PK match_run_id                                              │
+│ FK transaction_id -> transaction.id                          │
+└──────────────────────────────────────────────────────────────┘
+                         ^
+                         | FK transaction_email_candidate.match_run_id
+┌──────────────────────────────────────────────────────────────┐
+│ teller.transaction_email_candidate [W]                       │
+│ PK candidate_id                                              │
+│ FK match_run_id -> transaction_email_match_run.id            │
+│ FK transaction_id -> transaction.id                          │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ teller.transaction_email_match [W]                           │
+│ PK match_id                                                  │
+│ FK transaction_id -> transaction.id                          │
+└──────────────────────────────────────────────────────────────┘
+                         ^
+                         | FK transaction_email_match_audit.match_id
+┌──────────────────────────────────────────────────────────────┐
+│ teller.transaction_email_match_audit [W]                     │
+│ PK match_audit_id                                            │
+│ FK match_id -> transaction_email_match.id                    │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 FK direction map (child -> parent):
+
 - `account.institution_id -> institution.institution_id`
 - `transaction.account_id -> account.account_id`
 - `transaction_nys_snw_category.transaction_id -> transaction.transaction_id` (ON DELETE CASCADE)
@@ -1174,13 +1185,15 @@ FK direction map (child -> parent):
 - `transaction_email_match_audit.match_id -> transaction_email_match.match_id` (ON DELETE CASCADE)
 
 Notes:
+
 - `enrollment` is currently modeled as `account.enrollment_id` (no `teller.enrollment` table in `src/sql/postgres/`).
 - `transaction_classification` is implemented as `teller.transaction_nys_snw_category`.
 - Matchy tables (`transaction_email_match_run`, `transaction_email_candidate`, `transaction_email_match`, `transaction_email_match_audit`) are in active use by the classification API.
 
+1. LOCAL RUNTIME TOPOLOGY (PROCESSES, PORTS, FILES, ENV)
 
-5) LOCAL RUNTIME TOPOLOGY (PROCESSES, PORTS, FILES, ENV)
----------------------------------------------------------
+---
+
 Why: Helpful for debugging "what should be running" and "where config comes from".
 
 ```text
@@ -1217,25 +1230,28 @@ Why: Helpful for debugging "what should be running" and "where config comes from
 │                                                                                            │
 │  File/config + secret sources                                                              │
 │  - ~/.teller/auth_token*.json, enrollment_id*.txt, certificate.pem, private_key.pem        │
-│  - DB profile file search: ~/.teller/db_profiles.json -> ./config/db-profiles.local.json -> │
-│    ./config/db-profiles.json (or TELLER_DB_PROFILE_FILE override) │
+│  - DB profile file search: ~/.teller/db_profiles.json → ./config/db-profiles.local.json →  │
+│    ./config/db-profiles.json (or TELLER_DB_PROFILE_FILE override)                          │
 │  - ~/.env (loaded by ingest/profile fallback paths for ITEM.field entries)                 │
 │  - Secret authority: 1psa (classifier write token + DB connection fields/password)         │
 └────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Local runtime debugging checklist:
+
 - If UI cannot load data, verify FastAPI is listening on `127.0.0.1:8787` (or your `TELLER_CLASSIFIER_API_URL` override).
 - If write endpoints fail at startup, verify `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN` returns a non-empty value.
 - If DB connect fails, inspect the resolved profile (`TELLER_DB_PROFILE`, profile file path precedence, and `1psa_or_env_item`).
 - If match-review email fetch fails, verify optional Mailcart process on `127.0.0.1:8788` or override `MAILCART_SERVICE_BASE_URL`.
 
+1. TEST STRATEGY MAP (LANES -> SCOPE -> GATES)
 
-6) TEST STRATEGY MAP (LANES -> SCOPE -> GATES)
------------------------------------------------
+---
+
 Why: Explains why there are many numbered scripts and what each gate protects.
 
 Gate map (left = execution lane, right = protection intent):
+
 - 01-08 setup/deploy checks  -> env/bootstrap/deploy preconditions before deeper validation
 - 09 shell tests             -> script behavior/contracts (flags, outputs, failure semantics)
 - 10 python tests            -> package/unit behavior for Python ingestion/API helpers
@@ -1249,6 +1265,7 @@ Gate map (left = execution lane, right = protection intent):
 - 22 parallel                -> aggregate readiness signal across gates
 
 How to interpret failures:
+
 - 01-08 fail: stop early; developer/runtime prerequisites are not trustworthy yet.
 - 09-14 fail: lane-specific regression in shell/python/sql/swift/ui/crash behavior.
 - 15 fail: likely upstream/external contract drift or availability issue.
@@ -1256,9 +1273,10 @@ How to interpret failures:
 - 20 fail: potential exploitable runtime behavior; treat as security triage.
 - 22 fail: composite readiness not met; inspect failing child lanes.
 
+1. SECURITY THREAT MODEL (TRUST BOUNDARIES + DATA FLOWS)
 
-7) SECURITY THREAT MODEL (TRUST BOUNDARIES + DATA FLOWS)
----------------------------------------------------------
+---
+
 Why: Security tools are present, but a visual threat model explains risk ownership.
 
 ```text
@@ -1275,62 +1293,70 @@ Legend:
                                        [B2 external API boundary]
                                 ┌──────────────────────────────────────┐
                                 │ Teller API (mTLS + token auth)       │
-                                │ - /institutions /accounts /...       │
+                                │ - /institutions /accounts /identity  │
                                 └───────────────────┬──────────────────┘
+                                                    │
                                                     │ F4 response data
                                                     │ + disconnection signals [TB]
-                                                    │
-┌───────────────────────────────────────────────────┼───────────────────────────────────────────┐
-│ [B1 local host boundary]                          │                                           │
-│                                                   │                                           │
-│  [AS] WKWebView Connect surface                   │                                           │
-│  ┌────────────────────────────────┐               │                                           │
-│  │ SwiftUI + Connect JS bridge    │---- F1 app_id/env/enrollment --> [TB] --------------------┘
-│  │ (connect callbacks, deep links)│
-│  └──────────────┬─────────────────┘
-│                 │ F2 token + enrollment_id callback [TB]
-│                 v
-│  [B3 secrets boundary]                 [AS] shell script execution path
-│  ┌────────────────────────────────┐     ┌──────────────────────────────────────────────────┐
-│  │ 1psa CLI + ~/.teller files     │<--->│ numbered scripts + python entrypoints            │
-│  │ cert/key/auth_token/enrollment │ F3  │ 18_fetch_teller_api_data.py / 18_run_* / 20_*    │
-│  └──────────────┬─────────────────┘     └───────────────────────────────┬──────────────────┘
-│                 │ F5 token/cert/key read [TB]                           │ F6 SQL writes/reads [TB]
-│                 v                                                       v
-│                                           [B4 DB boundary]
-│                                ┌──────────────────────────────────────┐
-│                                │ PostgreSQL (teller schema)           │
-│                                │ roles, grants, triggers, audit paths │
-│                                └──────────────────────────────────────┘
-│
-│  [AS] FastAPI endpoints:
-│  - local classification API routes (health/read/write/matchy proxy)
-│  - key risk classes: authz bypass, injection, unsafe deserialization, over-broad CORS
-│
-│  [AS] dependency/toolchain supply chain:
-│  - pip + brew + security scanner binaries + cloned helper repos
-│  - key risk classes: poisoned package/update, malicious transitive dependency, tampered tool binary
-└─────────────────────────────────────────────────────────────────────────────────────────────────────┘
+                                                    v
+┌───────────────────────────────────────────────────────────────────────────────────────────────┐
+│ [B1 local host boundary]                                                                      │
+│                                                                                               │
+│  [AS] WKWebView Connect surface                                                               │
+│  ┌────────────────────────────────┐                                                           │
+│  │ SwiftUI + Connect JS bridge    │---- F1 app/env/enrollment context [TB]                    │
+│  │ (connect callbacks, deep links)│                                                           │
+│  └──────────────┬─────────────────┘                                                           │
+│                 │ F2 token + enrollment_id callback [TB]                                      │
+│                 v                                                                             │
+│  [B3 secrets boundary]                 [AS] shell/python execution path                       │
+│  ┌────────────────────────────────┐     ┌────────────────────────────────────────────────┐    │
+│  │ 1psa CLI + ~/.teller files     │<--->│ runtime entrypoints                            │    │
+│  │ cert/key/auth_token/enrollment │ F3  │ 06_fetch / 08_run_api / tests/t13_smoke / 07_* │    │
+│  └──────────────┬─────────────────┘     └───────────────────────────────┬────────────────┘    │
+│                 │ F5 token/cert/key reads [TB]                          | F6 SQL writes/reads |
+│                 │ (/v1/* auth gate; /health open)                       |        [TB]         │
+│                 v                                                       |                     │
+│      FastAPI auth gate + runtime secret checks                          │                     │
+│                                                                         |                     │
+│                                                                         |                     │
+│                                                [B4 DB boundary]         v                     │
+│                                          ┌──────────────────────────────────────┐             │
+│                                          │ PostgreSQL (teller schema)           │             │
+│                                          │ roles, grants, triggers, audit paths │             │
+│                                          └──────────────────────────────────────┘             │
+│                                                                                               │
+│  [AS] FastAPI endpoints:                                                                      │
+│  - local classification API routes (/health, /v1/*, /v1/matchy/*)                             │
+│  - key risk classes: authz bypass, injection, unsafe deserialization, over-broad CORS         │
+│                                                                                               │
+│  [AS] dependency/toolchain supply chain:                                                      │
+│  - pip + brew + security scanner binaries + cloned helper repos                               │
+│  - key risk classes: poisoned package, malicious transitive dependency, tampered tool binary  │
+└───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Primary data flows and ownership:
-- F1 Connect bootstrap request (owner: macOS UI): send app/environment context into WKWebView connect session.
+
+- F1 Connect bootstrap request (owner: macOS UI): send app/environment/enrollment context into WKWebView Connect session.
 - F2 Connect callback secrets (owner: macOS UI + setup service): receive token/enrollment_id and persist into `~/.teller` with restrictive file permissions.
-- F3 Secret retrieval for runtime (owner: shell/python runtime): resolve write token from `1psa`; resolve Teller API cert/key/token from `~/.teller`.
+- F3 Secret retrieval for runtime (owner: shell/python runtime): runtime entrypoints (`06_fetch_teller_api_data.py`, `08_run_classification_api.py`, `tests/t13_run_teller_api_smoke_tests.sh`, optional `07_backfill_bank_statements.py`) resolve write token from `1psa` and Teller API cert/key/token from `~/.teller`.
 - F4 Teller API exchange (owner: ingest runtime): outbound mTLS + token-auth requests and inbound institution/account/transaction payloads.
-- F5 Local API mutation auth (owner: FastAPI): require `X-Teller-Write-Token` backed by `1psa` item resolution before write operations.
-- F6 Persistence path (owner: DB + API/ingest): validated SQLAlchemy writes into `teller` schema under least-privilege role assumptions.
+- F5 Local API auth gate (owner: FastAPI): require `X-Teller-Write-Token` backed by `1psa` item resolution for `/v1/*` reads and writes (`/health` remains unauthenticated).
+- F6 Persistence path (owner: DB + API/ingest): validated SQLAlchemy reads/writes into `teller` schema under least-privilege role assumptions.
 
 Threat ownership map (who mitigates what):
+
 - Local host compromise (B1): repository owners enforce script hygiene, path validation, and explicit command dependencies.
 - Secret exfiltration (B3): setup/runtime owners enforce `~/.teller` permission model, narrow secret file set, and `1psa`-only token source for mutations.
 - External API contract abuse (B2): ingest/connect owners enforce mTLS + token usage and controlled retry/reconnect behavior.
-- DB integrity escalation (B4): schema/API owners enforce authz on write endpoints, parameterized ORM usage, and verification/audit tests.
-- Supply-chain compromise (AS): platform owners enforce freshness/security lanes (`04/06/20`) and fail-gates on high/critical findings.
+- DB integrity escalation (B4): schema/API owners enforce authz on `/v1/*` endpoints, parameterized ORM usage, and verification/audit tests.
+- Supply-chain compromise (AS): platform owners enforce freshness/security lanes (`tests/t02`, `tests/t03`, `tests/t12`) and fail-gates on high/critical findings.
 
+1. OPERATIONS / RECOVERY FLOW (BACKUP, RESTORE, DESTROY)
 
-8) OPERATIONS / RECOVERY FLOW (BACKUP, RESTORE, DESTROY)
----------------------------------------------------------
+---
+
 Why: Scripts `97/98/99` are critical but easy to misuse without a flow diagram.
 
 ```text
@@ -1354,21 +1380,23 @@ Verify backup artifacts exist and are readable
       +--> no  -> skip to restore preflight
       |
       +--> yes -> Run 98_destroy_database.sh
-                 |
-                 +--> profile selection (via db_profile_export.sh):
-                 |      TELLER_DB_PROFILE env override
-                 |      -> else db_profiles default_profile
-                 |      -> target local vs managed
-                 |
-                 +--> if managed target:
-                 |      destroy schema + roles (not DROP DATABASE)
-                 |      credential resolution: env override -> PG_ONEPSA_ITEM via 1psa
-                 |
-                 +--> if local target:
-                 |      destroy database + teller user/roles
-                 |      password resolution: POSTGRES_PSA_ITEM/POSTGRES_PSA_FIELD via 1psa
-                 |
-                 +--> requires explicit "destroy" confirmation
+      |          |
+      |          +--> profile selection (via db_profile_export.sh):
+      |          |      TELLER_DB_PROFILE env override
+      |          |      -> else db_profiles default_profile
+      |          |      -> target local vs managed
+      |          |
+      |          +--> if managed target:
+      |          |      destroy schema + roles (not DROP DATABASE)
+      |          |      credential resolution: env override -> PG_ONEPSA_ITEM via 1psa
+      |          |
+      |          +--> if local target:
+      |          |      destroy database + teller user/roles
+      |          |      password resolution: POSTGRES_PSA_ITEM/POSTGRES_PSA_FIELD via 1psa
+      |          |
+      |          +--> requires explicit "destroy" confirmation
+      |          
+      |
       |
       v
 Run 99_restore_database.sh
@@ -1395,8 +1423,12 @@ Post-restore verification
 ```
 
 Operational notes:
+
 - Treat `97` as mandatory before any destructive `98` action.
 - `99` requires a matching `_globals.sql` companion file for full restore mode.
 - Use `--table schema.table` in `99` for targeted repair when full schema replacement is not desired.
+
+```
+
 ```
 
