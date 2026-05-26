@@ -14,12 +14,16 @@ teardown() {
 }
 
 @test "fails when trend file is missing" {
+  #R010-T01
   run bash "${FIXTURE_ROOT}/26_report_quality_trends.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"missing trend file"* ]]
 }
 
 @test "prints score and SLO summary from trend payload" {
+  #R001-T01
+  #R005-T01
+  #R015-T01
   cat > "${FIXTURE_ROOT}/artifacts/telemetry/quality-trend.json" <<'JSON'
 {"latest_run_started_at":"2026-05-26T00:00:00+00:00","latest_score":9.63,"rolling_21_runs":{"score_avg":9.42,"wall_p50_seconds":128.2,"wall_p95_seconds":149.8},"rolling_14d":{"score_avg":9.5,"pass_reliability":0.97},"performance_slo":{"warn":false,"fail":false}}
 JSON

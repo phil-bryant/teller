@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+#R001: Enforce strict shell behavior for quality-target validation.
 set -euo pipefail
 
+#R005: Resolve repository root from script location for cwd-independent execution.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -9,12 +11,15 @@ HISTORY_PATH="${TELEMETRY_DIR}/quality-history.ndjson"
 TARGET_SCORE="${QUALITY_TARGET_SCORE:-9.5}"
 TARGET_RELIABILITY="${QUALITY_TARGET_RELIABILITY:-0.95}"
 
+#R010: Fail early with actionable guidance when historical telemetry is missing.
 if [[ ! -f "$HISTORY_PATH" ]]; then
   echo "❌ FAIL: missing quality history at ${HISTORY_PATH}" >&2
   echo "Run ./25_run_all_tests_parallel.sh over time to build history." >&2
   exit 1
 fi
 
+#R015: Enforce recent-history sufficiency before evaluating quality targets.
+#R020: Require target attainment across consecutive ISO weeks.
 python3 - "$HISTORY_PATH" "$TARGET_SCORE" "$TARGET_RELIABILITY" <<'PY'
 import json
 import sys

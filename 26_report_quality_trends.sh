@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+#R001: Enforce strict shell behavior for telemetry reporting.
 set -euo pipefail
 
+#R005: Resolve repository root from script location for cwd-independent execution.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -8,12 +10,14 @@ TELEMETRY_DIR="${QUALITY_TELEMETRY_DIR:-./artifacts/telemetry}"
 TREND_PATH="${TELEMETRY_DIR}/quality-trend.json"
 HISTORY_PATH="${TELEMETRY_DIR}/quality-history.ndjson"
 
+#R010: Fail early with actionable guidance when trend telemetry is missing.
 if [[ ! -f "$TREND_PATH" ]]; then
   echo "❌ FAIL: missing trend file at ${TREND_PATH}" >&2
   echo "Run ./25_run_all_tests_parallel.sh first to generate telemetry." >&2
   exit 1
 fi
 
+#R015: Parse telemetry payloads and print a local quality trend summary.
 python3 - "$TREND_PATH" "$HISTORY_PATH" <<'PY'
 import json
 import sys
