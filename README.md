@@ -11,27 +11,31 @@ Run setup scripts in numeric order. The workflow is designed around:
   - Ensures Xcode first-launch and license acceptance are completed (using `1psa` for sudo credential input when needed).
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
-- `04_run_dependency_freshness_tests.sh`
-- `05_run_av_test.sh`
-- `06_run_static_security_tests.sh`
-- `07_deploy_database.sh`
-- `08_deploy_database_verification_test.sh` (includes updated_at trigger coverage verification)
-- `09_run_shell_unit_tests.sh`
-- `10_run_python_unit_tests.sh`
-- `11_run_mutation_tests.sh`
-- `12_run_sql_unit_tests.sh`
-- `13_run_fuzz_tests.sh`
-- `14_run_swift_unit_tests.sh`
-- `15_run_macos_ui_regression_tests.sh` (recommended pre-merge gate)
-- `16_verify_macos_crash_test.sh`
-- `17_run_teller_api_smoke_tests.sh`
-- `18_fetch_teller_api_data.py`
-- `19_backfill_bank_statements.py`
+- `04_bootstrap_local_classifier_tls.sh`
+- `05_run_dependency_freshness_tests.sh`
+- `06_run_av_test.sh`
+- `07_run_static_security_tests.sh`
+- `08_deploy_database.sh`
+- `09_deploy_database_verification_test.sh` (includes updated_at trigger coverage verification)
+- `10_run_shell_unit_tests.sh`
+- `11_run_python_unit_tests.sh`
+- `12_run_mutation_tests.sh`
+- `13_run_sql_unit_tests.sh`
+- `14_run_fuzz_tests.sh`
+- `15_run_swift_unit_tests.sh`
+- `16_run_macos_ui_regression_tests.sh` (recommended pre-merge gate)
+- `17_verify_macos_crash_test.sh`
+- `18_run_teller_api_smoke_tests.sh`
+- `19_fetch_teller_api_data.py`
+- `20_backfill_bank_statements.py`
 - `20_run_classification_api.py`
-- `21_classification_persistence_verification_test.sh`
-- `22_run_dynamic_security_tests.sh`
-- `23_run_classification_macos-ui.sh`
-- `24_run_all_tests_parallel.sh`
+- `21_run_classification_api.py` (compatibility alias)
+- `22_classification_persistence_verification_test.sh`
+- `23_run_dynamic_security_tests.sh`
+- `24_run_classification_macos-ui.sh`
+- `25_run_all_tests_parallel.sh`
+- `26_report_quality_trends.sh`
+- `27_validate_quality_target.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -48,33 +52,34 @@ From the project root:
 ./02_create_venv.sh
 source ./teller-venv/bin/activate
 ./03_load_requirements.sh
-./04_run_dependency_freshness_tests.sh
-./05_run_av_test.sh
-./06_run_static_security_tests.sh
+./04_bootstrap_local_classifier_tls.sh
+./05_run_dependency_freshness_tests.sh
+./06_run_av_test.sh
+./07_run_static_security_tests.sh
 mkdir -p config/local
 cp config/db-profiles-EXAMPLE.json config/db-profiles.json
 # Edit config/db-profiles.json default_profile / 1psa_or_env_item for your environment.
-./07_deploy_database.sh
-./08_deploy_database_verification_test.sh
-./09_run_shell_unit_tests.sh
-./10_run_python_unit_tests.sh
-./11_run_mutation_tests.sh
-./12_run_sql_unit_tests.sh
-./13_run_fuzz_tests.sh
-./14_run_swift_unit_tests.sh
-./15_run_macos_ui_regression_tests.sh
-./16_verify_macos_crash_test.sh
-./17_run_teller_api_smoke_tests.sh
-./18_fetch_teller_api_data.py
-./19_backfill_bank_statements.py
+./08_deploy_database.sh
+./09_deploy_database_verification_test.sh
+./10_run_shell_unit_tests.sh
+./11_run_python_unit_tests.sh
+./12_run_mutation_tests.sh
+./13_run_sql_unit_tests.sh
+./14_run_fuzz_tests.sh
+./15_run_swift_unit_tests.sh
+./16_run_macos_ui_regression_tests.sh
+./17_verify_macos_crash_test.sh
+./18_run_teller_api_smoke_tests.sh
+./19_fetch_teller_api_data.py
+./20_backfill_bank_statements.py
 ./20_run_classification_api.py
-./21_classification_persistence_verification_test.sh
-./22_run_dynamic_security_tests.sh
-./23_run_classification_macos-ui.sh
-./24_run_all_tests_parallel.sh
+./22_classification_persistence_verification_test.sh
+./23_run_dynamic_security_tests.sh
+./24_run_classification_macos-ui.sh
+./25_run_all_tests_parallel.sh
 ```
 
-Before `./07_deploy_database.sh`, ensure PostgreSQL is installed and running for your selected profile target (for local runs, start your local server/service first).
+Before `./08_deploy_database.sh`, ensure PostgreSQL is installed and running for your selected profile target (for local runs, start your local server/service first).
 
 ## Repository Layout
 
@@ -170,7 +175,7 @@ Quality trend / target checks:
 
 Profile notes:
 
-- `24` keeps lanes parallel; API/DAST ports are isolated by default (`8787` vs `8788`) to reduce race-driven flakes.
+- `25` keeps lanes parallel; API/DAST ports are isolated by default (`8787` vs `8788`) to reduce race-driven flakes.
 - Override lane isolation only when intentionally diagnosing a single shared-runtime issue.
 - For deeper security/fuzz coverage, combine with nightly-style knobs:
   - `SCHEMATHESIS_MAX_EXAMPLES=100`
@@ -198,7 +203,7 @@ Optional single-pair mode:
 
 ### 2) Unit Tests
 
-Runs split unit lanes so each suite can run independently (and in parallel under `22`).
+Runs split unit lanes so each suite can run independently (and in parallel under `25`).
 
 ```bash
 ./09_run_shell_unit_tests.sh
@@ -213,7 +218,7 @@ Equivalent direct Python unittest invocation:
 python3 -m unittest discover tests/py
 ```
 
-Shell tests (`tests/sh`) run via `bats` in lane `09`. See `tests/sh/README.md` for stubbing conventions and scope boundaries.
+Shell tests (`tests/sh`) run via `bats` in lane `10`. See `tests/sh/README.md` for stubbing conventions and scope boundaries.
 
 ### 2b) Fuzz Tests
 
@@ -256,7 +261,7 @@ On failure, the lane saves the most recent replayable run log at `artifacts/fuzz
 
 Runs deterministic snapshot tests and macOS XCUITest smoke flows for `macos-ui`.
 
-This lane can run before full Connect enrollment and before script `18`.
+This lane can run before full Connect enrollment and before script `19`.
 
 ```bash
 ./15_run_macos_ui_regression_tests.sh
@@ -517,7 +522,7 @@ Active secret and credential sources are:
 - `24_run_all_tests_parallel.sh`
   - Runs local parallel quality/security gate lanes and aggregates reports under `artifacts/parallel/`.
   - Includes traceability, dependency freshness, Teller smoke checks, AV, SAST, DB verify, unit tests, UI regression, crash reporter, and classification persistence checks.
-  - Inherits caller environment for child lanes, so fuzz profile knobs (`FUZZ_*`, `SCHEMATHESIS_*`, `RUN_ZAP`) can be set once before invoking `24`.
+  - Inherits caller environment for child lanes, so fuzz profile knobs (`FUZZ_*`, `SCHEMATHESIS_*`, `RUN_ZAP`) can be set once before invoking `25`.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
   - Also captures matching cluster globals (roles/grants) for reliable restores.
