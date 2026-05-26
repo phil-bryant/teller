@@ -5,9 +5,11 @@
 Applies to `src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift`.
 
 R001  Statement: Load categories and initial transaction page together.
-Design: `loadAll()` concurrently fetches categories and first-page transactions, then updates derived picker and status state.
+Design: `loadAll()` concurrently fetches categories and the first transaction page (`pageSize` 150), requests the list with `includeTotal: false` (API R072), assigns rows, updates picker/status, then clears `busy` before kicking off background work. Accurate totals arrive via `refreshTransactionTotal()` (`countOnly: true`). Candidate/email side-pane loads run in a detached task after `busy` is cleared so the transaction-list spinner does not wait on match/message fetches.
 Tests:
 - R001-T01: Invoke `loadAll()` and verify categories, transactions, totals, and status text all update from fetched payloads.
+- R001-T02: Verify the first `fetchTransactions` call uses `includeTotal: false` and `countOnly: false`.
+- R001-T03: Verify `busy` is false immediately after `loadAll()` returns even when candidate fetch is still in flight.
 
 R005  Statement: Avoid redundant writes when selected category already matches a row.
 Design: `selectedCategoryDidChange()` emits mutations only for selected rows whose category is changing.
@@ -51,6 +53,16 @@ Tests:
 - R040-T01: Set a non-empty `mailcartSearchQuery`, await search, and verify results populate from the API response.
 - R040-T02: Simulate a search API failure and verify `mailcartSearchErrorText` is set and results clear.
 
+R075  Statement: Refresh accurate transaction totals after the fast first paint.
+Design: `refreshTransactionTotal()` calls `fetchTransactions` with `countOnly: true`, `includeTotal: true`, `limit: 1`, and `offset: 0`, then updates `totalTransactions` and status text without blocking the initial list render.
+Tests:
+- R075-T01: After `loadAll()`, allow background tasks to run and verify a `countOnly` fetch updates `totalTransactions` from the API.
+
+R080  Statement: Optional stderr profiling for transaction-list load and first render.
+Design: When `TELLER_UI_PROFILE_TRANSACTION_LIST=true`, `TransactionListProfiler` logs `[teller-ui-profile]` lines for load start, categories done, transaction fetch duration, state assignment, `busy` cleared, and first list `onAppear` render timing.
+Tests:
+- R080-T01: Verify profiling is disabled unless the environment variable is set to `true`.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ClassificationViewModel.swift` to replace prior plan-only coverage.
@@ -58,3 +70,4 @@ Tests:
 - 2026-05-19: Added R030 (bulk category delete from category editor selection).
 - 2026-05-19: Added R035 (clear human-reviewed match back to unmatched).
 - 2026-05-19: Added R040 (debounced email search in candidates pane).
+- 2026-05-26: Expanded R001 for fast first load (R072 client, busy cleared before side pane); added R075 and R080.

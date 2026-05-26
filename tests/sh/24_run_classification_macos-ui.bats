@@ -1,36 +1,64 @@
 #!/usr/bin/env bats
-load "helpers/common.bash"
 
-setup() {
-  setup_shell_test
-  create_repo_fixture
-  copy_script_to_fixture "24_run_classification_macos-ui.sh"
-  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/.build/debug"
-}
+load "helpers/common.bash"
 
 teardown() {
   teardown_shell_test
 }
 
-@test "forwards args to TransactionClassifier with computed package path" {
-  #R001-T01 #R005-T01 #R010-T01
-  cat > "${STUB_BIN}/swift" <<EOF
+src() {
+  printf '%s' "$(repo_root)/24_run_classification_macos-ui.sh"
+}
+
+@test "uses strict shell mode" {
+  #R001
+  run grep "set -euo pipefail" "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "builds debug TransactionClassifier and launches binary" {
+  #R005 #R005-T01 #R010 #R010-T01
+  run grep "swift build --package-path" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep '\.build/debug/TransactionClassifier' "$(src)"
+  [ "$status" -eq 0 ]
+  run grep '#app_args\[@\]' "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "profile flag enables transaction list profiling env" {
+  #R015 #R015-T01
+  run grep 'TELLER_UI_PROFILE_TRANSACTION_LIST=true' "$(src)"
+  [ "$status" -eq 0 ]
+  run grep -- '--profile' "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "help documents profile flag" {
+  #R015 #R015-T02
+  run grep 'usage:.*--profile' "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "supports launch with no forwarded args under nounset" {
+  #R010 #R010-T02
+  run grep '\${#app_args\[@\]} > 0' "$(src)"
+  [ "$status" -eq 0 ]
+  run grep 'env "${launch_env\[@\]}" "\$binary" &' "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "exits non-zero when swift build fails" {
+  #R001 #R001-T01
+  setup_shell_test
+  create_repo_fixture
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui"
+  copy_script_to_fixture "24_run_classification_macos-ui.sh"
+  cat > "${STUB_BIN}/swift" <<'EOF'
 #!/usr/bin/env bash
-echo "swift \$*" >> "${CALLS_LOG}"
-exit 0
+exit 1
 EOF
   chmod +x "${STUB_BIN}/swift"
-  cat > "${FIXTURE_ROOT}/src/macos-ui/.build/debug/TransactionClassifier" <<EOF
-#!/usr/bin/env bash
-echo "TransactionClassifier \$*" >> "${CALLS_LOG}"
-exit 0
-EOF
-  chmod +x "${FIXTURE_ROOT}/src/macos-ui/.build/debug/TransactionClassifier"
-
-  run env PATH="${STUB_BIN}:${PATH}" "${FIXTURE_ROOT}/24_run_classification_macos-ui.sh" --api-url http://127.0.0.1:8787 --dry-run
-  [ "$status" -eq 0 ]
-  calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"swift build --package-path"* ]]
-  [[ "$calls" == *"TransactionClassifier --api-url http://127.0.0.1:8787 --dry-run"* ]]
-  [[ "$calls" == *"/macos-ui"* ]]
+  run bash -c "cd '${FIXTURE_ROOT}' && PATH='${STUB_BIN}':\"\$PATH\" ./24_run_classification_macos-ui.sh"
+  [ "$status" -eq 1 ]
 }

@@ -118,7 +118,8 @@ final class ClassificationViewModel {
     }
 
     func loadAll() async {
-        // #R001: Load categories and the first transaction page together, then refresh derived UI state.
+        // #R001: Load categories and first-page transactions; clear busy before side-pane fetches (R075/R080).
+        // #R080: Optional stderr profiling when TELLER_UI_PROFILE_TRANSACTION_LIST=true.
         TransactionListProfiler.beginLoad()
         busy = true
         let fetchClock = ContinuousClock()
@@ -183,6 +184,7 @@ final class ClassificationViewModel {
         }
     }
 
+    // #R075: Fetch accurate total in the background after the fast first list paint.
     func refreshTransactionTotal() async {
         do {
             let response = try await api.fetchTransactions(

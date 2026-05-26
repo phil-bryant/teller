@@ -2,11 +2,21 @@ import Foundation
 import XCTest
 @testable import TransactionClassifier
 
+struct FetchTransactionsCall: Sendable {
+    let includeTotal: Bool
+    let countOnly: Bool
+    let limit: Int
+    let offset: Int
+}
+
 actor MockAPI: ClassificationAPI {
     var categories: [CategoryOption]
     var response: TransactionListResponse
     var pagedResponses: [Int: TransactionListResponse]
     var fetchOffsets: [Int] = []
+    var fetchTransactionsCalls: [FetchTransactionsCall] = []
+    var candidatesFetchCount = 0
+    var candidatesDelayNanoseconds: UInt64 = 0
     var lastSaved: [ClassificationMutation] = []
     var deletedCategoryIds: [Int] = []
     var clearedMatchIds: [Int] = []
@@ -16,24 +26,38 @@ actor MockAPI: ClassificationAPI {
     var searchError: Error?
     var saveError: Error?
     init(categories: [CategoryOption], response: TransactionListResponse, pagedResponses: [Int: TransactionListResponse] = [:],
+         candidatesDelayNanoseconds: UInt64 = 0,
          searchResponse: EmailSearchResponse = .init(query: "", items: []), searchError: Error? = nil, saveError: Error? = nil) {
         self.categories = categories
         self.response = response
         var merged = pagedResponses
         merged[0] = response
         self.pagedResponses = merged
+        self.candidatesDelayNanoseconds = candidatesDelayNanoseconds
         self.searchResponse = searchResponse
         self.searchError = searchError
         self.saveError = saveError
     }
     func fetchCategories() async throws -> [CategoryOption] { categories }
     func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool, countOnly: Bool) async throws -> TransactionListResponse {
-        _ = matchState; _ = onlyUnmovedMatch; _ = includeTotal
+        _ = search; _ = onlyUnclassified; _ = matchState; _ = onlyUnmovedMatch
+        fetchTransactionsCalls.append(
+            FetchTransactionsCall(includeTotal: includeTotal, countOnly: countOnly, limit: limit, offset: offset)
+        )
         if countOnly { return .init(total: response.total, items: []) }
         fetchOffsets.append(offset)
         return pagedResponses[offset] ?? response
     }
+    func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
+        _ = transactionId
+        candidatesFetchCount += 1
+        if candidatesDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: candidatesDelayNanoseconds)
+        }
+        return []
+    }
     func recordedFetchOffsets() -> [Int] { fetchOffsets }
+    func recordedFetchTransactionsCalls() -> [FetchTransactionsCall] { fetchTransactionsCalls }
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse] {
         lastSaved = updates
         if let saveError { throw saveError }
@@ -97,6 +121,60 @@ final class ClassificationViewModelTests: XCTestCase {
         let data = try XCTUnwrap(payload.data(using: .utf8))
         let decoded = try JSONDecoder().decode(TransactionListResponse.self, from: data)
         XCTAssertEqual(decoded.items.first?.amount, Decimal(string: "33.21"))
+    }
+
+    @MainActor
+    func testTransactionListProfilerDisabledUnlessEnvSet() {
+        // #R080-T01
+        XCTAssertFalse(TransactionListProfiler.isEnabled)
+    }
+
+    @MainActor
+    func testLoadAllUsesFastFirstFetchParameters() async {
+        // #R001-T02
+        let api = MockAPI(
+            categories: [sampleCategory(1, "Dining")],
+            response: .init(total: 2, items: [sampleTransaction("txn_1", classification: nil)])
+        )
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        let calls = await api.recordedFetchTransactionsCalls()
+        XCTAssertEqual(calls.count, 1)
+        XCTAssertEqual(calls[0].includeTotal, false)
+        XCTAssertEqual(calls[0].countOnly, false)
+        XCTAssertEqual(calls[0].limit, 150)
+    }
+
+    @MainActor
+    func testLoadAllClearsBusyBeforeCandidatesFetchCompletes() async throws {
+        // #R001-T03
+        let api = MockAPI(
+            categories: [sampleCategory(1, "Dining")],
+            response: .init(total: 1, items: [sampleTransactionWithMatch(id: "txn_1", matchId: 1, emailId: "msg", confidence: 0.9, count: 1)]),
+            candidatesDelayNanoseconds: 200_000_000
+        )
+        let vm = ClassificationViewModel(api: api)
+        vm.selection = ["txn_1"]
+        await vm.loadAll()
+        XCTAssertFalse(vm.busy)
+        try await Task.sleep(nanoseconds: 250_000_000)
+        let candidateFetches = await api.candidatesFetchCount
+        XCTAssertGreaterThanOrEqual(candidateFetches, 1)
+    }
+
+    @MainActor
+    func testRefreshTransactionTotalRunsCountOnlyFetch() async throws {
+        // #R075-T01
+        let api = MockAPI(
+            categories: [sampleCategory(1, "Dining")],
+            response: .init(total: 99, items: [sampleTransaction("txn_1", classification: nil)])
+        )
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        let calls = await api.recordedFetchTransactionsCalls()
+        XCTAssertTrue(calls.contains { $0.countOnly && $0.includeTotal })
+        XCTAssertEqual(vm.totalTransactions, 99)
     }
 
     @MainActor

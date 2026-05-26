@@ -1611,6 +1611,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_transactions_count_only_runs_count_without_list(self, get_session_mock):
+        #R072-T01
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
         session = _FakeSession(rows=[_Result(scalar=1074)])
@@ -1639,6 +1640,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_transactions_include_total_false_skips_count_query(self, get_session_mock):
+        #R072-T02
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
         session = _FakeSession(

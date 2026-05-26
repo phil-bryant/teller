@@ -9,6 +9,7 @@ binary="$package_path/.build/debug/TransactionClassifier"
 connect_api_url="inprocess://connect"
 connect_manager_url="${TELLER_CONNECT_MANAGER_URL:-$connect_api_url}"
 
+#R015: Optional transaction-list profiling via --profile.
 profile_enabled=false
 app_args=()
 while (($# > 0)); do

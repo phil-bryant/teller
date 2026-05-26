@@ -147,6 +147,7 @@ actor APIClient: ClassificationAPI {
         try await send(path: "/v1/categories")
     }
 
+    // #R001: Paginated transaction fetch with optional include_total/count_only (API R072).
     func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool = true, countOnly: Bool = false) async throws -> TransactionListResponse {
         guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/transactions"), resolvingAgainstBaseURL: false) else {
             throw APIError.invalidResponse
@@ -295,6 +296,7 @@ actor APIClient: ClassificationAPI {
         return try JSONDecoder().decode(T.self, from: data)
     }
 
+    // #R020: URLSession delegate pins loopback HTTPS to the local classifier cert.
     private static let tlsSessionDelegate = LocalClassifierTLSSessionDelegate()
     private static let tlsSessionDelegateQueue = OperationQueue()
 

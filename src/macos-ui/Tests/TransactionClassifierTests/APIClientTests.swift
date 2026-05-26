@@ -102,7 +102,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testFetchTransactionsSendsPaginationAndFilterQuery() async throws {
-        // #R001-T01 #R045-T01
+        // #R001-T01 #R001-T03 #R045-T01
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/transactions")
@@ -315,5 +315,27 @@ final class APIClientTests: XCTestCase {
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+    }
+
+    func testLoopbackHostDetectionForTLS() {
+        // #R020-T03
+        XCTAssertTrue(LocalClassifierTLS.isLoopbackHost("127.0.0.1"))
+        XCTAssertTrue(LocalClassifierTLS.isLoopbackHost("localhost"))
+        XCTAssertFalse(LocalClassifierTLS.isLoopbackHost("example.com"))
+    }
+
+    func testShouldPinLocalCertOnlyForLoopbackHTTPS() {
+        // #R020-T04
+        XCTAssertTrue(LocalClassifierTLS.shouldPinLocalCert(for: URL(string: "https://127.0.0.1:8787")!))
+        XCTAssertFalse(LocalClassifierTLS.shouldPinLocalCert(for: URL(string: "https://example.com")!))
+    }
+
+    func testLoadPinnedCertificateFromInstalledDefaultCert() throws {
+        // #R020-T05
+        let certPath = LocalClassifierTLS.defaultCertPath()
+        guard FileManager.default.fileExists(atPath: certPath) else {
+            throw XCTSkip("Default classifier TLS cert is not installed at \(certPath)")
+        }
+        XCTAssertNotNil(LocalClassifierTLS.loadPinnedCertificate(from: certPath))
     }
 }

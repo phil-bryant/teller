@@ -1159,6 +1159,7 @@ def create_app() -> FastAPI:
         match_state: Literal["", "unmatched", "no_email", "ai_no_match_found", "ai_candidate_uncertain",
                               "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
         only_unmoved_match: bool = Query(default=False),
+        #R072: Optional include_total/count_only for fast list paint vs accurate totals.
         include_total: bool = Query(default=True),
         count_only: bool = Query(default=False),
         limit: int = Query(default=150, ge=1, le=500),

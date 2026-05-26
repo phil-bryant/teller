@@ -1,6 +1,7 @@
 import Foundation
 import Security
 
+// #R020: Trust the installed local classifier TLS cert for loopback HTTPS API calls.
 enum LocalClassifierTLS {
     static func defaultCertPath() -> String {
         if let env = ProcessInfo.processInfo.environment["TELLER_CLASSIFIER_TLS_CERT_FILE"]?
