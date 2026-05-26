@@ -11,8 +11,6 @@ cd "$SCRIPT_DIR"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/src/scripts/export_test_cache_env.sh"
 export_test_cache_env "$SCRIPT_DIR"
-# shellcheck disable=SC1091
-source "${SCRIPT_DIR}/src/scripts/normalize_pytest_addopts.sh"
 
 #R010: Discover numbered check scripts dynamically by basename from tests/.
 SELF_SCRIPT_BASENAME="$(basename "${BASH_SOURCE[0]}")"

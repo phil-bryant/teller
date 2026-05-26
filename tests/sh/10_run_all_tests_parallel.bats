@@ -45,6 +45,7 @@ setup() {
   create_repo_fixture
   copy_script_to_fixture "10_run_all_tests_parallel.sh"
   mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  cp "$(repo_root)/src/scripts/export_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh"
   cp "$(repo_root)/src/scripts/normalize_pytest_addopts.sh" "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh"
   export REPORT_DIR="${FIXTURE_ROOT}/reports"
   mkdir -p "$REPORT_DIR"

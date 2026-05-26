@@ -21,4 +21,7 @@ export_test_cache_env() {
   export RUFF_CACHE_DIR="${RUFF_CACHE_DIR:-${cache_root}/ruff}"
   export HYPOTHESIS_STORAGE_DIRECTORY="${HYPOTHESIS_STORAGE_DIRECTORY:-${cache_root}/hypothesis}"
   mkdir -p "$PYTHONPYCACHEPREFIX" "$RUFF_CACHE_DIR" "$HYPOTHESIS_STORAGE_DIRECTORY" "${cache_root}/pytest"
+
+  # shellcheck disable=SC1091
+  source "${repo_root}/src/scripts/normalize_pytest_addopts.sh"
 }

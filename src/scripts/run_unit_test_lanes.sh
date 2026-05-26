@@ -11,8 +11,6 @@ cd "$REPO_ROOT"
 # shellcheck disable=SC1091
 source "${REPO_ROOT}/src/scripts/export_test_cache_env.sh"
 export_test_cache_env "$REPO_ROOT"
-# shellcheck disable=SC1091
-source "${REPO_ROOT}/src/scripts/normalize_pytest_addopts.sh"
 
 # Optional runner controls for local development.
 RUN_SHELL_TESTS="${RUN_SHELL_TESTS:-true}"
