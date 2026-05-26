@@ -17,6 +17,12 @@ packages = ["teller"]
 [tool.setuptools.package-dir]
 "" = "src"
 
+[tool.pytest.ini_options]
+cache_dir = "artifacts/cache/pytest"
+
+[tool.ruff]
+cache-dir = "artifacts/cache/ruff"
+
 [tool.mutmut]
 paths_to_mutate = ["src/teller/"]
 only_mutate = [

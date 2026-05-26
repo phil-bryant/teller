@@ -7,6 +7,16 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 #R001: Run tests from repository root regardless of caller working directory.
 cd "$REPO_ROOT"
 
+# Keep runtime caches out of the repository root.
+CACHE_ROOT="${CACHE_ROOT:-./artifacts/cache}"
+export PYTHONPYCACHEPREFIX="${PYTHONPYCACHEPREFIX:-${CACHE_ROOT}/pycache}"
+export RUFF_CACHE_DIR="${RUFF_CACHE_DIR:-${CACHE_ROOT}/ruff}"
+export HYPOTHESIS_STORAGE_DIRECTORY="${HYPOTHESIS_STORAGE_DIRECTORY:-${CACHE_ROOT}/hypothesis}"
+if [[ "${PYTEST_ADDOPTS:-}" != *"--cache-dir="* ]]; then
+  export PYTEST_ADDOPTS="${PYTEST_ADDOPTS:+${PYTEST_ADDOPTS} }--cache-dir=${CACHE_ROOT}/pytest"
+fi
+mkdir -p "$PYTHONPYCACHEPREFIX" "$RUFF_CACHE_DIR" "$HYPOTHESIS_STORAGE_DIRECTORY" "${CACHE_ROOT}/pytest"
+
 # Optional runner controls for local development.
 RUN_SHELL_TESTS="${RUN_SHELL_TESTS:-true}"
 RUN_PYTHON_TESTS="${RUN_PYTHON_TESTS:-true}"
@@ -302,5 +312,5 @@ fi
 
 if [[ "$RUN_MACOS_UI_REGRESSION_TESTS" == "true" ]]; then
   echo "▶ Running macOS UI regression test lane..."
-  ./16_run_macos_ui_regression_tests.sh
+  ./tests/t14_run_macos_ui_regression_tests.sh
 fi
