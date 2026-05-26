@@ -33,18 +33,6 @@ _SUPABASE_PROFILE = ResolvedProfile(
 )
 
 
-class TraceabilityTagPlacementTests(unittest.TestCase):
-    def test_traceability_numbered_tag_anchors(self):
-        #R025-T01
-        #R025-T02
-        #R030-T01
-        #R035-T01
-        #R035-T02
-        #R040-T01
-        #R040-T02
-        self.assertTrue(True)
-
-
 class _IsolatedEnvTest(unittest.TestCase):
     def setUp(self):
         self._saved_env = {key: os.environ.pop(key) for key in _DB_ENV_KEYS if key in os.environ}
@@ -61,6 +49,7 @@ class _IsolatedEnvTest(unittest.TestCase):
 class PasswordResolutionTests(_IsolatedEnvTest):
     # #R025: TELLER_DB_PASSWORD short-circuits libonepsa.
     def test_env_password_wins(self):
+        #R025-T01
         os.environ["TELLER_DB_PASSWORD"] = "from-env"  # pragma: allowlist secret
         with patch("teller.teller_db._read_password_from_onepsa") as fake_onepsa:
             fake_onepsa.side_effect = AssertionError("libonepsa must not be called")
@@ -69,6 +58,7 @@ class PasswordResolutionTests(_IsolatedEnvTest):
 
     # #R025: Empty onepsa_item with no env password raises a clear error.
     def test_missing_onepsa_item_raises(self):
+        #R025-T02
         empty_profile = ResolvedProfile(
             name="noitem", host="h", port=5432, dbname="d", user="u",
             onepsa_item="", search_path="teller", runtime_role="",
@@ -81,6 +71,7 @@ class PasswordResolutionTests(_IsolatedEnvTest):
 class EngineConstructionTests(_IsolatedEnvTest):
     # #R030: Engine is built once and cached.
     def test_engine_is_cached(self):
+        #R030-T01
         os.environ["TELLER_DB_PASSWORD"] = "pw"  # pragma: allowlist secret
         with patch("teller.teller_db.resolve_profile", return_value=_LOCAL_PROFILE), \
              patch("teller.teller_db.create_engine") as fake_create_engine, \
@@ -93,6 +84,7 @@ class EngineConstructionTests(_IsolatedEnvTest):
 
     # #R035: sslmode=require is forwarded into connect_args.
     def test_sslmode_require_forwarded(self):
+        #R035-T01
         os.environ["TELLER_DB_PASSWORD"] = "pw"  # pragma: allowlist secret
         with patch("teller.teller_db.resolve_profile", return_value=_SUPABASE_PROFILE), \
              patch("teller.teller_db.create_engine") as fake_create_engine, \
@@ -105,6 +97,7 @@ class EngineConstructionTests(_IsolatedEnvTest):
 
     # #R035: sslmode=disable is omitted from connect_args.
     def test_sslmode_disable_omitted(self):
+        #R035-T02
         os.environ["TELLER_DB_PASSWORD"] = "pw"  # pragma: allowlist secret
         with patch("teller.teller_db.resolve_profile", return_value=_LOCAL_PROFILE), \
              patch("teller.teller_db.create_engine") as fake_create_engine, \
@@ -135,6 +128,7 @@ class ConnectListenerTests(_IsolatedEnvTest):
 
     # #R040: SET search_path and SET ROLE both execute when runtime_role is configured.
     def test_set_role_runs_when_configured(self):
+        #R040-T01
         listener = self._capture_connect_listener()
         cursor = MagicMock()
         cursor.fetchone.return_value = ('"teller_write"',)
@@ -147,6 +141,7 @@ class ConnectListenerTests(_IsolatedEnvTest):
 
     # #R040: SET ROLE is skipped when runtime_role is empty (e.g. Supabase profile).
     def test_set_role_skipped_when_empty(self):
+        #R040-T02
         listener = self._capture_connect_listener(profile=_SUPABASE_PROFILE)
         cursor = MagicMock()
         dbapi_conn = MagicMock()

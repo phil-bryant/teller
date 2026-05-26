@@ -1,16 +1,3 @@
-// Requirement test-case tags for requirements/macos-ui/ConnectAPIClient-requirements.md
-// #R020-T02: Traceability anchor.
-
-// Traceability numbered tags for requirements/macos-ui/ConnectAPIClient-requirements.md
-// #R001-T01: Traceability anchor.
-// #R005-T01: Traceability anchor.
-// #R010-T01: Traceability anchor.
-// #R010-T02: Traceability anchor.
-// #R015-T01: Traceability anchor.
-// #R020-T01: Traceability anchor.
-// #R025-T01: Traceability anchor.
-// #R030-T01: Traceability anchor.
-
 import Foundation
 import XCTest
 @testable import TransactionClassifier
@@ -27,8 +14,14 @@ final class ConnectAPIClientTests: XCTestCase {
         ConnectAPIClient(homeDirectory: home)
     }
 
+    private func fileMode(at path: String) throws -> String {
+        let attrs = try FileManager.default.attributesOfItem(atPath: path)
+        let mode = (attrs[.posixPermissions] as? NSNumber)?.intValue ?? 0
+        return String(format: "%03o", mode)
+    }
+
     func testFetchContextsReadsDefaultAndSuffixFiles() async throws {
-        // #R001
+        // #R001-T01 #R030-T01
         let home = try makeTempHome()
         let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
         try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
@@ -84,6 +77,7 @@ final class ConnectAPIClientTests: XCTestCase {
     }
 
     func testStoreTokenAddWritesSuffixedFiles() async throws {
+        // #R005-T01 #R025-T01
         let home = try makeTempHome()
         let client = makeClient(home: home)
         let first = try await client.storeToken(
@@ -113,9 +107,12 @@ final class ConnectAPIClientTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: second.path))
         let saved = try Data(contentsOf: URL(fileURLWithPath: first.path))
         XCTAssertTrue(String(decoding: saved, as: UTF8.self).contains("token_abc"))
+        XCTAssertEqual(try fileMode(at: home.appendingPathComponent(".teller").path), "700")
+        XCTAssertEqual(try fileMode(at: first.path), "400")
     }
 
     func testDeleteContextMovesFilesToTrashFolder() async throws {
+        // #R015-T01
         let home = try makeTempHome()
         let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
         try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
@@ -134,7 +131,7 @@ final class ConnectAPIClientTests: XCTestCase {
     }
 
     func testReconnectWithoutEnrollmentIDClearsStaleEnrollmentFile() async throws {
-        // #R010
+        // #R010-T02
         let home = try makeTempHome()
         let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
         try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
@@ -155,5 +152,73 @@ final class ConnectAPIClientTests: XCTestCase {
 
         let savedEnrollment = try String(contentsOf: enrollmentPath, encoding: .utf8)
         XCTAssertEqual(savedEnrollment, "\n")
+    }
+
+    func testReconnectUpdatesOnlySelectedContext() async throws {
+        // #R010-T01
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        let defaultToken = tellerDir.appendingPathComponent("auth_token.json")
+        let defaultEnrollment = tellerDir.appendingPathComponent("enrollment_id.txt")
+        let betaToken = tellerDir.appendingPathComponent("auth_token_inst_beta.json")
+        let betaEnrollment = tellerDir.appendingPathComponent("enrollment_id_inst_beta.txt")
+        try Data("{\"current\":\"token_default\"}\n".utf8).write(to: defaultToken)
+        try Data("enr_default\n".utf8).write(to: defaultEnrollment)
+        try Data("{\"current\":\"token_beta\"}\n".utf8).write(to: betaToken)
+        try Data("enr_beta\n".utf8).write(to: betaEnrollment)
+
+        let client = makeClient(home: home)
+        _ = try await client.storeToken(
+            ConnectStoreTokenRequest(
+                token: "token_beta_new",
+                enrollmentId: "enr_beta_new",
+                action: "reconnect",
+                targetKey: "suffix:inst_beta",
+                institutionIdHint: ""
+            )
+        )
+
+        let defaultSaved = try String(contentsOf: defaultToken, encoding: .utf8)
+        let betaSaved = try String(contentsOf: betaToken, encoding: .utf8)
+        XCTAssertTrue(defaultSaved.contains("token_default"))
+        XCTAssertTrue(betaSaved.contains("token_beta_new"))
+    }
+
+    func testStartSessionReconnectWithoutEnrollmentFails() async throws {
+        // #R020-T01
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        try Data("app_test\n".utf8).write(to: tellerDir.appendingPathComponent("application_id.txt"))
+
+        let client = makeClient(home: home)
+        let missingSelection = ConnectContext(
+            key: "default",
+            source: "default",
+            institution_id: "inst_alpha",
+            enrollment_id: "",
+            token_path: tellerDir.appendingPathComponent("auth_token.json").path,
+            enrollment_path: tellerDir.appendingPathComponent("enrollment_id.txt").path
+        )
+        do {
+            _ = try await client.startSession(action: .reconnect, selectedContext: missingSelection)
+            XCTFail("Expected validation failure for reconnect without enrollment id")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.localizedCaseInsensitiveContains("cannot be edited"))
+        }
+    }
+
+    func testStartSessionAddReturnsEmptyTargetKey() async throws {
+        // #R020-T02
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        try Data("app_test\n".utf8).write(to: tellerDir.appendingPathComponent("application_id.txt"))
+
+        let client = makeClient(home: home)
+        let session = try await client.startSession(action: .add, selectedContext: nil)
+        XCTAssertEqual(session.targetKey, "")
+        XCTAssertEqual(session.enrollmentId, "")
     }
 }

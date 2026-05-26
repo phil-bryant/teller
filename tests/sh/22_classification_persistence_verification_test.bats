@@ -1,26 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/22_classification_persistence_verification_test-requirements.md
-# #R005-T02: Traceability anchor.
-# #R005-T03: Traceability anchor.
-# #R006-T02: Traceability anchor.
-# #R020-T02: Traceability anchor.
-# #R030-T02: Traceability anchor.
-# #R030-T03: Traceability anchor.
-# #R030-T04: Traceability anchor.
-# #R040-T01: Traceability anchor.
-
-# Traceability numbered tags for requirements/22_classification_persistence_verification_test-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R006-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 write_psql16() {
@@ -87,7 +65,7 @@ teardown() {
 }
 
 @test "fails on psql error" {
-  #R001
+  #R001-T01
   cat > "${STUB_BIN}/psql" <<'EOF'
 #!/usr/bin/env bash
 exit 1
@@ -99,7 +77,7 @@ EOF
 }
 
 @test "auto-resolves posted transaction and category" {
-  #R005
+  #R005-T01 #R005-T02 #R005-T03
   : > "${PSQL_16}"; : > "${CURL_LOG16}"
   write_psql16
   run env -u TXN_ID -u CATEGORY_ID TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/22_classification_persistence_verification_test.sh"
@@ -108,14 +86,14 @@ EOF
 }
 
 @test "strict mode requires category id" {
-  #R006
+  #R006-T01 #R006-T02
   run env -u CATEGORY_ID TELLER_DB_PASSWORD=pw TXN_ID=txn1 \
     zsh "${FIXTURE_ROOT}/22_classification_persistence_verification_test.sh" --require-env-ids
   [ "$status" -ne 0 ]
 }
 
 @test "sends request to api url and database host from env" {
-  #R010
+  #R010-T01
   : > "${PSQL_16}"; : > "${CURL_LOG16}"
   write_psql16
   run env TELLER_CLASSIFIER_API_URL="http://h.example:12" TELLER_DB_HOST=fromenv TELLER_DB_PORT=33 \
@@ -127,7 +105,7 @@ EOF
 }
 
 @test "resolves empty password with 1psa" {
-  #R015
+  #R015-T01
   : > "${PSQL_16}"; : > "${CURL_LOG16}"
   write_psql16
   run env -u TELLER_DB_PASSWORD -u TXN_ID -u CATEGORY_ID zsh "${FIXTURE_ROOT}/22_classification_persistence_verification_test.sh"
@@ -135,7 +113,7 @@ EOF
 }
 
 @test "api json uses transaction and category" {
-  #R020 #R035
+  #R020-T01 #R020-T02 #R035-T01
   : > "${CURL_LOG16}"
   : > "${PSQL_16}"
   write_psql16
@@ -147,7 +125,7 @@ EOF
 }
 
 @test "persists line matches expected format" {
-  #R025
+  #R025-T01
   : > "${CURL_LOG16}"; : > "${PSQL_16}"
   write_psql16
   run env TELLER_DB_PASSWORD=pw TXN_ID=txn1 CATEGORY_ID=7 zsh "${FIXTURE_ROOT}/22_classification_persistence_verification_test.sh" --require-env-ids
@@ -156,7 +134,7 @@ EOF
 }
 
 @test "pass output includes details before status" {
-  #R030
+  #R030-T01 #R030-T02 #R030-T03 #R030-T04
   : > "${CURL_LOG16}"; : > "${PSQL_16}"
   write_psql16
   run env TELLER_DB_PASSWORD=pw TXN_ID=txn1 CATEGORY_ID=7 zsh "${FIXTURE_ROOT}/22_classification_persistence_verification_test.sh" --require-env-ids
@@ -167,7 +145,6 @@ EOF
 }
 
 @test "fails on curl error" {
-  #R030
   cat > "${STUB_BIN}/curl" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == *"/health"* ]]; then
@@ -184,7 +161,7 @@ EOF
 }
 
 @test "fails with setup guidance when db profile file is missing" {
-  #R040
+  #R040-T01
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "No DB profile file found. Create one with: cp config/db-profiles-EXAMPLE.json config/db-profiles.json" >&2

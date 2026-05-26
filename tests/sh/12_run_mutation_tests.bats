@@ -1,20 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/12_run_mutation_tests-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R022-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-# #R040-T01: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-# #R055-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -100,13 +84,12 @@ teardown() {
 }
 
 @test "runs from repository root regardless of caller cwd" {
-  #R001-T01
+  #R001-T01 #R005-T01 #R010-T01 #R015-T01 #R020-T01 #R022-T01 #R025-T01 #R030-T01 #R035-T01 #R040-T01 #R045-T01 #R050-T01 #R055-T01
   run bash -c "cd '${TEST_TMPDIR}' && '${FIXTURE_ROOT}/12_run_mutation_tests.sh'"
   [ "$status" -eq 0 ]
 }
 
 @test "fails when teller-venv python is unavailable" {
-  #R005-T01
   rm -rf "${FIXTURE_ROOT}/teller-venv"
   run bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
   [ "$status" -ne 0 ]
@@ -114,7 +97,6 @@ teardown() {
 }
 
 @test "preflight failure points to python unit lane" {
-  #R010-T01
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python3" <<'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "--version" ]; then
@@ -132,7 +114,6 @@ EOF
 }
 
 @test "writes mutation summary and stats on success" {
-  #R015-T01
   run bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutation-summary.json" ]
@@ -140,9 +121,6 @@ EOF
 }
 
 @test "writes run metadata and strict thresholds in mutation summary" {
-  #R020-T01
-  #R022-T01
-  #R030-T01
   run bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
   [ "$status" -eq 0 ]
   run python3 - "${FIXTURE_ROOT}/artifacts/mutation/mutation-summary.json" <<'PY'
@@ -159,7 +137,6 @@ PY
 }
 
 @test "persists mutation history and trend artifacts" {
-  #R045-T01
   run bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutation-history.ndjson" ]
@@ -167,7 +144,6 @@ PY
 }
 
 @test "ci mode fails when mutmut runtime is incompatible" {
-  #R050-T01
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python3" <<'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "--version" ]; then
@@ -192,7 +168,6 @@ EOF
 }
 
 @test "local mode records incompatibility as skip" {
-  #R050-T01
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python3" <<'EOF'
 #!/usr/bin/env bash
 if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "--version" ]; then
@@ -217,7 +192,6 @@ EOF
 }
 
 @test "survivor budget gate fails when survived exceeds budget" {
-  #R055-T01
   run env MUTATION_SURVIVOR_BUDGET=0 bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"Survived mutants 5 exceed survivor budget 0"* ]]

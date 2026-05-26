@@ -1,9 +1,4 @@
 #!/usr/bin/env bats
-
-# Traceability numbered tags for requirements/sql/teller_transaction_info_view-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -19,7 +14,7 @@ sql_file() {
 }
 
 @test "view joins transaction to related teller data" {
-  #R001
+  #R001-T01
   run grep "teller\.transaction_info_view" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "JOIN" "$(sql_file)"
@@ -27,7 +22,7 @@ sql_file() {
 }
 
 @test "view orders by date and description" {
-  #R005
+  #R005-T01
   run grep "ORDER BY" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "tt.date" "$(sql_file)"

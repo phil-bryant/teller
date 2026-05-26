@@ -1,10 +1,5 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/src/scripts/repair_nys_snw_category-requirements.md
-# #R001-T01: Verify hierarchy normalization updates.
-# #R005-T01: Verify empty-row guard block and exception behavior.
-# #R010-T01: Verify drop/add/validate constraint lifecycle.
-
 load "helpers/common.bash"
 
 setup() {
@@ -20,7 +15,7 @@ sql_file() {
 }
 
 @test "normalizes hierarchy fields before constraints" {
-  #R001
+  #R001-T01
   run grep "REGEXP_REPLACE(level_1" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "REGEXP_REPLACE(level_4" "$(sql_file)"
@@ -30,7 +25,7 @@ sql_file() {
 }
 
 @test "contains guard block for empty hierarchy rows" {
-  #R005
+  #R005-T01
   run grep "Cannot enforce nys_snw_category constraints" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "COALESCE(" "$(sql_file)"
@@ -38,7 +33,7 @@ sql_file() {
 }
 
 @test "recreates and validates both constraints" {
-  #R010
+  #R010-T01
   run grep "DROP CONSTRAINT IF EXISTS nys_snw_category_non_empty_hierarchy_chk" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "ADD CONSTRAINT nys_snw_category_non_empty_hierarchy_chk" "$(sql_file)"

@@ -9,22 +9,22 @@ Design: Resolve `TELLER_CLASSIFIER_TLS_CERT_FILE` / `TELLER_CLASSIFIER_TLS_KEY_F
 Tests:
 - R001-T01: Verify script references `classifier-localhost-cert.pem` and `classifier-localhost-key.pem` defaults.
 
-R005  Statement: Preserve existing local cert decisions by default.
-Design: If both target cert and key files already exist and are non-empty, emit a no-op success message and exit without regeneration.
+R005  Statement: Preserve existing mkcert-generated cert decisions by default.
+Design: If both target cert and key files already exist and are non-empty, print a checking summary and exit with an explicit already-installed message before any generate/install wording. Replace legacy self-signed material automatically; honor `TELLER_CLASSIFIER_TLS_FORCE_REGENERATE=true` for explicit regeneration.
 Tests:
-- R005-T01: Verify script includes an explicit already-present early-return path.
+- R005-T01: Verify script includes an explicit already-installed early-return path.
+- R005-T02: Verify generate/install messaging appears only after the already-installed check.
+- R005-T03: Verify legacy self-signed replacement path is present.
 
-R010  Statement: Prefer trusted local cert generation when mkcert is available.
-Design: Detect `mkcert`, run local CA install best-effort, and generate localhost+loopback SAN cert/key at target paths.
+R010  Statement: Require mkcert for local classifier TLS generation.
+Design: Fail clearly when `mkcert` is unavailable and direct the operator to run `./01_install_prerequisites.sh`; generate localhost+loopback SAN cert/key only via `mkcert -cert-file ... -key-file ... localhost 127.0.0.1 ::1` after best-effort `mkcert -install`.
 Tests:
 - R010-T01: Verify script checks for `mkcert` and invokes `mkcert -cert-file ... -key-file ... localhost 127.0.0.1 ::1`.
-
-R015  Statement: Provide an OpenSSL fallback when mkcert is unavailable.
-Design: Detect `openssl` and generate a self-signed localhost certificate with SANs for `localhost`, `127.0.0.1`, and `::1`; fail clearly if neither tool exists.
-Tests:
-- R015-T01: Verify script includes OpenSSL detection and `openssl req` generation path.
+- R010-T02: Verify missing `mkcert` exits non-zero with guidance to run `./01_install_prerequisites.sh`.
+- R010-T03: Verify script does not include an OpenSSL self-signed generation path.
 
 ## Changelog
 
-- 2026-05-26: Renamed from `04_bootstrap_local_classifier_tls.sh` to `04_install_classifier_api_tls.sh`.
+- 2026-05-26: Require mkcert-only generation; remove OpenSSL fallback.
+- 2026-05-26: Require checking/no-op messaging before any generate banner on reruns.
 - 2026-05-25: Initial requirements for control-plane slot `04` TLS install script.

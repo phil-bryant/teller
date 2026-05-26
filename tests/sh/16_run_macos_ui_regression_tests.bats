@@ -1,22 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/16_run_macos_ui_regression_tests-requirements.md
-# #R010-T02: Traceability anchor.
-# #R020-T02: Traceability anchor.
-
-# Traceability numbered tags for requirements/16_run_macos_ui_regression_tests-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-# #R040-T01: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -33,7 +15,7 @@ teardown() {
 }
 
 @test "fails when snapshot step fails" {
-  #R001
+  #R001-T01
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$@" >> "${CALLS_LOG}"
@@ -54,7 +36,7 @@ EOF
 }
 
 @test "resolves against repository root for relative paths" {
-  #R005
+  #R005-T01
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
@@ -77,7 +59,7 @@ EOF
 }
 
 @test "snapshot lane honors RUN_SNAPSHOT_TESTS and snapshot record" {
-  #R010 #R015
+  #R010-T01 #R010-T02 #R015-T01
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$@" >> "${CALLS_LOG}"
@@ -106,7 +88,7 @@ EOF
 }
 
 @test "XCUITest gate fails with missing xcode project" {
-  #R020
+  #R020-T01 #R020-T02
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$@" >> "${CALLS_LOG}"
@@ -129,7 +111,7 @@ EOF
 }
 
 @test "XCUITest can be disabled while snapshot runs" {
-  #R025
+  #R025-T01
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$@" >> "${CALLS_LOG}"
@@ -154,7 +136,7 @@ EOF
 }
 
 @test "defaults run snapshot and xcodebuild when env vars unset" {
-  #R030
+  #R030-T01
   touch "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj/placeholder" 2>/dev/null || \
     mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
@@ -179,7 +161,7 @@ EOF
 }
 
 @test "passes xcodebuild project scheme destination and derived data overrides" {
-  #R035
+  #R035-T01
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui/proj.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
@@ -209,7 +191,7 @@ EOF
 }
 
 @test "runs only selected XCUITest scenarios by numeric selectors" {
-  #R040
+  #R040-T01
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
@@ -249,7 +231,7 @@ EOF
 }
 
 @test "fails when selector references non-existent scenario numbers" {
-  #R045
+  #R045-T01
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
@@ -277,7 +259,7 @@ EOF
 }
 
 @test "does not invoke macOS crash reporter verification script" {
-  #R050
+  #R050-T01
   run grep -E 'verify_macos_crash_test|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/16_run_macos_ui_regression_tests.sh"
   [ "$status" -ne 0 ]
 }

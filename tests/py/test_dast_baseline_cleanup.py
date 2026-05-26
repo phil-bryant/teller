@@ -1,5 +1,3 @@
-# Requirement test-case tags for requirements/23_run_dynamic_security_tests-requirements.md
-# #R025-T02: Verify dast_baseline.py captures a snapshot and dast_cleanup.py
 #            restores the database back to that snapshot end-to-end.
 
 """Opt-in integration test for the DAST baseline + cleanup hygiene contract.

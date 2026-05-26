@@ -1,28 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/17_verify_macos_crash_test-requirements.md
-# #R015-T02: Traceability anchor.
-# #R020-T02: Traceability anchor.
-# #R030-T02: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-# #R060-T01: Traceability anchor.
-# #R065-T01: Traceability anchor.
-
-# Traceability numbered tags for requirements/17_verify_macos_crash_test-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-# #R040-T01: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-# #R060-T01: Traceability anchor.
-# #R065-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -41,7 +17,7 @@ teardown() {
 }
 
 @test "verifies forced-crash replay persists crash artifacts" {
-  #R001 #R005 #R010 #R015 #R020 #R035
+  #R001-T01 #R005-T01 #R010-T01 #R015-T01 #R015-T02 #R020-T01 #R020-T02 #R035-T01
   report_dir="${TEST_TMPDIR}/reports"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
@@ -69,7 +45,6 @@ EOF
 }
 
 @test "succeeds when relaunch captures persistence log before timeout" {
-  #R015 #R020
   report_dir="${TEST_TMPDIR}/reports-timeout"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
@@ -98,7 +73,7 @@ EOF
 }
 
 @test "recovers from stale SwiftPM checkout state and retries relaunch once" {
-  #R045
+  #R045-T01
   report_dir="${TEST_TMPDIR}/reports-recovery"
   state_file="${TEST_TMPDIR}/recovery_state"
   cat > "${STUB_BIN}/swift" <<EOF
@@ -140,7 +115,7 @@ EOF
 }
 
 @test "fails quickly when relaunch does not emit persistence log" {
-  #R015 #R050
+  #R050-T01
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 if [[ "\${TELLER_MACOS_FORCE_CRASH_ON_LAUNCH:-}" == "1" ]]; then
@@ -159,7 +134,7 @@ EOF
 }
 
 @test "prewarms build before forced crash and relaunch runs" {
-  #R060
+  #R060-T01
   report_dir="${TEST_TMPDIR}/reports-prewarm"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
@@ -195,7 +170,7 @@ EOF
 }
 
 @test "fails when unclean-marker replay log/artifact are missing" {
-  #R065
+  #R065-T01
   report_dir="${TEST_TMPDIR}/reports-unclean-missing"
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
@@ -222,7 +197,6 @@ EOF
 }
 
 @test "fails when forced-crash run exits zero" {
-  #R010
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo swift "\$*" >> "${CALLS_LOG}"
@@ -236,7 +210,7 @@ EOF
 }
 
 @test "fails with clear message when macos-ui path is missing" {
-  #R030
+  #R030-T01 #R030-T02
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 exit 0
@@ -249,7 +223,7 @@ EOF
 }
 
 @test "remains standalone and is not chained by numbered runners" {
-  #R040
+  #R040-T01
   run grep -E 'verify_macos_crash_test|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/10_run_shell_unit_tests.sh"
   [ "$status" -ne 0 ]
 

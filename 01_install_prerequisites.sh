@@ -303,6 +303,8 @@ ensure_brew_formula "clamav" "clamscan"
 ensure_brew_formula "perl"
 #R080: Ensure cpanminus is available for Perl module installation.
 ensure_brew_formula "cpanminus" "cpanm"
+#R110: Ensure mkcert is available for local classifier API TLS installation.
+ensure_brew_formula "mkcert"
 ensure_zap_cli
 
 ensure_1psa

@@ -1,15 +1,5 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/src/scripts/run_unit_test_lanes-requirements.md
-# #R001-T01: Verify repo-root execution and lane toggles.
-# #R005-T01: Verify SQL preflight failures fail fast with clear diagnostics.
-# #R010-T01: Verify Swift lane uses lock helper and stale-cache retry path.
-# #R015-T01: Verify lane failures propagate non-zero status.
-# #R020-T01: Verify stale-checkout-only retry behavior.
-# #R025-T01: Verify DB profile export helper is required for SQL lane preflight.
-# #R030-T01: Verify helper keeps crash verification out of shared unit-test lanes.
-# #R035-T01: Verify setup diagnostics on DB profile export failures.
-
 load "helpers/common.bash"
 
 setup() {
@@ -25,7 +15,7 @@ teardown() {
 }
 
 @test "runs from repo root and honors disabled lanes" {
-  #R001 #R030
+  #R001-T01 #R030-T01
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
@@ -48,7 +38,7 @@ EOF
 }
 
 @test "fails fast when db profile helper is missing" {
-  #R005 #R025 #R035 #R015
+  #R005-T01 #R015-T01 #R025-T01 #R035-T01
   run bash -c "
     cd '${FIXTURE_ROOT}'
     RUN_SHELL_TESTS=false RUN_PYTHON_TESTS=false RUN_SQL_TESTS=false RUN_SWIFT_TESTS=false \
@@ -59,7 +49,7 @@ EOF
 }
 
 @test "swift lane invokes lock helper and retries stale-cache failure once" {
-  #R010 #R020 #R015
+  #R010-T01 #R020-T01
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"

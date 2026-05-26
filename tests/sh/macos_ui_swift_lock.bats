@@ -1,10 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/src/scripts/macos_ui_swift_lock-requirements.md
-# #R001-T01: Verify lock acquisition executes command and cleans lock artifacts.
-# #R005-T01: Verify stale lock cleanup for missing/dead pid marker.
-# #R010-T01: Verify timeout behavior under lock contention.
-
 load "helpers/common.bash"
 
 setup() {
@@ -16,7 +10,7 @@ teardown() {
 }
 
 @test "acquires lock and cleans it after command" {
-  #R001
+  #R001-T01
   lock_file="${TEST_TMPDIR}/swift.lock"
   run bash -c "
     source '$(repo_root)/src/scripts/macos_ui_swift_lock.sh'
@@ -28,7 +22,7 @@ teardown() {
 }
 
 @test "removes stale lock without pid marker" {
-  #R005
+  #R005-T01
   lock_file="${TEST_TMPDIR}/swift.lock"
   mkdir -p "${lock_file}.d"
   run bash -c "
@@ -41,7 +35,7 @@ teardown() {
 }
 
 @test "times out when lock stays held" {
-  #R010
+  #R010-T01
   lock_file="${TEST_TMPDIR}/swift.lock"
   mkdir -p "${lock_file}.d"
   echo "$$" > "${lock_file}.d/pid"

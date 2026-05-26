@@ -1,13 +1,4 @@
 #!/usr/bin/env bats
-
-# Traceability numbered tags for requirements/20_backfill_bank_statements-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -20,14 +11,14 @@ teardown() {
 }
 
 @test "backfill parser assigns signed amounts and transaction types" {
-  #R005
+  #R001-T01 #R005-T01 #R020-T01 #R025-T01
   run ./teller-venv/bin/python3 -m unittest \
     tests.py.test_20_backfill_bank_statements.BackfillParsingTests.test_parse_transactions_assigns_sign_and_type
   [ "$status" -eq 0 ]
 }
 
 @test "statement account matching supports override and last-four hint" {
-  #R010
+  #R010-T01
   run ./teller-venv/bin/python3 -m unittest \
     tests.py.test_20_backfill_bank_statements.BackfillParsingTests.test_match_statement_to_account_uses_override \
     tests.py.test_20_backfill_bank_statements.BackfillParsingTests.test_match_statement_to_account_uses_last_four_hint
@@ -35,7 +26,7 @@ teardown() {
 }
 
 @test "statement transaction ids remain deterministic across runs" {
-  #R015
+  #R015-T01
   run ./teller-venv/bin/python3 -m unittest \
     tests.py.test_20_backfill_bank_statements.BackfillParsingTests.test_make_txn_id_is_deterministic
   [ "$status" -eq 0 ]

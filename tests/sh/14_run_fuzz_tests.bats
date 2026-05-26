@@ -1,14 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/14_run_fuzz_tests-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -66,13 +56,12 @@ teardown() {
 }
 
 @test "runs from non-repo cwd" {
-  #R001-T01
+  #R001-T01 #R005-T01 #R010-T01 #R015-T01 #R020-T01 #R025-T01 #R030-T01
   run env FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_PER_TEST_RATIO_PERCENT=80 bash -c "cd '${TEST_TMPDIR}' && bash '${FIXTURE_ROOT}/14_run_fuzz_tests.sh'"
   [ "$status" -eq 0 ]
 }
 
 @test "fails when teller-venv python is unavailable" {
-  #R005-T01
   rm -rf "${FIXTURE_ROOT}/teller-venv"
   run bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
   [ "$status" -ne 0 ]
@@ -86,21 +75,18 @@ teardown() {
 }
 
 @test "fails on pytest timeout" {
-  #R025-T01
   run env STUB_PYTEST_TIMEOUT=1 FUZZ_TIMEOUT_SECONDS=1 bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"timed out after"* ]]
 }
 
 @test "fails when passing example budget is under configured floor" {
-  #R020-T01
   run env STUB_TEST_ONE_PASSING=10 STUB_TEST_TWO_PASSING=10 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_TOTAL_EXAMPLES=160 bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"Total passing examples 20 is below budget 160"* ]]
 }
 
 @test "fails when pytest exits non-zero and writes replay log" {
-  #R030-T01
   run env STUB_PYTEST_EXIT=1 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_TOTAL_EXAMPLES=100 bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"Property-based fuzz tests reported pytest failures"* ]]
@@ -109,7 +95,6 @@ teardown() {
 }
 
 @test "writes fuzz summary report and passes with non-zero default gates" {
-  #R015-T01
   run env STUB_TEST_ONE_PASSING=80 STUB_TEST_TWO_PASSING=80 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_PER_TEST_RATIO_PERCENT=80 bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/fuzz/fuzz-summary.json" ]

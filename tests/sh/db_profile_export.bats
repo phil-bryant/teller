@@ -1,10 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/src/scripts/db_profile_export-requirements.md
-# #R001-T01: Verify export key emission.
-# #R005-T01: Verify argument handling and profile override behavior.
-# #R010-T01: Verify profile-resolution failures propagate clearly.
-
 load "helpers/common.bash"
 
 setup() {
@@ -20,7 +14,7 @@ teardown() {
 }
 
 @test "prints expected export keys" {
-  #R001
+  #R001-T01
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 cat <<'OUT'
@@ -46,7 +40,7 @@ EOF
 }
 
 @test "supports profile override and rejects unknown args" {
-  #R005
+  #R005-T01
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=${TELLER_DB_PROFILE:-unset}"
@@ -64,7 +58,7 @@ EOF
 }
 
 @test "fails clearly when profile resolver errors" {
-  #R010
+  #R010-T01
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 echo "profile resolution failed" >&2

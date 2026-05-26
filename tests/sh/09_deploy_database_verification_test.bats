@@ -1,24 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/09_deploy_database_verification_test-requirements.md
-
-# Traceability numbered tags for requirements/09_deploy_database_verification_test-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-# #R040-T01: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-# #R055-T01: Traceability anchor.
-# #R060-T01: Traceability anchor.
-# #R060-T02: Traceability anchor.
-# #R065-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 make_psql_happy() {
@@ -129,7 +109,7 @@ teardown() {
 }
 
 @test "fails on first psql error" {
-  #R001
+  #R001-T01
   cat > "${STUB_BIN}/psql" <<'EOF'
 #!/usr/bin/env bash
 exit 1
@@ -140,7 +120,7 @@ EOF
 }
 
 @test "psql command includes custom host and port from env" {
-  #R005
+  #R005-T01
   : > "${PSQL_LOG}"
   make_psql_happy
   run env TELLER_DB_HOST=custom.local TELLER_DB_PORT=15432 TELLER_DB_PASSWORD=pw TELLER_DB_NAME=d TELLER_DB_USER=u \
@@ -151,7 +131,7 @@ EOF
 }
 
 @test "uses 1psa when teller db password is unset" {
-  #R010
+  #R010-T01
   : > "${PSQL_LOG}"
   make_psql_happy
   run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
@@ -160,7 +140,7 @@ EOF
 }
 
 @test "fails with clear error when database password is empty" {
-  #R015
+  #R015-T01
   : > "${PSQL_LOG}"
   make_psql_happy
   cat > "${STUB_BIN}/1psa" <<'EOF'
@@ -175,7 +155,7 @@ EOF
 }
 
 @test "fails when classification FK is missing ON DELETE CASCADE" {
-  #R020 #R025
+  #R020-T01 #R025-T01
   : > "${PSQL_LOG}"
   make_psql_happy
   run env TELLER_DB_PASSWORD=pw FK_BROKEN=1 zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
@@ -185,7 +165,7 @@ EOF
 }
 
 @test "emits a single pass line for successful verification" {
-  #R030 #R035 #R040 #R045
+  #R030-T01 #R035-T01 #R040-T01 #R045-T01
   : > "${PSQL_LOG}"
   make_psql_happy
   run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
@@ -194,7 +174,6 @@ EOF
 }
 
 @test "fails when updated_at coverage has gaps" {
-  #R040 #R045
   : > "${PSQL_LOG}"
   make_psql_happy
   run env TELLER_DB_PASSWORD=pw TRIGGER_GAPS=1 zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
@@ -222,7 +201,7 @@ EOF
 }
 
 @test "managed profile skips role existence check" {
-  #R050
+  #R050-T01
   : > "${PSQL_LOG}"
   make_psql_happy
   stub_managed_verify_helper
@@ -232,7 +211,7 @@ EOF
 }
 
 @test "uses profile psa item when password env is unset" {
-  #R055
+  #R055-T01
   : > "${PSQL_LOG}"
   make_psql_happy
   stub_managed_verify_helper
@@ -267,7 +246,7 @@ EOF
 }
 
 @test "ssl-required deploy fails when pg_stat_ssl reports unencrypted session" {
-  #R060
+  #R060-T01 #R060-T02
   : > "${PSQL_LOG}"
   make_psql_happy
   stub_require_ssl_helper
@@ -278,7 +257,6 @@ EOF
 }
 
 @test "ssl probe is skipped when sslmode is disable" {
-  #R060
   : > "${PSQL_LOG}"
   make_psql_happy
   run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
@@ -287,7 +265,7 @@ EOF
 }
 
 @test "fails with setup guidance when db profile file is missing" {
-  #R065
+  #R065-T01
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "No DB profile file found. Create one with: cp config/db-profiles-EXAMPLE.json config/db-profiles.json" >&2

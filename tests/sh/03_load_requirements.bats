@@ -13,7 +13,7 @@ teardown() {
 }
 
 @test "fails when expected venv directory is missing" {
-  #R001
+  #R001-T01
   run bash -c "cd '${FIXTURE_ROOT}' && ./03_load_requirements.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"02_create_venv.sh"* ]]
@@ -21,7 +21,7 @@ teardown() {
 }
 
 @test "fails when no virtual environment is active" {
-  #R005
+  #R005-T01
   mkdir -p "${FIXTURE_ROOT}/fixture-venv"
   run bash -c "cd '${FIXTURE_ROOT}' && unset VIRTUAL_ENV && ./03_load_requirements.sh"
   [ "$status" -eq 1 ]
@@ -30,7 +30,7 @@ teardown() {
 }
 
 @test "fails when active venv does not match project venv" {
-  #R010
+  #R010-T01
   mkdir -p "${FIXTURE_ROOT}/fixture-venv" "${TEST_TMPDIR}/other-venv"
   run bash -c "cd '${FIXTURE_ROOT}' && export VIRTUAL_ENV='${TEST_TMPDIR}/other-venv' && ./03_load_requirements.sh"
   [ "$status" -eq 1 ]
@@ -38,7 +38,7 @@ teardown() {
 }
 
 @test "prefers requirements.txt when present" {
-  #R015 #R025
+  #R015-T01 #R015-T02 #R025-T01 #R025-T02
   local venv
   venv="${FIXTURE_ROOT}/fixture-venv"
   mkdir -p "${venv}/bin"
@@ -60,7 +60,7 @@ EOF
 }
 
 @test "requires cpu or gpu when split files are used" {
-  #R020
+  #R020-T01 #R020-T02
   local venv
   venv="${FIXTURE_ROOT}/fixture-venv"
   mkdir -p "${venv}/bin"
@@ -87,7 +87,7 @@ EOF
 }
 
 @test "03_load_requirements is locked and excluded from automatic tag pairing" {
-  #R030
+  #R030-T01 #R030-T02
   local real_script
   real_script="$(repo_root)/03_load_requirements.sh"
   [ -f "$real_script" ]
@@ -99,7 +99,7 @@ EOF
 }
 
 @test "requirements pin wheel-based psycopg2 dependency" {
-  #R035
+  #R035-T01 #R035-T02
   local req_file
   req_file="$(repo_root)/requirements.txt"
   run grep -E '^psycopg2-binary(==.*)?$' "$req_file"

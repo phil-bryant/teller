@@ -1,17 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/23_run_dynamic_security_tests-requirements.md
-
-# Traceability numbered tags for requirements/23_run_dynamic_security_tests-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R030-T02: Traceability anchor.
-
 load "helpers/common.bash"
 
 write_dast_14_stub() {
@@ -87,7 +74,7 @@ src() {
 }
 
 @test "prints DAST startup banner" {
-  #R001
+  #R001-T01 #R025-T01
   setup_shell_test
   copy_dast_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -100,7 +87,7 @@ src() {
 }
 
 @test "runs DAST lane when scanner integrations are disabled" {
-  #R005 #R010 #R015 #R020
+  #R005-T01 #R010-T01 #R015-T01 #R020-T01
   setup_shell_test
   copy_dast_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -167,7 +154,6 @@ PYS
 }
 
 @test "captures baseline and runs cleanup even on DAST failure" {
-  #R025-T01
   setup_shell_test
   copy_dast_project_files
   write_dast_baseline_and_cleanup_stubs "${FIXTURE_ROOT}"
@@ -203,7 +189,6 @@ EOF
 }
 
 @test "cleanup runs on success path before integrity check" {
-  #R025-T01
   setup_shell_test
   copy_dast_project_files
   write_dast_baseline_and_cleanup_stubs "${FIXTURE_ROOT}"
@@ -226,7 +211,6 @@ EOF
 }
 
 @test "DAST_SKIP_CLEANUP disables baseline and cleanup" {
-  #R025-T01
   setup_shell_test
   copy_dast_project_files
   write_dast_baseline_and_cleanup_stubs "${FIXTURE_ROOT}"
@@ -280,7 +264,7 @@ PY
 }
 
 @test "parses ZAP summary into machine-readable severity counts" {
-  #R030 #R030-T01
+  #R030-T01 #R030-T02
   run grep "summarize_zap_html_report" "$(src)"
   [ "$status" -eq 0 ]
   run grep "zap-classification-summary.json" "$(src)"
@@ -290,7 +274,6 @@ PY
 }
 
 @test "fails gate when threshold is medium and findings exist" {
-  #R030 #R030-T02
   run grep "SECURITY_ZAP_FAIL_THRESHOLD" "$(src)"
   [ "$status" -eq 0 ]
   run grep "zap_fail_threshold_normalized" "$(src)"

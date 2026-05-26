@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# Requirement test-case tags for requirements/src/scripts/dast_cleanup-requirements.md
-# #R001-T01: Verify cleanup success path writes applied status and count metadata.
-# #R005-T01: Verify profile mismatch refusal unless force override is enabled.
-# #R010-T01: Verify missing/non-captured baselines return skipped status.
 
 from __future__ import annotations
 
@@ -36,7 +32,7 @@ class DastCleanupTests(unittest.TestCase):
         self.module = load_module()
 
     def test_missing_baseline_is_skipped(self) -> None:
-        #R010
+        #R010-T01
         with tempfile.TemporaryDirectory() as tmp:
             baseline = Path(tmp) / "missing.json"
             summary = Path(tmp) / "summary.json"
@@ -51,7 +47,7 @@ class DastCleanupTests(unittest.TestCase):
             self.assertEqual(payload["status"], "skipped")
 
     def test_profile_mismatch_refuses_without_force(self) -> None:
-        #R005
+        #R005-T01
         with tempfile.TemporaryDirectory() as tmp:
             baseline = Path(tmp) / "baseline.json"
             summary = Path(tmp) / "summary.json"
@@ -89,7 +85,7 @@ class DastCleanupTests(unittest.TestCase):
             self.assertEqual(payload["status"], "refused")
 
     def test_applied_status_writes_counts(self) -> None:
-        #R001
+        #R001-T01
         class FakeResult:
             def __init__(self, rowcount=0):
                 self.rowcount = rowcount

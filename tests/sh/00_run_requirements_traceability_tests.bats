@@ -1,6 +1,5 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags are declared inside executable @test blocks.
 
 load "helpers/common.bash"
 
@@ -47,59 +46,15 @@ EOF
   chmod +x "${FIXTURE_ROOT}/fixture.sh"
 }
 
-@test "Traceability tags for verifier requirements" {
-  #R001-T01: Strict mode and temp file setup requirement coverage.
-  #R005-T01: Default recursive requirements discovery coverage.
-  #R010-T01: Requirements-to-source mapping coverage.
-  #R015-T01: Missing mapping/source failure messaging coverage.
-  #R015-T02: Missing source mapping requirement coverage.
-  #R020-T01: Requirement ID parsing coverage.
-  #R025-T01: Source #R tag parsing coverage.
-  #R030-T01: Missing/extra set-difference reporting coverage.
-  #R030-T02: Extra #R tag reporting coverage.
-  #R035-T01: Pass/fail exit semantics coverage.
-  #R035-T02: Any mismatch returns non-zero coverage.
-  #R040-T01: Numbered script requirements coverage checks.
-  #R040-T02: Numbered script requirements pass coverage.
-  #R045-T01: Numbered requirements scope alignment checks.
-  #R045-T02: Numbered requirements scope alignment pass coverage.
-  #R050-T01: Requirement-to-test discovery coverage.
-  #R050-T02: Swift test discovery lane coverage.
-  #R050-T03: SQL test discovery lane coverage.
-  #R055-T01: UI-lane requirement-ID classification coverage.
-  #R060-T01: Lane-specific discovered test-tag parsing coverage.
-  #R065-T01: Missing test-traceability ID failure coverage.
-  #R065-T02: UI-lane requirement enforcement failure coverage.
-  #R065-T03: Non-UI requirement lane flexibility coverage.
-  #R070-T01: Anti-cheat header-bundle and scoped comment enforcement coverage.
-  #R070-T02: Unscoped source #R tag failure coverage.
-  #R070-T03: Scoped source #R tag pass coverage.
-  #R075-T01: Requirements-only mode traceability-skip coverage.
-  #R075-T02: Requirements-only mode disabled failure coverage.
-  #R080-T01: Numbered script test coverage enforcement in full-run mode.
-  #R080-T02: Numbered script test coverage pass coverage.
-  #R085-T01: Repository software files without requirements coverage are auto-detected.
-  #R085-T02: Repository coverage pass after mapping coverage.
-  #R090-T01: Missing-in-tests numbered tag failure coverage.
-  #R090-T02: Missing-in-requirements numbered tag failure coverage.
-  #R090-T03: Numbered tag mismatch in both directions coverage.
-  #R090-T04: Malformed numbered test-bullet failure coverage.
-  #R090-T05: Requirements-only numbered-tag skip coverage.
-  #R090-T06: Missing requirements-side numbered test IDs for a requirement coverage.
-  #R090-T07: Numbered tag placement anti-cheat failure coverage.
-  #R090-T08: Numbered tag placement pass when in test body coverage.
-  [ 1 -eq 1 ]
-}
-
 @test "prints usage with --help" {
-  #R001
+  #R001-T01
   run bash "${FIXTURE_ROOT}/verify_requirements_traceability.sh" --help
   [ "$status" -eq 0 ]
   [[ "$output" == *"Usage:"* ]]
 }
 
 @test "passes in zero-arg mode when requirement and source IDs match" {
-  #R005 #R010 #R035 #R040 #R045 #R070 #R090
+  #R005-T01 #R010-T01 #R035-T01 #R045-T02
   mkdir -p "${FIXTURE_ROOT}/requirements"
   cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
 ## Scope
@@ -128,7 +83,7 @@ EOF
 }
 
 @test "fails when requirement IDs are missing from source tags" {
-  #R020 #R025 #R030 #R070
+  #R020-T01 #R025-T01 #R030-T01 #R030-T02 #R035-T02
   cat > "${FIXTURE_ROOT}/req.md" <<'EOF'
 ## Scope
 Applies to `src.sh`.
@@ -148,7 +103,7 @@ EOF
 }
 
 @test "fails clearly when mapped source file is missing" {
-  #R015
+  #R015-T01 #R015-T02
   mkdir -p "${FIXTURE_ROOT}/requirements"
   cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
 ## Scope
@@ -163,7 +118,7 @@ EOF
 }
 
 @test "fails when requirement lacks any tagged test coverage" {
-  #R050 #R065 #R070 #R090
+  #R050-T01 #R065-T01 #R065-T03
   mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh"
   cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
 ## Scope
@@ -188,7 +143,7 @@ EOF
 }
 
 @test "requires UI test lane for UI-testing requirements" {
-  #R055 #R060 #R070 #R090
+  #R050-T02 #R055-T01 #R060-T01
   mkdir -p "${FIXTURE_ROOT}/requirements/macos-ui"
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier"
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Tests/TransactionClassifierTests"
@@ -237,7 +192,7 @@ EOF
 }
 
 @test "fails UI-testing requirement when only model lane has tags" {
-  #R055 #R060 #R065
+  #R065-T02
   mkdir -p "${FIXTURE_ROOT}/requirements/macos-ui"
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Sources/TransactionClassifier"
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui/Tests/TransactionClassifierTests"
@@ -261,7 +216,7 @@ EOF
 }
 
 @test "teller module requirements map only to matching python test file" {
-  #R050 #R065 #R070 #R090
+  #R050-T03
   mkdir -p "${FIXTURE_ROOT}/requirements/teller" "${FIXTURE_ROOT}/src/teller" "${FIXTURE_ROOT}/tests/py"
   cat > "${FIXTURE_ROOT}/requirements/teller/teller_object-requirements.md" <<'EOF'
 ## Scope
@@ -287,7 +242,7 @@ EOF
 }
 
 @test "fails when source uses bundled header #R tags" {
-  #R070
+  #R070-T01
   mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh"
   cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
 ## Scope
@@ -319,7 +274,7 @@ EOF
 }
 
 @test "fails when source tags are unscoped" {
-  #R070
+  #R070-T02
   mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh"
   cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
 ## Scope
@@ -353,7 +308,7 @@ EOF
 }
 
 @test "passes when source tags are scoped with #Rxxx:" {
-  #R070 #R090
+  #R070-T03
   mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh"
   cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
 ## Scope
@@ -389,7 +344,7 @@ EOF
 }
 
 @test "requirements-only mode skips source and test checks" {
-  #R075 #R090
+  #R075-T01 #R075-T02
   mkdir -p "${FIXTURE_ROOT}/requirements"
   cat > "${FIXTURE_ROOT}/requirements/phase-requirements.md" <<'EOF'
 # Phase Requirements
@@ -407,7 +362,7 @@ EOF
 }
 
 @test "fails full-run mode when repository software has no requirements coverage" {
-  #R085
+  #R085-T01
   mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh"
   cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
 ## Scope
@@ -440,7 +395,7 @@ EOF
 }
 
 @test "fails full-run mode when src scripts have no requirements coverage" {
-  #R085
+  #R085-T02
   mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh" "${FIXTURE_ROOT}/src/scripts"
   cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
 ## Scope
@@ -473,7 +428,7 @@ EOF
 }
 
 @test "fails numbered script test coverage when companion bats file is missing" {
-  #R080
+  #R040-T01 #R045-T01 #R080-T01
   mkdir -p "${FIXTURE_ROOT}/requirements"
   cat > "${FIXTURE_ROOT}/01_alpha.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -496,7 +451,7 @@ EOF
 }
 
 @test "passes numbered script test coverage when bats companion exists" {
-  #R080 #R090
+  #R040-T02 #R080-T02
   mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh"
   cat > "${FIXTURE_ROOT}/01_alpha.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -525,7 +480,7 @@ EOF
 }
 
 @test "fails when numbered test tags are missing" {
-  #R090
+  #R090-T01
   mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh"
   cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
 ## Scope
@@ -613,7 +568,7 @@ EOF
 }
 
 @test "fails numbered test tracing when requirements and tests are not 1:1 in both directions" {
-  #R090-T03
+  #R090-T02 #R090-T03
   #R090
   make_numbered_traceability_mismatch_fixture
 

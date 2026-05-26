@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# Requirement test-case tags for requirements/src/scripts/dast_baseline-requirements.md
-# #R001-T01: Verify baseline payload structure helpers for serialized snapshot rows.
-# #R005-T01: Verify db import failure path writes a skipped payload.
-# #R010-T01: Verify success-summary JSON includes expected top-level keys.
 
 from __future__ import annotations
 
@@ -33,7 +29,7 @@ class DastBaselineTests(unittest.TestCase):
         self.module = load_module()
 
     def test_helpers_serialize_row_payload(self) -> None:
-        #R001
+        #R001-T01
         row = [7, datetime(2026, 1, 1, tzinfo=timezone.utc), "x"]
         serialized = self.module._serialize_row(row, ["id", "ts", "value"])
         self.assertEqual(serialized["id"], 7)
@@ -41,7 +37,7 @@ class DastBaselineTests(unittest.TestCase):
         self.assertEqual(serialized["value"], "x")
 
     def test_import_failure_writes_skipped_payload(self) -> None:
-        #R005
+        #R005-T01
         with tempfile.TemporaryDirectory() as tmp:
             output_path = Path(tmp) / "baseline.json"
             argv = sys.argv
@@ -57,7 +53,7 @@ class DastBaselineTests(unittest.TestCase):
             self.assertIn("db_import_failed", payload["reason"])
 
     def test_success_print_summary_shape(self) -> None:
-        #R010
+        #R010-T01
         class FakeProfile:
             name = "local"
             host = "localhost"

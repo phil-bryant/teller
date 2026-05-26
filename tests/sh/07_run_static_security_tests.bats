@@ -1,33 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/07_run_static_security_tests-requirements.md
-# #R015-T02: Traceability anchor.
-# #R025-T02: Traceability anchor.
-# #R030-T02: Traceability anchor.
-# #R090-T02: Traceability anchor.
-# #R090-T03: Traceability anchor.
-# #R090-T04: Traceability anchor.
-# #R090-T05: Traceability anchor.
-
-# Traceability numbered tags for requirements/07_run_static_security_tests-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-# #R040-T01: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R047-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-# #R055-T01: Traceability anchor.
-# #R060-T01: Traceability anchor.
-# #R065-T01: Traceability anchor.
-# #R070-T01: Traceability anchor.
-# #R090-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 # Minimal OpenAPI/health server for DAST (stdlib only, no Teller/FastAPI deps).
@@ -555,7 +526,7 @@ teardown() {
 }
 
 @test "runs with cwd outside repo; paths resolve to script root" {
-  #R001
+  #R001-T01
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -591,7 +562,6 @@ EOS
 }
 
 @test "bootstraps security venv when missing and does not run pip when semgrep is present" {
-  #R005
   setup_shell_test
   copy_security_project_files
   write_python3_venv_stub
@@ -606,7 +576,7 @@ EOS
 }
 
 @test "installs security toolchain in venv when semgrep is absent" {
-  #R005
+  #R005-T01
   setup_shell_test
   copy_security_project_files
   write_python3_venv_stub_no_sast_tools
@@ -619,7 +589,7 @@ EOS
 }
 
 @test "sets pip-audit to project venv when teller-venv is present" {
-  #R010
+  #R010-T01
   setup_shell_test
   copy_security_project_files
   /usr/bin/python3 -m venv "${FIXTURE_ROOT}/teller-venv"
@@ -632,7 +602,7 @@ EOS
 }
 
 @test "lanes off: creates report directory and exits without scanners" {
-  #R015
+  #R015-T01 #R015-T02
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -645,7 +615,7 @@ EOS
 }
 
 @test "SAST produces JSON reports and sast summary" {
-  #R020 #R025 #R030 #R065
+  #R020-T01 #R025-T01 #R025-T02 #R030-T01 #R030-T02 #R065-T01
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -671,7 +641,7 @@ EOS
 }
 
 @test "SAST prints boxed tool headers with explainers and official URLs" {
-  #R025 #R055 #R065
+  #R055-T01
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -698,7 +668,7 @@ EOS
 }
 
 @test "Semgrep prints detailed status when output is unsuppressed" {
-  #R045 #R047
+  #R045-T01 #R047-T01
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -711,7 +681,7 @@ EOS
 }
 
 @test "Bandit prints detailed status when output is unsuppressed" {
-  #R050
+  #R050-T01
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -724,7 +694,6 @@ EOS
 }
 
 @test "pip-audit prints detailed status when output is unsuppressed" {
-  #R055
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -737,7 +706,7 @@ EOS
 }
 
 @test "detect-secrets prints detailed status when output is unsuppressed" {
-  #R060
+  #R060-T01
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -750,7 +719,6 @@ EOS
 }
 
 @test "Ruff prints detailed status when output is unsuppressed" {
-  #R065
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -763,7 +731,7 @@ EOS
 }
 
 @test "ShellCheck prints detailed status when output is unsuppressed" {
-  #R070
+  #R070-T01
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -851,7 +819,6 @@ EOF
 }
 
 @test "bandit exit code 2 is an execution failure" {
-  #R025
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -864,7 +831,6 @@ EOF
 }
 
 @test "pip-audit exit code 2 is an execution failure" {
-  #R025
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -877,7 +843,6 @@ EOF
 }
 
 @test "ruff exit code 2 is an execution failure" {
-  #R025
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -890,7 +855,6 @@ EOF
 }
 
 @test "ruff findings fail SAST gate when medium-or-higher policy is enabled" {
-  #R030
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -904,7 +868,6 @@ EOF
 }
 
 @test "gitleaks exit code 2 is an execution failure" {
-  #R075
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -917,7 +880,6 @@ EOF
 }
 
 @test "SAST gate fails on semgrep error findings" {
-  #R030
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -930,7 +892,7 @@ EOF
 }
 
 @test "financial policy blocks Semgrep warning findings" {
-  #R090
+  #R090-T01 #R090-T02 #R090-T03 #R090-T04 #R090-T05
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -945,7 +907,6 @@ EOF
 }
 
 @test "financial policy medium-or-higher gate defaults to enabled" {
-  #R090
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -958,7 +919,6 @@ EOF
 }
 
 @test "financial policy blocks Bandit medium findings" {
-  #R090
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -972,7 +932,6 @@ EOF
 }
 
 @test "financial policy blocks pip-audit vulnerabilities" {
-  #R090
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -986,7 +945,6 @@ EOF
 }
 
 @test "gitleaks findings fail SAST gate when medium-or-higher policy is enabled" {
-  #R075 #R030
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -1000,7 +958,6 @@ EOF
 }
 
 @test "financial policy blocks ShellCheck warning findings" {
-  #R090
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -1013,7 +970,6 @@ EOF
 }
 
 @test "ShellCheck exit code 2 is an execution failure" {
-  #R065
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -1025,7 +981,6 @@ EOF
 }
 
 @test "ShellCheck error findings fail SAST gate when medium-or-higher policy is enabled" {
-  #R065 #R030
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -1038,7 +993,6 @@ EOF
 }
 
 @test "financial policy blocks SwiftLint warning findings" {
-  #R090
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -1056,7 +1010,7 @@ EOF
 }
 
 @test "DAST starts API, waits for health, completes when DAST tools minimal" {
-  #R035 #R070 #R080
+  #R035-T01
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -1079,7 +1033,7 @@ EOF
 }
 
 @test "token-capture DAST auto skips when application id is absent" {
-  #R040
+  #R040-T01
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -1097,7 +1051,6 @@ EOF
 }
 
 @test "DAST fails with clear error when ZAP is enabled but ZAP CLI missing" {
-  #R045
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -1115,7 +1068,6 @@ EOF
 }
 
 @test "DAST with ZAP stub writes zap log and completes" {
-  #R045 #R070
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -1167,7 +1119,6 @@ EOF
 }
 
 @test "DAST enforces ZAP_QUIET=false by omitting ZAP silent flag" {
-  #R085
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -1211,7 +1162,6 @@ EOF
 }
 
 @test "prints completion line with report directory" {
-  #R050
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"

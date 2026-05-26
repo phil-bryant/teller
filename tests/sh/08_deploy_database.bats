@@ -1,32 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/08_deploy_database-requirements.md
-# #R045-T02: Traceability anchor.
-
-# Traceability numbered tags for requirements/08_deploy_database-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R006-T01: Traceability anchor.
-# #R007-T01: Traceability anchor.
-# #R008-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-# #R040-T01: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-# #R055-T01: Traceability anchor.
-# #R060-T01: Traceability anchor.
-# #R065-T01: Traceability anchor.
-# #R070-T01: Traceability anchor.
-# #R075-T01: Traceability anchor.
-# #R080-T01: Traceability anchor.
-# #R085-T01: Traceability anchor.
-# #R090-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 make_psql_stub() {
@@ -94,14 +66,14 @@ setup() {
 }
 
 @test "exits non-zero on first psql failure" {
-  #R001
+  #R001-T01
   make_psql_stub 1
   run bash "${FIXTURE_ROOT}/08_deploy_database.sh"
   [ "$status" -ne 0 ]
 }
 
 @test "fails when 1psa is missing" {
-  #R005
+  #R005-T01
   : > "${STUB_BIN}/1psa"
   rm -f "${STUB_BIN}/1psa" 2>/dev/null
   #PATH only has STUB_BIN - 1psa removed from stub (use empty stub dir without 1psa)
@@ -113,7 +85,7 @@ setup() {
 }
 
 @test "all psql invocations include fail-fast on_error_stop" {
-  #R006 #R007 #R008
+  #R006-T01 #R007-T01 #R008-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   stub_cmd 1psa "echo pw"
   run bash "${FIXTURE_ROOT}/08_deploy_database.sh"
@@ -127,7 +99,7 @@ setup() {
 }
 
 @test "uses configurable 1psa source for admin and teller roles" {
-  #R010 #R015
+  #R010-T01 #R015-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   : > "${CALLS_LOG}"
   cat > "${STUB_BIN}/1psa" <<EOF
@@ -147,7 +119,7 @@ EOF
 }
 
 @test "fails when postgres password is empty" {
-  #R020
+  #R020-T01
   cat > "${STUB_BIN}/1psa" <<'EOF'
 #!/usr/bin/env bash
 echo ""
@@ -161,7 +133,7 @@ EOF
 }
 
 @test "runs bootstrap and teller SQL in order through sql directory" {
-  #R025 #R030 #R035
+  #R025-T01 #R030-T01 #R035-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   run bash "${FIXTURE_ROOT}/08_deploy_database.sh"
   [ "$status" -eq 0 ]
@@ -172,7 +144,7 @@ EOF
 }
 
 @test "applies create_triggers after classification table and enforces cascade alter" {
-  #R040 #R045
+  #R040-T01 #R045-T01 #R045-T02
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   run bash "${FIXTURE_ROOT}/08_deploy_database.sh"
   [ "$status" -eq 0 ]
@@ -185,7 +157,7 @@ EOF
 }
 
 @test "ensures pgtap extension is created in prod during bootstrap" {
-  #R050
+  #R050-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   run bash "${FIXTURE_ROOT}/08_deploy_database.sh"
   [ "$status" -eq 0 ]
@@ -193,7 +165,7 @@ EOF
 }
 
 @test "applies explicit ingest reconcile grants after audit setup" {
-  #R055
+  #R055-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   run bash "${FIXTURE_ROOT}/08_deploy_database.sh"
   [ "$status" -eq 0 ]
@@ -223,7 +195,7 @@ EOF
 }
 
 @test "managed profile drives deploy through profile helper" {
-  #R060 #R070
+  #R060-T01 #R070-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   stub_managed_profile_helper
   run bash "${FIXTURE_ROOT}/08_deploy_database.sh"
@@ -233,7 +205,7 @@ EOF
 }
 
 @test "managed deploy skips bootstrap pgtap and ingest grant SQL" {
-  #R065 #R075 #R080
+  #R065-T01 #R075-T01 #R080-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   stub_managed_profile_helper
   run bash "${FIXTURE_ROOT}/08_deploy_database.sh"
@@ -245,7 +217,7 @@ EOF
 }
 
 @test "local deploy is idempotent when prod database already exists" {
-  #R085
+  #R085-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   cat > "${STUB_BIN}/psql" <<EOF
 #!/usr/bin/env bash
@@ -267,7 +239,7 @@ EOF
 }
 
 @test "fails with setup guidance when db profile file is missing" {
-  #R090
+  #R090-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash

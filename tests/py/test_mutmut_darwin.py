@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# Requirement test-case tags for requirements/src/scripts/mutmut_darwin-requirements.md
-# #R001-T01: Verify command routing and execute-path behavior.
-# #R005-T01: Verify subprocess pytest invocation and mutant metadata updates.
 
 from __future__ import annotations
 
@@ -30,7 +27,7 @@ class MutmutDarwinTests(unittest.TestCase):
         self.module = load_module()
 
     def test_main_routes_prepare_and_execute(self) -> None:
-        #R001
+        #R001-T01
         root = Path("/tmp/repo")
         with mock.patch.object(self.module, "_repo_root", return_value=root), mock.patch.object(
             self.module, "_prepare", return_value=0
@@ -43,7 +40,7 @@ class MutmutDarwinTests(unittest.TestCase):
         execute.assert_called_once()
 
     def test_run_mutant_pytest_invocation(self) -> None:
-        #R005
+        #R005-T01
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             python = root / "teller-venv" / "bin" / "python3"

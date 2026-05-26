@@ -1,13 +1,4 @@
 #!/usr/bin/env bats
-
-# Traceability numbered tags for requirements/98_destroy_database-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -36,14 +27,14 @@ teardown() {
 }
 
 @test "fails clearly when 1psa is missing" {
-  #R001 #R005
+  #R001-T01 #R005-T01
   run bash "${FIXTURE_ROOT}/98_destroy_database.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"1psa is required"* ]]
 }
 
 @test "wrong confirmation cancels before teardown commands" {
-  #R010
+  #R010-T01
   stub_cmd 1psa "echo pass"
   cat > "${STUB_BIN}/psql" <<EOF
 #!/usr/bin/env bash
@@ -60,7 +51,7 @@ EOF
 }
 
 @test "successful confirmation runs cleanup and prints completion" {
-  #R015 #R020 #R025
+  #R015-T01 #R020-T01 #R025-T01
   stub_cmd 1psa "echo pass"
   cat > "${STUB_BIN}/psql" <<EOF
 #!/usr/bin/env bash

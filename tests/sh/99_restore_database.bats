@@ -1,34 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/99_restore_database-requirements.md
-# #R005-T02: Traceability anchor.
-# #R020-T02: Traceability anchor.
-# #R025-T02: Traceability anchor.
-# #R030-T02: Traceability anchor.
-# #R035-T02: Traceability anchor.
-# #R040-T02: Traceability anchor.
-# #R050-T02: Traceability anchor.
-# #R060-T02: Traceability anchor.
-
-# Traceability numbered tags for requirements/99_restore_database-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-# #R040-T01: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-# #R055-T01: Traceability anchor.
-# #R060-T01: Traceability anchor.
-# #R065-T01: Traceability anchor.
-# #R070-T01: Traceability anchor.
-# #R075-T01: Traceability anchor.
-# #R080-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -43,7 +13,7 @@ teardown() {
 }
 
 @test "fails when pg_restore is missing" {
-  #R001 #R010 #R015
+  #R001-T01 #R010-T01 #R015-T01
   stub_cmd 1psa "echo pass"
   stub_cmd psql "exit 0"
 
@@ -53,7 +23,7 @@ teardown() {
 }
 
 @test "defaults to latest dump and reports completion path" {
-  #R005 #R020 #R030 #R035
+  #R005-T01 #R005-T02 #R020-T01 #R020-T02 #R030-T01 #R030-T02 #R035-T01 #R035-T02
   old="${FIXTURE_ROOT}/backups/prod_20250101_000000.dump"
   new="${FIXTURE_ROOT}/backups/prod_20250102_000000.dump"
   touch "$old" "$new" "${FIXTURE_ROOT}/backups/prod_20250102_000000_globals.sql"
@@ -78,7 +48,7 @@ EOF
 }
 
 @test "table-scoped restore skips globals file requirement" {
-  #R040 #R045 #R050 #R055 #R060 #R065
+  #R040-T01 #R040-T02 #R045-T01 #R050-T01 #R050-T02 #R055-T01 #R060-T01 #R060-T02 #R065-T01
   dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
   touch "$dump_path"
   stub_cmd 1psa "echo pass"
@@ -101,7 +71,7 @@ EOF
 }
 
 @test "refuses full restore when teller schema already exists" {
-  #R025
+  #R025-T01 #R025-T02
   dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
   globals_path="${FIXTURE_ROOT}/backups/snapshot_globals.sql"
   touch "$dump_path" "$globals_path"
@@ -124,7 +94,7 @@ EOF
 }
 
 @test "fails when teller password lookup is empty" {
-  #R070
+  #R070-T01
   dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
   globals_path="${FIXTURE_ROOT}/backups/snapshot_globals.sql"
   touch "$dump_path" "$globals_path"
@@ -146,7 +116,7 @@ EOF
 }
 
 @test "full restore re-syncs teller password and verifies teller auth" {
-  #R075 #R080
+  #R075-T01 #R080-T01
   dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
   globals_path="${FIXTURE_ROOT}/backups/snapshot_globals.sql"
   touch "$dump_path" "$globals_path"

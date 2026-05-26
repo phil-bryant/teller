@@ -1,15 +1,4 @@
 #!/usr/bin/env bats
-
-# Traceability numbered tags for requirements/97_backup_database-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -23,7 +12,7 @@ teardown() {
 }
 
 @test "fails when pg_dump is missing" {
-  #R001 #R005 #R010 #R015
+  #R001-T01 #R005-T01 #R010-T01 #R015-T01
   stub_cmd 1psa "echo pass"
   stub_cmd pg_dumpall "exit 0"
 
@@ -33,7 +22,7 @@ teardown() {
 }
 
 @test "creates dump and globals artifacts with printed paths" {
-  #R020 #R025 #R030 #R035
+  #R020-T01 #R025-T01 #R030-T01 #R035-T01
   stub_cmd 1psa "echo pass"
   cat > "${STUB_BIN}/pg_dump" <<'EOF'
 #!/usr/bin/env bash

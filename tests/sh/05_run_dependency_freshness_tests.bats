@@ -1,24 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/05_run_dependency_freshness_tests-requirements.md
-# #R005-T02: Traceability anchor.
-# #R010-T02: Traceability anchor.
-# #R010-T03: Traceability anchor.
-# #R010-T04: Traceability anchor.
-# #R015-T02: Traceability anchor.
-# #R020-T02: Traceability anchor.
-# #R020-T03: Traceability anchor.
-# #R025-T02: Traceability anchor.
-# #R025-T03: Traceability anchor.
-
-# Traceability numbered tags for requirements/05_run_dependency_freshness_tests-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -33,7 +13,7 @@ teardown() {
 }
 
 @test "runs from repo root and writes freshness artifacts" {
-  #R001 #R005 #R010 #R020 #R025
+  #R001-T01 #R005-T01 #R005-T02 #R010-T01 #R010-T02 #R010-T03 #R010-T04 #R020-T01 #R025-T01 #R025-T02 #R025-T03
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -76,7 +56,6 @@ EOF
 }
 
 @test "can disable direct dependency freshness gate" {
-  #R010
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -107,7 +86,6 @@ EOF
 }
 
 @test "passes major gating flag when enabled" {
-  #R010
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -137,14 +115,13 @@ EOF
 }
 
 @test "fails fast for non-executable explicit interpreter path" {
-  #R005
   run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON=./missing-python ./05_run_dependency_freshness_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Project python not executable"* ]]
 }
 
 @test "skips PostgreSQL freshness lane when disabled" {
-  #R020
+  #R020-T02 #R020-T03
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -176,7 +153,7 @@ EOF
 }
 
 @test "skips Teller API version freshness lane when disabled" {
-  #R015
+  #R015-T01 #R015-T02
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -206,7 +183,6 @@ EOF
 }
 
 @test "prints PostgreSQL server-check target diagnostics for explicit args" {
-  #R020
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -235,7 +211,6 @@ EOF
 }
 
 @test "omits PostgreSQL CVE args when disabled" {
-  #R025
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash

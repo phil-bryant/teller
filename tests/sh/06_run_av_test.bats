@@ -1,19 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/06_run_av_test-requirements.md
-# #R035-T02: Traceability anchor.
-# #R035-T03: Traceability anchor.
-
-# Traceability numbered tags for requirements/06_run_av_test-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 copy_av_project_files() {
@@ -158,7 +143,7 @@ teardown() {
 }
 
 @test "runs with cwd outside repo; paths resolve to script root" {
-  #R001
+  #R001-T01
   setup_shell_test
   copy_av_project_files
   stub_clamscan_clean
@@ -170,7 +155,7 @@ teardown() {
 }
 
 @test "supports skip mode and custom report directory" {
-  #R005
+  #R005-T01
   setup_shell_test
   copy_av_project_files
   run env RUN_CLAMAV=false SECURITY_REPORT_DIR="${FIXTURE_ROOT}/.custom-av-reports" \
@@ -182,7 +167,7 @@ teardown() {
 }
 
 @test "runs ClamAV and writes report artifacts with boxed header" {
-  #R010 #R030
+  #R010-T01 #R030-T01
   setup_shell_test
   copy_av_project_files
   stub_clamscan_clean
@@ -196,7 +181,7 @@ teardown() {
 }
 
 @test "prints signature freshness, target path, and heartbeat during long scan" {
-  #R015 #R020
+  #R015-T01 #R020-T01
   setup_shell_test
   copy_av_project_files
   stub_clamscan_slow_clean
@@ -209,7 +194,6 @@ teardown() {
 }
 
 @test "excludes macos ui regression artifacts from ClamAV scan" {
-  #R010
   setup_shell_test
   copy_av_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/macos-ui-regression/xcuitest-results.xcresult/Data"
@@ -221,7 +205,7 @@ teardown() {
 }
 
 @test "refreshes signatures with freshclam when database is missing and retries scan" {
-  #R025
+  #R025-T01
   setup_shell_test
   copy_av_project_files
   stub_clamscan_missing_db_then_clean
@@ -235,7 +219,7 @@ teardown() {
 }
 
 @test "fails AV gate on infected files by default and supports override" {
-  #R035
+  #R035-T01 #R035-T02 #R035-T03
   setup_shell_test
   copy_av_project_files
   stub_clamscan_infected
@@ -250,7 +234,6 @@ teardown() {
 }
 
 @test "ClamAV exit code greater than 1 is an execution failure" {
-  #R010
   setup_shell_test
   copy_av_project_files
   stub_clamscan_exit_2

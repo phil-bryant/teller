@@ -1,10 +1,5 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/src/scripts/cleanup_legacy_dast_artifacts-requirements.md
-# #R001-T01: Verify conservative DAST fingerprint predicates.
-# #R005-T01: Verify transaction wrapper and delete ordering.
-# #R010-T01: Verify pre-delete operator count queries.
-
 load "helpers/common.bash"
 
 setup() {
@@ -20,7 +15,7 @@ sql_file() {
 }
 
 @test "uses conservative DAST cleanup predicates" {
-  #R001
+  #R001-T01
   run grep "level_1 = 'DAST'" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "schemathesis-seed-%@example.invalid" "$(sql_file)"
@@ -30,7 +25,7 @@ sql_file() {
 }
 
 @test "wraps deletes in transaction and FK-safe sequence" {
-  #R005
+  #R005-T01
   run grep "^BEGIN;" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "DELETE FROM teller.transaction_nys_snw_category" "$(sql_file)"
@@ -44,7 +39,7 @@ sql_file() {
 }
 
 @test "includes pre-delete count queries for operator visibility" {
-  #R010
+  #R010-T01
   run grep "SELECT 'nys_snw_category orphans" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "SELECT 'transaction_nys_snw_category mappings" "$(sql_file)"

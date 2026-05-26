@@ -1,12 +1,10 @@
-// Traceability numbered tags for requirements/macos-ui/ContentView-requirements.md
-// #R035-T01: Traceability anchor.
-
 import Foundation
 import XCTest
 @testable import TransactionClassifier
 
 final class EmailAmountScrollSupportTests: XCTestCase {
     func testAmountSearchVariantsUsesAbsoluteValueForNegativeDebit() {
+        // #R035-T01
         let variants = amountSearchVariants(for: decimal("-15.19"))
         XCTAssertTrue(variants.contains("$15.19"))
         XCTAssertTrue(variants.contains("15.19"))

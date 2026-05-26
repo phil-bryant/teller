@@ -1,14 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/18_run_teller_api_smoke_tests-requirements.md
-# #R005-T02: Traceability anchor.
-# #R010-T02: Traceability anchor.
-
-# Traceability numbered tags for requirements/18_run_teller_api_smoke_tests-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -23,7 +13,7 @@ teardown() {
 }
 
 @test "runs from repo root and writes smoke artifacts" {
-  #R001 #R005 #R010
+  #R001-T01 #R005-T01 #R005-T02 #R010-T01 #R010-T02
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -56,7 +46,6 @@ EOF
 }
 
 @test "passes institution id to smoke checker when configured" {
-  #R010
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -86,7 +75,6 @@ EOF
 }
 
 @test "fails fast for non-executable explicit interpreter path" {
-  #R005
   run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON=./missing-python ./18_run_teller_api_smoke_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Project python not executable"* ]]

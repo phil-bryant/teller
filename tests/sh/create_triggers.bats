@@ -1,12 +1,4 @@
 #!/usr/bin/env bats
-
-# Traceability numbered tags for requirements/sql/create_triggers-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -22,7 +14,7 @@ sql_file() {
 }
 
 @test "defines update updated_at trigger function" {
-  #R001
+  #R001-T01
   run grep "update_updated_at" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "NEW.updated_at" "$(sql_file)"
@@ -30,7 +22,7 @@ sql_file() {
 }
 
 @test "iterates teller base tables for updated at" {
-  #R005 #R010
+  #R005-T01 #R010-T01
   run grep "information_schema" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "updated_at" "$(sql_file)"
@@ -38,13 +30,13 @@ sql_file() {
 }
 
 @test "replaces existing custom triggers" {
-  #R015
+  #R015-T01
   run grep -E "DROP TRIGGER|EXISTS" "$(sql_file)"
   [ "$status" -eq 0 ]
 }
 
 @test "uses before update trigger name pattern" {
-  #R020
+  #R020-T01
   run grep "BEFORE UPDATE" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "update_%s_updated_at" "$(sql_file)"

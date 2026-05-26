@@ -1,14 +1,17 @@
-// Traceability numbered tags for requirements/macos-ui/ContentView-requirements.md
-// #R035-T02: Traceability anchor.
-// #R040-T01: Traceability anchor.
-// #R040-T02: Traceability anchor.
-// #R045-T01: Traceability anchor.
-
 import Foundation
 import XCTest
 @testable import TransactionClassifier
 
 final class ContentViewRequirementsTests: XCTestCase {
+    func testLongListManualSelectionDoesNotRecenterInSmokeSuite() throws {
+        // #R050-T01
+        let source = try Self.loadUITestSource()
+        XCTAssertTrue(
+            source.contains("runLongListManualSelectionDoesNotRecenterScenario"),
+            "Smoke suite must include long-list manual selection scroll stability scenario."
+        )
+    }
+
     func testAmountVariantsSupportCoffeeRoastersReceiptTotal() {
         // #R035-T02
         guard let amount = Decimal(string: "16.24") else {
@@ -29,6 +32,19 @@ final class ContentViewRequirementsTests: XCTestCase {
         await vm.deleteSelectedCategories()
         let deleted = await api.recordedDeletedCategoryIds()
         XCTAssertTrue(deleted.isEmpty)
+    }
+
+    func testManageCategoriesTabHidesUndoButton() throws {
+        // #R060-T02
+        let source = try Self.loadUITestSource()
+        XCTAssertTrue(
+            source.contains("runManageCategoriesHidesNextUnclassifiedScenario"),
+            "Manage Categories smoke must verify undo is hidden on that tab."
+        )
+        XCTAssertTrue(
+            source.contains("XCTAssertFalse(undoControlExists())"),
+            "Manage Categories scenario must assert undo-button is absent."
+        )
     }
 
     func testManageCategorySmokeEditReplacesOnlyCategorizationField() throws {

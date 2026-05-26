@@ -1,28 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/25_run_all_tests_parallel-requirements.md
-# #R025-T02: Traceability anchor.
-# #R025-T03: Traceability anchor.
-# #R030-T02: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R045-T02: Traceability anchor.
-# #R050-T01: Traceability anchor.
-# #R050-T02: Traceability anchor.
-# #R055-T01: Traceability anchor.
-# #R060-T01: Traceability anchor.
-
-# Traceability numbered tags for requirements/25_run_all_tests_parallel-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-# #R040-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 CHECKS=(
@@ -76,7 +52,7 @@ teardown() {
 }
 
 @test "reports pass for all sixteen checks when every child succeeds" {
-  #R001 #R025 #R030
+  #R001-T01 #R025-T01 #R025-T02 #R025-T03 #R030-T01 #R030-T02 #R060-T01
   write_all_child_stubs 'echo "stub ${BASH_SOURCE[0]##*/}"; exit 0'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
@@ -94,7 +70,7 @@ teardown() {
 }
 
 @test "runs from repository root regardless of caller directory" {
-  #R005
+  #R005-T01
   write_all_child_stubs 'echo "cwd=$(pwd)" >> "'"${CALLS_LOG}"'"; exit 0'
 
   run bash -c "cd '${TEST_TMPDIR}' && PARALLEL_CHECKS_REPORT_DIR='${REPORT_DIR}' bash '${FIXTURE_ROOT}/25_run_all_tests_parallel.sh'"
@@ -110,7 +86,7 @@ teardown() {
 }
 
 @test "discovers only numbered test scripts and excludes self" {
-  #R010
+  #R010-T01
   write_all_child_stubs 'exit 0'
   write_child_stub "08_deploy_database.sh" 'echo "non-test-script-ran" >> "'"${CALLS_LOG}"'"; exit 0'
   write_child_stub "97_backup_database.sh" 'echo "backup-script-ran" >> "'"${CALLS_LOG}"'"; exit 0'
@@ -126,7 +102,7 @@ teardown() {
 }
 
 @test "launches checks concurrently" {
-  #R015
+  #R015-T01
   write_all_child_stubs 'sleep 1; exit 0'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
@@ -139,7 +115,6 @@ teardown() {
 }
 
 @test "streams per-check results in completion order" {
-  #R025
   write_all_child_stubs 'exit 0'
   write_child_stub "00_run_requirements_traceability_tests.sh" 'sleep 2; exit 0'
   write_child_stub "05_run_dependency_freshness_tests.sh" 'exit 0'
@@ -156,7 +131,7 @@ teardown() {
 }
 
 @test "renders intermediate progress before all checks complete" {
-  #R045
+  #R045-T01 #R045-T02
   write_all_child_stubs 'sleep 1; exit 0'
   write_child_stub "00_run_requirements_traceability_tests.sh" 'sleep 2; exit 0'
   write_child_stub "05_run_dependency_freshness_tests.sh" 'sleep 3; exit 0'
@@ -171,7 +146,6 @@ teardown() {
 }
 
 @test "prints final 100 percent progress before overall summary" {
-  #R045
   write_all_child_stubs 'exit 0'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
@@ -185,7 +159,7 @@ teardown() {
 }
 
 @test "waits for all checks and reports a single failed child" {
-  #R020 #R025 #R030 #R035
+  #R020-T01 #R035-T01
   write_all_child_stubs 'exit 0'
   write_child_stub "11_run_python_unit_tests.sh" 'echo "unit-tests-failed"; exit 1'
 
@@ -200,7 +174,6 @@ teardown() {
 }
 
 @test "writes child output to per-check log artifacts" {
-  #R035
   write_all_child_stubs 'exit 0'
   write_child_stub "06_run_av_test.sh" 'echo "av-marker-12345"; exit 0'
 
@@ -231,7 +204,7 @@ teardown() {
 }
 
 @test "child check scripts do not invoke the parallel meta-runner" {
-  #R040
+  #R040-T01
   local check
   local -a child_script_paths=()
   for check in "${CHECKS[@]}"; do
@@ -244,7 +217,7 @@ teardown() {
 }
 
 @test "rejects concurrent orchestrator runs with an active lock" {
-  #R050
+  #R050-T01 #R050-T02
   write_all_child_stubs 'sleep 2; exit 0'
 
   env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
@@ -261,7 +234,6 @@ teardown() {
 }
 
 @test "reclaims stale lock file and succeeds" {
-  #R050
   write_all_child_stubs 'exit 0'
   printf '%s\n' 999999 > "${FIXTURE_ROOT}/.25_run_all_tests_parallel.lock"
 
@@ -272,7 +244,7 @@ teardown() {
 }
 
 @test "terminates child checks when interrupt stop path runs" {
-  #R055
+  #R055-T01
   write_all_child_stubs 'sleep 60; exit 0'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \

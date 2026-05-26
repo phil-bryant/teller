@@ -1,17 +1,3 @@
-// Requirement test-case tags for requirements/macos-ui/TellerSetupService-requirements.md
-// #R005-T02: Traceability anchor.
-// #R010-T02: Traceability anchor.
-// #R020-T02: Traceability anchor.
-// #R025-T02: Traceability anchor.
-
-// Traceability numbered tags for requirements/macos-ui/TellerSetupService-requirements.md
-// #R001-T01: Traceability anchor.
-// #R005-T01: Traceability anchor.
-// #R010-T01: Traceability anchor.
-// #R015-T01: Traceability anchor.
-// #R020-T01: Traceability anchor.
-// #R025-T01: Traceability anchor.
-
 import Foundation
 import XCTest
 @testable import TransactionClassifier
@@ -36,7 +22,7 @@ final class TellerSetupServiceTests: XCTestCase {
     }
 
     func testLoadSnapshotReflectsTellerFilePresence() async throws {
-        // #R001
+        // #R001-T01
         let home = try makeTempHome()
         let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
         try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
@@ -54,7 +40,7 @@ final class TellerSetupServiceTests: XCTestCase {
     }
 
     func testSaveApplicationIDWritesSecureFileAndRejectsEmptyValue() async throws {
-        // #R005 #R015
+        // #R005-T01 #R005-T02 #R015-T01
         let home = try makeTempHome()
         let service = TellerSetupService(homeDirectory: home)
         let savedPath = try await service.saveApplicationID(" app_native ")
@@ -72,7 +58,7 @@ final class TellerSetupServiceTests: XCTestCase {
     }
 
     func testSaveAuthTokenWritesJSONAndRejectsEmptyValue() async throws {
-        // #R010 #R015
+        // #R010-T01 #R010-T02 #R015-T01
         let home = try makeTempHome()
         let service = TellerSetupService(homeDirectory: home)
         let savedPath = try await service.saveAuthToken("token_native")
@@ -90,7 +76,7 @@ final class TellerSetupServiceTests: XCTestCase {
     }
 
     func testRunSmokeCheckSucceedsAndReturnsWarningWhenAccountsFail() async throws {
-        // #R020 #R025
+        // #R020-T01 #R025-T01
         let home = try makeTempHome()
         let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
         try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
@@ -130,7 +116,7 @@ final class TellerSetupServiceTests: XCTestCase {
     }
 
     func testRunSmokeCheckWithoutTokenReturnsGuidanceWarning() async throws {
-        // #R020 #R025
+        // #R025-T02
         let home = try makeTempHome()
         let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
         try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
@@ -154,7 +140,7 @@ final class TellerSetupServiceTests: XCTestCase {
     }
 
     func testRunSmokeCheckFailsWhenPrerequisitesMissing() async throws {
-        // #R020
+        // #R020-T02
         let home = try makeTempHome()
         let service = TellerSetupService(homeDirectory: home)
         do {
@@ -163,5 +149,46 @@ final class TellerSetupServiceTests: XCTestCase {
         } catch {
             XCTAssertTrue(error.localizedDescription.contains("Missing application id"))
         }
+    }
+
+    @MainActor
+    func testConnectViewModelReflectsSetupSnapshotReadiness() async throws {
+        // #R001-T02
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        try Data("app_123\n".utf8).write(to: tellerDir.appendingPathComponent("application_id.txt"))
+
+        let setupService = TellerSetupService(homeDirectory: home)
+        let vm = ConnectViewModel(
+            api: TellerSetupConnectAPIStub(),
+            setupAPI: setupService
+        )
+        await vm.loadAll()
+        XCTAssertEqual(vm.setupSnapshot?.hasApplicationID, true)
+        XCTAssertTrue(vm.setupStatusText.contains("Step 18 setup is"))
+    }
+}
+
+private actor TellerSetupConnectAPIStub: ConnectAPI {
+    func fetchStatus() async throws -> ConnectStatusResponse {
+        ConnectStatusResponse(token_saved: false, saved_path: "", error: "")
+    }
+
+    func fetchContexts() async throws -> [ConnectContext] { [] }
+
+    func storeToken(_ request: ConnectStoreTokenRequest) async throws -> ConnectStoreTokenResponse {
+        _ = request
+        throw ConnectServiceError.validation("unused")
+    }
+
+    func deleteContext(targetKey: String) async throws -> ConnectDeleteContextResponse {
+        _ = targetKey
+        throw ConnectServiceError.validation("unused")
+    }
+
+    func startSession(action: ConnectAction, selectedContext: ConnectContext?) async throws -> ConnectStartSession {
+        _ = action; _ = selectedContext
+        throw ConnectServiceError.validation("unused")
     }
 }

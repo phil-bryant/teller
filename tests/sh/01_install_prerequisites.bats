@@ -1,48 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/01_install_prerequisites-requirements.md
-# #R012-T02: Traceability anchor.
-# #R015-T02: Traceability anchor.
-# #R050-T02: Traceability anchor.
-# #R055-T02: Traceability anchor.
-# #R060-T02: Traceability anchor.
-# #R065-T02: Traceability anchor.
-# #R070-T02: Traceability anchor.
-# #R075-T02: Traceability anchor.
-# #R079-T02: Traceability anchor.
-# #R080-T02: Traceability anchor.
-# #R085-T02: Traceability anchor.
-# #R090-T02: Traceability anchor.
-# #R095-T02: Traceability anchor.
-# #R100-T02: Traceability anchor.
-# #R105-T02: Traceability anchor.
-
-# Traceability numbered tags for requirements/01_install_prerequisites-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-# #R012-T01: Traceability anchor.
-# #R015-T01: Traceability anchor.
-# #R020-T01: Traceability anchor.
-# #R025-T01: Traceability anchor.
-# #R030-T01: Traceability anchor.
-# #R035-T01: Traceability anchor.
-# #R040-T01: Traceability anchor.
-# #R045-T01: Traceability anchor.
-# #R050-T01: Traceability anchor.
-# #R055-T01: Traceability anchor.
-# #R060-T01: Traceability anchor.
-# #R065-T01: Traceability anchor.
-# #R070-T01: Traceability anchor.
-# #R075-T01: Traceability anchor.
-# #R079-T01: Traceability anchor.
-# #R080-T01: Traceability anchor.
-# #R085-T01: Traceability anchor.
-# #R090-T01: Traceability anchor.
-# #R095-T01: Traceability anchor.
-# #R100-T01: Traceability anchor.
-# #R105-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -56,14 +12,14 @@ teardown() {
 }
 
 @test "fails clearly when brew is missing" {
-  #R001 #R005 #R012
+  #R001-T01 #R005-T01 #R012-T01 #R012-T02
   run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"[Homebrew] Not installed."* ]]
 }
 
 @test "idempotent path skips installs when dependencies already exist" {
-  #R010 #R035 #R040 #R050 #R079 #R080 #R085 #R090 #R095 #R100 #R105
+  #R010-T01 #R035-T01 #R040-T01 #R050-T01 #R050-T02 #R079-T02 #R080-T02 #R085-T02 #R090-T02 #R095-T02 #R100-T02 #R105-T02 #R110-T02
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
@@ -76,17 +32,19 @@ teardown() {
   stub_cmd cpanm "exit 0"
   stub_cmd perl "exit 0"
   stub_cmd pg_prove "exit 0"
+  stub_cmd mkcert "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
 
   run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"[1psa] Available on PATH"* ]]
   [[ "$output" == *"[pg_install] Repository present"* ]]
+  [[ "$output" == *"[mkcert] Available on PATH"* ]]
   [[ "$output" == *"./17_verify_macos_crash_test.sh"* ]]
 }
 
 @test "clones pg_install when missing" {
-  #R025 #R030 #R079 #R080 #R085 #R090 #R095 #R100 #R105
+  #R025-T01 #R030-T01 #R079-T01 #R080-T01 #R085-T01 #R090-T01 #R095-T01 #R100-T01 #R105-T01 #R110-T01
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd swiftlint "exit 0"
@@ -97,6 +55,7 @@ teardown() {
   stub_cmd cpanm "exit 0"
   stub_cmd perl "exit 0"
   stub_cmd pg_prove "exit 0"
+  stub_cmd mkcert "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
 echo git "\$*" >> "${CALLS_LOG}"
@@ -114,7 +73,7 @@ EOF
 }
 
 @test "uses PSA_INSTALL_SUDO_ITEM during install flow" {
-  #R015 #R020 #R045 #R065 #R079 #R080 #R085 #R090 #R095 #R100 #R105
+  #R015-T01 #R015-T02 #R020-T01 #R045-T01 #R065-T01 #R065-T02
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
   stub_cmd swiftlint "exit 0"
@@ -125,6 +84,7 @@ EOF
   stub_cmd cpanm "exit 0"
   stub_cmd perl "exit 0"
   stub_cmd pg_prove "exit 0"
+  stub_cmd mkcert "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
 echo git "\$*" >> "${CALLS_LOG}"
@@ -170,8 +130,8 @@ EOF
   [[ "$calls" == *"local-1psa -f custom_item custom_item"* ]]
 }
 
-@test "installs bats-core perl and cpanminus when test runners are missing" {
-  #R055 #R060 #R070 #R075 #R079 #R080 #R085 #R090 #R095 #R100 #R105
+@test "installs bats-core perl cpanminus and mkcert when tooling is missing" {
+  #R055-T01 #R055-T02 #R060-T01 #R060-T02 #R070-T01 #R070-T02 #R075-T01 #R075-T02 #R110-T01
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"
@@ -223,6 +183,13 @@ exit 0
 GITLEAKS
   chmod +x "${STUB_BIN}/gitleaks"
 fi
+if [[ "\$1" == "install" && "\$2" == "mkcert" ]]; then
+  cat > "${STUB_BIN}/mkcert" <<'MKCERT'
+#!/usr/bin/env bash
+exit 0
+MKCERT
+  chmod +x "${STUB_BIN}/mkcert"
+fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/brew"
@@ -236,10 +203,10 @@ EOF
   [[ "$calls" == *"brew install clamav"* ]]
   [[ "$calls" == *"brew install shellcheck"* ]]
   [[ "$calls" == *"brew install gitleaks"* ]]
+  [[ "$calls" == *"brew install mkcert"* ]]
 }
 
 @test "builds and installs pgtap from theory source when pg_prove is missing" {
-  #R085 #R030 #R090 #R079 #R080 #R095 #R100 #R105
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd go "exit 0"
   stub_cmd swiftlint "exit 0"
@@ -247,6 +214,7 @@ EOF
   stub_cmd gitleaks "exit 0"
   stub_cmd bats "exit 0"
   stub_cmd perl "exit 0"
+  stub_cmd mkcert "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
@@ -305,8 +273,13 @@ EOF
   [ -x "${HOME}/perl5/bin/pg_prove" ]
 }
 
+@test "requires mkcert formula in installer script" {
+  #R110-T01 #R110-T02
+  run grep 'ensure_brew_formula "mkcert"' "$(repo_root)/01_install_prerequisites.sh"
+  [ "$status" -eq 0 ]
+}
+
 @test "installs TAP::Parser::SourceHandler::pgTAP via user-local cpanm" {
-  #R090 #R079 #R080 #R095 #R100 #R105
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   mkdir -p "${TEST_TMPDIR}/pgtap/.git"
   cat > "${TEST_TMPDIR}/pgtap/Makefile" <<'MAKE'
@@ -328,6 +301,7 @@ MAKE
   stub_cmd 1psa "echo fake-pass; exit 0"
   stub_cmd make "exit 0"
   stub_cmd perl "exit 0"
+  stub_cmd mkcert "exit 0"
 
   run env PSA_INSTALL_SUDO_ITEM="custom_item" bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   [ "$status" -eq 0 ]

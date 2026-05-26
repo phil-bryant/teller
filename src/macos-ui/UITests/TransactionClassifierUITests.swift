@@ -1,23 +1,3 @@
-// Traceability numbered tags for requirements/macos-ui/ContentView-requirements.md
-// #R001-T01: Traceability anchor.
-// #R005-T01: Traceability anchor.
-// #R010-T01: Traceability anchor.
-// #R015-T01: Traceability anchor.
-// #R020-T01: Traceability anchor.
-// #R025-T01: Traceability anchor.
-// #R030-T01: Traceability anchor.
-// #R050-T01: Traceability anchor.
-// #R055-T01: Traceability anchor.
-// #R060-T01: Traceability anchor.
-// #R060-T02: Traceability anchor.
-// #R065-T01: Traceability anchor.
-// #R070-T01: Traceability anchor.
-// Traceability numbered tags for requirements/macos-ui/TransactionClassifierApp-requirements.md
-// #R035-T01: Traceability anchor.
-// Traceability numbered tags for requirements/macos-ui/ConnectView-requirements.md
-// #R020-T01: Traceability anchor.
-// #R025-T01: Traceability anchor.
-
 import AppKit
 import XCTest
 
@@ -74,35 +54,54 @@ final class TransactionClassifierUITests: XCTestCase {
         let selectedSteps = Self.parseSelectedSteps(from: ProcessInfo.processInfo.environment["XCUITEST_STEPS"])
         for step in 1...Self.scenarioCount where selectedSteps.contains(step) {
             switch step {
-            case 1: runMatchAndClassifyShellLoadsScenario()
-            case 2: runSearchFilterScenario()
-            case 3: runUnclassifiedFilterAutoRefreshScenario()
+            case 1: // #R001-T01 #R025-T01
+                runMatchAndClassifyShellLoadsScenario()
+            case 2: // #R005-T01
+                runSearchFilterScenario()
+            case 3: // #R020-T01
+                runUnclassifiedFilterAutoRefreshScenario()
             case 4: runMatchStatePickerAllValuesScenario()
             case 5: runOnlyUnmovedToggleScenario()
             case 6: runRefreshButtonScenario()
-            case 7: runSelectionShowsTransactionIdScenario()
-            case 8: runNextUnclassifiedShortcutScenario()
+            case 7: // #R030-T01
+                runSelectionShowsTransactionIdScenario()
+            case 8: // #R010-T01
+                runNextUnclassifiedShortcutScenario()
             case 9: runLoadMoreButtonScenario()
-            case 10: runApplyCategoryScenario()
+            case 10: // #R015-T01
+                runApplyCategoryScenario()
             case 11: runClearSelectionScenario()
             case 12: runUndoRestoresUnclassifiedScenario()
             case 13: runUndoRestoresPriorCategoryScenario()
             case 14: runCandidatesAndEmailPaneScenario()
-            case 15: runEmailSearchScenario()
-            case 16: runMatchActionsScenario()
-            case 17: runNextUnclassifiedScrollsIntoViewScenario()
-            case 18: runLongListManualSelectionDoesNotRecenterScenario()
-            case 19: runHelpMenuListsHotkeysScenario()
-            case 20: runConnectTabLoadsConnectionsScenario()
+            case 15: // #R065-T01
+                runEmailSearchScenario()
+            case 16: // #R045-T01
+                runMatchActionsScenario()
+            case 17: // #R025-T01
+                runNextUnclassifiedScrollsIntoViewScenario()
+            case 18: // #R070-T01
+                runLongListManualSelectionDoesNotRecenterScenario()
+            case 19: // #R035-T01
+                runHelpMenuListsHotkeysScenario()
+            case 20: // #R001-T01 #R025-T01
+                runConnectTabLoadsConnectionsScenario()
             case 21: runConnectDeleteCancelScenario()
-            case 22: runConnectDeleteConfirmScenario()
-            case 23: runConnectAddAndEditButtonsScenario()
-            case 24: runConnectTabHidesNextUnclassifiedScenario()
-            case 25: runConnectTabHidesUndoScenario()
+            case 22: // #R010-T01
+                runConnectDeleteConfirmScenario()
+            case 23: // #R015-T01
+                runConnectAddAndEditButtonsScenario()
+            case 24: // #R055-T01 #R060-T01
+                runConnectTabHidesNextUnclassifiedScenario()
+            case 25: // #R065-T01
+                runConnectTabHidesUndoScenario()
             case 26: runManageCategoriesLoadAndToolbarScenario()
-            case 27: runManageCategoriesHidesNextUnclassifiedScenario()
-            case 28: runManageCategoryEditAndSaveScenario()
-            case 29: runManageCategoryDeleteScenario()
+            case 27: // #R055-T01 #R060-T01
+                runManageCategoriesHidesNextUnclassifiedScenario()
+            case 28:
+                runManageCategoryEditAndSaveScenario()
+            case 29:
+                runManageCategoryDeleteScenario()
             default: break
             }
         }
@@ -320,7 +319,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func runLongListManualSelectionDoesNotRecenterScenario() {
-        // #R050 #R070 #R070-T01
+        // #R050 #R070
         ensureMatchAndClassifyTab()
         ensureUnclassifiedFilterDisabled()
         ensureAllTransactionsLoadedIntoList()
@@ -525,7 +524,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func runManageCategoriesHidesNextUnclassifiedScenario() {
-        // #R055-T01 #R060-T02
+        // #R055 #R060
         ensureManageCategoriesTab()
         XCTAssertFalse(nextUnclassifiedControlExists())
         XCTAssertFalse(undoControlExists())

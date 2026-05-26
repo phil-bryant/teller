@@ -1,9 +1,4 @@
 #!/usr/bin/env bats
-
-# Requirement test-case tags for requirements/13_run_sql_unit_tests-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -24,13 +19,13 @@ teardown() {
 }
 
 @test "runs from repository root regardless of caller cwd" {
-  #R001
+  #R001-T01
   run bash -c "cd '${TEST_TMPDIR}' && '${FIXTURE_ROOT}/13_run_sql_unit_tests.sh'"
   [ "$status" -eq 0 ]
 }
 
 @test "enables only the expected lane" {
-  #R005
+  #R005-T01
   run bash -c "cd '${FIXTURE_ROOT}' && ./13_run_sql_unit_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"

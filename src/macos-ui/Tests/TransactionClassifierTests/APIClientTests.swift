@@ -1,16 +1,3 @@
-// Requirement test-case tags for requirements/macos-ui/APIClient-requirements.md
-// #R040-T02: Traceability anchor.
-// #R045-T02: Traceability anchor.
-
-// Traceability numbered tags for requirements/macos-ui/APIClient-requirements.md
-// #R001-T01: Traceability anchor.
-// #R005-T01: Traceability anchor.
-// #R010-T01: Traceability anchor.
-// #R040-T01: Traceability anchor.
-// #R045-T01: Traceability anchor.
-// #R050-T01: Traceability anchor.
-// #R062-T01: Traceability anchor.
-
 import Foundation
 import XCTest
 @testable import TransactionClassifier
@@ -96,7 +83,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testFetchCategoriesUsesCategoriesEndpoint() async throws {
-        // #R001
+        // #R001-T01 #R045-T01
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/categories")
@@ -115,7 +102,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testFetchTransactionsSendsPaginationAndFilterQuery() async throws {
-        // #R001
+        // #R001-T01 #R045-T01
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/transactions")
@@ -143,7 +130,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testSaveClassificationsPostsBatchPayload() async throws {
-        // #R005 #R045
+        // #R005-T01 #R045-T01
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.url?.path, "/v1/transactions/classifications")
@@ -168,7 +155,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testNon2xxReturnsServerMessageInRequestFailedError() async {
-        // #R010
+        // #R010-T01
         URLProtocolStub.requestHandler = { request in
             let response = try self.makeHTTPResponse(for: request, statusCode: 409)
             return (response, Data("conflict: duplicate category".utf8))
@@ -186,7 +173,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testCategoryLifecycleUsesCreateUpdateDeleteEndpoints() async throws {
-        // #R040 #R045
+        // #R040-T01 #R040-T02 #R045-T01
         var callIndex = 0
         URLProtocolStub.requestHandler = { request in
             defer { callIndex += 1 }
@@ -231,7 +218,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testClearMatchUsesPutClearEndpoints() async throws {
-        // #R050
+        // #R050-T01
         var callIndex = 0
         URLProtocolStub.requestHandler = { request in
             defer { callIndex += 1 }
@@ -260,7 +247,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testSearchMessagesUsesSearchEndpointAndDecodesEnvelope() async throws {
-        // #R062
+        // #R062-T01
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/matchy/messages/search")
@@ -285,5 +272,46 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(response.items.count, 1)
         XCTAssertEqual(response.items.first?.email_message_id, "msg_phil")
         XCTAssertEqual(response.items.first?.from, "phil@example.com")
+    }
+
+    func testMissingWriteTokenThrowsExplicitError() async {
+        // #R045-T02
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [URLProtocolStub.self]
+        let session = URLSession(configuration: config)
+        let clientWithoutToken = APIClient(
+            baseURL: Self.testBaseURL,
+            writeToken: "",
+            session: session
+        )
+        do {
+            _ = try await clientWithoutToken.fetchCategories()
+            XCTFail("Expected APIError.missingWriteToken")
+        } catch APIError.missingWriteToken {
+            XCTAssertTrue(true)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testSaveClassificationsNon2xxReturnsServerMessage() async {
+        // #R010-T02
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            let response = try self.makeHTTPResponse(for: request, statusCode: 422)
+            return (response, Data("validation failed: bad payload".utf8))
+        }
+
+        let client = makeClient()
+        do {
+            _ = try await client.saveClassifications([
+                ClassificationMutation(transaction_id: "txn_1", nys_snw_category_id: 101),
+            ])
+            XCTFail("Expected APIError.requestFailed")
+        } catch APIError.requestFailed(let message) {
+            XCTAssertTrue(message.contains("bad payload"))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 }

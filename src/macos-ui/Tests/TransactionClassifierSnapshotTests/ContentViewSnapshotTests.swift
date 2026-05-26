@@ -1,12 +1,3 @@
-// Traceability numbered tags for requirements/macos-ui/ContentView-requirements.md
-// #R001-T01: Traceability anchor.
-// #R005-T01: Traceability anchor.
-// #R010-T01: Traceability anchor.
-// #R015-T01: Traceability anchor.
-// #R020-T01: Traceability anchor.
-// #R025-T01: Traceability anchor.
-// #R030-T01: Traceability anchor.
-
 import AppKit
 import Foundation
 import SnapshotTesting
@@ -28,7 +19,7 @@ final class ContentViewSnapshotTests: XCTestCase {
 
     @MainActor
     func testEmptyStateSnapshot() async {
-        // #R001
+        // #R001-T01
         await assertContentSnapshot(named: "empty-state") { viewModel in
             viewModel.transactions = []
             viewModel.totalTransactions = 0
@@ -39,6 +30,7 @@ final class ContentViewSnapshotTests: XCTestCase {
 
     @MainActor
     func testLoadedSelectionSnapshot() async {
+        // #R001-T01 #R030-T01
         await assertContentSnapshot(named: "loaded-selection") { viewModel in
             viewModel.selection = ["txn_001"]
             viewModel.selectionDidChange()

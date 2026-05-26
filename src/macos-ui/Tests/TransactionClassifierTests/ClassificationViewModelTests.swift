@@ -1,16 +1,3 @@
-// Traceability numbered tags for requirements/macos-ui/ClassificationViewModel-requirements.md
-// #R001-T01: Traceability anchor.
-// #R005-T01: Traceability anchor.
-// #R010-T01: Traceability anchor.
-// #R015-T01: Traceability anchor.
-// #R020-T01: Traceability anchor.
-// #R025-T01: Traceability anchor.
-// #R030-T01: Traceability anchor.
-// #R035-T01: Traceability anchor.
-// #R035-T02: Traceability anchor.
-// #R040-T01: Traceability anchor.
-// #R040-T02: Traceability anchor.
-
 import Foundation
 import XCTest
 @testable import TransactionClassifier
@@ -27,8 +14,9 @@ actor MockAPI: ClassificationAPI {
     var searchCalls: [(query: String, limit: Int)] = []
     var searchResponse: EmailSearchResponse
     var searchError: Error?
+    var saveError: Error?
     init(categories: [CategoryOption], response: TransactionListResponse, pagedResponses: [Int: TransactionListResponse] = [:],
-         searchResponse: EmailSearchResponse = .init(query: "", items: []), searchError: Error? = nil) {
+         searchResponse: EmailSearchResponse = .init(query: "", items: []), searchError: Error? = nil, saveError: Error? = nil) {
         self.categories = categories
         self.response = response
         var merged = pagedResponses
@@ -36,6 +24,7 @@ actor MockAPI: ClassificationAPI {
         self.pagedResponses = merged
         self.searchResponse = searchResponse
         self.searchError = searchError
+        self.saveError = saveError
     }
     func fetchCategories() async throws -> [CategoryOption] { categories }
     func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
@@ -46,6 +35,7 @@ actor MockAPI: ClassificationAPI {
     func recordedFetchOffsets() -> [Int] { fetchOffsets }
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse] {
         lastSaved = updates
+        if let saveError { throw saveError }
         return updates.map { .init(transaction_id: $0.transaction_id, nys_snw_category_id: $0.nys_snw_category_id, type: "user", updated_at: "now") }
     }
     func deleteCategory(id: Int) async throws -> CategoryDeleteResponse {
@@ -98,7 +88,6 @@ private func sampleCandidate(emailId: String, isSelectedByAi: Bool) -> MatchCand
 
 final class ClassificationViewModelTests: XCTestCase {
     func testTransactionListDecodesDecimalAmountString() throws {
-        // #R001
         let payload = """
         {"total":1,"items":[{"transaction_id":"txn_1","account_id":"acc_1","date":"2026-04-18","amount":"33.21",
         "description":"DoorDash","status":"pending","transaction_type_code":"card_payment","teller_category":null,
@@ -111,7 +100,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testLoadAllPopulatesViewModel() async {
-        // #R001
+        // #R001-T01
         let cat = sampleCategory(11, "Utilities")
         let rows = [
             sampleTransaction("txn_1", date: "2026-04-17", classification: nil),
@@ -137,7 +126,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testSaveSelectionUpdatesClassificationOptimistically() async {
-        // #R010
+        // #R010-T01
         let cat = sampleCategory(22, "Dining")
         let api = MockAPI(categories: [cat], response: .init(total: 1, items: [sampleTransaction("txn_2", classification: nil)]))
         let vm = ClassificationViewModel(api: api)
@@ -151,7 +140,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testNextUnclassifiedMovesSelection() async {
-        // #R015
+        // #R015-T01
         let cat = sampleCategory(77, "Housing")
         let items = [
             sampleTransaction("txn_a", classification: .init(nys_snw_category_id: 77, display_label: "Housing")),
@@ -184,7 +173,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testLoadMoreAppendsAdditionalTransactions() async {
-        // #R020
+        // #R020-T01
         let cat = sampleCategory(11, "Utilities")
         let firstPage = TransactionListResponse(total: 4, items: [
             sampleTransaction("txn_1", date: "2026-04-20", classification: nil),
@@ -207,7 +196,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testRedundantSaveSelectionDoesNotPushIdentityUndoEntry() async {
-        // #R005
+        // #R005-T01
         let cat = sampleCategory(22, "Dining")
         let api = MockAPI(categories: [cat], response: .init(total: 1, items: [sampleTransaction("txn_1", classification: nil)]))
         let vm = ClassificationViewModel(api: api)
@@ -330,7 +319,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testSelectedCategoryDidChangeSavesOnlyRowsThatActuallyChange() async {
-        // #R005
+        // #R005-T01
         let dining = sampleCategory(22, "Dining")
         let current = TransactionCategory(nys_snw_category_id: 22, display_label: "Dining")
         let rows = [sampleTransaction("txn_1", classification: current), sampleTransaction("txn_2", classification: nil)]
@@ -348,7 +337,7 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testDeleteSelectedCategoriesRemovesAllSelectedRows() async {
-        // #R030
+        // #R030-T01
         let categories = [sampleCategory(11, "Utilities"), sampleCategory(12, "Dining"), sampleCategory(13, "Travel")]
         let api = MockAPI(categories: categories, response: .init(total: 0, items: []))
         let vm = ClassificationViewModel(api: api)
@@ -389,5 +378,24 @@ final class ClassificationViewModelTests: XCTestCase {
         await vm.searchMailcartIfNeeded()
         XCTAssertTrue(vm.mailcartSearchResults.isEmpty)
         XCTAssertTrue(vm.mailcartSearchErrorText.contains("search failed"))
+    }
+
+    @MainActor
+    func testSaveSelectionRollsBackOnApiFailure() async {
+        // #R010-T01
+        let cat = sampleCategory(22, "Dining")
+        let api = MockAPI(
+            categories: [cat],
+            response: .init(total: 1, items: [sampleTransaction("txn_2", classification: nil)]),
+            saveError: APIError.requestFailed("save failed")
+        )
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_2"]
+        vm.selectedCategoryId = 22
+        await vm.saveSelection()
+        XCTAssertNil(vm.transactions.first?.classification)
+        XCTAssertEqual(vm.rowState["txn_2"], .failed("save failed"))
+        XCTAssertTrue(vm.undoStack.isEmpty)
     }
 }

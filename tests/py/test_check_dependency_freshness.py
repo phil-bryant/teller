@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# Requirement test-case tags for requirements/src/scripts/check_dependency_freshness-requirements.md
-# #R001-T01: Verify requirements parsing and update classification behavior.
-# #R005-T01: Verify report generation and output formatting.
-# #R010-T01: Verify fail-on-major and fail-on-direct-outdated gate behavior.
 
 import importlib.util
 import json
@@ -29,7 +25,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
         self.module = load_module()
 
     def test_parse_requirements_and_classify_update(self) -> None:
-        #R001
+        #R001-T01
         with tempfile.TemporaryDirectory() as tmp:
             req_path = Path(tmp) / "requirements.txt"
             req_path.write_text(
@@ -48,7 +44,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
         self.assertEqual(self.module.classify_update("1.2.3", "1.2.4"), "patch")
 
     def test_make_report_and_format_text(self) -> None:
-        #R005
+        #R005-T01
         with tempfile.TemporaryDirectory() as tmp:
             req_path = Path(tmp) / "requirements.txt"
             req_path.write_text("requests==2.30.0\n", encoding="utf-8")
@@ -69,7 +65,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
         self.assertIn("transitive", text)
 
     def test_main_fails_for_configured_gates(self) -> None:
-        #R010
+        #R010-T01
         with tempfile.TemporaryDirectory() as tmp:
             req_path = Path(tmp) / "requirements.txt"
             out_json = Path(tmp) / "report.json"

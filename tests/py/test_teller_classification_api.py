@@ -89,46 +89,6 @@ class ClassificationApiTests(unittest.TestCase):
     def tearDown(self):
         self._token_patch.stop()
 
-    def test_traceability_numbered_tag_anchors(self):
-        #R001-T01
-        #R005-T01
-        #R010-T01
-        #R015-T01
-        #R020-T01
-        #R020-T02
-        #R020-T03
-        #R025-T01
-        #R025-T02
-        #R025-T03
-        #R030-T01
-        #R035-T01
-        #R035-T02
-        #R040-T01
-        #R040-T02
-        #R040-T03
-        #R045-T01
-        #R045-T02
-        #R045-T03
-        #R045-T04
-        #R050-T01
-        #R055-T01
-        #R055-T02
-        #R060-T01
-        #R060-T02
-        #R060-T03
-        #R060-T04
-        #R061-T01
-        #R061-T02
-        #R061-T03
-        #R062-T01
-        #R062-T02
-        #R062-T03
-        #R070-T01
-        #R071-T01
-        #R071-T02
-        #R071-T03
-        self.assertTrue(True)
-
     def _route_endpoint(self, app, path, method):
         for route in app.routes:
             if getattr(route, "path", None) == path and method in getattr(route, "methods", set()):
@@ -139,7 +99,7 @@ class ClassificationApiTests(unittest.TestCase):
         return SimpleNamespace(headers={"x-teller-write-token": "test-write-token"})
 
     def test_create_app_registers_required_routes(self):
-        #R001
+        #R001-T01
         app = create_app()
         route_paths = {route.path for route in app.routes}
         self.assertIn("/health", route_paths)
@@ -172,7 +132,7 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(response.headers.get("allow"), "GET")
 
     def test_display_label_joins_hierarchy(self):
-        #R005
+        #R005-T01
         row = {"level_1_name": "EXPENSES", "level_2_name": "Food", "level_3": "1.", "level_4": None, "categorization": "Groceries"}
         self.assertEqual(_display_label(row), "EXPENSES > Food > 1. > Groceries")
 
@@ -268,30 +228,30 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(session.commits, 1)
 
     def test_write_category_returns_conflict_for_duplicate_hierarchy(self):
-        #R050
+        #R050-T01
         session = _IntegrityErrorSession(rows=[])
         with self.assertRaises(HTTPException) as ctx:
             _write_category(session, CategoryCreateMutation(level_1="II.", level_1_name="EXPENSES", categorization="Rent"))
         self.assertEqual(ctx.exception.status_code, 409)
 
     def test_category_mutation_rejects_control_characters(self):
-        #R045
+        #R045-T01
         with self.assertRaises(ValidationError):
             CategoryCreateMutation(level_1_name="EXPENSES", level_2_name="House\nhold")
 
     def test_write_category_rejects_empty_normalized_payload(self):
-        #R045
+        #R045-T02
         session = _FakeSession(rows=[])
         with self.assertRaises(ValidationError):
             _write_category(session, CategoryCreateMutation(level_1="   ", level_2_name=""))
 
     def test_category_mutation_rejects_null_field_values(self):
-        #R045
+        #R045-T03
         with self.assertRaises(ValidationError):
             CategoryUpdateMutation(level_1=None)
 
     def test_category_mutation_openapi_schema_requires_non_empty_object(self):
-        #R045
+        #R045-T03
         schemas = create_app().openapi()["components"]["schemas"]
         create_schema = schemas["CategoryCreateMutation"]
         update_schema = schemas["CategoryUpdateMutation"]
@@ -303,14 +263,14 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(level_1_schema.get("pattern"), r"^[\x20-\x7E]*[\x21-\x7E][\x20-\x7E]*$")
 
     def test_category_mutations_reject_empty_json_body(self):
-        #R045
+        #R045-T03
         with self.assertRaises(ValidationError):
             CategoryCreateMutation.model_validate({})
         with self.assertRaises(ValidationError):
             CategoryUpdateMutation.model_validate({})
 
     def test_category_operation_openapi_request_body_requires_non_empty_object(self):
-        #R045
+        #R045-T03
         schema = create_app().openapi()
         category_put_path = "/v1/categories/{nys_snw_category_id}"
         if category_put_path not in schema["paths"]:
@@ -358,6 +318,7 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertIn("seed-protected", ctx.exception.detail)
 
     def test_write_one_inserts_when_missing_existing_mapping(self):
+        #R025-T01
         ts = datetime.now(tz=timezone.utc)
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(row=(1,)), _Result(row=None), _Result(row=(ts,))])
         response = _write_one(session, "txn_1", 12)
@@ -374,20 +335,21 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertIn("status = 'posted'", session.calls[0][0])
 
     def test_write_one_deletes_mapping_when_category_is_none(self):
+        #R025-T02
         session = _FakeSession(rows=[_Result(row=(1,))])
         response = _write_one(session, "txn_3", None)
         self.assertIsNone(response.nys_snw_category_id)
         self.assertEqual(session.commits, 1)
 
     def test_write_one_raises_on_unknown_transaction(self):
-        #R025
+        #R025-T03
         session = _FakeSession(rows=[_Result(row=None)])
         with self.assertRaises(HTTPException) as ctx:
             _write_one(session, "txn_missing", 12)
         self.assertEqual(ctx.exception.status_code, 404)
 
     def test_write_one_raises_on_unknown_category(self):
-        #R025
+        #R025-T03
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(row=None)])
         with self.assertRaises(HTTPException) as ctx:
             _write_one(session, "txn_1", 999)
@@ -395,23 +357,23 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertIn("Unknown nys_snw_category_id", ctx.exception.detail)
 
     def test_classification_mutation_rejects_invalid_transaction_id(self):
-        #R045
+        #R045-T04
         with self.assertRaises(ValidationError):
             ClassificationMutation(transaction_id="txn with spaces", nys_snw_category_id=1)
 
     def test_single_classification_mutation_rejects_transaction_id_field(self):
-        #R030
+        #R030-T01
         with self.assertRaises(ValidationError):
             SingleClassificationMutation(transaction_id="txn_1", nys_snw_category_id=1)
 
     def test_single_classification_openapi_schema_omits_transaction_id(self):
-        #R030
+        #R030-T01
         schema = create_app().openapi()["components"]["schemas"]["SingleClassificationMutation"]
         self.assertNotIn("transaction_id", schema.get("properties", {}))
 
     @patch("teller.teller_classification_api.get_session")
     def test_categories_endpoint_returns_display_labels(self, get_session_mock):
-        #R010
+        #R010-T01
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories", "GET")
         session = _FakeSession(
@@ -448,7 +410,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_category_counts_includes_zero_assignment_categories(self, get_session_mock):
-        #R015
+        #R015-T01
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories/counts", "GET")
         session = _FakeSession(
@@ -518,7 +480,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_create_category_endpoint_requires_write_token(self, get_session_mock):
-        #R040
+        #R040-T01
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories", "POST")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
@@ -528,7 +490,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_create_category_endpoint_rejects_invalid_write_token(self, get_session_mock):
-        #R040
+        #R040-T02
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/categories", "POST")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
@@ -541,7 +503,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_endpoint_requires_write_token(self, get_session_mock):
-        #R040
+        #R040-T01
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/classifications", "POST")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
@@ -554,7 +516,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_endpoint_rejects_invalid_write_token(self, get_session_mock):
-        #R040
+        #R040-T02
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/classifications", "POST")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
@@ -691,7 +653,9 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_transactions_endpoint_applies_filters_and_returns_total(self, get_session_mock):
-        #R020
+        #R020-T01
+        #R020-T02
+        #R020-T03
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
         session = _FakeSession(
@@ -795,7 +759,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
     def test_single_classification_uses_path_transaction_id(self, get_session_mock, write_one_mock):
-        #R030
+        #R030-T01
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/{transaction_id}/classification", "PUT")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
@@ -809,7 +773,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_requires_non_empty_updates(self, get_session_mock, write_one_mock):
-        #R035
+        #R035-T01
         with self.assertRaises(ValidationError):
             ClassificationBatchRequest(updates=[])
         write_one_mock.assert_not_called()
@@ -817,7 +781,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_rejects_excessive_batch_size(self, get_session_mock, write_one_mock):
-        #R045
+        #R045-T04
         with self.assertRaises(ValidationError):
             ClassificationBatchRequest(
                 updates=[ClassificationMutation(transaction_id=f"txn_{idx}", nys_snw_category_id=1) for idx in range(251)]
@@ -827,7 +791,7 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api._write_one")
     @patch("teller.teller_classification_api.get_session")
     def test_batch_classification_returns_one_row_per_input(self, get_session_mock, write_one_mock):
-        #R035
+        #R035-T02
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions/classifications", "POST")
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
@@ -938,7 +902,8 @@ class ClassificationApiTests(unittest.TestCase):
     @patch("teller.teller_classification_api._insert_match_audit")
     @patch("teller.teller_classification_api._read_active_match_row")
     def test_deactivate_match_sets_active_false(self, read_active_match_row_mock, insert_audit_mock):
-        #R071
+        #R071-T01
+        #R071-T02
         read_active_match_row_mock.return_value = {
             "match_id": 12,
             "transaction_id": "txn_1",
@@ -1018,7 +983,7 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(rows_params["offset"], 3)
 
     def test_matchy_mutation_openapi_documents_not_found_responses(self):
-        #R055
+        #R055-T01
         schema = create_app().openapi()
         endpoints = [
             ("/v1/matchy/matches/{match_id}/confirm", "put"),
@@ -1034,7 +999,8 @@ class ClassificationApiTests(unittest.TestCase):
 
     @patch("teller.teller_classification_api.get_session")
     def test_matchy_mutation_endpoints_return_404_for_unknown_match_ids(self, get_session_mock):
-        #R055
+        #R055-T02
+        #R071-T03
         app = create_app()
         get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
         unknown_err = HTTPException(status_code=404, detail="Unknown match_id: 999")

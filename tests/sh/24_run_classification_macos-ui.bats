@@ -1,10 +1,4 @@
 #!/usr/bin/env bats
-
-# Traceability numbered tags for requirements/24_run_classification_macos-ui-requirements.md
-# #R001-T01: Traceability anchor.
-# #R005-T01: Traceability anchor.
-# #R010-T01: Traceability anchor.
-
 load "helpers/common.bash"
 
 setup() {
@@ -19,7 +13,7 @@ teardown() {
 }
 
 @test "forwards args to TransactionClassifier with computed package path" {
-  #R001 #R005 #R010
+  #R001-T01 #R005-T01 #R010-T01
   cat > "${STUB_BIN}/swift" <<EOF
 #!/usr/bin/env bash
 echo "swift \$*" >> "${CALLS_LOG}"
