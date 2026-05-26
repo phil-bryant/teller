@@ -120,6 +120,7 @@ final class ClassificationViewModel {
     func loadAll() async {
         // #R001: Load categories and first-page transactions; clear busy before side-pane fetches (R075/R080).
         // #R080: Optional stderr profiling when TELLER_UI_PROFILE_TRANSACTION_LIST=true.
+        guard !busy else { return }
         TransactionListProfiler.beginLoad()
         busy = true
         let fetchClock = ContinuousClock()
@@ -158,7 +159,7 @@ final class ClassificationViewModel {
         busy = false
         TransactionListProfiler.markBusyCleared()
         lastLoadedCandidatesTransactionId = nil
-        Task { await selectedTransactionDidChange() }
+        await selectedTransactionDidChange()
         Task { await refreshTransactionTotal() }
     }
 

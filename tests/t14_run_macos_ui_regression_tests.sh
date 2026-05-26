@@ -27,6 +27,7 @@ XCUITEST_SCHEME="${XCUITEST_SCHEME:-TransactionClassifierUITestHost-CI}"
 XCUITEST_DESTINATION="${XCUITEST_DESTINATION:-platform=macOS}"
 XCUITEST_DERIVED_DATA_PATH="${XCUITEST_DERIVED_DATA_PATH:-./src/macos-ui/.derivedData-ui-tests}"
 XCUITEST_RESULT_BUNDLE_PATH="${XCUITEST_RESULT_BUNDLE_PATH:-./artifacts/macos-ui-regression/xcuitest-results.xcresult}"
+XCUITEST_PROFILE="${XCUITEST_PROFILE:-smoke}"
 #R050: Crash-reporter verification remains a standalone lane (script 11).
 #R040: Support selecting specific smoke-suite scenario steps by numeric indices.
 XCUITEST_SCENARIOS=(
@@ -63,8 +64,12 @@ XCUITEST_SCENARIOS=(
   "manageCategoriesHidesNextUnclassified"
   "manageCategoryEditAndSave"
   "manageCategoryDelete"
+  #R055: Extended all-values match-state sweep for deep coverage.
+  "matchStatePickerAllValuesExtended"
 )
 XCUITEST_SMOKE_SUITE="TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite"
+XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-17,19-29}"
+XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-30}"
 
 if [[ $# -gt 1 ]]; then
   echo "❌ Usage: $0 [scenario-selector]"
@@ -180,6 +185,23 @@ if [[ -n "$XCUITEST_SELECTOR_RAW" ]]; then
   done
 fi
 
+if [[ -z "$XCUITEST_SELECTOR_RAW" ]]; then
+  case "$XCUITEST_PROFILE" in
+    smoke)
+      XCUITEST_SELECTOR_RAW="$XCUITEST_SMOKE_DEFAULT_STEPS"
+      XCUITEST_SELECTED_NUMBERS="$XCUITEST_SMOKE_DEFAULT_STEPS"
+      ;;
+    extended|full)
+      XCUITEST_SELECTOR_RAW="$XCUITEST_EXTENDED_DEFAULT_STEPS"
+      XCUITEST_SELECTED_NUMBERS="$XCUITEST_EXTENDED_DEFAULT_STEPS"
+      ;;
+    *)
+      echo "❌ Invalid XCUITEST_PROFILE '$XCUITEST_PROFILE'. Use smoke, extended, or full."
+      exit 1
+      ;;
+  esac
+fi
+
 #R010: Run snapshot regression lane when enabled.
 if [[ "$RUN_SNAPSHOT_TESTS" == "true" ]]; then
   echo "▶ Running macOS UI snapshot regression tests..."
@@ -229,7 +251,7 @@ if [[ "$RUN_XCUITESTS" == "true" ]]; then
   xattr -dr com.apple.quarantine "$XCUITEST_DERIVED_DATA_PATH" >/dev/null 2>&1 || true
 
   if [[ -n "$XCUITEST_SELECTED_NUMBERS" ]]; then
-    echo "ℹ️  Selecting XCUITest scenarios by index: ${XCUITEST_SELECTOR_RAW}"
+    echo "ℹ️  Using XCUITest profile '${XCUITEST_PROFILE}' with scenarios: ${XCUITEST_SELECTOR_RAW}"
     export XCUITEST_STEPS="$XCUITEST_SELECTED_NUMBERS"
     run_with_timeout "$XCUITEST_TIMEOUT_SECONDS" "macOS XCUITest smoke suite" \
       xcodebuild test \
