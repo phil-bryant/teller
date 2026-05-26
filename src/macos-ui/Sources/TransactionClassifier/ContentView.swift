@@ -50,12 +50,14 @@ struct ContentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 // #R010: Expose keyboard-first shortcuts for next-unclassified and undo.
-                if selectedTab != .connect {
+                if selectedTab == .matchAndClassify {
                     Button("Next Unclassified") { viewModel.nextUnclassified() }.keyboardShortcut("]", modifiers: .command)
                         .accessibilityIdentifier("next-unclassified-button")
                 }
-                Button("Undo") { Task { await viewModel.undoLast() } }.keyboardShortcut("z", modifiers: .command)
-                    .accessibilityIdentifier("undo-button")
+                if selectedTab == .matchAndClassify {
+                    Button("Undo") { Task { await viewModel.undoLast() } }.keyboardShortcut("z", modifiers: .command)
+                        .accessibilityIdentifier("undo-button")
+                }
             }
         }
         .task {
@@ -222,8 +224,10 @@ private struct MatchAndClassifyTransactionsPane: View {
             .accessibilityIdentifier("transaction-list")
             // #R025: Programmatic selection changes scroll the newly-selected row into view (e.g.,
             // #R025: when the user triggers Next Unclassified via Cmd+]).
+            // #R050: Manual row selection in long lists must not force re-centering and yank scroll.
             .onChange(of: viewModel.selection) { _, newValue in
                 guard let target = newValue.first else { return }
+                guard viewModel.consumePendingScrollSelectionTransactionId() == target else { return }
                 if detectAppLaunchMode() == .uiTesting {
                     scrollTargetId = target
                 } else {
@@ -450,7 +454,7 @@ private struct CandidatesPane: View {
                         }
                     }
                 }
-                Section("Search Mailcart") {
+                Section("Search Email") {
                     TextField("Subject, sender, or keyword", text: $viewModel.mailcartSearchQuery)
                         .textFieldStyle(.roundedBorder)
                         .accessibilityIdentifier("mailcart-search-field")

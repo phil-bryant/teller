@@ -61,8 +61,29 @@ Design: `15_run_macos_ui_regression_tests.sh` must not invoke `./16_verify_macos
 Tests:
 - R050-T01: Grep the script text and verify it contains no `verify_macos_crash_test` substring and no `CRASH_REPORTER_SMOKE` token.
 
+R055  Statement: Match-state dropdown coverage must exercise every selectable filter value.
+Design: XCUITest smoke coverage must select each Match picker option (`All matches`, `Unmatched`, `No email`, `Needs review`, `AI confident`, `Confirmed`, `Overridden`) and assert fixture-backed list behavior per option before restoring the default. The fixture must include at least one transaction for each matched state filter value so each dropdown option is validated by positive row presence checks (not only absence checks).
+Tests:
+- R055-T01: Run the smoke suite Match filter scenario and verify each dropdown value can be selected and yields expected filtered rows.
+
+R060  Statement: Manage Categories tab must not surface Match & Classify-only next-navigation controls.
+Design: `Next Unclassified` and `Undo` are Match & Classify affordances and must be hidden on `Manage Categories` to avoid misleading global-toolbar actions.
+Tests:
+- R060-T01: Open Manage Categories and verify both `next-unclassified-button` and `undo-button` do not exist.
+
+R065  Statement: Connect tab must not expose a non-functional Undo toolbar control.
+Design: Connect workflow does not emit classification undo entries, so the Connect tab must either wire a valid undo path or hide the button; current implementation hides Undo on Connect.
+Tests:
+- R065-T01: Open Connect and verify `undo-button` does not exist.
+
+R070  Statement: Long-list manual transaction selection must avoid unnecessary auto-scroll.
+Design: Smoke coverage must validate that selecting an already-visible deep-list transaction does not trigger jump-to-center recentering, while preserving programmatic scroll behavior for Next Unclassified.
+Tests:
+- R070-T01: Load a long fixture list, verify it requires scrolling to span top-to-bottom rows, scroll to middle-list rows, select one or more visible middle rows, and verify row frame position remains effectively unchanged after each selection.
+
 ## Changelog
 
+- 2026-05-25: Added R055/R060/R065/R070 for full Match filter option coverage, tab-specific toolbar visibility, and long-list manual selection scroll stability.
 - 2026-05-20: Reworked XCUITest lane to a single-session `testMacOSUISmokeSuite` with 12 requirement-driven scenarios; R040/R045 now target scenario-step selection via `XCUITEST_STEPS`.
 - 2026-05-12: Replaced optional crash-reporter lane with R050 isolation requirement; verification is standalone `16_verify_macos_crash_test.sh`.
 - 2026-04-24: Initial requirements for `15_run_macos_ui_regression_tests.sh`.

@@ -91,6 +91,7 @@ final class ClassificationViewModel {
     var matchOverrideNote = ""
     private let api: any ClassificationAPI
     private var suppressAutoApply = false
+    private var pendingScrollSelectionTransactionId: String?
     private var lastLoadedCandidatesTransactionId: String?
     private var mailcartSearchTaskToken: UUID?
     /// Token issued for each in-flight candidate fetch. Late-arriving responses for a transaction
@@ -483,6 +484,11 @@ final class ClassificationViewModel {
         Task { await selectedTransactionDidChange() }
     }
 
+    func consumePendingScrollSelectionTransactionId() -> String? {
+        defer { pendingScrollSelectionTransactionId = nil }
+        return pendingScrollSelectionTransactionId
+    }
+
     func selectedCategoryDidChange(committedCategoryId: Int? = nil) async {
         // #R005: Only send updates for rows whose selected category actually changes.
         if suppressAutoApply || selection.isEmpty { return }
@@ -618,10 +624,15 @@ final class ClassificationViewModel {
         // #R015: Jump selection to the next unclassified transaction for keyboard-first triage.
         guard let idx = transactions.firstIndex(where: { selection.contains($0.transaction_id) }),
               let target = transactions[(idx + 1)...].first(where: { $0.classification == nil }) else {
-            if let first = transactions.first(where: { $0.classification == nil }) { selection = [first.transaction_id]; syncPickerToSelection() }
+            if let first = transactions.first(where: { $0.classification == nil }) {
+                selection = [first.transaction_id]
+                pendingScrollSelectionTransactionId = first.transaction_id
+                syncPickerToSelection()
+            }
             return
         }
         selection = [target.transaction_id]
+        pendingScrollSelectionTransactionId = target.transaction_id
         syncPickerToSelection()
     }
 

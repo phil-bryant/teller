@@ -6,6 +6,10 @@
 // #R020-T01: Traceability anchor.
 // #R025-T01: Traceability anchor.
 // #R030-T01: Traceability anchor.
+// #R050-T01: Traceability anchor.
+// #R055-T01: Traceability anchor.
+// #R060-T01: Traceability anchor.
+// #R065-T01: Traceability anchor.
 // Traceability numbered tags for requirements/macos-ui/TransactionClassifierApp-requirements.md
 // #R035-T01: Traceability anchor.
 // Traceability numbered tags for requirements/macos-ui/ConnectView-requirements.md
@@ -17,7 +21,7 @@ import XCTest
 
 final class TransactionClassifierUITests: XCTestCase {
     private static var app: XCUIApplication!
-    private static let scenarioCount = 26
+    private static let scenarioCount = 29
 
     /// Maximum bounds only; condition polling exits immediately once state is ready.
     private let waitTimeout: TimeInterval = 2
@@ -71,7 +75,7 @@ final class TransactionClassifierUITests: XCTestCase {
             case 1: runMatchAndClassifyShellLoadsScenario()
             case 2: runSearchFilterScenario()
             case 3: runUnclassifiedFilterAutoRefreshScenario()
-            case 4: runMatchStatePickerScenario()
+            case 4: runMatchStatePickerAllValuesScenario()
             case 5: runOnlyUnmovedToggleScenario()
             case 6: runRefreshButtonScenario()
             case 7: runSelectionShowsTransactionIdScenario()
@@ -82,18 +86,21 @@ final class TransactionClassifierUITests: XCTestCase {
             case 12: runUndoRestoresUnclassifiedScenario()
             case 13: runUndoRestoresPriorCategoryScenario()
             case 14: runCandidatesAndEmailPaneScenario()
-            case 15: runMailcartSearchScenario()
+            case 15: runEmailSearchScenario()
             case 16: runMatchActionsScenario()
             case 17: runNextUnclassifiedScrollsIntoViewScenario()
-            case 18: runHelpMenuListsHotkeysScenario()
-            case 19: runConnectTabLoadsConnectionsScenario()
-            case 20: runConnectDeleteCancelScenario()
-            case 21: runConnectDeleteConfirmScenario()
-            case 22: runConnectAddAndEditButtonsScenario()
-            case 23: runConnectTabHidesNextUnclassifiedScenario()
-            case 24: runManageCategoriesLoadAndToolbarScenario()
-            case 25: runManageCategoryEditAndSaveScenario()
-            case 26: runManageCategoryDeleteScenario()
+            case 18: runLongListManualSelectionDoesNotRecenterScenario()
+            case 19: runHelpMenuListsHotkeysScenario()
+            case 20: runConnectTabLoadsConnectionsScenario()
+            case 21: runConnectDeleteCancelScenario()
+            case 22: runConnectDeleteConfirmScenario()
+            case 23: runConnectAddAndEditButtonsScenario()
+            case 24: runConnectTabHidesNextUnclassifiedScenario()
+            case 25: runConnectTabHidesUndoScenario()
+            case 26: runManageCategoriesLoadAndToolbarScenario()
+            case 27: runManageCategoriesHidesNextUnclassifiedScenario()
+            case 28: runManageCategoryEditAndSaveScenario()
+            case 29: runManageCategoryDeleteScenario()
             default: break
             }
         }
@@ -133,10 +140,49 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout))
     }
 
-    private func runMatchStatePickerScenario() {
+    private func runMatchStatePickerAllValuesScenario() {
+        // #R055
         ensureMatchAndClassifyTab()
+        ensureUnclassifiedFilterDisabled()
+        clearSearchField(uiElement("search-field"))
+        ensureAllTransactionsLoadedIntoList()
+
+        selectMatchStateFilter("All matches")
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_004"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_005"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_006"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_007"), timeout: waitTimeout))
+
+        selectMatchStateFilter("Unmatched")
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_003"), timeout: waitTimeout))
+        XCTAssertFalse(uiElement("transaction-row-txn_001").exists)
+        XCTAssertFalse(uiElement("transaction-row-txn_004").exists)
+
+        selectMatchStateFilter("No email")
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_004"), timeout: waitTimeout))
+        XCTAssertFalse(uiElement("transaction-row-txn_001").exists)
+        XCTAssertFalse(uiElement("transaction-row-txn_005").exists)
+
+        selectMatchStateFilter("Needs review")
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_005"), timeout: waitTimeout))
+        XCTAssertFalse(uiElement("transaction-row-txn_001").exists)
+        XCTAssertFalse(uiElement("transaction-row-txn_006").exists)
+
+        selectMatchStateFilter("AI confident")
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_006"), timeout: waitTimeout))
+        XCTAssertFalse(uiElement("transaction-row-txn_001").exists)
+        XCTAssertFalse(uiElement("transaction-row-txn_007").exists)
+
+        selectMatchStateFilter("All matches")
         selectMatchStateFilter("Confirmed")
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout))
+        XCTAssertFalse(uiElement("transaction-row-txn_007").exists)
+
+        selectMatchStateFilter("Overridden")
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_007"), timeout: waitTimeout))
+        XCTAssertFalse(uiElement("transaction-row-txn_001").exists)
+
         selectMatchStateFilter("All matches")
     }
 
@@ -264,6 +310,60 @@ final class TransactionClassifierUITests: XCTestCase {
         )
     }
 
+    private func runLongListManualSelectionDoesNotRecenterScenario() {
+        // #R050
+        ensureMatchAndClassifyTab()
+        ensureUnclassifiedFilterDisabled()
+        ensureAllTransactionsLoadedIntoList()
+        selectMatchStateFilter("All matches")
+
+        let list = app.scrollViews["transaction-list"].firstMatch
+        XCTAssertTrue(list.exists)
+        let firstRow = uiElement("transaction-row-txn_001")
+        XCTAssertTrue(waitForElement(firstRow, timeout: waitTimeout))
+        var scrolledTopRowOutOfView = false
+        for _ in 0..<8 {
+            list.scroll(byDeltaX: 0, deltaY: -700)
+            if !firstRow.isHittable {
+                scrolledTopRowOutOfView = true
+                break
+            }
+        }
+        XCTAssertTrue(
+            scrolledTopRowOutOfView,
+            "Test pre-condition failed: fixture list must be long enough that scrolling is required to traverse the list."
+        )
+
+        let middleRows = ["txn_010", "txn_011"]
+        var middleRowsVisible = false
+        for _ in 0..<10 {
+            if middleRows.allSatisfy({ uiElement("transaction-row-\($0)").exists && uiElement("transaction-row-\($0)").isHittable }) {
+                middleRowsVisible = true
+                break
+            }
+            list.scroll(byDeltaX: 0, deltaY: -550)
+        }
+        XCTAssertTrue(
+            middleRowsVisible,
+            "Test pre-condition failed: expected middle rows to become visible after scrolling."
+        )
+
+        for transactionId in middleRows {
+            let targetRow = uiElement("transaction-row-\(transactionId)")
+            XCTAssertTrue(targetRow.exists && targetRow.isHittable)
+            let beforeY = targetRow.frame.origin.y
+            targetRow.click()
+            assertSelectedTransactionId(transactionId)
+            _ = waitUntil(timeout: waitTimeout) { targetRow.exists }
+            let afterY = targetRow.frame.origin.y
+            XCTAssertLessThanOrEqual(
+                abs(afterY - beforeY),
+                8,
+                "Selecting a visible middle-list row must not auto-recenter the scroll position."
+            )
+        }
+    }
+
     private func runLoadMoreButtonScenario() {
         ensureMatchAndClassifyTab()
         let loadMore = uiElement("load-more-button")
@@ -287,8 +387,10 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertTrue(uiElement("candidates-list").exists)
     }
 
-    private func runMailcartSearchScenario() {
+    private func runEmailSearchScenario() {
+        // #R065
         ensureMatchAndClassifyTab()
+        XCTAssertTrue(app.staticTexts["Search Email"].exists)
         let field = uiElement("mailcart-search-field")
         XCTAssertTrue(field.exists)
         clearField(field)
@@ -358,6 +460,12 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertFalse(nextUnclassifiedControlExists())
     }
 
+    private func runConnectTabHidesUndoScenario() {
+        // #R060 (connect tab)
+        ensureConnectTab()
+        XCTAssertFalse(undoControlExists())
+    }
+
     private func runConnectDeleteCancelScenario() {
         ensureConnectTab()
         XCTAssertTrue(app.staticTexts["inst_beta"].exists)
@@ -405,6 +513,13 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertTrue(waitUntil(timeout: waitTimeout) {
             elementText(uiElement("category-status-text")).contains("Creating a new category")
         })
+    }
+
+    private func runManageCategoriesHidesNextUnclassifiedScenario() {
+        // #R060
+        ensureManageCategoriesTab()
+        XCTAssertFalse(nextUnclassifiedControlExists())
+        XCTAssertFalse(undoControlExists())
     }
 
     private func runManageCategoryEditAndSaveScenario() {
@@ -679,6 +794,10 @@ final class TransactionClassifierUITests: XCTestCase {
 
     private func nextUnclassifiedControlExists() -> Bool {
         uiElement("next-unclassified-button").exists || app.buttons["Next Unclassified"].exists
+    }
+
+    private func undoControlExists() -> Bool {
+        uiElement("undo-button").exists || app.buttons["Undo"].exists
     }
 
     @discardableResult

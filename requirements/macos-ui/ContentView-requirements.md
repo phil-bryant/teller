@@ -30,9 +30,14 @@ Tests:
 - R020-T01: Toggle the Unclassified switch off and on and verify that rows matching the new filter state appear without pressing Refresh.
 
 R025  Statement: Programmatic selection changes scroll the newly-selected row into view.
-Design: The transaction list is wrapped in a `ScrollViewReader` whose proxy calls `scrollTo(firstSelectedId, anchor: .center)` whenever `viewModel.selection` changes, so Next Unclassified (or any model-driven selection update) brings the target row on-screen when it is not already visible.
+Design: The transaction list scroll binding only honors view-model-issued pending scroll targets, so Next Unclassified (or other model-driven navigation updates) brings the target row on-screen while preserving manual click-position stability.
 Tests:
 - R025-T01: With the Unclassified filter off and all fixture pages loaded, scroll the list so the top row is off-screen, trigger Next Unclassified, and verify the newly-selected row becomes hittable in the viewport.
+
+R050  Statement: Manual row selection in long transaction lists must not auto-recenter the list.
+Design: `ContentView` only applies programmatic list scrolling when `ClassificationViewModel` marks a pending scroll target (for keyboard navigation actions such as Next Unclassified). User-initiated row clicks update selection without forcing `.scrollPosition` recentering.
+Tests:
+- R050-T01: With a long loaded list that requires scrolling, navigate to visible middle-list rows, click one or more of those rows, and verify each selected row frame stays effectively stable (no jump-to-center) after selection.
 
 R030  Statement: Detail pane header includes the selected transaction's identifier.
 Design: The detail pane renders `Text("Transaction \(selected.transaction_id)")` as its primary header instead of a generic "Transaction" label so the active transaction identifier is always visible.
@@ -56,6 +61,22 @@ Design: `MatchActionsBar` renders Confirm, Override with this email, Mark no-ema
 Tests:
 - R045-T01: Select a transaction with a human-reviewed match, tap Clear, and verify the row badge returns to unmatched and the button is disabled for transactions with no clearable match.
 
+R055  Statement: Match & Classify toolbar controls must be tab-scoped.
+Design: `Next Unclassified` only renders on the Match & Classify tab to avoid presenting workflow actions in unrelated tabs (such as Manage Categories).
+Tests:
+- R055-T01: Switch to Manage Categories and verify `next-unclassified-button` is absent.
+
+R060  Statement: Connect tab must not expose a misleading Undo action.
+Design: Undo is scoped to Match & Classify interactions and remains hidden on non-classification tabs, including Connect and Manage Categories.
+Tests:
+- R060-T01: Switch to Connect and verify `undo-button` is absent.
+- R060-T02: Switch to Manage Categories and verify `undo-button` is absent.
+
+R065  Statement: The candidates search section uses user-facing copy "Search Email".
+Design: The candidates pane search section title is `Search Email` to match end-user terminology while keeping Mailcart as an implementation detail.
+Tests:
+- R065-T01: Open Match & Classify and verify the candidates pane renders a visible `Search Email` section heading above the search field.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ContentView.swift` from macOS classifier implementation.
@@ -63,3 +84,6 @@ Tests:
 - 2026-05-19: Added R035 (auto-scroll email body to transaction amount).
 - 2026-05-19: Added R040 (category multi-select and bulk delete in Manage Categories).
 - 2026-05-19: Added R045 (Clear match action to the right of Mark no-email).
+- 2026-05-25: Added R050 (manual long-list row selection must not auto-recenter).
+- 2026-05-25: Added R055/R060 for tab-scoped toolbar controls (hide Next Unclassified on Manage Categories, hide Undo on Connect).
+- 2026-05-25: Added R065 (candidates search section title uses `Search Email`).

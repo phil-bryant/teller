@@ -75,17 +75,61 @@ actor UITestingFixtureAPI: ClassificationAPI {
     init(processInfo: ProcessInfo = .processInfo) {
         pageSize = Int(processInfo.environment["TELLER_UI_TEST_PAGE_SIZE"] ?? "2") ?? 2
         matchFixtureEnabled = processInfo.environment["TELLER_UI_TEST_MATCH_FIXTURE"] == "1"
-        if matchFixtureEnabled,
-           let index = rows.firstIndex(where: { $0.transaction_id == Self.matchFixtureTransactionId }) {
-            rows[index].match = TransactionMatchInfo(
-                match_id: Self.matchFixtureMatchId,
-                email_message_id: Self.matchFixtureEmailId,
-                state: "human_confirmed_ai_match",
-                ai_confidence: 0.95,
-                selected_by: "human",
-                moved_to_matchy_at: nil,
-                match_count: 1
-            )
+        if matchFixtureEnabled {
+            let fixtureMatches: [String: TransactionMatchInfo] = [
+                "txn_001": TransactionMatchInfo(
+                    match_id: Self.matchFixtureMatchId,
+                    email_message_id: Self.matchFixtureEmailId,
+                    state: "human_confirmed_ai_match",
+                    ai_confidence: 0.95,
+                    selected_by: "human",
+                    moved_to_matchy_at: nil,
+                    match_count: 1
+                ),
+                "txn_004": TransactionMatchInfo(
+                    match_id: 504,
+                    email_message_id: nil,
+                    state: "ai_no_match_found",
+                    ai_confidence: nil,
+                    selected_by: "human",
+                    moved_to_matchy_at: nil,
+                    match_count: 0
+                ),
+                "txn_005": TransactionMatchInfo(
+                    match_id: 505,
+                    email_message_id: "msg_uncertain_005",
+                    state: "ai_candidate_uncertain",
+                    ai_confidence: 0.54,
+                    selected_by: "ai",
+                    moved_to_matchy_at: nil,
+                    match_count: 1
+                ),
+                "txn_006": TransactionMatchInfo(
+                    match_id: 506,
+                    email_message_id: "msg_confident_006",
+                    state: "ai_match_confident",
+                    ai_confidence: 0.92,
+                    selected_by: "ai",
+                    moved_to_matchy_at: nil,
+                    match_count: 1
+                ),
+                "txn_007": TransactionMatchInfo(
+                    match_id: 507,
+                    email_message_id: "msg_overridden_007",
+                    state: "human_overrode_ai_match",
+                    ai_confidence: nil,
+                    selected_by: "human",
+                    moved_to_matchy_at: nil,
+                    match_count: 1
+                ),
+            ]
+
+            for index in rows.indices {
+                let transactionId = rows[index].transaction_id
+                if let match = fixtureMatches[transactionId] {
+                    rows[index].match = match
+                }
+            }
         }
     }
 
@@ -413,11 +457,24 @@ actor UITestingFixtureAPI: ClassificationAPI {
     }
 
     func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
-        _ = matchState; _ = onlyUnmovedMatch
         let normalizedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedMatchState = matchState.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let filtered = rows.filter { row in
             if onlyUnclassified && row.classification != nil {
                 return false
+            }
+            if onlyUnmovedMatch, let movedAt = row.match?.moved_to_matchy_at, !movedAt.isEmpty {
+                return false
+            }
+            switch normalizedMatchState {
+            case "":
+                break
+            case "unmatched":
+                guard row.match == nil else { return false }
+            case "no_email":
+                guard row.match?.state == "ai_no_match_found" else { return false }
+            default:
+                guard row.match?.state == normalizedMatchState else { return false }
             }
             guard !normalizedSearch.isEmpty else {
                 return true
