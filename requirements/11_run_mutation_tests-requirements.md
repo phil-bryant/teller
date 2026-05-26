@@ -21,7 +21,7 @@ Tests:
 - R005-T01: Remove `teller-venv` and verify missing-interpreter failure guidance.
 
 R010  Statement: Require Python unit tests to pass before mutation testing begins.
-Design: By default skip preflight (`MUTATION_SKIP_PREFLIGHT=true`) and assume `./10_run_python_unit_tests.sh` already passed. When `MUTATION_SKIP_PREFLIGHT=false`, run pytest preflight first and abort on failure.
+Design: Default preflight behavior is environment-sensitive: local runs default to skip (`MUTATION_SKIP_PREFLIGHT=true`), while CI defaults to preflight enabled (`MUTATION_SKIP_PREFLIGHT=false`). When enabled, run pytest preflight first and abort on failure.
 Tests:
 - R010-T01: Force preflight pytest failure and verify abort guidance references `./10_run_python_unit_tests.sh`.
 
@@ -31,12 +31,12 @@ Tests:
 - R015-T01: Stub successful mutmut execution and verify summary/stats reports are written.
 
 R020  Statement: Gate on a configurable minimum mutation score threshold.
-Design: Compute score as `killed / (killed + survived) * 100` and compare against `MUTATION_SCORE_THRESHOLD` (default `90`).
+Design: Compute score as `killed / (killed + survived) * 100` and compare against `MUTATION_SCORE_THRESHOLD` (default `95`).
 Tests:
 - R020-T01: Traceability anchor in shell tests.
 
 R022  Statement: Gate on a configurable minimum mutator coverage threshold.
-Design: Compute mutator coverage as `(killed + survived) / total * 100` and compare against `MUTATOR_COVERAGE_THRESHOLD` (default `70`).
+Design: Compute mutator coverage as `(killed + survived) / total * 100` and compare against `MUTATOR_COVERAGE_THRESHOLD` (default `90`).
 Tests:
 - R022-T01: Traceability anchor in shell tests.
 
@@ -46,7 +46,7 @@ Tests:
 - R025-T01: Traceability anchor in shell tests.
 
 R030  Statement: Persist machine-readable mutation testing report.
-Design: Write `${REPORT_DIR}/mutation-summary.json` with verdict counts, thresholds, failure flags, and module rollups.
+Design: Write `${REPORT_DIR}/mutation-summary.json` with verdict counts, thresholds, failure flags, module rollups, and run metadata (`run_started_at`, `git_sha`, `duration_seconds`).
 Tests:
 - R030-T01: Traceability anchor in shell tests.
 
@@ -59,3 +59,18 @@ R040  Statement: Support timeout to prevent runaway mutation runs.
 Design: Enforce `MUTATION_TIMEOUT_SECONDS` around mutation execution and fail on timeout.
 Tests:
 - R040-T01: Traceability anchor in shell tests.
+
+R045  Statement: Track mutation-quality trend over time.
+Design: Append one JSON line per run to `${MUTATION_HISTORY_PATH:-${REPORT_DIR}/mutation-history.ndjson}` and persist rolling 14-day medians in `${MUTATION_TREND_PATH:-${REPORT_DIR}/mutation-trend.json}`.
+Tests:
+- R045-T01: Traceability anchor in shell tests.
+
+R050  Statement: Enforce strict CI behavior on host incompatibility skips.
+Design: If mutmut execution is skipped because of host/runtime incompatibility, local runs emit a skipped summary and exit 0, but CI (`CI=true|1`) exits non-zero.
+Tests:
+- R050-T01: Traceability anchor in shell tests.
+
+R055  Statement: Support optional survivor budget gating.
+Design: When `MUTATION_SURVIVOR_BUDGET` is set, fail the run if `survived` exceeds the budget.
+Tests:
+- R055-T01: Traceability anchor in shell tests.

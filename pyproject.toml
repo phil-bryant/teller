@@ -19,15 +19,27 @@ packages = ["teller"]
 
 [tool.mutmut]
 paths_to_mutate = ["src/teller/"]
-only_mutate = ["src/teller/teller_classification_api.py", "src/teller/teller_db_profile.py"]
+only_mutate = [
+  "src/teller/teller_classification_api.py",
+  "src/teller/teller_db_profile.py",
+  "src/teller/teller_db.py",
+  "src/teller/teller_persist.py",
+  "src/teller/teller_object.py",
+  "src/teller/teller_mailcart_client.py",
+  "src/teller/teller_base.py",
+  "src/teller/teller_enums.py",
+]
 tests_dir = [
   "tests/py/test_teller_classification_api.py",
   "tests/py/test_teller_db_profile.py",
-  "tests/py/test_teller_properties.py",
-]
-pytest_add_cli_args = ["-p", "no:hypothesis"]
-do_not_mutate = [
-  "src/teller/teller_db.py",
-  "src/teller/teller_persist.py",
-  "src/teller/teller_mailcart_client.py",
+  "tests/py/properties/test_classification_api_properties.py",
+  "tests/py/properties/test_teller_persist_properties.py",
+  "tests/py/properties/test_teller_db_profile_properties.py",
+  "tests/py/properties/test_match_state_machine_properties.py",
+  "tests/py/test_teller_db.py",
+  "tests/py/test_teller_persist.py",
+  "tests/py/test_teller_object.py",
+  "tests/py/test_teller_mailcart_client.py",
+  "tests/py/test_teller_base.py",
+  "tests/py/test_teller_enums.py",
 ]

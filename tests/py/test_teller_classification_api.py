@@ -46,6 +46,11 @@ from sqlalchemy.exc import IntegrityError
 from types import SimpleNamespace
 from unittest.mock import patch
 
+try:
+    from fastapi.testclient import TestClient
+except RuntimeError:
+    TestClient = None
+
 from teller.teller_classification_api import (
     _category_params,
     _create_transaction_match,
@@ -144,6 +149,27 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertIn("/v1/transactions", route_paths)
         self.assertIn("/v1/transactions/{transaction_id}/classification", route_paths)
         self.assertIn("/v1/transactions/classifications", route_paths)
+
+    @unittest.skipIf(TestClient is None, "fastapi testclient optional dependency (httpx) is not installed")
+    def test_health_endpoint_returns_ok_over_http(self):
+        client = TestClient(create_app())
+        response = client.get("/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"ok": True})
+
+    @unittest.skipIf(TestClient is None, "fastapi testclient optional dependency (httpx) is not installed")
+    def test_http_categories_endpoint_requires_write_token(self):
+        client = TestClient(create_app())
+        response = client.get("/v1/categories")
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("Missing write token header", response.json()["detail"])
+
+    @unittest.skipIf(TestClient is None, "fastapi testclient optional dependency (httpx) is not installed")
+    def test_http_category_counts_write_methods_return_405(self):
+        client = TestClient(create_app())
+        response = client.post("/v1/categories/counts")
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.headers.get("allow"), "GET")
 
     def test_display_label_joins_hierarchy(self):
         #R005
@@ -408,8 +434,17 @@ class ClassificationApiTests(unittest.TestCase):
             ]
         )
         get_session_mock.return_value = _SessionContext(session)
-        body = endpoint()
+        body = endpoint(request=self._authorized_request())
         self.assertEqual(body[0].display_label, "EXPENSES > Groceries")
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_categories_endpoint_requires_write_token(self, get_session_mock):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/categories", "GET")
+        get_session_mock.return_value = _SessionContext(_FakeSession(rows=[]))
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(request=SimpleNamespace(headers={}))
+        self.assertEqual(ctx.exception.status_code, 401)
 
     @patch("teller.teller_classification_api.get_session")
     def test_category_counts_includes_zero_assignment_categories(self, get_session_mock):
@@ -447,7 +482,7 @@ class ClassificationApiTests(unittest.TestCase):
             ]
         )
         get_session_mock.return_value = _SessionContext(session)
-        body = endpoint()
+        body = endpoint(request=self._authorized_request())
         self.assertEqual(body[1].assigned_transactions, 0)
 
     @patch("teller.teller_classification_api.get_session")
@@ -531,24 +566,24 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 401)
 
     @patch("teller.teller_classification_api.get_session")
-    def test_transactions_list_endpoint_does_not_require_write_token(self, get_session_mock):
+    def test_transactions_list_endpoint_requires_write_token(self, get_session_mock):
         #R040
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
         session = _FakeSession(rows=[_Result(scalar=0), _Result(rows=[])])
         get_session_mock.return_value = _SessionContext(session)
-        response = endpoint(
-            request=SimpleNamespace(headers={}, query_params={}),
-            search="",
-            status="",
-            only_unclassified=False,
-            match_state="",
-            only_unmoved_match=False,
-            limit=100,
-            offset=0,
-        )
-        self.assertEqual(response.total, 0)
-        self.assertEqual(response.items, [])
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=SimpleNamespace(headers={}, query_params={}),
+                search="",
+                status="",
+                only_unclassified=False,
+                match_state="",
+                only_unmoved_match=False,
+                limit=100,
+                offset=0,
+            )
+        self.assertEqual(ctx.exception.status_code, 401)
 
     @patch("teller.teller_classification_api.get_session")
     def test_update_category_endpoint_404s_for_unknown_id(self, get_session_mock):
@@ -690,6 +725,7 @@ class ClassificationApiTests(unittest.TestCase):
         )
         get_session_mock.return_value = _SessionContext(session)
         request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
             query_params={
                 "search": "cof",
                 "status": "posted",
@@ -919,6 +955,7 @@ class ClassificationApiTests(unittest.TestCase):
         get_session_mock.return_value = _SessionContext(session)
 
         response = endpoint(
+            request=self._authorized_request(),
             state="ai_match_confident",
             only_unmoved=True,
             limit=10,
@@ -1013,10 +1050,16 @@ class _FakeMailcartClient:
 class MatchCandidateProxyTests(unittest.TestCase):
     def setUp(self):
         self._mailcart_patches = []
+        self._token_patch = patch(
+            "teller.teller_classification_api._configured_write_token",
+            return_value="test-write-token",
+        )
+        self._token_patch.start()
 
     def tearDown(self):
         for patcher in self._mailcart_patches:
             patcher.stop()
+        self._token_patch.stop()
 
     def _route_endpoint(self, app, path, method):
         for route in app.routes:
@@ -1028,6 +1071,9 @@ class MatchCandidateProxyTests(unittest.TestCase):
         patcher = patch("teller.teller_classification_api.get_mailcart_client", return_value=client)
         self._mailcart_patches.append(patcher)
         patcher.start()
+
+    def _authorized_request(self):
+        return SimpleNamespace(headers={"x-teller-write-token": "test-write-token"})
 
     @patch("teller.teller_classification_api.get_session")
     def test_list_candidates_returns_latest_run_only_sorted_by_score(self, get_session_mock):
@@ -1061,7 +1107,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
             })
         )
 
-        body = endpoint(transaction_id="txn_42")
+        body = endpoint(request=self._authorized_request(), transaction_id="txn_42")
 
         self.assertEqual([row.email_message_id for row in body], ["msg_high", "msg_low"])
         self.assertEqual(body[0].subject, "Order receipt")
@@ -1097,7 +1143,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
             "msg_1": {"subject": "Hello", "from": "alice@example.com", "snippet": "preview"},
         }))
 
-        body = endpoint(transaction_id="txn_with_one_run")
+        body = endpoint(request=self._authorized_request(), transaction_id="txn_with_one_run")
 
         self.assertEqual(len(body), 1)
         self.assertEqual(body[0].subject, "Hello")
@@ -1126,7 +1172,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
             message_errors={"msg_bad": MailcartError(status_code=502, message="mailcart: upstream returned 500")},
         ))
 
-        body = endpoint(transaction_id="txn_42")
+        body = endpoint(request=self._authorized_request(), transaction_id="txn_42")
 
         self.assertEqual(body[0].subject, "Good")
         self.assertIsNone(body[0].mailcart_error)
@@ -1141,7 +1187,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         session = _FakeSession(rows=[_Result(row=None)])
         get_session_mock.return_value = _SessionContext(session)
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(transaction_id="txn_missing")
+            endpoint(request=self._authorized_request(), transaction_id="txn_missing")
         self.assertEqual(ctx.exception.status_code, 404)
 
     @patch("teller.teller_classification_api.get_session")
@@ -1151,7 +1197,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
         session = _FakeSession(rows=[_Result(row=(1,)), _Result(rows=[])])
         get_session_mock.return_value = _SessionContext(session)
-        body = endpoint(transaction_id="txn_no_candidates")
+        body = endpoint(request=self._authorized_request(), transaction_id="txn_no_candidates")
         self.assertEqual(body, [])
 
     def test_get_message_proxies_body_and_metadata(self):
@@ -1170,7 +1216,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
                 "snippet": "hi",
             }
         }))
-        body = endpoint(email_message_id="msg_42")
+        body = endpoint(request=self._authorized_request(), email_message_id="msg_42")
         self.assertEqual(body.email_message_id, "msg_42")
         self.assertEqual(body.subject, "Receipt")
         self.assertEqual(body.sender, "store@example.com")
@@ -1184,8 +1230,15 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/matchy/messages/{email_message_id}", "GET")
         self._install_mailcart_client(_FakeMailcartClient())
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(email_message_id="msg_missing")
+            endpoint(request=self._authorized_request(), email_message_id="msg_missing")
         self.assertEqual(ctx.exception.status_code, 404)
+
+    def test_get_message_requires_write_token(self):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/{email_message_id}", "GET")
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(request=SimpleNamespace(headers={}), email_message_id="msg_missing")
+        self.assertEqual(ctx.exception.status_code, 401)
 
     def test_get_message_rejects_invalid_identifier(self):
         #R061-T01
@@ -1193,7 +1246,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/matchy/messages/{email_message_id}", "GET")
         self._install_mailcart_client(_FakeMailcartClient())
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(email_message_id="bad id with space")
+            endpoint(request=self._authorized_request(), email_message_id="bad id with space")
         self.assertEqual(ctx.exception.status_code, 400)
 
     def test_search_messages_validates_query_and_proxies_items(self):
@@ -1205,7 +1258,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
             {"email_message_id": "msg_b", "subject": "B", "from": "b@example.com", "received_at": "2026-05-17T13:00:00+00:00", "snippet": "..."},
         ]})
         self._install_mailcart_client(client)
-        body = endpoint(query="amazon receipt", limit=5)
+        body = endpoint(request=self._authorized_request(), query="amazon receipt", limit=5)
         self.assertEqual(body.query, "amazon receipt")
         self.assertEqual([hit.email_message_id for hit in body.items], ["msg_a", "msg_b"])
         self.assertEqual(client.search_calls, [{"query": "amazon receipt", "limit": 5}])
@@ -1216,7 +1269,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
         self._install_mailcart_client(_FakeMailcartClient(search_payload={"not_items": []}))
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(query="q", limit=5)
+            endpoint(request=self._authorized_request(), query="q", limit=5)
         self.assertEqual(ctx.exception.status_code, 502)
 
     def test_search_messages_accepts_real_mailcart_messages_envelope(self):
@@ -1230,7 +1283,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
              "preview": "second", "received_at": "2026-05-17T13:00:00+00:00", "body_text": "second"},
         ]})
         self._install_mailcart_client(client)
-        body = endpoint(query="amazon", limit=5)
+        body = endpoint(request=self._authorized_request(), query="amazon", limit=5)
         self.assertEqual([hit.email_message_id for hit in body.items], ["msg_a", "msg_b"])
         self.assertEqual(body.items[0].sender, "store@example.com")
         self.assertEqual(body.items[0].snippet, "preview text")
@@ -1288,7 +1341,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
                 "body_text": "<p>Thanks!</p>",
             }
         }))
-        body = endpoint(email_message_id="AAMkADk")
+        body = endpoint(request=self._authorized_request(), email_message_id="AAMkADk")
         self.assertEqual(body.email_message_id, "AAMkADk")
         self.assertEqual(body.subject, "Receipt")
         self.assertEqual(body.sender, "store@example.com")
@@ -1323,7 +1376,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
                 "body_text": "Thanks for your order, here are the details...",
             }
         }))
-        body = endpoint(transaction_id="txn_real")
+        body = endpoint(request=self._authorized_request(), transaction_id="txn_real")
         self.assertEqual(body[0].subject, "Order receipt")
         self.assertEqual(body[0].sender, "shop@example.com")
         self.assertEqual(body[0].snippet, "Thanks for your order")
@@ -1405,6 +1458,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         )
         get_session_mock.return_value = _SessionContext(session)
         request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
             query_params={"search": "", "status": "", "only_unclassified": "false",
                           "match_state": "ai_match_confident", "limit": "10", "offset": "0"}
         )
@@ -1438,6 +1492,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         )
         get_session_mock.return_value = _SessionContext(session)
         request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
             query_params={"search": "", "status": "", "only_unclassified": "false",
                           "match_state": "human_confirmed_ai_match", "only_unmoved_match": "true",
                           "limit": "10", "offset": "0"}
@@ -1459,6 +1514,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         session = _FakeSession(rows=[_Result(scalar=0), _Result(rows=[])])
         get_session_mock.return_value = _SessionContext(session)
         request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
             query_params={"search": "", "status": "", "only_unclassified": "false",
                           "match_state": "unmatched", "limit": "10", "offset": "0"}
         )
@@ -1476,6 +1532,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         session = _FakeSession(rows=[_Result(scalar=0), _Result(rows=[])])
         get_session_mock.return_value = _SessionContext(session)
         request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
             query_params={"search": "", "status": "", "only_unclassified": "false",
                           "match_state": "no_email", "limit": "10", "offset": "0"}
         )

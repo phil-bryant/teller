@@ -193,6 +193,28 @@ class ResolveProfileTests(_IsolatedEnvTest):
         profile = resolve_profile()
         self.assertEqual(profile.user, "custom_user")
 
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
+    def test_invalid_port_override_raises_profile_error(self, _mock):
+        self._write_profile_file({
+            "default_profile": "local",
+            "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
+        })
+        os.environ["TELLER_DB_PORT"] = "not-a-number"
+        with self.assertRaises(ProfileError) as ctx:
+            resolve_profile()
+        self.assertIn("TELLER_DB_PORT must be an integer", str(ctx.exception))
+
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
+    def test_invalid_sslmode_override_raises_profile_error(self, _mock):
+        self._write_profile_file({
+            "default_profile": "local",
+            "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
+        })
+        os.environ["TELLER_DB_SSLMODE"] = "bogus"
+        with self.assertRaises(ProfileError) as ctx:
+            resolve_profile()
+        self.assertIn("TELLER_DB_SSLMODE must be one of", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

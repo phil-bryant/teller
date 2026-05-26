@@ -11,6 +11,9 @@
 # #R030-T01: Traceability anchor.
 # #R035-T01: Traceability anchor.
 # #R040-T01: Traceability anchor.
+# #R045-T01: Traceability anchor.
+# #R050-T01: Traceability anchor.
+# #R055-T01: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -44,15 +47,35 @@ fi
 if [ "${1:-}" = "-" ] && [ -f "${2:-}" ]; then
   stats_path="${2:-}"
   summary_path="${3:-}"
+  history_path="${12:-}"
+  trend_path="${13:-}"
+  survivor_budget="${14:-}"
+  survived_count=5
   if [ -n "${summary_path}" ]; then
     cat > "${summary_path}" <<'JSON'
-{"total":100,"killed":90,"survived":10,"score":90.0,"mutator_coverage":100.0,"threshold":90,"coverage_threshold":70,"gate_failed":false,"by_module":{}}
+{"total":100,"killed":95,"survived":5,"score":95.0,"mutator_coverage":100.0,"threshold":95,"coverage_threshold":90,"gate_failed":false,"run_started_at":"2026-05-26T00:00:00Z","git_sha":"deadbee","duration_seconds":12,"by_module":{}}
 JSON
   fi
   [ -f "${stats_path}" ] || cat > "${stats_path}" <<'JSON'
-{"killed":90,"survived":10,"total":100}
+{"killed":95,"survived":5,"total":100}
 JSON
-  echo "✅ PASS: Mutation score 90.00% (threshold 90.0%), mutator coverage 100.00% (threshold 70.0%)."
+  if [ -n "${history_path}" ]; then
+    mkdir -p "$(dirname "${history_path}")"
+    cat > "${history_path}" <<'JSON'
+{"run_started_at":"2026-05-26T00:00:00Z","score":95.0,"mutator_coverage":100.0,"survived":5}
+JSON
+  fi
+  if [ -n "${trend_path}" ]; then
+    mkdir -p "$(dirname "${trend_path}")"
+    cat > "${trend_path}" <<'JSON'
+{"rolling_14d":{"runs":1,"median_score":95.0,"median_mutator_coverage":100.0}}
+JSON
+  fi
+  if [ -n "${survivor_budget}" ] && [ "${survived_count}" -gt "${survivor_budget}" ]; then
+    echo "❌ FAIL: Survived mutants ${survived_count} exceed survivor budget ${survivor_budget}."
+    exit 1
+  fi
+  echo "✅ PASS: Mutation score 95.00% (threshold 95.0%), mutator coverage 100.00% (threshold 90.0%)."
   exit 0
 fi
 if [ "${1:-}" = "-" ] && [[ "${2:-}" =~ ^[0-9]+$ ]]; then
@@ -114,4 +137,88 @@ EOF
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutation-summary.json" ]
   [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutmut-cicd-stats.json" ]
+}
+
+@test "writes run metadata and strict thresholds in mutation summary" {
+  #R020-T01
+  #R022-T01
+  #R030-T01
+  run bash "${FIXTURE_ROOT}/11_run_mutation_tests.sh"
+  [ "$status" -eq 0 ]
+  run python3 - "${FIXTURE_ROOT}/artifacts/mutation/mutation-summary.json" <<'PY'
+import json
+import sys
+payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+assert payload["threshold"] == 95
+assert payload["coverage_threshold"] == 90
+assert "run_started_at" in payload
+assert "git_sha" in payload
+assert "duration_seconds" in payload
+PY
+  [ "$status" -eq 0 ]
+}
+
+@test "persists mutation history and trend artifacts" {
+  #R045-T01
+  run bash "${FIXTURE_ROOT}/11_run_mutation_tests.sh"
+  [ "$status" -eq 0 ]
+  [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutation-history.ndjson" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutation-trend.json" ]
+}
+
+@test "ci mode fails when mutmut runtime is incompatible" {
+  #R050-T01
+  cat > "${FIXTURE_ROOT}/teller-venv/bin/python3" <<'EOF'
+#!/usr/bin/env bash
+if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "--version" ]; then
+  exit 0
+fi
+if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "run" ]; then
+  exit 2
+fi
+if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "export-cicd-stats" ]; then
+  exit 2
+fi
+if [ "${1:-}" = "-" ] && [[ "${2:-}" =~ ^[0-9]+$ ]]; then
+  shift 2
+  exec "$@"
+fi
+exit 0
+EOF
+  chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python3"
+  run env CI=true MUTATION_USE_SUBPROCESS=false bash "${FIXTURE_ROOT}/11_run_mutation_tests.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"CI strict mode"* ]]
+}
+
+@test "local mode records incompatibility as skip" {
+  #R050-T01
+  cat > "${FIXTURE_ROOT}/teller-venv/bin/python3" <<'EOF'
+#!/usr/bin/env bash
+if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "--version" ]; then
+  exit 0
+fi
+if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "run" ]; then
+  exit 2
+fi
+if [ "${1:-}" = "-m" ] && [ "${2:-}" = "mutmut" ] && [ "${3:-}" = "export-cicd-stats" ]; then
+  exit 2
+fi
+if [ "${1:-}" = "-" ] && [[ "${2:-}" =~ ^[0-9]+$ ]]; then
+  shift 2
+  exec "$@"
+fi
+exit 0
+EOF
+  chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python3"
+  run env MUTATION_USE_SUBPROCESS=false bash "${FIXTURE_ROOT}/11_run_mutation_tests.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"SKIP: Mutation testing skipped"* ]]
+}
+
+@test "survivor budget gate fails when survived exceeds budget" {
+  #R055-T01
+  run env MUTATION_SURVIVOR_BUDGET=0 bash "${FIXTURE_ROOT}/11_run_mutation_tests.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Survived mutants 5 exceed survivor budget 0"* ]]
 }
