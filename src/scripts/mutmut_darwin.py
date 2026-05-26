@@ -97,7 +97,6 @@ def _run_mutant_pytest(python: Path, root: Path, mutant_name: str, tests: list[s
     env["VIRTUAL_ENV"] = str(venv)
     env["PATH"] = f"{venv / 'bin'}:{env.get('PATH', '')}"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
-    env.setdefault("PYTEST_ADDOPTS", f"--cache-dir={root / 'artifacts/cache/pytest'}")
     env.setdefault("HYPOTHESIS_STORAGE_DIRECTORY", str(root / "artifacts/cache/hypothesis"))
     pytest_args = [
         str(python),

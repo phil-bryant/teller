@@ -30,6 +30,7 @@ artifacts/venv/security/
 artifacts/cache/
 artifacts/telemetry/lane-summary*
 .ruff_cache/
+.hypothesis/
 .24_run_all_tests_parallel.lock
 src/macos-ui/.swiftpm-run.lock
 src/macos-ui/.swiftpm-run.lock.d/

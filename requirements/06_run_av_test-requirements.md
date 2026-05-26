@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `06_run_av_test.sh`.
+Applies to `tests/t01_run_av_test.sh`.
 
 R001  Statement: Run in strict shell mode and execute from repository root.
 Design: Use `set -euo pipefail`, resolve script directory from `${BASH_SOURCE[0]}`, and `cd` into that directory.

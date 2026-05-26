@@ -10,7 +10,7 @@ From repo root:
 
 ```zsh
 ./04_bootstrap_local_classifier_tls.sh   # first run only (local HTTPS cert/key)
-./21_run_classification_api.py
+./08_run_classification_api.py
 ```
 
 Defaults to **HTTPS** on `127.0.0.1:8787` using `~/.teller/classifier-localhost-cert.pem` and `~/.teller/classifier-localhost-key.pem`.
@@ -56,13 +56,13 @@ Connect is now owned in-process by the app (local file-backed service + native W
 From repo root, the recommended launcher is:
 
 ```zsh
-./24_run_classification_macos-ui.sh
+./09_run_classification_macos-ui.sh
 ```
 
 Profile transaction-list load and first-render timings:
 
 ```zsh
-./24_run_classification_macos-ui.sh --profile
+./09_run_classification_macos-ui.sh --profile
 ```
 
 That command launches this macOS app; open the Connect tab to manage local enrollments.
@@ -106,17 +106,17 @@ On the second launch, the app should detect and persist the pending crash report
 From repo root:
 
 - `./09_run_shell_unit_tests.sh` (API/unit tests)
-- `./15_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
-- `./05_run_av_test.sh` (standalone ClamAV antivirus lane)
-- `./21_classification_persistence_verification_test.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./21_classification_persistence_verification_test.sh --require-env-ids` (strict CI mode)
+- `./tests/t14_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
+- `./tests/t01_run_av_test.sh` (standalone ClamAV antivirus lane)
+- `./tests/t16_classification_persistence_verification_test.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./tests/t16_classification_persistence_verification_test.sh --require-env-ids` (strict CI mode)
 
 ## 5) Automated UI regression testing
 
 Run from repo root:
 
 ```zsh
-./15_run_macos_ui_regression_tests.sh
+./tests/t14_run_macos_ui_regression_tests.sh
 ```
 
 Available gates/flags:
@@ -139,6 +139,6 @@ Snapshot tests live in `Tests/TransactionClassifierSnapshotTests` and validate k
 - save-state indicators
 - Connect tab (ready + error states)
 
-XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` as a **single-session** suite (`testMacOSUISmokeSuite`): one app launch, 12 ordered requirement-driven scenarios (Match & Classify shell, search, unclassified filter, classification/undo, scroll-into-view, Help menu, Connect tab), then one teardown. Optional positional selectors (e.g. `./15_run_macos_ui_regression_tests.sh 3,6`) set `XCUITEST_STEPS` to run a subset within the same session.
+XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` as a **single-session** suite (`testMacOSUISmokeSuite`): one app launch, 12 ordered requirement-driven scenarios (Match & Classify shell, search, unclassified filter, classification/undo, scroll-into-view, Help menu, Connect tab), then one teardown. Optional positional selectors (e.g. `./tests/t14_run_macos_ui_regression_tests.sh 3,6`) set `XCUITEST_STEPS` to run a subset within the same session.
 
 Rollout guidance and gating behavior are captured in `../../requirements/15_run_macos_ui_regression_tests-requirements.md`.

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `17_verify_macos_crash_test.sh`.
+Applies to `tests/t15_verify_macos_crash_test.sh`.
 
 ## Ownership Boundaries
 

@@ -37,6 +37,15 @@ def normalize_package_name(name: str) -> str:
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
+def parse_name_list(value: str) -> set[str]:
+    names: set[str] = set()
+    for part in value.split(","):
+        item = part.strip()
+        if item:
+            names.add(normalize_package_name(item))
+    return names
+
+
 def parse_requirements(requirements_path: Path) -> dict[str, RequirementSpec]:
     specs: dict[str, RequirementSpec] = {}
     for raw_line in requirements_path.read_text(encoding="utf-8").splitlines():
@@ -158,6 +167,21 @@ def make_report(requirements_path: Path) -> dict[str, Any]:
     }
 
 
+def apply_direct_outdated_ignore(report: dict[str, Any], ignored_names: set[str]) -> None:
+    if not ignored_names:
+        return
+    ignored_count = 0
+    for item in report["packages"]:
+        is_ignored = bool(item["in_requirements_txt"] and normalize_package_name(item["name"]) in ignored_names)
+        item["direct_outdated_ignored"] = is_ignored
+        if is_ignored:
+            ignored_count += 1
+    report["summary"]["direct_requirements_outdated_ignored"] = ignored_count
+    report["summary"]["direct_requirements_outdated_blocking"] = (
+        report["summary"]["direct_requirements_outdated"] - ignored_count
+    )
+
+
 def format_report_text(report: dict[str, Any]) -> str:
     summary = report["summary"]
     lines = [
@@ -168,8 +192,15 @@ def format_report_text(report: dict[str, Any]) -> str:
         f"- Patch updates: {summary['patch_updates']}",
         f"- Unknown updates: {summary['unknown_updates']}",
         f"- Outdated entries from requirements.txt: {summary['direct_requirements_outdated']}",
-        "",
     ]
+    if "direct_requirements_outdated_ignored" in summary:
+        lines.append(
+            f"- Outdated direct entries ignored by policy: {summary['direct_requirements_outdated_ignored']}"
+        )
+        lines.append(
+            f"- Outdated direct entries blocking gate: {summary['direct_requirements_outdated_blocking']}"
+        )
+    lines.append("")
 
     packages = report["packages"]
     if not packages:
@@ -180,9 +211,10 @@ def format_report_text(report: dict[str, Any]) -> str:
     for item in packages:
         source = "requirements.txt" if item["in_requirements_txt"] else "transitive"
         pin_state = "pinned" if item["is_exact_pin_in_requirements"] else "not-pinned"
+        policy_note = "; ignored-by-policy" if item.get("direct_outdated_ignored") else ""
         lines.append(
             f"- {item['name']}: {item['current_version']} -> {item['latest_version']} "
-            f"({item['update_type']}; {source}; {pin_state})"
+            f"({item['update_type']}; {source}; {pin_state}{policy_note})"
         )
     return "\n".join(lines) + "\n"
 
@@ -214,6 +246,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Exit non-zero when outdated packages are listed in requirements.txt.",
     )
+    parser.add_argument(
+        "--direct-outdated-ignore",
+        default="",
+        help="Comma-separated package names to ignore for direct-outdated failure gating.",
+    )
     return parser.parse_args()
 
 
@@ -235,6 +272,9 @@ def main() -> int:
         print(f"Failed to collect dependency freshness data: {exc}", file=sys.stderr)
         return 2
 
+    ignored_names = parse_name_list(args.direct_outdated_ignore)
+    apply_direct_outdated_ignore(report, ignored_names)
+
     output_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     text_report = format_report_text(report)
     output_text.write_text(text_report, encoding="utf-8")
@@ -242,7 +282,10 @@ def main() -> int:
 
     if args.fail_on_major and report["summary"]["major_updates"] > 0:
         return 1
-    if args.fail_on_direct_outdated and report["summary"]["direct_requirements_outdated"] > 0:
+    direct_blocking = report["summary"].get(
+        "direct_requirements_outdated_blocking", report["summary"]["direct_requirements_outdated"]
+    )
+    if args.fail_on_direct_outdated and direct_blocking > 0:
         return 1
     return 0
 

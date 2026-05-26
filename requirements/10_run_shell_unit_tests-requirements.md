@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `10_run_shell_unit_tests.sh`.
+Applies to `tests/t07_run_shell_unit_tests.sh`.
 
 ## Ownership Boundaries
 

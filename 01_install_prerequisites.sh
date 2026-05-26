@@ -278,7 +278,7 @@ print_final_guidance() {
     echo "- pg_install source: ${PG_INSTALL_DIR}"
     echo ""
     echo "Optional validation:"
-    echo "- ./17_verify_macos_crash_test.sh"
+    echo "- ./tests/t15_verify_macos_crash_test.sh"
     echo "- ./04_install_classifier_api_tls.sh"
 }
 

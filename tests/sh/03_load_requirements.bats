@@ -93,7 +93,7 @@ EOF
   [ -f "$real_script" ]
   grep -q "DO_NOT_MODIFY_THIS_FILE" "$real_script"
   grep -q "<AI_MODEL_INSTRUCTION>" "$real_script"
-  run bash -c "cd '$(repo_root)' && ./00_run_requirements_traceability_tests.sh requirements/03_load_requirements-requirements.md 03_load_requirements.sh"
+  run bash -c "cd '$(repo_root)' && ./tests/t04_run_requirements_traceability_tests.sh requirements/03_load_requirements-requirements.md 03_load_requirements.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"PASS (locked-policy)"* ]]
 }

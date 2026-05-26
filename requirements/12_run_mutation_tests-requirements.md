@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `12_run_mutation_tests.sh`.
+Applies to `tests/t09_run_mutation_tests.sh`.
 
 ## Ownership Boundaries
 
@@ -21,9 +21,9 @@ Tests:
 - R005-T01: Remove `teller-venv` and verify missing-interpreter failure guidance.
 
 R010  Statement: Require Python unit tests to pass before mutation testing begins.
-Design: Default preflight behavior is environment-sensitive: local runs default to skip (`MUTATION_SKIP_PREFLIGHT=true`), while CI defaults to preflight enabled (`MUTATION_SKIP_PREFLIGHT=false`). When enabled, run pytest preflight first and abort on failure.
+Design: Default preflight behavior is environment-sensitive: local runs default to skip (`MUTATION_SKIP_PREFLIGHT=true`), while CI defaults to preflight enabled (`MUTATION_SKIP_PREFLIGHT=false`). When enabled, run pytest preflight first and abort on failure. Source `export_test_cache_env.sh` before preflight so Hypothesis does not create a root-level `.hypothesis` directory.
 Tests:
-- R010-T01: Force preflight pytest failure and verify abort guidance references `./11_run_python_unit_tests.sh`.
+- R010-T01: Force preflight pytest failure and verify abort guidance references `./tests/t08_run_python_unit_tests.sh`.
 
 R015  Statement: Run mutmut mutation testing across configured teller modules.
 Design: Invoke mutmut from repository root while staging runtime mutant output directly under `${MUTATION_WORK_DIR:-${REPORT_DIR}/mutants}` and copy `mutmut-cicd-stats.json` into `${REPORT_DIR}`.

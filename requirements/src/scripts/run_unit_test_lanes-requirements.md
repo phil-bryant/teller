@@ -43,3 +43,8 @@ R035  Statement: Refuse SQL lane execution when DB profile setup cannot be resol
 Design: Fail fast when DB profile helper execution fails and emit explicit setup diagnostics.
 Tests:
 - R035-T01: Verify SQL lane preflight exits with setup diagnostic when profile exports fail.
+
+R038  Statement: Keep Hypothesis and other Python tool caches out of the repository root.
+Design: Source `export_test_cache_env.sh` at startup and default `HYPOTHESIS_STORAGE_DIRECTORY` to `${CACHE_ROOT}/hypothesis` under `artifacts/cache/`.
+Tests:
+- R038-T01: Verify the helper exports `HYPOTHESIS_STORAGE_DIRECTORY` ending in `artifacts/cache/hypothesis`.

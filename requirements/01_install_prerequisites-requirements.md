@@ -74,10 +74,10 @@ Tests:
 - R045-T01: Inspect script text and verify no embedded secret values.
 
 R050  Statement: Print final readiness guidance for local setup.
-Design: End with success banner and example path references for `../1psa` and `../pg_install`, plus optional PLCrashReporter smoke verification entrypoint (`./17_verify_macos_crash_test.sh`, run separately—not from other numbered scripts).
+Design: End with success banner and example path references for `../1psa` and `../pg_install`, plus optional PLCrashReporter smoke verification entrypoint (`./tests/t15_verify_macos_crash_test.sh`, run separately—not from other numbered scripts).
 Tests:
 - R050-T01: On successful run, verify final message includes `../1psa` and `../pg_install`.
-- R050-T02: On successful run, verify final guidance includes `./17_verify_macos_crash_test.sh`.
+- R050-T02: On successful run, verify final guidance includes `./tests/t15_verify_macos_crash_test.sh`.
 
 R055  Statement: Ensure shell unit-test runner dependency is available.
 Design: Install Homebrew formula `bats-core` and verify `bats` resolves on `PATH`.

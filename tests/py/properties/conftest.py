@@ -7,6 +7,16 @@ from pathlib import Path
 from hypothesis import settings
 from hypothesis.database import DirectoryBasedExampleDatabase
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_DEFAULT_HYPOTHESIS_STORAGE = _REPO_ROOT / "artifacts" / "cache" / "hypothesis"
+
+
+def _hypothesis_storage_directory() -> Path:
+    raw_value = os.environ.get("HYPOTHESIS_STORAGE_DIRECTORY")
+    if raw_value:
+        return Path(raw_value)
+    return _DEFAULT_HYPOTHESIS_STORAGE
+
 
 def _int_from_env(name: str, default: int) -> int:
     raw_value = os.environ.get(name)
@@ -35,14 +45,15 @@ def _deadline_from_env() -> timedelta | None:
 def _load_teller_fuzz_profile() -> None:
     max_examples = _int_from_env("HYPOTHESIS_MAX_EXAMPLES", 100)
     deadline = _deadline_from_env()
-    storage_path = os.environ.get("HYPOTHESIS_STORAGE_DIRECTORY")
+    storage_path = _hypothesis_storage_directory()
+    storage_path.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("HYPOTHESIS_STORAGE_DIRECTORY", str(storage_path))
 
     kwargs: dict[str, object] = {
         "max_examples": max_examples,
         "deadline": deadline,
+        "database": DirectoryBasedExampleDatabase(str(storage_path)),
     }
-    if storage_path:
-        kwargs["database"] = DirectoryBasedExampleDatabase(str(Path(storage_path)))
 
     settings.register_profile("teller_fuzz", **kwargs)
     settings.load_profile("teller_fuzz")

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `22_classification_persistence_verification_test.sh`.
+Applies to `tests/t16_classification_persistence_verification_test.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `zsh` shebang and `set -euo pipefail`.

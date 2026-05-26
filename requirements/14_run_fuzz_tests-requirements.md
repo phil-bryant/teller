@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `14_run_fuzz_tests.sh`.
+Applies to `tests/t11_run_fuzz_tests.sh`.
 
 R001  Statement: Run fuzz tests in strict fail-fast mode from repository root.
 Design: Use `set -euo pipefail`, resolve script directory, and execute pytest with Hypothesis-backed property tests.
@@ -15,7 +15,7 @@ Tests:
 - R005-T01: Remove `teller-venv` and verify missing-interpreter failure guidance.
 
 R010  Statement: Fuzz Python tests with a configurable example budget.
-Design: Default `FUZZ_TEST_PATHS` to `tests/py/properties`, `FUZZ_MAX_EXAMPLES` to `500`, and `FUZZ_DEADLINE_MS` to `1000`. Pass `HYPOTHESIS_MAX_EXAMPLES`, `HYPOTHESIS_DEADLINE`, and `HYPOTHESIS_STORAGE_DIRECTORY` into pytest. Run with `-p hypothesis` and `--hypothesis-show-statistics`.
+Design: Default `FUZZ_TEST_PATHS` to `tests/py/properties`, `FUZZ_MAX_EXAMPLES` to `500`, and `FUZZ_DEADLINE_MS` to `1000`. Source `export_test_cache_env.sh` so `HYPOTHESIS_STORAGE_DIRECTORY` defaults to `artifacts/cache/hypothesis`, then pass `HYPOTHESIS_MAX_EXAMPLES`, `HYPOTHESIS_DEADLINE`, and `HYPOTHESIS_STORAGE_DIRECTORY` into pytest. Run with `-p hypothesis` and `--hypothesis-show-statistics`. Do not use a repository-root `.hypothesis` directory.
 Tests:
 - R010-T01: Traceability anchor in shell tests.
 

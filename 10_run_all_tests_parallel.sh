@@ -8,14 +8,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Keep runtime caches out of the repository root.
-CACHE_ROOT="${CACHE_ROOT:-./artifacts/cache}"
-export PYTHONPYCACHEPREFIX="${PYTHONPYCACHEPREFIX:-${CACHE_ROOT}/pycache}"
-export RUFF_CACHE_DIR="${RUFF_CACHE_DIR:-${CACHE_ROOT}/ruff}"
-export HYPOTHESIS_STORAGE_DIRECTORY="${HYPOTHESIS_STORAGE_DIRECTORY:-${CACHE_ROOT}/hypothesis}"
-if [[ "${PYTEST_ADDOPTS:-}" != *"--cache-dir="* ]]; then
-  export PYTEST_ADDOPTS="${PYTEST_ADDOPTS:+${PYTEST_ADDOPTS} }--cache-dir=${CACHE_ROOT}/pytest"
-fi
-mkdir -p "$PYTHONPYCACHEPREFIX" "$RUFF_CACHE_DIR" "$HYPOTHESIS_STORAGE_DIRECTORY" "${CACHE_ROOT}/pytest"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/src/scripts/export_test_cache_env.sh"
+export_test_cache_env "$SCRIPT_DIR"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/src/scripts/normalize_pytest_addopts.sh"
 
 #R010: Discover numbered check scripts dynamically by basename from tests/.
 SELF_SCRIPT_BASENAME="$(basename "${BASH_SOURCE[0]}")"

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `15_run_swift_unit_tests.sh`.
+Applies to `tests/t10_run_swift_unit_tests.sh`.
 
 ## Ownership Boundaries
 

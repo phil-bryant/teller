@@ -35,6 +35,7 @@ This inventory classifies root-level path assumptions discovered in scripts, tes
 ## Generated/cache paths under artifacts
 
 - `__pycache__`, `artifacts/cache/pytest`, `artifacts/cache/ruff`, `artifacts/cache/hypothesis`, `artifacts/cache/egg-info/teller.egg-info`
+- Hypothesis must not use a repository-root `.hypothesis/` directory. Defaults come from `src/scripts/export_test_cache_env.sh`, `tests/py/conftest.py`, and the teller venv `activate` hook installed by `02_create_venv.sh`.
 - Runtime cache/report/venv outputs are expected under `artifacts/`:
   - `artifacts/security`
   - `artifacts/parallel`

@@ -12,30 +12,30 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
 - `04_install_classifier_api_tls.sh`
-- `05_run_dependency_freshness_tests.sh`
-- `06_run_av_test.sh`
-- `07_run_static_security_tests.sh`
-- `08_deploy_database.sh`
-- `09_deploy_database_verification_test.sh` (includes updated_at trigger coverage verification)
-- `10_run_shell_unit_tests.sh`
-- `11_run_python_unit_tests.sh`
-- `12_run_mutation_tests.sh`
-- `13_run_sql_unit_tests.sh`
-- `14_run_fuzz_tests.sh`
-- `15_run_swift_unit_tests.sh`
-- `16_run_macos_ui_regression_tests.sh` (recommended pre-merge gate)
-- `17_verify_macos_crash_test.sh`
-- `18_run_teller_api_smoke_tests.sh`
-- `19_fetch_teller_api_data.py`
-- `20_backfill_bank_statements.py`
-- `20_run_classification_api.py`
-- `21_run_classification_api.py` (compatibility alias)
-- `22_classification_persistence_verification_test.sh`
-- `23_run_dynamic_security_tests.sh`
-- `24_run_classification_macos-ui.sh`
-- `25_run_all_tests_parallel.sh`
-- `26_report_quality_trends.sh`
-- `27_validate_quality_target.sh`
+- `tests/t02_run_dependency_freshness_tests.sh`
+- `tests/t01_run_av_test.sh`
+- `tests/t03_run_static_security_tests.sh`
+- `05_deploy_database.sh`
+- `tests/t05_deploy_database_verification_test.sh` (includes updated_at trigger coverage verification)
+- `tests/t07_run_shell_unit_tests.sh`
+- `tests/t08_run_python_unit_tests.sh`
+- `tests/t09_run_mutation_tests.sh`
+- `tests/t06_run_sql_unit_tests.sh`
+- `tests/t11_run_fuzz_tests.sh`
+- `tests/t10_run_swift_unit_tests.sh`
+- `tests/t14_run_macos_ui_regression_tests.sh` (recommended pre-merge gate)
+- `tests/t15_verify_macos_crash_test.sh`
+- `tests/t13_run_teller_api_smoke_tests.sh`
+- `06_fetch_teller_api_data.py`
+- `07_backfill_bank_statements.py`
+- `08_run_classification_api.py`
+- `08_run_classification_api.py` (compatibility alias)
+- `tests/t16_classification_persistence_verification_test.sh`
+- `tests/t12_run_dynamic_security_tests.sh`
+- `09_run_classification_macos-ui.sh`
+- `10_run_all_tests_parallel.sh`
+- `11_report_quality_trends.sh`
+- `12_validate_quality_target.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -53,33 +53,33 @@ From the project root:
 source ./teller-venv/bin/activate
 ./03_load_requirements.sh
 ./04_install_classifier_api_tls.sh
-./05_run_dependency_freshness_tests.sh
-./06_run_av_test.sh
-./07_run_static_security_tests.sh
+./tests/t02_run_dependency_freshness_tests.sh
+./tests/t01_run_av_test.sh
+./tests/t03_run_static_security_tests.sh
 mkdir -p config/local
 cp config/db-profiles-EXAMPLE.json config/db-profiles.json
 # Edit config/db-profiles.json default_profile / 1psa_or_env_item for your environment.
-./08_deploy_database.sh
-./09_deploy_database_verification_test.sh
-./10_run_shell_unit_tests.sh
-./11_run_python_unit_tests.sh
-./12_run_mutation_tests.sh
-./13_run_sql_unit_tests.sh
-./14_run_fuzz_tests.sh
-./15_run_swift_unit_tests.sh
-./16_run_macos_ui_regression_tests.sh
-./17_verify_macos_crash_test.sh
-./18_run_teller_api_smoke_tests.sh
-./19_fetch_teller_api_data.py
-./20_backfill_bank_statements.py
-./20_run_classification_api.py
-./22_classification_persistence_verification_test.sh
-./23_run_dynamic_security_tests.sh
-./24_run_classification_macos-ui.sh
-./25_run_all_tests_parallel.sh
+./05_deploy_database.sh
+./tests/t05_deploy_database_verification_test.sh
+./tests/t07_run_shell_unit_tests.sh
+./tests/t08_run_python_unit_tests.sh
+./tests/t09_run_mutation_tests.sh
+./tests/t06_run_sql_unit_tests.sh
+./tests/t11_run_fuzz_tests.sh
+./tests/t10_run_swift_unit_tests.sh
+./tests/t14_run_macos_ui_regression_tests.sh
+./tests/t15_verify_macos_crash_test.sh
+./tests/t13_run_teller_api_smoke_tests.sh
+./06_fetch_teller_api_data.py
+./07_backfill_bank_statements.py
+./08_run_classification_api.py
+./tests/t16_classification_persistence_verification_test.sh
+./tests/t12_run_dynamic_security_tests.sh
+./09_run_classification_macos-ui.sh
+./10_run_all_tests_parallel.sh
 ```
 
-Before `./08_deploy_database.sh`, ensure PostgreSQL is installed and running for your selected profile target (for local runs, start your local server/service first).
+Before `./05_deploy_database.sh`, ensure PostgreSQL is installed and running for your selected profile target (for local runs, start your local server/service first).
 
 ## Repository Layout
 
@@ -105,7 +105,7 @@ Python backend layer
   - Main flows:
     * Ingest: 18_fetch_teller_api_data.py
     * Backfill: 19_backfill_bank_statements.py
-    * API: 20_run_classification_api.py -> src/teller/teller_classification_api.py
+    * API: 08_run_classification_api.py -> src/teller/teller_classification_api.py
 
 Data/persistence layer
   - PostgreSQL (local or managed profile via db profile config)
@@ -148,7 +148,7 @@ PR-fast profile (recommended default):
 
 ```bash
 source ./teller-venv/bin/activate
-./00_run_requirements_traceability_tests.sh
+./tests/t04_run_requirements_traceability_tests.sh
 ./09_run_shell_unit_tests.sh
 ./10_run_python_unit_tests.sh
 ./12_run_sql_unit_tests.sh
@@ -192,13 +192,13 @@ Dependency freshness automation runs via `04_run_dependency_freshness_tests.sh`.
 Verifies every requirement ID in `requirements/**/*-requirements.md` is mapped to matching `#R...` tags in referenced source files.
 
 ```bash
-./00_run_requirements_traceability_tests.sh
+./tests/t04_run_requirements_traceability_tests.sh
 ```
 
 Optional single-pair mode:
 
 ```bash
-./00_run_requirements_traceability_tests.sh requirements/21_classification_persistence_verification_test-requirements.md 21_classification_persistence_verification_test.sh
+./tests/t04_run_requirements_traceability_tests.sh requirements/22_classification_persistence_verification_test-requirements.md tests/t16_classification_persistence_verification_test.sh
 ```
 
 ### 2) Unit Tests
@@ -219,6 +219,8 @@ python3 -m unittest discover tests/py
 ```
 
 Shell tests (`tests/sh`) run via `bats` in lane `10`. See `tests/sh/README.md` for stubbing conventions and scope boundaries.
+
+Hypothesis and other Python tool caches live under `artifacts/cache/` (not a root-level `.hypothesis/`). Test runners source `src/scripts/export_test_cache_env.sh`; activating `teller-venv` inside this repo does the same via `bin/activate`.
 
 ### 2b) Fuzz Tests
 
@@ -283,7 +285,7 @@ The verifier auto-starts the API by default if `/health` is unavailable (`CLASSI
 1. Start the API in one terminal (optional):
 
 ```bash
-./20_run_classification_api.py
+./08_run_classification_api.py
 ```
 
 1. Run the verifier:
@@ -298,13 +300,13 @@ Strict/CI-style mode requiring explicit IDs:
 TXN_ID=txn_xxx CATEGORY_ID=123 ./21_classification_persistence_verification_test.sh --require-env-ids
 ```
 
-Mutation endpoints require a write token from the `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` (checked by `20_run_classification_api.py`).
+Mutation endpoints require a write token from the `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` (checked by `08_run_classification_api.py`).
 
 ### 4) Built-In Smoke Verifications in Setup Scripts
 
 These checks run as part of existing app/setup workflows:
 
-- `./24_run_classification_macos-ui.sh`
+- `./09_run_classification_macos-ui.sh`
   - Builds and launches the native macOS app; Connect tab owns enrollment add/reconnect/delete and token persistence.
   - Connect setup smoke checks are handled in-app by `TellerSetupService` (`GET /institutions`, and optionally `GET /accounts` when token is present).
 
@@ -509,7 +511,7 @@ Active secret and credential sources are:
   - Runs Teller API client operations.
 - `19_backfill_bank_statements.py`
   - Backfills statements data.
-- `20_run_classification_api.py`
+- `08_run_classification_api.py`
   - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
   - Requires `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` before serving.
 - `21_classification_persistence_verification_test.sh`
@@ -517,7 +519,7 @@ Active secret and credential sources are:
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `22_run_dynamic_security_tests.sh`
   - Runs DAST checks (Schemathesis + OWASP ZAP quick scan and related hardening checks) against running/local API targets.
-- `24_run_classification_macos-ui.sh`
+- `09_run_classification_macos-ui.sh`
   - Builds and launches `src/macos-ui/.build/debug/TransactionClassifier` from the repo root.
   - Connect tab hosts native Teller Connect enrollment/reconnect/add/delete (WebView-backed, no standalone localhost server).
 - `24_run_all_tests_parallel.sh`
@@ -642,7 +644,7 @@ Local app-based enrollment and token refresh:
 After completing Teller Connect in the native app, the returned token is saved under `~/.teller`:
 
 ```bash
-./24_run_classification_macos-ui.sh
+./09_run_classification_macos-ui.sh
 ```
 
 Connect behavior:
@@ -783,10 +785,10 @@ macOS UI action
 #### Local Runtime Topology (processes, ports, configs)
 
 ```text
-TransactionClassifier (SwiftUI app, launched by 24_run_classification_macos-ui.sh)
+TransactionClassifier (SwiftUI app, launched by 09_run_classification_macos-ui.sh)
   -> talks to FastAPI at TELLER_CLASSIFIER_API_URL (default https://127.0.0.1:8787)
 
-20_run_classification_api.py (FastAPI)
+08_run_classification_api.py (FastAPI)
   -> binds TELLER_CLASSIFIER_API_HOST/PORT (default 127.0.0.1:8787)
   -> requires 1psa-backed TELLER_CLASSIFIER_WRITE_TOKEN before serving
   -> defaults to HTTPS with local cert/key (explicit HTTP override only via TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true)
@@ -855,7 +857,7 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │ Main flows:                                                                  │
  │   - Ingest: 18_fetch_teller_api_data.py                                      │
  │   - Backfill: 19_backfill_bank_statements.py                                 │
- │   - API: 20_run_classification_api.py -> src/teller/teller_classification_api.py │
+ │   - API: 08_run_classification_api.py -> src/teller/teller_classification_api.py │
  └───────────────────────────────┬──────────────────────────────────────────────┘
                                  |
                                  v
@@ -1013,7 +1015,7 @@ Trust boundaries:
                          └───────────────┬───────────────┘                       │
                                          │ enrollment.disconnected               │
                                          └───────────────────────────────────────┘
-                                                        launches 24_run_classification_macos-ui.sh
+                                                        launches 09_run_classification_macos-ui.sh
 ```
 
 Token and credential lifecycle notes:
@@ -1067,7 +1069,7 @@ Trust/authz boundaries:
 │         │  POST /v1/transactions/classifications (write path)           │    │
 │         v                                                               │    │
 │  ┌────────────────────────────────────────────────────────────────────┐ │    │
-│  │ FastAPI app (`20_run_classification_api.py` -> `create_app`)       │ │    │
+│  │ FastAPI app (`08_run_classification_api.py` -> `create_app`)       │ │    │
 │  │                                                                    │ │    │
 │  │ 1) Startup preflight: resolve `TELLER_CLASSIFIER_WRITE_TOKEN`      │ │    │
 │  │    from 1psa before serving mutation traffic.                      │ │    │
@@ -1188,14 +1190,14 @@ Why: Helpful for debugging "what should be running" and "where config comes from
 │  App/UI process                                                                            │
 │  ┌──────────────────────────────────────────────────────────┐                              │
 │  │ SwiftUI app: TransactionClassifier                       │                              │
-│  │ launcher: 24_run_classification_macos-ui.sh              │                              │
+│  │ launcher: 09_run_classification_macos-ui.sh              │                              │
 │  │ Connect runs in-process (no localhost Connect server)    │                              │
 │  └───────────────────────────────┬──────────────────────────┘                              │
 │                                  │ HTTP: TELLER_CLASSIFIER_API_URL                         │
 │                                  │ default https://127.0.0.1:8787                          │
 │                                  v                                                         │
 │  API process                     ┌───────────────────────────────────────────────────────┐ │
-│  ┌───────────────────────────────│ FastAPI: 20_run_classification_api.py                 │ │
+│  ┌───────────────────────────────│ FastAPI: 08_run_classification_api.py                 │ │
 │  │                               │ bind env: TELLER_CLASSIFIER_API_HOST/PORT             │ │
 │  │                               │ defaults: 127.0.0.1:8787                              │ │
 │  │                               │ startup gate: requires 1psa item                      │ │

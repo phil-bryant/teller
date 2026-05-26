@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `05_run_dependency_freshness_tests.sh`.
+Applies to `tests/t02_run_dependency_freshness_tests.sh`.
 
 ## Ownership Boundaries
 

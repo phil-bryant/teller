@@ -4,7 +4,7 @@ load "helpers/common.bash"
 # Minimal OpenAPI/health server for DAST (stdlib only, no Teller/FastAPI deps).
 write_dast_14_stub() {
   local root="$1"
-  cat > "${root}/21_run_classification_api.py" <<'PY'
+  cat > "${root}/08_run_classification_api.py" <<'PY'
 #!/usr/bin/env python3
 import http.server
 import os
@@ -31,7 +31,7 @@ if __name__ == "__main__":
   with socketserver.TCPServer((host, port), H) as s:
     s.serve_forever()
 PY
-  chmod +x "${root}/21_run_classification_api.py"
+  chmod +x "${root}/08_run_classification_api.py"
 }
 
 write_macos_ui_regression_stub() {

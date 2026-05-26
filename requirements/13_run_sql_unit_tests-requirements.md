@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `13_run_sql_unit_tests.sh`.
+Applies to `tests/t06_run_sql_unit_tests.sh`.
 
 ## Ownership Boundaries
 

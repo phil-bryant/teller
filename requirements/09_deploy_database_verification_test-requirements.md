@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `09_deploy_database_verification_test.sh`.
+Applies to `tests/t05_deploy_database_verification_test.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `zsh` shebang and `set -euo pipefail`.
@@ -25,7 +25,7 @@ Tests:
 - R015-T01: Force empty password and verify output starts with `❌ FAIL:` and script exits non-zero.
 
 R020  Statement: Verify required deployed database objects exist.
-Design: Check for required roles/schema/core relations deployed by `08_deploy_database.sh` and report missing objects.
+Design: Check for required roles/schema/core relations deployed by `05_deploy_database.sh` and report missing objects.
 Tests:
 - R020-T01: Drop or rename one required object in a test DB and verify it appears in failure output.
 

@@ -50,6 +50,11 @@ Design: Output `activate` command hint in terminal.
 Tests:
 - R040-T01: Verify output includes activation guidance string.
 
+R038  Statement: Wire test-cache environment into the virtualenv activate script.
+Design: After create (and on idempotent re-run), append a teller-marked block to `bin/activate` that sources `export_test_cache_env.sh` when the activated shell is inside this repository.
+Tests:
+- R038-T01: Verify `bin/activate` contains the teller test-cache marker after venv creation.
+
 ## Changelog
 
 - 2026-04-19: Initial reverse-engineered requirements for `02_create_venv.sh`.

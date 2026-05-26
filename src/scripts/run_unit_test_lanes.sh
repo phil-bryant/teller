@@ -8,14 +8,11 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 cd "$REPO_ROOT"
 
 # Keep runtime caches out of the repository root.
-CACHE_ROOT="${CACHE_ROOT:-./artifacts/cache}"
-export PYTHONPYCACHEPREFIX="${PYTHONPYCACHEPREFIX:-${CACHE_ROOT}/pycache}"
-export RUFF_CACHE_DIR="${RUFF_CACHE_DIR:-${CACHE_ROOT}/ruff}"
-export HYPOTHESIS_STORAGE_DIRECTORY="${HYPOTHESIS_STORAGE_DIRECTORY:-${CACHE_ROOT}/hypothesis}"
-if [[ "${PYTEST_ADDOPTS:-}" != *"--cache-dir="* ]]; then
-  export PYTEST_ADDOPTS="${PYTEST_ADDOPTS:+${PYTEST_ADDOPTS} }--cache-dir=${CACHE_ROOT}/pytest"
-fi
-mkdir -p "$PYTHONPYCACHEPREFIX" "$RUFF_CACHE_DIR" "$HYPOTHESIS_STORAGE_DIRECTORY" "${CACHE_ROOT}/pytest"
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/src/scripts/export_test_cache_env.sh"
+export_test_cache_env "$REPO_ROOT"
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/src/scripts/normalize_pytest_addopts.sh"
 
 # Optional runner controls for local development.
 RUN_SHELL_TESTS="${RUN_SHELL_TESTS:-true}"

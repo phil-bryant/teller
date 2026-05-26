@@ -31,7 +31,33 @@ create_repo_fixture() {
 
 copy_script_to_fixture() {
   local script_name="$1"
-  cp "$(repo_root)/${script_name}" "${FIXTURE_ROOT}/${script_name}"
+  local mapped_script_name="$script_name"
+  case "$script_name" in
+    06_run_av_test.sh) mapped_script_name="t01_run_av_test.sh" ;;
+    05_run_dependency_freshness_tests.sh) mapped_script_name="t02_run_dependency_freshness_tests.sh" ;;
+    07_run_static_security_tests.sh) mapped_script_name="t03_run_static_security_tests.sh" ;;
+    00_run_requirements_traceability_tests.sh) mapped_script_name="t04_run_requirements_traceability_tests.sh" ;;
+    09_deploy_database_verification_test.sh) mapped_script_name="t05_deploy_database_verification_test.sh" ;;
+    13_run_sql_unit_tests.sh) mapped_script_name="t06_run_sql_unit_tests.sh" ;;
+    10_run_shell_unit_tests.sh) mapped_script_name="t07_run_shell_unit_tests.sh" ;;
+    11_run_python_unit_tests.sh) mapped_script_name="t08_run_python_unit_tests.sh" ;;
+    12_run_mutation_tests.sh) mapped_script_name="t09_run_mutation_tests.sh" ;;
+    15_run_swift_unit_tests.sh) mapped_script_name="t10_run_swift_unit_tests.sh" ;;
+    14_run_fuzz_tests.sh) mapped_script_name="t11_run_fuzz_tests.sh" ;;
+    23_run_dynamic_security_tests.sh) mapped_script_name="t12_run_dynamic_security_tests.sh" ;;
+    18_run_teller_api_smoke_tests.sh) mapped_script_name="t13_run_teller_api_smoke_tests.sh" ;;
+    16_run_macos_ui_regression_tests.sh) mapped_script_name="t14_run_macos_ui_regression_tests.sh" ;;
+    17_verify_macos_crash_test.sh) mapped_script_name="t15_verify_macos_crash_test.sh" ;;
+    22_classification_persistence_verification_test.sh) mapped_script_name="t16_classification_persistence_verification_test.sh" ;;
+  esac
+  local source_path
+  source_path="$(repo_root)/${script_name}"
+  if [[ ! -f "$source_path" && -f "$(repo_root)/tests/${script_name}" ]]; then
+    source_path="$(repo_root)/tests/${script_name}"
+  elif [[ ! -f "$source_path" && -f "$(repo_root)/tests/${mapped_script_name}" ]]; then
+    source_path="$(repo_root)/tests/${mapped_script_name}"
+  fi
+  cp "$source_path" "${FIXTURE_ROOT}/${script_name}"
   chmod +x "${FIXTURE_ROOT}/${script_name}"
 }
 

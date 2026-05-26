@@ -46,6 +46,12 @@ fi
 
 #R030: Keep venv creation idempotent.
 if [ -d "$VENV_DIR" ]; then
+    INSTALL_CACHE_ENV_SCRIPT="${SCRIPT_DIR}/src/scripts/install_venv_test_cache_env.sh"
+    if [[ -f "$INSTALL_CACHE_ENV_SCRIPT" ]]; then
+        # shellcheck disable=SC1091
+        source "$INSTALL_CACHE_ENV_SCRIPT"
+        install_venv_test_cache_env "$VENV_DIR"
+    fi
     echo "✓ Virtual environment already exists: $VENV_DIR"
     echo ""
     echo "To activate the virtual environment, run:"
@@ -56,6 +62,14 @@ fi
 #R035: Create venv with selected interpreter.
 echo "Creating virtual environment..."
 "$PYTHON_BIN" -m venv "$VENV_DIR"
+
+#R038: Keep Hypothesis/pytest/ruff caches out of the repository root after activation.
+INSTALL_CACHE_ENV_SCRIPT="${SCRIPT_DIR}/src/scripts/install_venv_test_cache_env.sh"
+if [[ -f "$INSTALL_CACHE_ENV_SCRIPT" ]]; then
+    # shellcheck disable=SC1091
+    source "$INSTALL_CACHE_ENV_SCRIPT"
+    install_venv_test_cache_env "$VENV_DIR"
+fi
 
 #R040: Print activation guidance after successful runs.
 echo "✓ Created virtual environment: $VENV_DIR"

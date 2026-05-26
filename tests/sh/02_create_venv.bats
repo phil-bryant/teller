@@ -6,6 +6,11 @@ setup() {
   unset VIRTUAL_ENV
   create_repo_fixture
   copy_script_to_fixture "02_create_venv.sh"
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  cp "$(repo_root)/src/scripts/export_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh"
+  cp "$(repo_root)/src/scripts/install_venv_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/install_venv_test_cache_env.sh"
+  touch "${FIXTURE_ROOT}/pyproject.toml"
+  mkdir -p "${FIXTURE_ROOT}/tests/py"
 }
 
 teardown() {
@@ -37,6 +42,7 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"Created virtual environment"* ]]
   [ -f "${FIXTURE_ROOT}/fixture-venv/bin/activate" ]
+  grep -Fq '# >>> teller test cache env >>>' "${FIXTURE_ROOT}/fixture-venv/bin/activate"
 }
 
 @test "refuses to run while another virtualenv is active" {

@@ -40,7 +40,7 @@ teardown() {
   [[ "$output" == *"[1psa] Available on PATH"* ]]
   [[ "$output" == *"[pg_install] Repository present"* ]]
   [[ "$output" == *"[mkcert] Available on PATH"* ]]
-  [[ "$output" == *"./17_verify_macos_crash_test.sh"* ]]
+  [[ "$output" == *"./tests/t15_verify_macos_crash_test.sh"* ]]
 }
 
 @test "clones pg_install when missing" {

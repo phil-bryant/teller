@@ -18,7 +18,9 @@ packages = ["teller"]
 "" = "src"
 
 [tool.pytest.ini_options]
+minversion = "6.0"
 cache_dir = "artifacts/cache/pytest"
+# Hypothesis example DB: artifacts/cache/hypothesis (see tests/py/conftest.py and export_test_cache_env.sh)
 
 [tool.ruff]
 cache-dir = "artifacts/cache/ruff"

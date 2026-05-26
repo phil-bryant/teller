@@ -204,8 +204,8 @@ def run_fallback_checks() -> dict[str, Any]:
     source_files = [
         Path("src/macos-ui/Sources/TransactionClassifier/TellerSetupService.swift"),
         Path("src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift"),
-        Path("24_run_classification_macos-ui.sh"),
-        Path("19_fetch_teller_api_data.py"),
+        Path("09_run_classification_macos-ui.sh"),
+        Path("06_fetch_teller_api_data.py"),
     ]
     endpoint_markers = ["/institutions", "/accounts", "/identity"]
     for source_path in source_files:

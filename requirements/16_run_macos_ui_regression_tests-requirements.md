@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `16_run_macos_ui_regression_tests.sh`.
+Applies to `tests/t14_run_macos_ui_regression_tests.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` in the script entrypoint.
@@ -57,7 +57,7 @@ Tests:
 - R045-T01: Run `16_run_macos_ui_regression_tests.sh 99` and verify the script exits non-zero with an unknown-scenario-number error and does not call `xcodebuild`.
 
 R050  Statement: Do not chain macOS crash-reporter verification from this UI regression runner.
-Design: `16_run_macos_ui_regression_tests.sh` must not invoke `./17_verify_macos_crash_test.sh`, reference `verify_macos_crash_test`, or define `RUN_CRASH_REPORTER_SMOKE_TEST`. Run PLCrashReporter verification via `./17_verify_macos_crash_test.sh` as a separate step when needed.
+Design: `tests/t14_run_macos_ui_regression_tests.sh` must not invoke `./tests/t15_verify_macos_crash_test.sh`, reference `verify_macos_crash_test`, or define `RUN_CRASH_REPORTER_SMOKE_TEST`. Run PLCrashReporter verification via `./tests/t15_verify_macos_crash_test.sh` as a separate step when needed.
 Tests:
 - R050-T01: Grep the script text and verify it contains no `verify_macos_crash_test` substring and no `CRASH_REPORTER_SMOKE` token.
 

@@ -110,7 +110,7 @@ EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python3"
   run env MUTATION_SKIP_PREFLIGHT=false bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"./11_run_python_unit_tests.sh"* ]]
+  [[ "$output" == *"./tests/t08_run_python_unit_tests.sh"* ]]
 }
 
 @test "writes mutation summary and stats on success" {

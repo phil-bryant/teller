@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `18_run_teller_api_smoke_tests.sh`.
+Applies to `tests/t13_run_teller_api_smoke_tests.sh`.
 
 ## Ownership Boundaries
 
