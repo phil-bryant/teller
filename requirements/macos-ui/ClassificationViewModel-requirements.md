@@ -45,7 +45,7 @@ Tests:
 - R035-T01: Select a transaction with an active human-reviewed match, invoke `clearSelectedMatch()`, and verify the clear API is called and the row no longer carries match metadata after reload.
 - R035-T02: Select a transaction with no active match and verify `canClearSelectedMatch` is false.
 
-R040  Statement: Debounce Mailcart search in the candidates pane and surface results or errors.
+R040  Statement: Debounce email search in the candidates pane and surface results or errors.
 Design: `searchMailcartIfNeeded()` trims the query, debounces non-empty input (~250ms), calls `searchMessages(query:limit:)`, and updates `mailcartSearchResults` / `mailcartSearchErrorText`. An empty query clears results and errors.
 Tests:
 - R040-T01: Set a non-empty `mailcartSearchQuery`, await search, and verify results populate from the API response.
@@ -57,4 +57,4 @@ Tests:
 - 2026-04-23: Added R025 to default the Unclassified filter to enabled on initial load.
 - 2026-05-19: Added R030 (bulk category delete from category editor selection).
 - 2026-05-19: Added R035 (clear human-reviewed match back to unmatched).
-- 2026-05-19: Added R040 (debounced Mailcart search in candidates pane).
+- 2026-05-19: Added R040 (debounced email search in candidates pane).
