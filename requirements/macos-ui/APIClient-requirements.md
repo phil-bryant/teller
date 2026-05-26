@@ -5,9 +5,18 @@
 Applies to `src/macos-ui/Sources/TransactionClassifier/APIClient.swift`.
 
 R001  Statement: Fetch categories and paginated transactions from the local classifier API.
-Design: `ClassificationAPI` exposes `fetchCategories(...)` and `fetchTransactions(...)`, and `APIClient` resolves base URL from `TELLER_CLASSIFIER_API_URL` with secure localhost default (`https://127.0.0.1:8787`, or explicit `TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true` override).
+Design: `ClassificationAPI` exposes `fetchCategories(...)` and `fetchTransactions(...)`, and `APIClient` resolves base URL from `TELLER_CLASSIFIER_API_URL` with secure localhost default (`https://127.0.0.1:8787`, or explicit `TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true` override). Default `URLSession` pins the local classifier cert from `TELLER_CLASSIFIER_TLS_CERT_FILE` (default `~/.teller/classifier-localhost-cert.pem`) for loopback HTTPS hosts.
 Tests:
 - R001-T01: Call both read methods and verify requests target `/v1/categories` and `/v1/transactions` with expected query parameters.
+
+R020  Statement: Trust the installed local classifier TLS cert for loopback HTTPS API calls.
+Design: `LocalClassifierTLS` resolves the cert path from `TELLER_CLASSIFIER_TLS_CERT_FILE` with default `~/.teller/classifier-localhost-cert.pem`, and `LocalClassifierTLSSessionDelegate` anchors server trust to that cert for loopback HTTPS hosts only.
+Tests:
+- R020-T01: Verify default cert path resolves to `~/.teller/classifier-localhost-cert.pem`.
+- R020-T02: Verify `TELLER_CLASSIFIER_TLS_CERT_FILE` overrides the default cert path.
+- R020-T03: Verify loopback host detection accepts localhost and loopback IP forms.
+- R020-T04: Verify pinning applies only to loopback HTTPS URLs.
+- R020-T05: Verify the installed default cert PEM loads as a `SecCertificate`.
 
 R005  Statement: Submit classification changes in batch form.
 Design: `saveClassifications(...)` encodes `ClassificationBatchRequest` and posts it to `/v1/transactions/classifications`.
@@ -50,4 +59,4 @@ Tests:
 - 2026-05-19: Added R050 (clear-match mutation client methods).
 - 2026-05-19: Added R062 (email search client method for Match & Classify).
 - 2026-05-23: Added `R010-T02` test traceability mapping.
-- 2026-05-25: Updated R001/R045 for HTTPS-by-default local API URLs and auth header injection on all API requests.
+- 2026-05-26: Added R020 for loopback HTTPS pinning against the local classifier TLS cert.

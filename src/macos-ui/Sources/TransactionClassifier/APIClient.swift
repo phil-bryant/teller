@@ -293,6 +293,9 @@ actor APIClient: ClassificationAPI {
         return try JSONDecoder().decode(T.self, from: data)
     }
 
+    private static let tlsSessionDelegate = LocalClassifierTLSSessionDelegate()
+    private static let tlsSessionDelegateQueue = OperationQueue()
+
     private static func makeDefaultSession() -> URLSession {
         let config = URLSessionConfiguration.default
         if let proxyURLString = ProcessInfo.processInfo.environment["TELLER_CLASSIFIER_HTTP_PROXY"],
@@ -308,7 +311,11 @@ actor APIClient: ClassificationAPI {
                 kCFNetworkProxiesHTTPSPort as String: port,
             ]
         }
-        return URLSession(configuration: config)
+        return URLSession(
+            configuration: config,
+            delegate: tlsSessionDelegate,
+            delegateQueue: tlsSessionDelegateQueue
+        )
     }
 
     private static func defaultBaseURL() -> URL {
