@@ -1316,7 +1316,8 @@ if [[ "$RUN_SAST" == "true" ]]; then
   echo "▶ Running Bandit"
   # Distinguish scanner findings from scanner execution failures.
   set +e
-  bandit -r ./teller -c "$BANDIT_CONFIG_PATH" -f json -o "${REPORT_DIR}/bandit.json"
+  bandit -r ./src/teller ./tests/py ./18_fetch_teller_api_data.py ./19_backfill_bank_statements.py ./20_run_classification_api.py \
+    -c "$BANDIT_CONFIG_PATH" -f json -o "${REPORT_DIR}/bandit.json"
   BANDIT_EXIT=$?
   set -e
   if [[ "$BANDIT_EXIT" -gt 1 ]]; then

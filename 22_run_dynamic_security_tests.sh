@@ -247,6 +247,41 @@ run_zap_quick_scan() {
   fi
 }
 
+summarize_zap_html_report() {
+  local html_report="$1"
+  local summary_json="$2"
+  python3 - <<'PY' "$html_report" "$summary_json"
+import json
+import pathlib
+import re
+import sys
+
+html_path = pathlib.Path(sys.argv[1])
+summary_path = pathlib.Path(sys.argv[2])
+content = html_path.read_text(encoding="utf-8", errors="replace") if html_path.exists() else ""
+
+def extract_count(risk_code: str) -> int:
+    pattern = (
+        r'class="risk-' + re.escape(risk_code) + r'".*?'
+        r'<td[^>]*>\s*<div>\s*([0-9]+)\s*</div>'
+    )
+    match = re.search(pattern, content, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return 0
+    return int(match.group(1))
+
+summary = {
+    "high": extract_count("3"),
+    "medium": extract_count("2"),
+    "low": extract_count("1"),
+    "informational": extract_count("0"),
+}
+summary["total"] = summary["high"] + summary["medium"] + summary["low"] + summary["informational"]
+summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+print(json.dumps(summary))
+PY
+}
+
 read_classifier_write_token() {
   # Resolve DAST write token from env when present, else 1psa.
   local write_token="${TELLER_CLASSIFIER_WRITE_TOKEN:-}"
@@ -760,7 +795,12 @@ import urllib.request
 openapi_url, base_url, out_path, write_token, matchy_seed_path, dast_run_id = sys.argv[1:7]
 
 def fetch_json(url: str):
-    with urllib.request.urlopen(url, timeout=20) as resp:
+    req = urllib.request.Request(
+        url,
+        headers={"X-Teller-Write-Token": write_token},
+        method="GET",
+    )
+    with urllib.request.urlopen(req, timeout=20) as resp:
         return json.load(resp)
 
 def post_json(url: str, payload: dict):
@@ -1108,9 +1148,7 @@ seed_payload = {
 
 def request_json(method: str, url: str, body=None):
     data = None if body is None else json.dumps(body).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
-    if method != "GET":
-        headers["X-Teller-Write-Token"] = write_token
+    headers = {"Content-Type": "application/json", "X-Teller-Write-Token": write_token}
     req = urllib.request.Request(
         url,
         data=data,
@@ -1213,9 +1251,12 @@ PY
 
   local run_schemathesis="${RUN_SCHEMATHESIS:-true}"
   local run_zap="${RUN_ZAP:-true}"
+  local schemathesis_mode="${SCHEMATHESIS_MODE:-all}"
   local reuse_existing_api="${DAST_REUSE_EXISTING_API:-${MACOS_UI_DAST_REUSE_EXISTING_API:-false}}"
   local run_token_capture_dast="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
   local fail_on_high_critical="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
+  local zap_fail_threshold="${SECURITY_ZAP_FAIL_THRESHOLD:-high}"
+  local zap_fail_threshold_normalized=""
   local dast_write_token
   dast_write_token="$(read_classifier_write_token)"
   local zap_cli_cmd="${ZAP_CLI_CMD:-/Applications/ZAP.app/Contents/MacOS/ZAP.sh}"
@@ -1360,6 +1401,7 @@ PY
     echo "▶ Reusing existing classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
   else
     echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
+    TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true \
     TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
       "$dast_app_python" "./20_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
     classifier_api_pid="$!"
@@ -1398,18 +1440,34 @@ PY
       "$dast_write_token" \
       "$dast_run_id" \
       | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
+    local schemathesis_raw_log="${report_dir_abs}/schemathesis-raw.log"
     set +e
     schemathesis run "$schemathesis_location" \
       --url "$base_url" \
       --header "X-Teller-Write-Token: ${dast_write_token}" \
-      --mode positive \
+      --mode "$schemathesis_mode" \
       --seed "$schemathesis_seed" \
       --max-examples "$schemathesis_max_examples" \
       --report junit \
       --report-junit-path "${report_dir_abs}/schemathesis-junit.xml" \
-      | tee "${report_dir_abs}/schemathesis.log"
-    SCHEMATHESIS_EXIT=${PIPESTATUS[0]}
+      > "$schemathesis_raw_log" 2>&1
+    SCHEMATHESIS_EXIT=$?
     set -e
+    python3 - <<'PY' "$schemathesis_raw_log" "${report_dir_abs}/schemathesis.log" "$dast_write_token"
+import pathlib
+import sys
+
+raw_path = pathlib.Path(sys.argv[1])
+output_path = pathlib.Path(sys.argv[2])
+secret = sys.argv[3]
+
+content = raw_path.read_text(encoding="utf-8", errors="replace")
+if secret:
+    content = content.replace(secret, "[REDACTED]")
+output_path.write_text(content, encoding="utf-8")
+print(content, end="")
+PY
+    rm -f "$schemathesis_raw_log"
     if [[ "$SCHEMATHESIS_EXIT" -gt 1 ]]; then
       echo "❌ Schemathesis failed to execute."
       exit 1
@@ -1450,6 +1508,10 @@ PY
       "${report_dir_abs}/zap-classification.log" \
       "$zap_quick_proxy_host" \
       "$zap_quick_proxy_port"
+    summarize_zap_html_report \
+      "${report_dir_abs}/zap-classification.html" \
+      "${report_dir_abs}/zap-classification-summary.json" \
+      > "${report_dir_abs}/zap-classification-summary.log"
   fi
 
   # Support optional token-capture DAST coverage with auto-detection.
@@ -1468,44 +1530,55 @@ PY
     echo "ℹ️  Token capture Dynamic Application Security Testing (DAST) skipped."
   fi
 
-  local high_alerts=0
-  local alerts
-  for zap_json in "${report_dir_abs}/zap-classification.json" "${report_dir_abs}/zap-token-capture.json"; do
-    if [[ -f "$zap_json" ]]; then
-      alerts="$(python3 - <<'PY' "$zap_json"
-import json, sys
-path = sys.argv[1]
-with open(path, "r", encoding="utf-8") as fh:
+  local zap_summary_json="${report_dir_abs}/zap-classification-summary.json"
+  local zap_high_alerts=0
+  local zap_medium_alerts=0
+  local zap_low_alerts=0
+  local zap_info_alerts=0
+  if [[ -f "$zap_summary_json" ]]; then
+    read -r zap_high_alerts zap_medium_alerts zap_low_alerts zap_info_alerts < <(
+      python3 - <<'PY' "$zap_summary_json"
+import json
+import sys
+with open(sys.argv[1], "r", encoding="utf-8") as fh:
     payload = json.load(fh)
-count = 0
-if isinstance(payload, dict) and isinstance(payload.get("site"), list):
-    for site in payload.get("site", []):
-        for alert in site.get("alerts", []):
-            try:
-                risk = int(alert.get("riskcode", "-1"))
-            except ValueError:
-                risk = -1
-            if risk >= 3:
-                count += 1
-elif isinstance(payload, dict) and isinstance(payload.get("alerts"), list):
-    for alert in payload.get("alerts", []):
-        risk = str(alert.get("risk", "")).lower()
-        if risk in {"high", "critical"}:
-            count += 1
-print(count)
+print(
+    int(payload.get("high", 0)),
+    int(payload.get("medium", 0)),
+    int(payload.get("low", 0)),
+    int(payload.get("informational", 0)),
+)
 PY
-)"
-      high_alerts=$((high_alerts + alerts))
-    fi
-  done
-
-  if [[ ! -f "${report_dir_abs}/zap-classification.json" ]] && [[ ! -f "${report_dir_abs}/zap-token-capture.json" ]]; then
-    echo "ℹ️  ZAP CLI quick scan produced HTML/log output only; JSON alert parsing skipped."
+    )
   fi
 
-  echo "Dynamic Application Security Testing (DAST) high/critical alert count: ${high_alerts}"
-  if [[ "$fail_on_high_critical" == "true" ]] && (( high_alerts > 0 )); then
-    echo "❌ Dynamic Application Security Testing (DAST) gate failed: High/Critical ZAP alerts detected."
+  zap_fail_threshold_normalized="$(printf '%s' "$zap_fail_threshold" | tr '[:upper:]' '[:lower:]')"
+  local threshold_count=0
+  case "$zap_fail_threshold_normalized" in
+    critical|high)
+      threshold_count=$zap_high_alerts
+      ;;
+    medium)
+      threshold_count=$((zap_high_alerts + zap_medium_alerts))
+      ;;
+    low)
+      threshold_count=$((zap_high_alerts + zap_medium_alerts + zap_low_alerts))
+      ;;
+    informational|info)
+      threshold_count=$((zap_high_alerts + zap_medium_alerts + zap_low_alerts + zap_info_alerts))
+      ;;
+    none)
+      threshold_count=0
+      ;;
+    *)
+      echo "❌ Invalid SECURITY_ZAP_FAIL_THRESHOLD=${zap_fail_threshold}. Use one of: none, high, medium, low, informational."
+      exit 1
+      ;;
+  esac
+
+  echo "Dynamic Application Security Testing (DAST) ZAP summary: high=${zap_high_alerts} medium=${zap_medium_alerts} low=${zap_low_alerts} informational=${zap_info_alerts}"
+  if [[ "$fail_on_high_critical" == "true" && "$zap_fail_threshold_normalized" != "none" ]] && (( threshold_count > 0 )); then
+    echo "❌ Dynamic Application Security Testing (DAST) gate failed: ZAP findings meet/exceed threshold '${zap_fail_threshold}'."
     exit 1
   fi
 

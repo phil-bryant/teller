@@ -5,7 +5,7 @@
 Applies to `src/macos-ui/Sources/TransactionClassifier/APIClient.swift`.
 
 R001  Statement: Fetch categories and paginated transactions from the local classifier API.
-Design: `ClassificationAPI` exposes `fetchCategories(...)` and `fetchTransactions(...)`, and `APIClient` resolves base URL from `TELLER_CLASSIFIER_API_URL` with localhost default.
+Design: `ClassificationAPI` exposes `fetchCategories(...)` and `fetchTransactions(...)`, and `APIClient` resolves base URL from `TELLER_CLASSIFIER_API_URL` with secure localhost default (`https://127.0.0.1:8787`, or explicit `TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true` override).
 Tests:
 - R001-T01: Call both read methods and verify requests target `/v1/categories` and `/v1/transactions` with expected query parameters.
 
@@ -26,10 +26,10 @@ Tests:
 - R040-T01: Create a category and verify POST `/v1/categories` returns the created `CategoryOption`.
 - R040-T02: Update and delete a category and verify PUT/DELETE requests hit `/v1/categories/{id}` and decode typed responses.
 
-R045  Statement: Resolve classifier write token from 1psa for mutation authentication.
-Design: `APIClient` resolves write token using `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, sends it as `X-Teller-Write-Token` on all non-GET requests, and emits explicit error when token resolution fails.
+R045  Statement: Resolve classifier write token from 1psa for API authentication.
+Design: `APIClient` resolves write token using `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, sends it as `X-Teller-Write-Token` on all requests (GET and non-GET), and emits explicit error when token resolution fails.
 Tests:
-- R045-T01: Trigger non-GET calls and verify `X-Teller-Write-Token` header is attached.
+- R045-T01: Trigger GET and non-GET calls and verify `X-Teller-Write-Token` header is attached.
 - R045-T02: Simulate missing token and verify explicit missing-token client error.
 
 R050  Statement: Support clearing a human-reviewed match from the macOS Match & Classify UI.
@@ -37,7 +37,7 @@ Design: `ClassificationAPI` declares `clearMatch(matchId:)` and `clearTransactio
 Tests:
 - R050-T01: Call both clear methods and verify PUT targets the expected paths and decodes the response.
 
-R062  Statement: Proxy Mailcart search from the Match & Classify candidates pane.
+R062  Statement: Proxy email search from the Match & Classify candidates pane.
 Design: `ClassificationAPI` declares `searchMessages(query:limit:)`; `APIClient` issues GET `/v1/matchy/messages/search?query=...&limit=...` and decodes `{query, items: [EmailSearchHit]}`.
 Tests:
 - R062-T01: Call `searchMessages` and verify the request targets `/v1/matchy/messages/search` with query parameters and decodes the search envelope.
@@ -48,5 +48,6 @@ Tests:
 - 2026-04-24: Added `R040` to document category create/update/delete API client support.
 - 2026-05-09: Added `R045` for 1psa-only write-token resolution and mutation header injection.
 - 2026-05-19: Added R050 (clear-match mutation client methods).
-- 2026-05-19: Added R062 (Mailcart search client method for Match & Classify).
+- 2026-05-19: Added R062 (email search client method for Match & Classify).
 - 2026-05-23: Added `R010-T02` test traceability mapping.
+- 2026-05-25: Updated R001/R045 for HTTPS-by-default local API URLs and auth header injection on all API requests.

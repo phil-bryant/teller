@@ -280,12 +280,10 @@ actor APIClient: ClassificationAPI {
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Accept")
-        if method != "GET" {
-            if writeToken.isEmpty {
-                throw APIError.missingWriteToken
-            }
-            req.setValue(writeToken, forHTTPHeaderField: "X-Teller-Write-Token")
+        if writeToken.isEmpty {
+            throw APIError.missingWriteToken
         }
+        req.setValue(writeToken, forHTTPHeaderField: "X-Teller-Write-Token")
         if let body { req.httpBody = body; req.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
@@ -314,7 +312,10 @@ actor APIClient: ClassificationAPI {
     }
 
     private static func defaultBaseURL() -> URL {
-        let baseURLString = ProcessInfo.processInfo.environment["TELLER_CLASSIFIER_API_URL"] ?? "http://127.0.0.1:8787"
+        let env = ProcessInfo.processInfo.environment
+        let allowInsecureHTTP = (env["TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP"] ?? "").lowercased() == "true"
+        let defaultURL = allowInsecureHTTP ? "http://127.0.0.1:8787" : "https://127.0.0.1:8787"
+        let baseURLString = env["TELLER_CLASSIFIER_API_URL"] ?? defaultURL
         if let parsedURL = URL(string: baseURLString) {
             return parsedURL
         }

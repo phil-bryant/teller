@@ -100,6 +100,7 @@ final class APIClientTests: XCTestCase {
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/categories")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
             let response = try self.makeHTTPResponse(for: request, statusCode: 200)
             let body = """
             [{"nys_snw_category_id":101,"level_1":null,"level_1_name":null,"level_2":null,"level_2_name":null,"level_3":null,"level_4":null,"categorization":"Dining","applicability":null,"display_label":"Dining"}]
@@ -118,6 +119,7 @@ final class APIClientTests: XCTestCase {
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/transactions")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
             guard let requestURL = request.url,
                   let components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false) else {
                 throw APIError.invalidResponse
@@ -262,6 +264,7 @@ final class APIClientTests: XCTestCase {
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/matchy/messages/search")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
             guard let requestURL = request.url,
                   let components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false) else {
                 throw APIError.invalidResponse

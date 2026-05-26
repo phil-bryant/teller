@@ -4,10 +4,10 @@ python-dotenv==1.2.2
 requests==2.34.2
 urllib3==2.7.0
 structlog==25.5.0
-psycopg2-binary
+psycopg2-binary==2.9.12
 sqlalchemy==2.0.50
 starlette==1.1.0
 idna==3.16
 pydantic==2.13.4
-hypothesis==6.152.10
+hypothesis==6.152.9
 mutmut==3.5.0

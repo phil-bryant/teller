@@ -173,7 +173,44 @@ python3 -m unittest discover tests/py
 
 Shell tests (`tests/sh`) run via `bats` in lane `09`. See `tests/sh/README.md` for stubbing conventions and scope boundaries.
 
-### 2b) macOS UI Regression Tests
+### 2b) Fuzz Tests
+
+Run dedicated property/stateful fuzz tests:
+
+```bash
+./13_run_fuzz_tests.sh
+```
+
+The fuzz lane defaults to `tests/py/properties` and writes machine-readable telemetry to `artifacts/fuzz/fuzz-summary.json`.
+
+Useful flags:
+
+- `FUZZ_TEST_PATHS=tests/py/properties` (default; path or glob accepted by pytest)
+- `FUZZ_MAX_EXAMPLES=500` (default per-property budget)
+- `FUZZ_DEADLINE_MS=1000` (default Hypothesis deadline in ms; set `0` to disable)
+- `FUZZ_TIMEOUT_SECONDS=300` (default lane timeout)
+- `FUZZ_MIN_PROPERTY_TESTS=2` (default minimum collected property tests)
+- `FUZZ_MIN_TOTAL_EXAMPLES=<int>` (default derived from `FUZZ_MIN_PROPERTY_TESTS * FUZZ_MAX_EXAMPLES * 80%`)
+- `FUZZ_REPORT_DIR=./artifacts/fuzz` (summary + replay log output root)
+- `HYPOTHESIS_STORAGE_DIRECTORY=./artifacts/cache/hypothesis` (example database path)
+
+Recommended profiles:
+
+- PR-fast profile:
+
+```bash
+FUZZ_MAX_EXAMPLES=100 FUZZ_TIMEOUT_SECONDS=180 ./13_run_fuzz_tests.sh
+```
+
+- Nightly-deep profile:
+
+```bash
+FUZZ_MAX_EXAMPLES=500 FUZZ_TIMEOUT_SECONDS=600 ./13_run_fuzz_tests.sh
+```
+
+On failure, the lane saves the most recent replayable run log at `artifacts/fuzz/fuzz-failure-last.log`.
+
+### 2c) macOS UI Regression Tests
 
 Runs deterministic snapshot tests and macOS XCUITest smoke flows for `macos-ui`.
 
@@ -258,7 +295,24 @@ Useful flags:
 - `DAST_REUSE_EXISTING_API=true|false` (default `false`; reuse already-running classification API instead of starting one)
 - `SECURITY_FAIL_ON_HIGH_CRITICAL=true|false` (default `true`)
 - `RUN_TOKEN_CAPTURE_DAST=true|false|auto` (default `auto`)
+- `RUN_SCHEMATHESIS=true|false` (default `true`)
+- `SCHEMATHESIS_SEED=424242` (default deterministic seed)
+- `SCHEMATHESIS_MAX_EXAMPLES=25` (default API fuzz depth per operation)
 - ShellCheck runs automatically in SAST mode and writes `shellcheck.json` into the report directory.
+
+Recommended DAST profiles:
+
+- PR-fast profile:
+
+```bash
+RUN_DAST=true RUN_ZAP=false SCHEMATHESIS_MAX_EXAMPLES=10 ./22_run_dynamic_security_tests.sh
+```
+
+- Nightly-deep profile:
+
+```bash
+RUN_DAST=true RUN_ZAP=true SCHEMATHESIS_MAX_EXAMPLES=100 ./22_run_dynamic_security_tests.sh
+```
 
 ### 5b) Antivirus Scanning (ClamAV)
 
@@ -421,6 +475,7 @@ Active secret and credential sources are:
 - `24_run_all_tests_parallel.sh`
   - Runs local parallel quality/security gate lanes and aggregates reports under `artifacts/parallel/`.
   - Includes traceability, dependency freshness, Teller smoke checks, AV, SAST, DB verify, unit tests, UI regression, crash reporter, and classification persistence checks.
+  - Inherits caller environment for child lanes, so fuzz profile knobs (`FUZZ_*`, `SCHEMATHESIS_*`, `RUN_ZAP`) can be set once before invoking `24`.
 - `97_backup_database.sh`
   - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
   - Also captures matching cluster globals (roles/grants) for reliable restores.
@@ -671,7 +726,7 @@ Token lifecycle notes:
 macOS UI action
   -> POST /v1/transactions/classifications
   -> FastAPI app startup resolves TELLER_CLASSIFIER_WRITE_TOKEN from 1psa
-  -> _require_write_access enforces X-Teller-Write-Token on mutation routes
+  -> shared auth guard enforces X-Teller-Write-Token on all /v1 routes
   -> Pydantic validates payload
   -> SQLAlchemy persists to teller.transaction_nys_snw_category
   -> 21_classification_persistence_verification_test.sh confirms API->DB write/read
@@ -681,11 +736,12 @@ macOS UI action
 
 ```text
 TransactionClassifier (SwiftUI app, launched by 23_run_classification_macos-ui.sh)
-  -> talks to FastAPI at TELLER_CLASSIFIER_API_URL (default http://127.0.0.1:8787)
+  -> talks to FastAPI at TELLER_CLASSIFIER_API_URL (default https://127.0.0.1:8787)
 
 20_run_classification_api.py (FastAPI)
   -> binds TELLER_CLASSIFIER_API_HOST/PORT (default 127.0.0.1:8787)
-  -> requires 1psa-backed TELLER_CLASSIFIER_WRITE_TOKEN for mutation startup gate
+  -> requires 1psa-backed TELLER_CLASSIFIER_WRITE_TOKEN before serving
+  -> defaults to HTTPS with local cert/key (explicit HTTP override only via TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true)
   -> persists via SQLAlchemy to profile-resolved PostgreSQL target
 
 Optional Mailcart proxy target defaults to http://127.0.0.1:8788
@@ -716,7 +772,7 @@ with the `MAILCART_SERVICE_BASE_URL` environment variable (the same name matchy 
 - Bearer token is optional and read from `MAILCART_SERVICE_TOKEN`; it is only attached when
 set. Mailcart does not validate it. The Microsoft Graph token Mailcart uses internally is
 managed by Mailcart itself (cached at `~/.cache/mailcart/graph_oauth.json`, refreshed on 401).
-- Teller exposes three read-only proxy/aggregation endpoints (no write token required):
+- Teller exposes three read-only proxy/aggregation endpoints (write token required, like all `/v1/*` routes):
 `GET /v1/matchy/transactions/{transaction_id}/candidates`,
 `GET /v1/matchy/messages/{email_message_id}`,
 `GET /v1/matchy/messages/search`. Each endpoint maps Mailcart's
@@ -806,6 +862,26 @@ SECURITY STACK
   SAST: semgrep, bandit, pip-audit, detect-secrets, gitleaks, shellcheck, swiftlint
   DAST: schemathesis, OWASP ZAP
   AV  : ClamAV
+
+SECURITY SCORECARD (10/10 EXIT GATE)
+=====================================
+
+- Authentication boundary: all classifier `/v1/*` routes require `X-Teller-Write-Token` (resolved from `1psa`).
+- Transport defaults: classifier API defaults to HTTPS localhost and refuses non-local bind unless explicitly overridden.
+- SAST coverage: Semgrep, Bandit (scoped to `src/teller`, `tests/py`, and core entry scripts), pip-audit, detect-secrets, gitleaks, ShellCheck, SwiftLint.
+- DAST coverage: Schemathesis (`SCHEMATHESIS_MODE=all` by default) plus ZAP quick scan with machine-readable severity summary.
+- ZAP gate policy: threshold-driven fail behavior via `SECURITY_ZAP_FAIL_THRESHOLD` (`high` default; `none|high|medium|low|informational`).
+- CI enforcement: required PR security workflow at `.github/workflows/security-pr.yml`; scheduled deep security workflow at `.github/workflows/security-nightly.yml`.
+- Dependency hygiene: `requirements.txt` is fully pinned (including `psycopg2-binary==2.9.12`).
+
+SECURITY RUNBOOK (LOCAL COMPROMISE RESPONSE)
+============================================
+
+1. Rotate `TELLER_CLASSIFIER_WRITE_TOKEN` in 1psa and restart classifier services.
+2. Rotate Teller dashboard credentials/tokens in `~/.teller` contexts as needed.
+3. Re-run `22_run_dynamic_security_tests.sh` and `06_run_static_security_tests.sh`.
+4. Confirm clean artifacts under `artifacts/security` and `artifacts/security-dast`.
+5. Require green CI (`security-pr`) before merging any recovery changes.
 
 
 HIGH-LEVEL FLOW
@@ -1068,7 +1144,7 @@ Why: Helpful for debugging "what should be running" and "where config comes from
 │  │ Connect runs in-process (no localhost Connect server)    │                              │
 │  └───────────────────────────────┬──────────────────────────┘                              │
 │                                  │ HTTP: TELLER_CLASSIFIER_API_URL                         │
-│                                  │ default http://127.0.0.1:8787                           │
+│                                  │ default https://127.0.0.1:8787                          │
 │                                  v                                                         │
 │  API process                     ┌───────────────────────────────────────────────────────┐ │
 │  ┌───────────────────────────────│ FastAPI: 20_run_classification_api.py                 │ │

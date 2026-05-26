@@ -49,11 +49,12 @@ Tests:
 - R035-T01: Submit empty update list and verify 400 response.
 - R035-T02: Submit multiple updates and verify response cardinality and per-item write results.
 
-R040  Statement: Require authenticated write token for all mutating classification endpoints.
-Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, require `X-Teller-Write-Token` for category/classification mutations, compare supplied token using constant-time equality, and return 401 for missing or invalid tokens while read endpoints remain accessible without the header.
+R040  Statement: Require authenticated token for all classifier API endpoints.
+Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, require `X-Teller-Write-Token` for all `/v1/*` routes (read and write), compare supplied token using constant-time equality, and return 401 for missing or invalid tokens.
 Tests:
 - R040-T01: Submit write requests without `X-Teller-Write-Token` and verify 401 response.
 - R040-T02: Submit write requests with mismatched token and verify 401 response.
+- R040-T03: Submit read requests without `X-Teller-Write-Token` and verify 401 response.
 
 R045  Statement: Reject malformed mutation payloads before database persistence.
 Design: Category mutation fields reject explicit `null` field values, normalize by stripping control/non-printable characters before persistence, and reject all-empty normalized hierarchy writes with HTTP 409 conflict semantics in `_write_category`; OpenAPI publishes `minProperties` plus per-field/non-empty guards so empty or null-only objects are schema-invalid; batch classification mutations constrain `transaction_id` format/length and cap `updates` list length.
@@ -111,7 +112,7 @@ Tests:
 
 ## Changelog
 
-- 2026-05-25: Clarified R040 authz boundary for classification writes (constant-time token compare for mutations; read endpoints remain header-free).
+- 2026-05-25: Expanded R040 authz boundary to all `/v1/*` endpoints (read and write) with shared token enforcement.
 - 2026-04-22: Initial reverse-engineered requirements for `src/teller/teller_classification_api.py`.
 - 2026-05-09: Added R040/R045 for 1psa-backed write-token auth and stricter mutation payload validation.
 - 2026-05-10: Updated R030 single-write contract to path-only transaction identity and tightened R045 OpenAPI schema parity for category mutation payloads.

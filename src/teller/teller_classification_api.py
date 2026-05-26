@@ -297,6 +297,11 @@ def _require_write_access(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Invalid write token")
 
 
+def _require_authenticated_access(request: Request) -> None:
+    #R040: Enforce auth on all API routes (read + write) using the shared token.
+    _require_write_access(request)
+
+
 #R001: FastAPI app factory and route wiring for classification APIs.
 class CategoryOption(BaseModel):
     nys_snw_category_id: int
@@ -1021,7 +1026,8 @@ def create_app() -> FastAPI:
 
     #R010: List category options with computed display labels.
     @app.get("/v1/categories", response_model=List[CategoryOption])
-    def list_categories():
+    def list_categories(request: Request):
+        _require_authenticated_access(request)
         with get_session() as session:
             rows = session.execute(text("""
                 SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name, level_3, level_4,
@@ -1094,7 +1100,8 @@ def create_app() -> FastAPI:
 
     #R015: Aggregate assignment counts including zero-assignment categories.
     @app.get("/v1/categories/counts", response_model=List[CategoryCountsRow])
-    def category_counts():
+    def category_counts(request: Request):
+        _require_authenticated_access(request)
         with get_session() as session:
             rows = session.execute(text("""
                 SELECT c.nys_snw_category_id, c.level_1, c.level_1_name, c.level_2, c.level_2_name, c.level_3, c.level_4,
@@ -1128,6 +1135,7 @@ def create_app() -> FastAPI:
         limit: int = Query(default=150, ge=1, le=500),
         offset: int = Query(default=0, ge=0, le=1_000_000),
     ):
+        _require_authenticated_access(request)
         allowed_query_params = {
             "search", "status", "only_unclassified", "match_state", "only_unmoved_match", "limit", "offset",
         }
@@ -1215,11 +1223,13 @@ def create_app() -> FastAPI:
 
     @app.get("/v1/matchy/review", response_model=MatchReviewListResponse)
     def list_matchy_review(
+        request: Request,
         state: Literal["", "ai_no_match_found", "ai_candidate_uncertain", "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
         only_unmoved: bool = Query(default=False),
         limit: int = Query(default=100, ge=1, le=500),
         offset: int = Query(default=0, ge=0, le=1_000_000),
     ):
+        _require_authenticated_access(request)
         filters = _match_review_filters(state=state, only_unmoved=only_unmoved)
         params: Dict[str, object] = {"limit": limit, "offset": offset}
         if state:
@@ -1424,7 +1434,8 @@ def create_app() -> FastAPI:
             503: {"model": ApiError, "description": "Mailcart is not configured"},
         },
     )
-    def list_match_candidates(transaction_id: str):
+    def list_match_candidates(request: Request, transaction_id: str):
+        _require_authenticated_access(request)
         with get_session() as session:
             latest = session.execute(_LATEST_MATCH_RUN_SQL, {"transaction_id": transaction_id}).fetchone()
             if not latest:
@@ -1450,9 +1461,11 @@ def create_app() -> FastAPI:
         },
     )
     def search_match_messages(
+        request: Request,
         query: Annotated[str, StringConstraints(min_length=1, max_length=200, pattern=_EMAIL_SEARCH_QUERY_PATTERN)] = Query(...),
         limit: int = Query(default=25, ge=1, le=100),
     ):
+        _require_authenticated_access(request)
         client = get_mailcart_client()
         try:
             payload = client.search(query=query, limit=limit)
@@ -1482,7 +1495,8 @@ def create_app() -> FastAPI:
             503: {"model": ApiError, "description": "Mailcart is not configured"},
         },
     )
-    def get_match_message(email_message_id: str):
+    def get_match_message(request: Request, email_message_id: str):
+        _require_authenticated_access(request)
         _validate_email_message_id(email_message_id)
         client = get_mailcart_client()
         try:
