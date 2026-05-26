@@ -18,6 +18,7 @@ backups
 archive/backup_extracts
 bin/*
 .cursor/rules/*
+artifacts/classification-persistence/
 artifacts/security/reports/
 artifacts/security/
 artifacts/security-dast/
@@ -27,6 +28,7 @@ artifacts/mutation/
 artifacts/fuzz/
 artifacts/venv/security/
 artifacts/cache/
+artifacts/telemetry/lane-summary*
 .ruff_cache/
 .24_run_all_tests_parallel.lock
 src/macos-ui/.swiftpm-run.lock
