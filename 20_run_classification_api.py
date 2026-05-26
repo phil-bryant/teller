@@ -57,6 +57,7 @@ def _is_local_bind_host(host: str) -> bool:
 
 
 def _resolve_transport() -> tuple[str, str | None, str | None]:
+    #R015: Default to HTTPS with explicit insecure HTTP override for local-only development.
     if _env_flag("TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP", default=False):
         return ("http", None, None)
     certfile = os.environ.get("TELLER_CLASSIFIER_TLS_CERT_FILE", _DEFAULT_HTTPS_CERT).strip()

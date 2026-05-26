@@ -28,6 +28,7 @@ XCUITEST_SCENARIOS=(
   "matchAndClassifyShellLoads"
   "searchFilter"
   "unclassifiedFilterAutoRefresh"
+  #R055: Cover match-state picker behavior in XCUITest smoke suite.
   "matchStatePicker"
   "onlyUnmovedToggle"
   "refreshButton"
@@ -42,6 +43,7 @@ XCUITEST_SCENARIOS=(
   "emailSearch"
   "matchActions"
   "nextUnclassifiedScrollsIntoView"
+  #R070: Verify long-list manual row selection does not auto-recenter scroll.
   "longListManualSelectionDoesNotRecenter"
   "helpMenuListsHotkeys"
   "connectTabLoadsConnections"
@@ -49,8 +51,10 @@ XCUITEST_SCENARIOS=(
   "connectDeleteConfirm"
   "connectAddAndEditButtons"
   "connectTabHidesNextUnclassified"
+  #R065: Verify Connect tab hides Undo control.
   "connectTabHidesUndo"
   "manageCategoriesLoadAndToolbar"
+  #R060: Verify Manage Categories tab hides Next Unclassified control.
   "manageCategoriesHidesNextUnclassified"
   "manageCategoryEditAndSave"
   "manageCategoryDelete"

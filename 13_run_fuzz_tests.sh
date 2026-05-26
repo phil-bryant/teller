@@ -12,8 +12,9 @@ FUZZ_TEST_PATHS="${FUZZ_TEST_PATHS:-tests/py/properties}"
 FUZZ_MAX_EXAMPLES="${FUZZ_MAX_EXAMPLES:-500}"
 FUZZ_DEADLINE_MS="${FUZZ_DEADLINE_MS:-1000}"
 FUZZ_TIMEOUT_SECONDS="${FUZZ_TIMEOUT_SECONDS:-300}"
-FUZZ_MIN_PROPERTY_TESTS="${FUZZ_MIN_PROPERTY_TESTS:-2}"
+FUZZ_MIN_PROPERTY_TESTS="${FUZZ_MIN_PROPERTY_TESTS:-4}"
 FUZZ_MIN_TOTAL_EXAMPLES="${FUZZ_MIN_TOTAL_EXAMPLES:-}"
+FUZZ_MIN_PER_TEST_RATIO_PERCENT="${FUZZ_MIN_PER_TEST_RATIO_PERCENT:-90}"
 FUZZ_SUMMARY="${REPORT_DIR}/fuzz-summary.json"
 HYPOTHESIS_STORAGE_DIRECTORY="${HYPOTHESIS_STORAGE_DIRECTORY:-./artifacts/cache/hypothesis}"
 
@@ -84,7 +85,7 @@ if ! "$PYTHON_BIN" -c "import hypothesis" >/dev/null 2>&1; then
 fi
 
 if [ -z "$FUZZ_MIN_TOTAL_EXAMPLES" ]; then
-  FUZZ_MIN_TOTAL_EXAMPLES=$((FUZZ_MIN_PROPERTY_TESTS * FUZZ_MAX_EXAMPLES * 80 / 100))
+  FUZZ_MIN_TOTAL_EXAMPLES=$((FUZZ_MIN_PROPERTY_TESTS * FUZZ_MAX_EXAMPLES * FUZZ_MIN_PER_TEST_RATIO_PERCENT / 100))
 fi
 
 #R010: Run configured property tests with bounded example counts and capture statistics.
@@ -97,7 +98,7 @@ print_runner_header \
 
 echo ""
 echo "▶ Running property-based fuzz tests (${FUZZ_TEST_PATHS})"
-echo "  max_examples=${FUZZ_MAX_EXAMPLES} deadline_ms=${FUZZ_DEADLINE_MS} min_total_examples=${FUZZ_MIN_TOTAL_EXAMPLES}"
+echo "  max_examples=${FUZZ_MAX_EXAMPLES} deadline_ms=${FUZZ_DEADLINE_MS} min_total_examples=${FUZZ_MIN_TOTAL_EXAMPLES} min_per_test_ratio=${FUZZ_MIN_PER_TEST_RATIO_PERCENT}%"
 echo "  hypothesis_storage_directory=${HYPOTHESIS_STORAGE_DIRECTORY}"
 FUZZ_OUTPUT="$(mktemp)"
 FUZZ_STARTED_AT_EPOCH="$(date +%s)"
@@ -123,7 +124,7 @@ fi
 
 SUMMARY_EXIT=0
 set +e
-"$PYTHON_BIN" - "$FUZZ_OUTPUT" "$FUZZ_SUMMARY" "$FUZZ_EXIT" "$FUZZ_MIN_PROPERTY_TESTS" "$FUZZ_MIN_TOTAL_EXAMPLES" "$FUZZ_MAX_EXAMPLES" "$FUZZ_DEADLINE_MS" "$FUZZ_ELAPSED_SECONDS" "$FUZZ_TEST_PATHS" "$HYPOTHESIS_STORAGE_DIRECTORY" <<'PY'
+"$PYTHON_BIN" - "$FUZZ_OUTPUT" "$FUZZ_SUMMARY" "$FUZZ_EXIT" "$FUZZ_MIN_PROPERTY_TESTS" "$FUZZ_MIN_TOTAL_EXAMPLES" "$FUZZ_MAX_EXAMPLES" "$FUZZ_DEADLINE_MS" "$FUZZ_ELAPSED_SECONDS" "$FUZZ_TEST_PATHS" "$HYPOTHESIS_STORAGE_DIRECTORY" "$FUZZ_MIN_PER_TEST_RATIO_PERCENT" <<'PY'
 import json
 import math
 import re
@@ -140,6 +141,7 @@ deadline_ms = int(sys.argv[7])
 elapsed_seconds = int(sys.argv[8])
 test_paths = sys.argv[9]
 hypothesis_storage_dir = sys.argv[10]
+min_per_test_ratio = int(sys.argv[11])
 log_text = log_path.read_text(encoding="utf-8", errors="replace")
 
 hypothesis_stats_split = log_text.split("Hypothesis Statistics", 1)
@@ -178,7 +180,7 @@ total_invalid = sum(invalid_examples)
 property_test_count = len(property_tests)
 budget_failed = property_test_count < min_property_tests or total_passing < min_total_examples
 gate_failed = pytest_failed or budget_failed
-expected_min_passing_per_test = max(1, math.floor(max_examples * 0.8))
+expected_min_passing_per_test = max(1, math.floor(max_examples * (min_per_test_ratio / 100.0)))
 underfilled_property_tests = sorted(
     [
         nodeid
@@ -211,6 +213,7 @@ summary = {
     "min_total_examples": min_total_examples,
     "configured_max_examples_per_test": max_examples,
     "configured_deadline_ms": deadline_ms,
+    "configured_min_per_test_ratio_percent": min_per_test_ratio,
     "effective_max_examples_per_test": min((min(passing_examples) if passing_examples else 0), max_examples),
     "stateful_transition_events": transition_event_counts,
     "stateful_transition_event_count": sum(transition_event_counts.values()),

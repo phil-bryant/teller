@@ -135,6 +135,48 @@ Run these checks from the project root after activating the project virtual envi
 source ./teller-venv/bin/activate
 ```
 
+### Local Run Profiles
+
+Use these profiles to keep day-to-day runs fast while preserving a high-confidence full gate before release work.
+
+PR-fast profile (recommended default):
+
+```bash
+source ./teller-venv/bin/activate
+./00_run_requirements_traceability_tests.sh
+./09_run_shell_unit_tests.sh
+./10_run_python_unit_tests.sh
+./12_run_sql_unit_tests.sh
+./14_run_swift_unit_tests.sh
+RUN_XCUITESTS=false ./15_run_macos_ui_regression_tests.sh
+```
+
+Full-confidence profile (parallel aggregate gate):
+
+```bash
+source ./teller-venv/bin/activate
+PARALLEL_CLASSIFIER_API_PORT=8787 \
+PARALLEL_DAST_BASE_PORT=8788 \
+PARALLEL_DAST_REUSE_EXISTING_API=false \
+./24_run_all_tests_parallel.sh
+```
+
+Quality trend / target checks:
+
+```bash
+./25_report_quality_trends.sh
+./26_validate_quality_target.sh
+```
+
+Profile notes:
+
+- `24` keeps lanes parallel; API/DAST ports are isolated by default (`8787` vs `8788`) to reduce race-driven flakes.
+- Override lane isolation only when intentionally diagnosing a single shared-runtime issue.
+- For deeper security/fuzz coverage, combine with nightly-style knobs:
+  - `SCHEMATHESIS_MAX_EXAMPLES=100`
+  - `FUZZ_MAX_EXAMPLES=500 FUZZ_TIMEOUT_SECONDS=600`
+  - `MUTATION_SKIP_PREFLIGHT=false` (now default for strict local full runs)
+
 Security scanning runs via `06_run_static_security_tests.sh` (SAST) and `22_run_dynamic_security_tests.sh` (DAST).
 Security policy defaults live under `config/security/` (`semgrep.yml`, `bandit.yml`, `gitleaksignore`) and can be overridden with `SEMGREP_CONFIG_PATH`, `BANDIT_CONFIG_PATH`, and `GITLEAKS_IGNORE_PATH`.
 Antivirus scanning runs via `05_run_av_test.sh` (ClamAV lane).

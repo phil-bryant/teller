@@ -2,6 +2,8 @@
 
 # Requirement test-case tags for requirements/20_run_classification_api-requirements.md
 # #R010-T02: Traceability anchor.
+# #R015-T01: Traceability anchor.
+# #R015-T02: Traceability anchor.
 
 # Traceability numbered tags for requirements/20_run_classification_api-requirements.md
 # #R001-T01: Traceability anchor.
@@ -41,5 +43,23 @@ src() {
   run grep "require_write_token" "$(src)"
   [ "$status" -eq 0 ]
   run grep "TELLER_CLASSIFIER_WRITE_TOKEN" "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails startup path when TLS cert or key files are missing" {
+  #R015 #R015-T01
+  run grep "HTTPS mode requires readable TLS cert/key files" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "TELLER_CLASSIFIER_TLS_CERT_FILE" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "TELLER_CLASSIFIER_TLS_KEY_FILE" "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows explicit insecure HTTP override" {
+  #R015 #R015-T02
+  run grep "TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep 'return ("http", None, None)' "$(src)"
   [ "$status" -eq 0 ]
 }

@@ -30,6 +30,8 @@ fi
 #R035: Persist per-check stdout/stderr log artifacts.
 REPORT_DIR="${PARALLEL_CHECKS_REPORT_DIR:-./artifacts/parallel}"
 mkdir -p "$REPORT_DIR"
+TELEMETRY_DIR="${QUALITY_TELEMETRY_DIR:-./artifacts/telemetry}"
+mkdir -p "$TELEMETRY_DIR"
 PROGRESS_INTERVAL_SECONDS="${PARALLEL_CHECKS_PROGRESS_INTERVAL_SECONDS:-1}"
 if [[ ! "$PROGRESS_INTERVAL_SECONDS" =~ ^[0-9]+$ || "$PROGRESS_INTERVAL_SECONDS" -le 0 ]]; then
   PROGRESS_INTERVAL_SECONDS=1
@@ -218,14 +220,33 @@ for script in "${CHECKS[@]}"; do
   date +%s > "${log}.start"
   (
     set +e
+    # Keep lanes parallel while isolating shared resources.
+    lane_api_url="${PARALLEL_CLASSIFIER_API_URL:-http://127.0.0.1:${PARALLEL_CLASSIFIER_API_PORT:-8787}}"
+    lane_dast_base_port="${PARALLEL_DAST_BASE_PORT:-8788}"
+    lane_dast_reuse_api="${PARALLEL_DAST_REUSE_EXISTING_API:-false}"
+    lane_dast_db_profile="${PARALLEL_DAST_DB_PROFILE:-${TELLER_DB_PROFILE:-}}"
     crash_check_delay="${PARALLEL_CRASH_CHECK_DELAY_SECONDS:-0}"
     if [[ "$script" == "16_verify_macos_crash_test.sh" && "$crash_check_delay" =~ ^[0-9]+$ && "$crash_check_delay" -gt 0 ]]; then
       sleep "$crash_check_delay"
     fi
     if [[ "$script" == "08_deploy_database_verification_test.sh" || "$script" == "12_run_sql_unit_tests.sh" || "$script" == "21_classification_persistence_verification_test.sh" || "$script" == "22_run_dynamic_security_tests.sh" ]]; then
-      TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
-      TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
-        "./${script}" >"${log}" 2>&1
+      if [[ "$script" == "21_classification_persistence_verification_test.sh" ]]; then
+        TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
+        TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
+        TELLER_CLASSIFIER_API_URL="${TELLER_CLASSIFIER_API_URL:-${lane_api_url}}" \
+          "./${script}" >"${log}" 2>&1
+      elif [[ "$script" == "22_run_dynamic_security_tests.sh" ]]; then
+        TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
+        TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
+        DAST_BASE_PORT="${DAST_BASE_PORT:-${lane_dast_base_port}}" \
+        DAST_REUSE_EXISTING_API="${DAST_REUSE_EXISTING_API:-${lane_dast_reuse_api}}" \
+        TELLER_DB_PROFILE="${lane_dast_db_profile}" \
+          "./${script}" >"${log}" 2>&1
+      else
+        TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
+        TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
+          "./${script}" >"${log}" 2>&1
+      fi
     else
       "./${script}" >"${log}" 2>&1
     fi
@@ -298,6 +319,167 @@ set -e
 #R060: Report wall time and longest lane before overall gate.
 wall_elapsed=$(( $(date +%s) - run_start_epoch ))
 echo "Timing: wall ${wall_elapsed}s; long pole ${long_pole_script} (${long_pole_seconds}s)"
+
+python3 - "$REPORT_DIR" "$TELEMETRY_DIR" "$run_start_epoch" "$wall_elapsed" "$total" "$pass_count" "$fail_count" <<'PY'
+import json
+import math
+import os
+import statistics
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+report_dir = Path(sys.argv[1])
+telemetry_dir = Path(sys.argv[2])
+run_started_epoch = int(sys.argv[3])
+wall_elapsed = int(sys.argv[4])
+total = int(sys.argv[5])
+passed = int(sys.argv[6])
+failed = int(sys.argv[7])
+run_started_at = datetime.fromtimestamp(run_started_epoch, tz=timezone.utc)
+
+history_path = telemetry_dir / "quality-history.ndjson"
+trend_path = telemetry_dir / "quality-trend.json"
+lane_summary_path = telemetry_dir / f"lane-summary-{run_started_at.strftime('%Y%m%dT%H%M%SZ')}.json"
+
+lane_entries = []
+for exit_file in sorted(report_dir.glob("*.log.exit")):
+    log_file = exit_file.with_suffix("")
+    lane_name = exit_file.name.replace(".log.exit", "")
+    start_file = Path(str(log_file) + ".start")
+    start_epoch = run_started_epoch
+    if start_file.exists():
+        try:
+            start_epoch = int(start_file.read_text(encoding="utf-8").strip())
+        except ValueError:
+            start_epoch = run_started_epoch
+    end_epoch = int(exit_file.stat().st_mtime)
+    elapsed = max(0, end_epoch - start_epoch)
+    try:
+        exit_code = int(exit_file.read_text(encoding="utf-8").strip())
+    except ValueError:
+        exit_code = 99
+    lane_entries.append(
+        {
+            "lane": lane_name,
+            "status": "pass" if exit_code == 0 else "fail",
+            "exit_code": exit_code,
+            "elapsed_seconds": elapsed,
+        }
+    )
+
+lane_status = {entry["lane"]: 1.0 if entry["status"] == "pass" else 0.0 for entry in lane_entries}
+
+def score_group(prefixes):
+    values = [lane_status[name] for name in lane_status if any(name.startswith(prefix) for prefix in prefixes)]
+    if not values:
+        return 1.0
+    return sum(values) / len(values)
+
+lane_reliability = (passed / total) if total else 0.0
+behavioral_coverage = score_group(("09_", "10_", "12_", "14_", "15_", "18_", "19_", "21_"))
+effectiveness_quality = score_group(("11_", "13_"))
+security_runtime_quality = score_group(("05_", "06_", "22_"))
+overall_score = round(
+    (
+        (0.35 * lane_reliability)
+        + (0.25 * behavioral_coverage)
+        + (0.20 * effectiveness_quality)
+        + (0.20 * security_runtime_quality)
+    )
+    * 10.0,
+    3,
+)
+
+run_payload = {
+    "run_started_at": run_started_at.isoformat(),
+    "wall_elapsed_seconds": wall_elapsed,
+    "total_lanes": total,
+    "passed_lanes": passed,
+    "failed_lanes": failed,
+    "score": overall_score,
+    "components": {
+        "lane_reliability": round(lane_reliability, 4),
+        "behavioral_coverage": round(behavioral_coverage, 4),
+        "effectiveness_quality": round(effectiveness_quality, 4),
+        "security_runtime_quality": round(security_runtime_quality, 4),
+    },
+    "lanes": lane_entries,
+}
+
+lane_summary_path.write_text(json.dumps(run_payload, indent=2), encoding="utf-8")
+with history_path.open("a", encoding="utf-8") as fh:
+    fh.write(json.dumps(run_payload, separators=(",", ":")) + "\n")
+
+history_rows = []
+for line in history_path.read_text(encoding="utf-8").splitlines():
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        history_rows.append(json.loads(line))
+    except json.JSONDecodeError:
+        continue
+
+last_20 = history_rows[-20:]
+wall_samples = [row.get("wall_elapsed_seconds", 0) for row in last_20]
+score_samples = [row.get("score", 0.0) for row in last_20]
+now = datetime.now(tz=timezone.utc)
+recent_14d = []
+for row in history_rows:
+    stamp = row.get("run_started_at")
+    try:
+        parsed = datetime.fromisoformat(stamp)
+    except Exception:
+        continue
+    if parsed >= now - timedelta(days=14):
+        recent_14d.append(row)
+
+def percentile(values, p):
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    rank = (len(ordered) - 1) * p
+    lower = math.floor(rank)
+    upper = math.ceil(rank)
+    if lower == upper:
+        return float(ordered[lower])
+    weight = rank - lower
+    return float(ordered[lower] + (ordered[upper] - ordered[lower]) * weight)
+
+p50 = percentile(wall_samples, 0.50)
+p95 = percentile(wall_samples, 0.95)
+warn = p95 > 150.0 and len(wall_samples) >= 3
+fail_gate = p95 > 160.0 and len(wall_samples) >= 3
+
+trend_payload = {
+    "latest_run_started_at": run_payload["run_started_at"],
+    "latest_score": overall_score,
+    "rolling_20_runs": {
+        "count": len(last_20),
+        "score_avg": round(sum(score_samples) / len(score_samples), 3) if score_samples else 0.0,
+        "wall_p50_seconds": round(p50, 2),
+        "wall_p95_seconds": round(p95, 2),
+    },
+    "rolling_14d": {
+        "count": len(recent_14d),
+        "score_avg": round(sum(row.get("score", 0.0) for row in recent_14d) / len(recent_14d), 3) if recent_14d else 0.0,
+        "pass_reliability": round(
+            sum((row.get("passed_lanes", 0) / row.get("total_lanes", 1)) for row in recent_14d) / len(recent_14d),
+            4,
+        ) if recent_14d else 0.0,
+    },
+    "performance_slo": {
+        "target_p50_seconds": 130,
+        "target_p95_seconds": 150,
+        "warn": warn,
+        "fail": fail_gate,
+    },
+}
+trend_path.write_text(json.dumps(trend_payload, indent=2), encoding="utf-8")
+PY
+echo "Quality telemetry: ${TELEMETRY_DIR}/quality-history.ndjson"
+echo "Quality trend: ${TELEMETRY_DIR}/quality-trend.json"
 
 #R030: Print overall pass/fail gate and exit code.
 if [[ "$fail_count" -eq 0 ]]; then

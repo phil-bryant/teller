@@ -210,6 +210,26 @@ teardown() {
   grep -q 'av-marker-12345' "${REPORT_DIR}/05_run_av_test.log"
 }
 
+@test "isolates classifier and DAST lanes with default parallel env" {
+  write_all_child_stubs 'exit 0'
+  write_child_stub "21_classification_persistence_verification_test.sh" '
+    echo "api_url=${TELLER_CLASSIFIER_API_URL:-unset}" >> "'"${CALLS_LOG}"'";
+    exit 0
+  '
+  write_child_stub "22_run_dynamic_security_tests.sh" '
+    echo "dast_base_port=${DAST_BASE_PORT:-unset}" >> "'"${CALLS_LOG}"'";
+    echo "dast_reuse_api=${DAST_REUSE_EXISTING_API:-unset}" >> "'"${CALLS_LOG}"'";
+    exit 0
+  '
+
+  run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
+    bash "${FIXTURE_ROOT}/24_run_all_tests_parallel.sh"
+  [ "$status" -eq 0 ]
+  grep -q '^api_url=http://127.0.0.1:8787$' "${CALLS_LOG}"
+  grep -q '^dast_base_port=8788$' "${CALLS_LOG}"
+  grep -q '^dast_reuse_api=false$' "${CALLS_LOG}"
+}
+
 @test "child check scripts do not invoke the parallel meta-runner" {
   #R040
   local check

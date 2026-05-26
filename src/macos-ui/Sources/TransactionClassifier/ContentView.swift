@@ -50,10 +50,12 @@ struct ContentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 // #R010: Expose keyboard-first shortcuts for next-unclassified and undo.
+                // #R055: Next Unclassified control is scoped to Match & Classify tab only.
                 if selectedTab == .matchAndClassify {
                     Button("Next Unclassified") { viewModel.nextUnclassified() }.keyboardShortcut("]", modifiers: .command)
                         .accessibilityIdentifier("next-unclassified-button")
                 }
+                // #R060: Undo control is scoped to Match & Classify tab only.
                 if selectedTab == .matchAndClassify {
                     Button("Undo") { Task { await viewModel.undoLast() } }.keyboardShortcut("z", modifiers: .command)
                         .accessibilityIdentifier("undo-button")
@@ -454,6 +456,7 @@ private struct CandidatesPane: View {
                         }
                     }
                 }
+                // #R065: Use user-facing copy "Search Email" for candidate search section title.
                 Section("Search Email") {
                     TextField("Subject, sender, or keyword", text: $viewModel.mailcartSearchQuery)
                         .textFieldStyle(.roundedBorder)

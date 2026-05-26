@@ -24,6 +24,7 @@ from teller.teller_transaction import TellerTransaction  # noqa: E402
 
 log = structlog.get_logger()
 TELLER_DIR = Path.home() / ".teller"
+REQUEST_TIMEOUT_SECONDS = 30
 
 class TellerAPIError(Exception):
     def __init__(self, message: str, code: str = "", status_code: int = 0):
@@ -75,7 +76,7 @@ class TellerAPIClient:
             'auth': (token, ""),
             'cert': (str(TELLER_DIR / "certificate.pem"), str(TELLER_DIR / "private_key.pem")),
             'headers': {"Accept": "application/json", "Content-Type": "application/json"},
-            'verify': True
+            'verify': True,
         }
 
     def _parse_error(self, response) -> tuple:
@@ -117,12 +118,12 @@ class TellerAPIClient:
 
     def get(self, url: str, params: Dict = None) -> dict:
         log.info("Connecting to Teller API", url=url, params=params, auth_token=self.kwargs['auth'][0][:5])
-        response = requests.get(url, params=params, **self.kwargs)
+        response = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS, **self.kwargs)
         code = self._parse_error(response)[0] if response.status_code != 200 else ""
         #R010: Retry once after successful enrollment repair.
         if code.startswith("enrollment.disconnected") and self._repair_enrollment():
             log.info("Retrying after enrollment repair", url=url)
-            response = requests.get(url, params=params, **self.kwargs)
+            response = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS, **self.kwargs)
         if response.status_code != 200:
             code, message = self._parse_error(response)
             raise TellerAPIError(message=message, code=code, status_code=response.status_code)

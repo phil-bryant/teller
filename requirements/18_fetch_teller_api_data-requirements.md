@@ -11,11 +11,12 @@ Tests:
 - R001-T02: Run with `--institution_id chase` and verify institution-scoped selection path executes.
 
 R005  Statement: Load Teller auth and TLS inputs from local teller directory.
-Design: Read auth token from context token or `~/.teller/auth_token.json`; surface explicit `TellerAPIError` for missing/invalid/empty token payloads; use cert/key under `~/.teller`.
+Design: Read auth token from context token or `~/.teller/auth_token.json`; surface explicit `TellerAPIError` for missing/invalid/empty token payloads; use cert/key under `~/.teller`; and enforce explicit HTTP request timeouts on Teller API calls.
 Tests:
 - R005-T01: Run with no explicit token and verify token file loading path is used.
 - R005-T02: Run without context token overrides and verify default single-token behavior remains unchanged.
 - R005-T03: Simulate missing default token file and verify script raises a user-actionable auth token error.
+- R005-T04: Verify Teller API GET requests pass explicit timeout values to `requests.get`.
 
 R010  Statement: Retry disconnected enrollments through local repair flow.
 Design: Detect `enrollment.disconnected*`, launch local repair using selected `enrollment_id`, reload auth, and retry once.
@@ -69,3 +70,4 @@ Tests:
 - 2026-04-22: Added duplicate-transaction canonicalization requirement to preserve pending-to-posted updates.
 - 2026-04-22: Added R035 to prune unreferenced transaction relation rows after stale pending cleanup.
 - 2026-05-23: Added explicit missing/invalid auth-token error handling requirement for default-token loads.
+- 2026-05-25: Extended R005 to require explicit HTTP timeout propagation for Teller API requests.

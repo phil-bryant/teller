@@ -109,7 +109,7 @@ Tests:
 - R085-T02: Add that file to a requirements Scope mapping and verify full-run coverage pass output.
 
 R090  Statement: Enforce 1:1 numbered test-tag traceability (`Rxxx-T##` in requirements vs `#Rxxx-T##` in tests) for enforceable documents.
-Design: Parse numbered test bullets under each requirements `Tests:` section and compare them as an exact set against discovered `#Rxxx-T##` tags in discovered tests, scoped to requirement IDs in that document. Fail when any requirement ID lacks a numbered `Rxxx-T##` entry in the requirements doc, when any numbered requirement test ID is missing in tests, and when any numbered test tag exists in tests without a corresponding requirements numbered bullet. Also fail when `Tests:` bullets are malformed (for example, unnumbered bullets that should be `Rxxx-T##:`). This check runs alongside the existing `#R` coverage check (R065) and is skipped for requirements-only docs. Operators may temporarily disable this with `STRICT_TRACEABILITY_NUMBERED_TAGS=false`.
+Design: Parse numbered test bullets under each requirements `Tests:` section and compare them as an exact set against discovered `#Rxxx-T##` tags in discovered tests, scoped to requirement IDs in that document. For Bats, Python, and Swift tests, only count numbered tags that appear inside executable test blocks (`@test { ... }`, `def test_*`, `func test*`). Fail when numbered tags are found outside those blocks (for example, file-header anchor bundles), when any requirement ID lacks a numbered `Rxxx-T##` entry in the requirements doc, when any numbered requirement test ID is missing in tests, and when any numbered test tag exists in tests without a corresponding requirements numbered bullet. Also fail when `Tests:` bullets are malformed (for example, unnumbered bullets that should be `Rxxx-T##:`). This check runs alongside the existing `#R` coverage check (R065) and is skipped for requirements-only docs. Operators may temporarily disable this with `STRICT_TRACEABILITY_NUMBERED_TAGS=false`.
 Tests:
 - R090-T01: Provide a requirements numbered test ID with no matching `#Rxxx-T##` in tests and verify explicit "missing in tests" failure output.
 - R090-T02: Provide a `#Rxxx-T##` in tests with no matching requirements numbered test bullet and verify explicit "missing in requirements" failure output.
@@ -117,10 +117,13 @@ Tests:
 - R090-T04: Provide malformed `Tests:` bullets (missing `Rxxx-T##:` prefix) and verify explicit malformed-bullet failure output.
 - R090-T05: Verify that a requirements-only doc skips the numbered-tag check.
 - R090-T06: Omit all numbered `Rxxx-T##` entries for a requirement ID and verify explicit missing-numbered-requirements failure output.
+- R090-T07: Place numbered `#Rxxx-T##` tags in test-file headers (outside executable tests) and verify explicit numbered-tag placement failure output.
+- R090-T08: Move the same numbered tags into executable test blocks and verify numbered-tag placement passes.
 
 ## Changelog
 
 - 2026-05-16: Strengthened R090 to require 1:1 numbered traceability between requirements `Rxxx-T##` bullets and discovered test `#Rxxx-T##` tags, including malformed-bullet rejection.
+- 2026-05-25: Tightened R090 placement policy so numbered `#Rxxx-T##` tags in Bats/Python/Swift only count inside executable test blocks.
 - 2026-05-16: Added requirements-only mode support for staged docs (R075).
 - 2026-05-16: Added numbered script test coverage enforcement for Teller stack scripts (R080).
 - 2026-05-16: Added repository software-to-requirements coverage completeness checks (R085).

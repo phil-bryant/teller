@@ -1,25 +1,6 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/00_run_requirements_traceability_tests-requirements.md
-# #R015-T02: Traceability anchor.
-# #R030-T02: Traceability anchor.
-# #R035-T02: Traceability anchor.
-# #R040-T02: Traceability anchor.
-# #R045-T02: Traceability anchor.
-# #R050-T02: Traceability anchor.
-# #R050-T03: Traceability anchor.
-# #R065-T02: Traceability anchor.
-# #R065-T03: Traceability anchor.
-# #R070-T02: Traceability anchor.
-# #R070-T03: Traceability anchor.
-# #R075-T02: Traceability anchor.
-# #R080-T02: Traceability anchor.
-# #R085-T02: Traceability anchor.
-# #R090-T02: Traceability anchor.
-# #R090-T03: Traceability anchor.
-# #R090-T04: Traceability anchor.
-# #R090-T05: Traceability anchor.
-# #R090-T06: Traceability anchor.
+# Requirement test-case tags are declared inside executable @test blocks.
 
 load "helpers/common.bash"
 
@@ -71,26 +52,42 @@ EOF
   #R005-T01: Default recursive requirements discovery coverage.
   #R010-T01: Requirements-to-source mapping coverage.
   #R015-T01: Missing mapping/source failure messaging coverage.
+  #R015-T02: Missing source mapping requirement coverage.
   #R020-T01: Requirement ID parsing coverage.
   #R025-T01: Source #R tag parsing coverage.
   #R030-T01: Missing/extra set-difference reporting coverage.
+  #R030-T02: Extra #R tag reporting coverage.
   #R035-T01: Pass/fail exit semantics coverage.
+  #R035-T02: Any mismatch returns non-zero coverage.
   #R040-T01: Numbered script requirements coverage checks.
+  #R040-T02: Numbered script requirements pass coverage.
   #R045-T01: Numbered requirements scope alignment checks.
+  #R045-T02: Numbered requirements scope alignment pass coverage.
   #R050-T01: Requirement-to-test discovery coverage.
+  #R050-T02: Swift test discovery lane coverage.
+  #R050-T03: SQL test discovery lane coverage.
   #R055-T01: UI-lane requirement-ID classification coverage.
   #R060-T01: Lane-specific discovered test-tag parsing coverage.
   #R065-T01: Missing test-traceability ID failure coverage.
+  #R065-T02: UI-lane requirement enforcement failure coverage.
+  #R065-T03: Non-UI requirement lane flexibility coverage.
   #R070-T01: Anti-cheat header-bundle and scoped comment enforcement coverage.
+  #R070-T02: Unscoped source #R tag failure coverage.
+  #R070-T03: Scoped source #R tag pass coverage.
   #R075-T01: Requirements-only mode traceability-skip coverage.
+  #R075-T02: Requirements-only mode disabled failure coverage.
   #R080-T01: Numbered script test coverage enforcement in full-run mode.
+  #R080-T02: Numbered script test coverage pass coverage.
   #R085-T01: Repository software files without requirements coverage are auto-detected.
+  #R085-T02: Repository coverage pass after mapping coverage.
   #R090-T01: Missing-in-tests numbered tag failure coverage.
   #R090-T02: Missing-in-requirements numbered tag failure coverage.
   #R090-T03: Numbered tag mismatch in both directions coverage.
   #R090-T04: Malformed numbered test-bullet failure coverage.
   #R090-T05: Requirements-only numbered-tag skip coverage.
   #R090-T06: Missing requirements-side numbered test IDs for a requirement coverage.
+  #R090-T07: Numbered tag placement anti-cheat failure coverage.
+  #R090-T08: Numbered tag placement pass when in test body coverage.
   [ 1 -eq 1 ]
 }
 
@@ -212,12 +209,26 @@ EOF
 // #R002: UI-testing mode must toggle interactions.
 EOF
   cat > "${FIXTURE_ROOT}/src/macos-ui/Tests/TransactionClassifierTests/FeatureTests.swift" <<'EOF'
-// #R001-T01: Model lane traceability.
-// #R001
+import XCTest
+
+final class FeatureTests: XCTestCase {
+  func testModelLaneTraceability() {
+    // #R001-T01: Model lane traceability.
+    // #R001
+    XCTAssertTrue(true)
+  }
+}
 EOF
   cat > "${FIXTURE_ROOT}/src/macos-ui/UITests/FeatureUITests.swift" <<'EOF'
-// #R002-T01: UI lane traceability.
-// #R002
+import XCTest
+
+final class FeatureUITests: XCTestCase {
+  func testUILaneTraceability() {
+    // #R002-T01: UI lane traceability.
+    // #R002
+    XCTAssertTrue(true)
+  }
+}
 EOF
 
   run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh requirements/macos-ui/Feature-requirements.md src/macos-ui/Sources/TransactionClassifier/Feature.swift"
@@ -240,7 +251,6 @@ EOF
 // #R001: UI testing must verify this behavior.
 EOF
   cat > "${FIXTURE_ROOT}/src/macos-ui/Tests/TransactionClassifierTests/FeatureTests.swift" <<'EOF'
-// #R001-T01: Model-only lane tag.
 // #R001
 EOF
 
@@ -541,6 +551,65 @@ EOF
   [[ "$output" == *"FAIL (numbered-test-tags)"* ]]
   [[ "$output" == *"Missing in tests (present in requirements)"* ]]
   [[ "$output" == *"R001-T01"* ]]
+}
+
+@test "fails when numbered tags are in test-file header comments" {
+  #R090-T07
+  #R090
+  mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh"
+  cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
+## Scope
+Applies to `sample_script.sh`.
+
+R001 Statement: One.
+Tests:
+- R001-T01: Sample tagged test coverage.
+EOF
+  cat > "${FIXTURE_ROOT}/sample_script.sh" <<'EOF'
+#!/usr/bin/env bash
+#R001: One.
+EOF
+  cat > "${FIXTURE_ROOT}/tests/sh/sample_script.bats" <<'EOF'
+# #R001-T01: misplaced header tag.
+@test "sample requirement traceability" {
+  #R001
+  true
+}
+EOF
+
+  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"FAIL (numbered-test-tag-placement)"* ]]
+  [[ "$output" == *"#R001-T01"* ]]
+}
+
+@test "passes when numbered tags are inside executable test blocks" {
+  #R090-T08
+  #R090
+  mkdir -p "${FIXTURE_ROOT}/requirements" "${FIXTURE_ROOT}/tests/sh"
+  cat > "${FIXTURE_ROOT}/requirements/sample-requirements.md" <<'EOF'
+## Scope
+Applies to `sample_script.sh`.
+
+R001 Statement: One.
+Tests:
+- R001-T01: Sample tagged test coverage.
+EOF
+  cat > "${FIXTURE_ROOT}/sample_script.sh" <<'EOF'
+#!/usr/bin/env bash
+#R001: One.
+EOF
+  cat > "${FIXTURE_ROOT}/tests/sh/sample_script.bats" <<'EOF'
+@test "sample requirement traceability" {
+  #R001-T01: Sample tagged test coverage.
+  #R001
+  true
+}
+EOF
+
+  run bash -c "cd '${FIXTURE_ROOT}' && ./verify_requirements_traceability.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PASS (numbered-test-tags)"* ]]
 }
 
 @test "fails numbered test tracing when requirements and tests are not 1:1 in both directions" {

@@ -145,6 +145,81 @@ class EnrollmentContextDiscoveryTests(unittest.TestCase):
         self.assertEqual(contexts[0]["token"], "token-default")
         self.assertEqual(contexts[0]["source"], "default")
 
+    def test_dedupe_contexts_prefers_last_duplicate_entry(self) -> None:
+        contexts = self.module._dedupe_contexts(
+            [
+                {"enrollment_id": "enr_1", "token": "token-old", "institution_id": "ins_1", "source": "metadata"},
+                {"enrollment_id": "enr_1", "token": "token-new", "institution_id": "ins_1", "source": "suffix"},
+            ]
+        )
+        self.assertEqual(len(contexts), 1)
+        self.assertEqual(contexts[0]["token"], "token-new")
+        self.assertEqual(contexts[0]["source"], "suffix")
+
+    def test_build_contexts_filters_by_institution(self) -> None:
+        self._write_token("auth_token_bank_a.json", "token-a")
+        self._write_token("auth_token_bank_b.json", "token-b")
+        (self.teller_dir / "enrollment_id_bank_a.txt").write_text("enr_a\n", encoding="utf-8")
+        (self.teller_dir / "enrollment_id_bank_b.txt").write_text("enr_b\n", encoding="utf-8")
+
+        contexts = self.module._build_enrollment_contexts("bank_b")
+        self.assertEqual(len(contexts), 1)
+        self.assertEqual(contexts[0]["institution_id"], "bank_b")
+        self.assertEqual(contexts[0]["token"], "token-b")
+        self.assertEqual(contexts[0]["source"], "suffix")
+
+
+class TellerApiClientRequestTimeoutTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.module = load_module()
+
+    def test_get_passes_explicit_timeout_to_requests(self) -> None:
+        #R005-T04
+        class _Response:
+            status_code = 200
+
+            @staticmethod
+            def json():
+                return {}
+
+        captured = {}
+
+        def _fake_get(url, params=None, timeout=None, **kwargs):
+            captured["url"] = url
+            captured["params"] = params
+            captured["timeout"] = timeout
+            captured["kwargs"] = kwargs
+            return _Response()
+
+        self.module.requests.get = _fake_get
+
+        client = self.module.TellerAPIClient.__new__(self.module.TellerAPIClient)
+        client.kwargs = {"auth": ("token-value", ""), "headers": {}, "verify": True}
+        client._repair_enrollment = lambda: False
+
+        payload = self.module.TellerAPIClient.get(client, "https://api.teller.io/test", {"from_id": "txn_1"})
+        self.assertEqual(payload, {})
+        self.assertEqual(captured["timeout"], self.module.REQUEST_TIMEOUT_SECONDS)
+        self.assertEqual(captured["params"], {"from_id": "txn_1"})
+
+    def test_fetch_all_transactions_uses_from_id_pagination(self) -> None:
+        class _FakeClient:
+            def __init__(self):
+                self.calls = []
+
+            def get(self, _url, params=None):
+                self.calls.append(params or {})
+                if params is None:
+                    return [{"id": "txn_1", "date": "2026-01-03"}, {"id": "txn_2", "date": "2026-01-02"}]
+                if params.get("from_id") == "txn_2":
+                    return [{"id": "txn_3", "date": "2026-01-01"}]
+                return []
+
+        client = _FakeClient()
+        txns = self.module._fetch_all_transactions(client, "https://api.teller.io/txns")
+        self.assertEqual([txn["id"] for txn in txns], ["txn_1", "txn_2", "txn_3"])
+        self.assertEqual(client.calls, [{}, {"from_id": "txn_2"}, {"from_id": "txn_3"}])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,7 +5,7 @@
 Applies to `src/scripts/dast_cleanup.py`.
 
 R001  Statement: Restore baseline-captured database state in one transactional cleanup sequence.
-Design: Restore baseline mutable rows, delete post-baseline inserts, reconcile classifications/categories, and persist operation counts in a summary artifact.
+Design: Restore baseline mutable rows, delete post-baseline inserts, reconcile classifications/categories, and persist operation counts in a summary artifact. Classification reconciliation must use bound SQL parameters (for example `transaction_id = ANY(:baseline_tx_ids)`) instead of dynamic SQL interpolation.
 Tests:
 - R001-T01: Verify cleanup applies expected delete/restore sequence and writes count metadata on success.
 
@@ -18,3 +18,7 @@ R010  Statement: Handle missing/non-captured baselines as non-fatal skips with d
 Design: When baseline is missing or not `captured`, write `status=skipped` summary output with explicit reason and exit zero.
 Tests:
 - R010-T01: Verify missing and skipped-status baselines produce non-fatal summaries with actionable error messages.
+
+## Changelog
+
+- 2026-05-25: Clarified R001 to require bound-parameter SQL for classification reconciliation deletes.

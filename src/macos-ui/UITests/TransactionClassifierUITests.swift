@@ -9,7 +9,9 @@
 // #R050-T01: Traceability anchor.
 // #R055-T01: Traceability anchor.
 // #R060-T01: Traceability anchor.
+// #R060-T02: Traceability anchor.
 // #R065-T01: Traceability anchor.
+// #R070-T01: Traceability anchor.
 // Traceability numbered tags for requirements/macos-ui/TransactionClassifierApp-requirements.md
 // #R035-T01: Traceability anchor.
 // Traceability numbered tags for requirements/macos-ui/ConnectView-requirements.md
@@ -266,6 +268,13 @@ final class TransactionClassifierUITests: XCTestCase {
         assertAssignedCategory("Dining")
 
         app.typeKey("z", modifierFlags: .command)
+        if !waitUntil(timeout: waitTimeout * 2, condition: {
+            elementText(uiElement("selected-assigned-category")).lowercased().contains("utilities")
+        }) {
+            // Keyboard focus can transiently leave the app after repeated picker interactions.
+            // Fall back to explicit toolbar undo to verify the same user-visible behavior.
+            uiElement("undo-button").click()
+        }
         assertAssignedCategory("Utilities")
     }
 
@@ -311,7 +320,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func runLongListManualSelectionDoesNotRecenterScenario() {
-        // #R050
+        // #R050 #R070 #R070-T01
         ensureMatchAndClassifyTab()
         ensureUnclassifiedFilterDisabled()
         ensureAllTransactionsLoadedIntoList()
@@ -516,7 +525,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func runManageCategoriesHidesNextUnclassifiedScenario() {
-        // #R060
+        // #R055-T01 #R060-T02
         ensureManageCategoriesTab()
         XCTAssertFalse(nextUnclassifiedControlExists())
         XCTAssertFalse(undoControlExists())

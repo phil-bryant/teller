@@ -91,16 +91,12 @@ fi
 
 #R010: Require unit tests to pass before mutation testing begins (unless explicitly skipped).
 if [[ -z "${MUTATION_SKIP_PREFLIGHT+x}" ]]; then
-  if [[ "$IS_CI" == "true" ]]; then
-    MUTATION_SKIP_PREFLIGHT=false
-  else
-    MUTATION_SKIP_PREFLIGHT=true
-  fi
+  MUTATION_SKIP_PREFLIGHT=false
 fi
 if [ "$MUTATION_SKIP_PREFLIGHT" = "true" ]; then
   echo ""
-  echo "▶ Preflight: skipped (default; MUTATION_SKIP_PREFLIGHT=true)."
-  echo "  Assumes ./10_run_python_unit_tests.sh already passed. To force pytest: MUTATION_SKIP_PREFLIGHT=false ./11_run_mutation_tests.sh"
+  echo "▶ Preflight: skipped (MUTATION_SKIP_PREFLIGHT=true override)."
+  echo "  Default behavior now runs preflight pytest for local and CI mutation runs."
 else
   echo ""
   echo "▶ Preflight: running pytest on tests/py (MUTATION_SKIP_PREFLIGHT=false)."
@@ -227,6 +223,7 @@ if [ "$EXPORT_EXIT" -ne 0 ]; then
 fi
 
 if [ "$MUTMUT_EXIT" -ne 0 ]; then
+  #R050: Enforce strict CI behavior when mutmut is skipped for host/runtime incompatibility.
   RUN_ENDED_EPOCH="$(date +%s)"
   RUN_DURATION_SECONDS=$((RUN_ENDED_EPOCH - RUN_STARTED_EPOCH))
   mkdir -p "$(dirname "$MUTMUT_CICD_STATS")"
@@ -292,6 +289,7 @@ summary = {
 summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
 
 history_path.parent.mkdir(parents=True, exist_ok=True)
+#R045: Append run records and derive rolling 14-day medians for mutation trends.
 record = {
     "run_started_at": run_started_at,
     "git_sha": git_sha,
@@ -539,7 +537,7 @@ summary = {
     "score_failed": score_failed,
     "coverage_failed": coverage_failed,
     "survivor_budget": survivor_budget,
-    "survivor_budget_failed": survivor_budget_failed,
+    "survivor_budget_failed": survivor_budget_failed,  #R055: Fail gate when survived mutants exceed configured budget.
     "gate_failed": gate_failed,
     "by_module": by_module,
     "run_started_at": run_started_at,

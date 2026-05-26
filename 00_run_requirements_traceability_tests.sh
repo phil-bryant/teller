@@ -323,21 +323,115 @@ discover_combined_tests_for_requirements() {
 }
 
 extract_numbered_test_ids() {
-    local test_file="$1" out_file="$2"
-    awk '{
-        while (match($0, /#R[0-9]{3}(-[0-9]{3})*-T[0-9]{2}/)) {
-            tag = substr($0, RSTART + 1, RLENGTH - 1)
-            print tag
-            $0 = substr($0, RSTART + RLENGTH)
-        }
-    }' "$test_file" | sort -u > "$out_file"
+    local test_file="$1" out_file="$2" misplaced_file="$3"
+    python3 - "$test_file" "$out_file" "$misplaced_file" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+test_file = Path(sys.argv[1])
+out_file = Path(sys.argv[2])
+misplaced_file = Path(sys.argv[3])
+
+tag_re = re.compile(r"#(R\d{3}(?:-\d{3})*-T\d{2})")
+bats_start_re = re.compile(
+    r'^\s*(?:@test\b.*\{\s*$|bats_test_function\b.*\{\s*$|[A-Za-z_][A-Za-z0-9_]*\(\)\s*\{\s*$)'
+)
+python_start_re = re.compile(r'^\s*def\s+test[_A-Za-z0-9]*\s*\(')
+swift_start_re = re.compile(r'^\s*func\s+test[_A-Za-z0-9]*\s*\(')
+
+suffix = test_file.suffix.lower()
+is_bats = suffix == ".bats"
+is_python = suffix == ".py"
+is_swift = suffix == ".swift"
+enforce_scoped = is_bats or is_python or is_swift
+
+ids = set()
+misplaced = []
+
+if not test_file.exists():
+    out_file.write_text("", encoding="utf-8")
+    misplaced_file.write_text("", encoding="utf-8")
+    raise SystemExit(0)
+
+lines = test_file.read_text(encoding="utf-8").splitlines()
+
+if not enforce_scoped:
+    for line in lines:
+        for match in tag_re.finditer(line):
+            ids.add(match.group(1))
+else:
+    in_test_block = False
+    brace_depth = 0
+    block_indent = 0
+    idx = 0
+    while idx < len(lines):
+        line_number = idx + 1
+        line = lines[idx]
+        line_tags = [match.group(1) for match in tag_re.finditer(line)]
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip(" \t"))
+        if is_python:
+            while True:
+                if not in_test_block and python_start_re.search(line):
+                    in_test_block = True
+                    block_indent = indent
+                    for tag in line_tags:
+                        ids.add(tag)
+                    break
+                if in_test_block:
+                    # A dedent starts a new statement outside the active test function.
+                    if stripped and indent <= block_indent and not python_start_re.search(line):
+                        in_test_block = False
+                        continue
+                    for tag in line_tags:
+                        ids.add(tag)
+                    break
+                for tag in line_tags:
+                    misplaced.append(f"{test_file}:{line_number}: #{tag}")
+                break
+        elif is_bats:
+            if not in_test_block and bats_start_re.search(line):
+                in_test_block = True
+            if in_test_block:
+                for tag in line_tags:
+                    ids.add(tag)
+                brace_depth += line.count("{")
+                brace_depth -= line.count("}")
+                if brace_depth <= 0:
+                    in_test_block = False
+                    brace_depth = 0
+            else:
+                for tag in line_tags:
+                    misplaced.append(f"{test_file}:{line_number}: #{tag}")
+        elif is_swift:
+            if not in_test_block and swift_start_re.search(line):
+                in_test_block = True
+            if in_test_block:
+                for tag in line_tags:
+                    ids.add(tag)
+                brace_depth += line.count("{")
+                brace_depth -= line.count("}")
+                if brace_depth <= 0:
+                    in_test_block = False
+                    brace_depth = 0
+            else:
+                for tag in line_tags:
+                    misplaced.append(f"{test_file}:{line_number}: #{tag}")
+        idx += 1
+
+out_file.write_text("".join(f"{item}\n" for item in sorted(ids)), encoding="utf-8")
+misplaced_file.write_text("".join(f"{item}\n" for item in misplaced), encoding="utf-8")
+PY
 }
 
 collect_numbered_test_ids_from_list() {
     local test_list_file="$1" out_file="$2"
-    local test_file tmp_ids
+    local test_file tmp_ids misplaced_tags_file one_file_misplaced
     tmp_ids="$(mktemp)"
+    misplaced_tags_file="$(mktemp)"
     : > "$tmp_ids"
+    : > "$misplaced_tags_file"
     if [ ! -s "$test_list_file" ]; then
         : > "$out_file"
         return 0
@@ -347,10 +441,19 @@ collect_numbered_test_ids_from_list() {
         [ -f "$test_file" ] || continue
         local one_file_ids
         one_file_ids="$(mktemp)"
-        extract_numbered_test_ids "$test_file" "$one_file_ids"
+        one_file_misplaced="$(mktemp)"
+        extract_numbered_test_ids "$test_file" "$one_file_ids" "$one_file_misplaced"
         cat "$one_file_ids" >> "$tmp_ids"
+        cat "$one_file_misplaced" >> "$misplaced_tags_file"
     done < "$test_list_file"
     sort -u "$tmp_ids" > "$out_file"
+    sort -u "$misplaced_tags_file" -o "$misplaced_tags_file"
+    if [ -s "$misplaced_tags_file" ]; then
+        echo "❌ FAIL (numbered-test-tag-placement): numbered #Rxxx-T## tags must be inside executable test blocks:"
+        sed 's/^/  - /' "$misplaced_tags_file"
+        echo "  - Move numbered tags into @test/def test*/func test* bodies."
+        return 1
+    fi
 }
 
 extract_numbered_requirement_test_ids() {
@@ -471,7 +574,9 @@ verify_numbered_test_traceability() {
     extract_requirement_ids "$requirements_file" "$req_ids_file"
     extract_numbered_requirement_test_ids "$requirements_file" "$req_numbered_test_ids_file"
     discover_combined_tests_for_requirements "$requirements_file" "$source_list_file" "$combined_tests_file"
-    collect_numbered_test_ids_from_list "$combined_tests_file" "$numbered_test_ids_file"
+    if ! collect_numbered_test_ids_from_list "$combined_tests_file" "$numbered_test_ids_file"; then
+        return 1
+    fi
     : > "$missing_req_testcase_ids_file"
     while IFS= read -r req_id; do
         [ -n "$req_id" ] || continue

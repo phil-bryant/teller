@@ -1,5 +1,46 @@
 import unittest
 
+from teller import teller_enums as enums
+
+
+class TellerEnumTests(unittest.TestCase):
+    def test_account_type_values(self):
+        self.assertEqual(enums.TellerAccountType.DEPOSITORY.value, "depository")
+        self.assertEqual(enums.TellerAccountType.CREDIT.value, "credit")
+
+    def test_transaction_status_values(self):
+        self.assertEqual(enums.TellerTransactionStatus.POSTED.value, "posted")
+        self.assertEqual(enums.TellerTransactionStatus.PENDING.value, "pending")
+
+    def test_category_enum_contains_common_values(self):
+        self.assertIn("groceries", [entry.value for entry in enums.TellerTransactionDetailsCategory])
+        self.assertIn("utilities", [entry.value for entry in enums.TellerTransactionDetailsCategory])
+
+
+if __name__ == "__main__":
+    unittest.main()
+import unittest
+
+
+
+class TellerEnumTests(unittest.TestCase):
+    def test_account_type_values(self):
+        self.assertEqual(enums.TellerAccountType.DEPOSITORY.value, "depository")
+        self.assertEqual(enums.TellerAccountType.CREDIT.value, "credit")
+
+    def test_transaction_status_values(self):
+        self.assertEqual(enums.TellerTransactionStatus.POSTED.value, "posted")
+        self.assertEqual(enums.TellerTransactionStatus.PENDING.value, "pending")
+
+    def test_category_enum_contains_common_values(self):
+        self.assertIn("groceries", [entry.value for entry in enums.TellerTransactionDetailsCategory])
+        self.assertIn("utilities", [entry.value for entry in enums.TellerTransactionDetailsCategory])
+
+
+if __name__ == "__main__":
+    unittest.main()
+import unittest
+
 from teller.teller_enums import (
     TellerAccountStatus,
     TellerAccountSubtype,

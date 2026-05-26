@@ -189,20 +189,14 @@ def main() -> int:
                 row["transaction_id"] for row in classifications_baseline
             }
             if baseline_classification_tx:
-                placeholders = ", ".join(
-                    f":tx_{idx}" for idx in range(len(baseline_classification_tx))
-                )
-                params = {
-                    f"tx_{idx}": tx for idx, tx in enumerate(baseline_classification_tx)
-                }
                 deleted_classifications = conn.execute(
                     text(
-                        f"""
+                        """
                         DELETE FROM teller.transaction_nys_snw_category
-                         WHERE transaction_id NOT IN ({placeholders})
+                         WHERE NOT (transaction_id = ANY(:baseline_tx_ids))
                         """
                     ),
-                    params,
+                    {"baseline_tx_ids": sorted(baseline_classification_tx)},
                 ).rowcount or 0
             else:
                 deleted_classifications = conn.execute(

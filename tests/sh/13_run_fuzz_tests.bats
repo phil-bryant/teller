@@ -67,7 +67,7 @@ teardown() {
 
 @test "runs from non-repo cwd" {
   #R001-T01
-  run env FUZZ_MAX_EXAMPLES=100 bash -c "cd '${TEST_TMPDIR}' && bash '${FIXTURE_ROOT}/13_run_fuzz_tests.sh'"
+  run env FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_PER_TEST_RATIO_PERCENT=80 bash -c "cd '${TEST_TMPDIR}' && bash '${FIXTURE_ROOT}/13_run_fuzz_tests.sh'"
   [ "$status" -eq 0 ]
 }
 
@@ -110,7 +110,7 @@ teardown() {
 
 @test "writes fuzz summary report and passes with non-zero default gates" {
   #R015-T01
-  run env STUB_TEST_ONE_PASSING=80 STUB_TEST_TWO_PASSING=80 FUZZ_MAX_EXAMPLES=100 bash "${FIXTURE_ROOT}/13_run_fuzz_tests.sh"
+  run env STUB_TEST_ONE_PASSING=80 STUB_TEST_TWO_PASSING=80 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_PER_TEST_RATIO_PERCENT=80 bash "${FIXTURE_ROOT}/13_run_fuzz_tests.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/fuzz/fuzz-summary.json" ]
   [ -d "${FIXTURE_ROOT}/artifacts/cache/hypothesis" ]

@@ -127,10 +127,10 @@ if [[ "$RUN_SHELL_TESTS" == "true" ]]; then
   fi
 fi
 
-#R010: Discover all unittest modules.
+#R010: Run Python unit lane through pytest as the single runner semantic.
 #R015: Propagate python-suite failures.
 if [[ "$RUN_PYTHON_TESTS" == "true" ]]; then
-  echo "▶ Running Python unit tests (unittest)..."
+  echo "▶ Running Python unit tests (pytest)..."
   UNITTEST_PYTHON="python3"
   if [[ -n "${PYTHONPATH:-}" ]]; then
     UNITTEST_PYTHONPATH="./src:${PYTHONPATH}"
@@ -155,7 +155,7 @@ PY
       fi
     fi
   fi
-  PYTHONPATH="$UNITTEST_PYTHONPATH" "$UNITTEST_PYTHON" -m unittest discover tests/py
+  PYTHONPATH="$UNITTEST_PYTHONPATH" "$UNITTEST_PYTHON" -m pytest tests/py -q
 fi
 
 #R025: Run pgTAP SQL unit tests.

@@ -9,6 +9,8 @@
 # #R015-T01: Traceability anchor.
 # #R020-T01: Traceability anchor.
 # #R025-T01: Traceability anchor.
+# #R030-T01: Traceability anchor.
+# #R030-T02: Traceability anchor.
 
 load "helpers/common.bash"
 
@@ -78,6 +80,10 @@ EOF
 
 teardown() {
   teardown_shell_test
+}
+
+src() {
+  printf '%s' "$(repo_root)/22_run_dynamic_security_tests.sh"
 }
 
 @test "prints DAST startup banner" {
@@ -270,5 +276,25 @@ for token in legacy_tokens:
     if token in script_text:
         raise SystemExit(f"legacy invariant token still present: {token}")
 PY
+  [ "$status" -eq 0 ]
+}
+
+@test "parses ZAP summary into machine-readable severity counts" {
+  #R030 #R030-T01
+  run grep "summarize_zap_html_report" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "zap-classification-summary.json" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep 'payload.get("high", 0)' "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "fails gate when threshold is medium and findings exist" {
+  #R030 #R030-T02
+  run grep "SECURITY_ZAP_FAIL_THRESHOLD" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "zap_fail_threshold_normalized" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "threshold_count > 0" "$(src)"
   [ "$status" -eq 0 ]
 }

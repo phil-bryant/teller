@@ -1508,6 +1508,7 @@ PY
       "${report_dir_abs}/zap-classification.log" \
       "$zap_quick_proxy_host" \
       "$zap_quick_proxy_port"
+    #R030: Parse ZAP HTML output into machine-readable severity totals for gate enforcement.
     summarize_zap_html_report \
       "${report_dir_abs}/zap-classification.html" \
       "${report_dir_abs}/zap-classification-summary.json" \
@@ -1552,6 +1553,7 @@ PY
     )
   fi
 
+  #R030: Fail lane when findings meet/exceed SECURITY_ZAP_FAIL_THRESHOLD.
   zap_fail_threshold_normalized="$(printf '%s' "$zap_fail_threshold" | tr '[:upper:]' '[:lower:]')"
   local threshold_count=0
   case "$zap_fail_threshold_normalized" in
