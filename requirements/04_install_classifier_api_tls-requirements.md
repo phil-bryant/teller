@@ -1,10 +1,10 @@
-# Local Classifier TLS Bootstrap Requirements
+# Local Classifier API TLS Install Requirements
 
 ## Scope
 
-Applies to `04_bootstrap_local_classifier_tls.sh`.
+Applies to `04_install_classifier_api_tls.sh`.
 
-R001  Statement: Bootstrap classifier TLS assets at deterministic local paths.
+R001  Statement: Install classifier TLS assets at deterministic local paths.
 Design: Resolve `TELLER_CLASSIFIER_TLS_CERT_FILE` / `TELLER_CLASSIFIER_TLS_KEY_FILE` with defaults under `~/.teller` and print selected paths before generation.
 Tests:
 - R001-T01: Verify script references `classifier-localhost-cert.pem` and `classifier-localhost-key.pem` defaults.
@@ -26,4 +26,5 @@ Tests:
 
 ## Changelog
 
-- 2026-05-25: Initial requirements for control-plane slot `04` TLS bootstrap script.
+- 2026-05-26: Renamed from `04_bootstrap_local_classifier_tls.sh` to `04_install_classifier_api_tls.sh`.
+- 2026-05-25: Initial requirements for control-plane slot `04` TLS install script.

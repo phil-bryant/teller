@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-# Requirement test-case tags for requirements/04_bootstrap_local_classifier_tls-requirements.md
+# Requirement test-case tags for requirements/04_install_classifier_api_tls-requirements.md
 # #R001-T01: Traceability anchor.
 # #R005-T01: Traceability anchor.
 # #R010-T01: Traceability anchor.
@@ -13,7 +13,7 @@ teardown() {
 }
 
 src() {
-  printf '%s' "$(repo_root)/04_bootstrap_local_classifier_tls.sh"
+  printf '%s' "$(repo_root)/04_install_classifier_api_tls.sh"
 }
 
 @test "defines default classifier TLS cert and key paths under ~/.teller" {

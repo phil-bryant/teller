@@ -279,7 +279,7 @@ print_final_guidance() {
     echo ""
     echo "Optional validation:"
     echo "- ./17_verify_macos_crash_test.sh"
-    echo "- ./04_bootstrap_local_classifier_tls.sh"
+    echo "- ./04_install_classifier_api_tls.sh"
 }
 
 print_header

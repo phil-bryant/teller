@@ -11,7 +11,7 @@ Run setup scripts in numeric order. The workflow is designed around:
   - Ensures Xcode first-launch and license acceptance are completed (using `1psa` for sudo credential input when needed).
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
-- `04_bootstrap_local_classifier_tls.sh`
+- `04_install_classifier_api_tls.sh`
 - `05_run_dependency_freshness_tests.sh`
 - `06_run_av_test.sh`
 - `07_run_static_security_tests.sh`
@@ -51,7 +51,7 @@ From the project root:
 ./02_create_venv.sh
 source ./teller-venv/bin/activate
 ./03_load_requirements.sh
-./04_bootstrap_local_classifier_tls.sh
+./04_install_classifier_api_tls.sh
 ./05_run_dependency_freshness_tests.sh
 ./06_run_av_test.sh
 ./07_run_static_security_tests.sh

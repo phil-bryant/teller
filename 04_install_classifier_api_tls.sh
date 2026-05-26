@@ -5,13 +5,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-#R001: Bootstrap local TLS cert/key material for the classifier API defaults.
+#R001: Install local TLS cert/key material for the classifier API defaults.
 TLS_DIR="${TELLER_CLASSIFIER_TLS_DIR:-$HOME/.teller}"
 TLS_CERT_FILE="${TELLER_CLASSIFIER_TLS_CERT_FILE:-$TLS_DIR/classifier-localhost-cert.pem}"
 TLS_KEY_FILE="${TELLER_CLASSIFIER_TLS_KEY_FILE:-$TLS_DIR/classifier-localhost-key.pem}"
 TLS_DAYS="${TELLER_CLASSIFIER_TLS_DAYS:-825}"
 
-echo "▶ Bootstrapping local classifier TLS materials"
+echo "▶ Installing local classifier API TLS materials"
 echo "  cert: ${TLS_CERT_FILE}"
 echo "  key : ${TLS_KEY_FILE}"
 
