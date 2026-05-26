@@ -456,7 +456,7 @@ actor UITestingFixtureAPI: ClassificationAPI {
         )
     }
 
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
+    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool, countOnly: Bool) async throws -> TransactionListResponse {
         let normalizedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let normalizedMatchState = matchState.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let filtered = rows.filter { row in
@@ -481,11 +481,22 @@ actor UITestingFixtureAPI: ClassificationAPI {
             }
             return row.description.lowercased().contains(normalizedSearch) || row.transaction_id.lowercased().contains(normalizedSearch)
         }
+        if countOnly {
+            return TransactionListResponse(total: filtered.count, items: [])
+        }
         let safeOffset = max(0, min(offset, filtered.count))
         let effectiveLimit = min(max(limit, 0), max(pageSize, 1))
         let upperBound = min(filtered.count, safeOffset + effectiveLimit)
         let page = Array(filtered[safeOffset..<upperBound])
-        return TransactionListResponse(total: filtered.count, items: page)
+        let total: Int
+        if includeTotal {
+            total = filtered.count
+        } else if page.count < effectiveLimit {
+            total = safeOffset + page.count
+        } else {
+            total = safeOffset + page.count + 1
+        }
+        return TransactionListResponse(total: total, items: page)
     }
 
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse] {

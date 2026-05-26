@@ -222,6 +222,14 @@ private struct MatchAndClassifyTransactionsPane: View {
                 }
                 .scrollTargetLayout()
             }
+            .background {
+                if !viewModel.transactions.isEmpty {
+                    Color.clear
+                        .onAppear {
+                            TransactionListProfiler.markListRendered(rowCount: viewModel.transactions.count)
+                        }
+                }
+            }
             .scrollPosition(id: $scrollTargetId, anchor: .center)
             .accessibilityIdentifier("transaction-list")
             // #R025: Programmatic selection changes scroll the newly-selected row into view (e.g.,

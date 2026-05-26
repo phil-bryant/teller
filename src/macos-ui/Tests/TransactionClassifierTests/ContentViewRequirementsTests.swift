@@ -102,7 +102,8 @@ private actor ContentViewRequirementsMockAPI: ClassificationAPI {
 
     func fetchCategories() async throws -> [CategoryOption] { categories }
 
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
+    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool, countOnly: Bool) async throws -> TransactionListResponse {
+        _ = includeTotal; _ = countOnly
         _ = search; _ = onlyUnclassified; _ = matchState; _ = onlyUnmovedMatch; _ = limit; _ = offset
         return TransactionListResponse(total: transactions.count, items: transactions)
     }

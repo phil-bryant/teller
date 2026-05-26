@@ -96,6 +96,12 @@ Tests:
 - R070-T01: Stub a transaction with multiple active match rows and verify the response carries the highest-confidence representative + `match_count > 1`.
 - R070-T02: Set `match_state="ai_match_confident"` and verify the SQL filters by that state while still allowing transactions with no active match row.
 
+R072  Statement: Allow fast transaction list loads without blocking on `COUNT(*)`.
+Design: `/v1/transactions` accepts `include_total` (default `true`) and `count_only` (default `false`). When `count_only=true`, only the count query runs and `items` is empty. When `include_total=false`, the list query runs first and `total` is a lower-bound estimate (`offset + row_count`, or `offset + row_count + 1` when the page is full) so clients can paint rows before an accurate total arrives. Active-match `match_count` is computed in the same lateral scan as the representative row (window count), not a per-row correlated subquery.
+Tests:
+- R072-T01: Call with `count_only=true` and verify one count query and empty `items`.
+- R072-T02: Call with `include_total=false` and verify only the list query runs with an estimated `total`.
+
 R062  Statement: Proxy free-form Mailcart search for ad-hoc candidate discovery.
 Design: `/v1/matchy/messages/search` accepts a printable-ASCII `query` (1-200 chars) and `limit` (1-100, default 25), proxies to Mailcart `/v1/messages/search?query=...&limit=...`, and returns `{query, items: [{email_message_id, subject, from, received_at, snippet}]}` (mapped from Mailcart's `{messages: [{message_id, sender, preview, received_at, body_text}]}` envelope). Upstream payloads missing a `messages` array (or legacy `items` array) surface as 502. The static `/search` route must be registered before `/v1/matchy/messages/{email_message_id}` so Starlette does not treat the literal path segment `search` as a message id (which would return an `EmailMessage` shape and break macOS client decoding).
 Tests:
@@ -111,6 +117,8 @@ Tests:
 - R071-T03: Call clear for an unknown `match_id` or a transaction with no active match and verify 404.
 
 ## Changelog
+
+- 2026-05-26: Added R072 (`include_total`, `count_only`) and optimized active-match lateral + `match_count` window aggregation for `/v1/transactions`.
 
 - 2026-05-25: Expanded R040 authz boundary to all `/v1/*` endpoints (read and write) with shared token enforcement.
 - 2026-04-22: Initial reverse-engineered requirements for `src/teller/teller_classification_api.py`.

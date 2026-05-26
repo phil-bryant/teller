@@ -116,6 +116,8 @@ final class APIClientTests: XCTestCase {
             XCTAssertEqual(query["only_unclassified"], "true")
             XCTAssertEqual(query["limit"], "25")
             XCTAssertEqual(query["offset"], "50")
+            XCTAssertEqual(query["include_total"], "true")
+            XCTAssertEqual(query["count_only"], "false")
             let response = try self.makeHTTPResponse(for: request, statusCode: 200)
             let body = """
             {"total":1,"items":[{"transaction_id":"txn_1","account_id":"acc_1","institution_id":"inst_1","account_last_four":"1234","date":"2026-04-18","amount":"10.50","description":"Coffee","status":"posted","transaction_type_code":"card_payment","teller_category":"food","classification":null}]}

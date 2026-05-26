@@ -27,8 +27,9 @@ actor MockAPI: ClassificationAPI {
         self.saveError = saveError
     }
     func fetchCategories() async throws -> [CategoryOption] { categories }
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
-        _ = matchState; _ = onlyUnmovedMatch
+    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool, countOnly: Bool) async throws -> TransactionListResponse {
+        _ = matchState; _ = onlyUnmovedMatch; _ = includeTotal
+        if countOnly { return .init(total: response.total, items: []) }
         fetchOffsets.append(offset)
         return pagedResponses[offset] ?? response
     }

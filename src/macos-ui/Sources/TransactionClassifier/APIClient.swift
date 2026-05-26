@@ -20,7 +20,7 @@ enum APIError: Error, LocalizedError {
 protocol ClassificationAPI: Sendable {
     // #R001: Fetch categories and transaction listings from the local classifier API.
     func fetchCategories() async throws -> [CategoryOption]
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse
+    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool, countOnly: Bool) async throws -> TransactionListResponse
     // #R005: Persist one or more classification mutations in a single batch request.
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse]
     // #R040: Manage nys_snw_category definitions from the UI.
@@ -147,7 +147,7 @@ actor APIClient: ClassificationAPI {
         try await send(path: "/v1/categories")
     }
 
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
+    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool = true, countOnly: Bool = false) async throws -> TransactionListResponse {
         guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/transactions"), resolvingAgainstBaseURL: false) else {
             throw APIError.invalidResponse
         }
@@ -156,6 +156,8 @@ actor APIClient: ClassificationAPI {
             URLQueryItem(name: "only_unclassified", value: onlyUnclassified ? "true" : "false"),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "offset", value: String(offset)),
+            URLQueryItem(name: "include_total", value: includeTotal ? "true" : "false"),
+            URLQueryItem(name: "count_only", value: countOnly ? "true" : "false"),
         ]
         if !matchState.isEmpty {
             queryItems.append(URLQueryItem(name: "match_state", value: matchState))

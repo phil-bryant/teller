@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS teller.transaction_email_match (
 CREATE INDEX IF NOT EXISTS idx_transaction_email_match_transaction_id
     ON teller.transaction_email_match(transaction_id);
 
+CREATE INDEX IF NOT EXISTS idx_transaction_email_match_active_transaction_id
+    ON teller.transaction_email_match(transaction_id)
+    WHERE active = TRUE;
+
 CREATE INDEX IF NOT EXISTS idx_transaction_email_match_state
     ON teller.transaction_email_match(state);
 

@@ -9,16 +9,27 @@ This app now also includes a native **Connect** tab for local Teller enrollment 
 From repo root:
 
 ```zsh
+./04_bootstrap_local_classifier_tls.sh   # first run only (local HTTPS cert/key)
 ./21_run_classification_api.py
 ```
 
-Defaults to `http://127.0.0.1:8787`. Override with:
+Defaults to **HTTPS** on `127.0.0.1:8787` using `~/.teller/classifier-localhost-cert.pem` and `~/.teller/classifier-localhost-key.pem`.
+
+Override with:
 
 - `TELLER_CLASSIFIER_API_HOST`
 - `TELLER_CLASSIFIER_API_PORT`
-- `TELLER_CLASSIFIER_API_URL` (used by the macOS app's API client; defaults to `http://127.0.0.1:8787`)
+- `TELLER_CLASSIFIER_TLS_CERT_FILE` / `TELLER_CLASSIFIER_TLS_KEY_FILE`
+- `TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true` — explicit local-only HTTP override (server and client must agree)
+- `TELLER_CLASSIFIER_API_URL` (macOS API client; defaults to `https://127.0.0.1:8787` unless insecure HTTP is enabled)
 
 Write operations require `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` to be resolvable (used by the API launcher and mutation endpoints).
+
+### Troubleshooting slow or failed loads
+
+- **Spinner then error:** Confirm the API is listening on the same scheme as the app (`https://127.0.0.1:8787` by default). Run `./04_bootstrap_local_classifier_tls.sh` if cert files are missing.
+- **Still slow with API up:** Initial load skips the expensive `COUNT(*)` query and refreshes the total in the background; very large databases may still take time on first paint. Check PostgreSQL profile latency (`TELLER_DB_PROFILE`, managed vs local).
+- **Proxy:** Unset `TELLER_CLASSIFIER_HTTP_PROXY` outside DAST/security test runs so loopback traffic is not proxied.
 
 ## 2) Launch app
 
@@ -46,6 +57,12 @@ From repo root, the recommended launcher is:
 
 ```zsh
 ./24_run_classification_macos-ui.sh
+```
+
+Profile transaction-list load and first-render timings:
+
+```zsh
+./24_run_classification_macos-ui.sh --profile
 ```
 
 That command launches this macOS app; open the Connect tab to manage local enrollments.
@@ -88,18 +105,18 @@ On the second launch, the app should detect and persist the pending crash report
 
 From repo root:
 
-- `./10_run_shell_unit_tests.sh` (API/unit tests)
-- `./16_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
-- `./06_run_av_test.sh` (standalone ClamAV antivirus lane)
-- `./22_classification_persistence_verification_test.sh` (auto-selects IDs for end-to-end persistence check)
-- `TXN_ID=... CATEGORY_ID=... ./22_classification_persistence_verification_test.sh --require-env-ids` (strict CI mode)
+- `./09_run_shell_unit_tests.sh` (API/unit tests)
+- `./15_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
+- `./05_run_av_test.sh` (standalone ClamAV antivirus lane)
+- `./21_classification_persistence_verification_test.sh` (auto-selects IDs for end-to-end persistence check)
+- `TXN_ID=... CATEGORY_ID=... ./21_classification_persistence_verification_test.sh --require-env-ids` (strict CI mode)
 
 ## 5) Automated UI regression testing
 
 Run from repo root:
 
 ```zsh
-./16_run_macos_ui_regression_tests.sh
+./15_run_macos_ui_regression_tests.sh
 ```
 
 Available gates/flags:
@@ -122,6 +139,6 @@ Snapshot tests live in `Tests/TransactionClassifierSnapshotTests` and validate k
 - save-state indicators
 - Connect tab (ready + error states)
 
-XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` as a **single-session** suite (`testMacOSUISmokeSuite`): one app launch, 12 ordered requirement-driven scenarios (Match & Classify shell, search, unclassified filter, classification/undo, scroll-into-view, Help menu, Connect tab), then one teardown. Optional positional selectors (e.g. `./16_run_macos_ui_regression_tests.sh 3,6`) set `XCUITEST_STEPS` to run a subset within the same session.
+XCUITest smoke tests live in `UITests/TransactionClassifierUITests.swift` as a **single-session** suite (`testMacOSUISmokeSuite`): one app launch, 12 ordered requirement-driven scenarios (Match & Classify shell, search, unclassified filter, classification/undo, scroll-into-view, Help menu, Connect tab), then one teardown. Optional positional selectors (e.g. `./15_run_macos_ui_regression_tests.sh 3,6`) set `XCUITEST_STEPS` to run a subset within the same session.
 
-Rollout guidance and gating behavior are captured in `../../requirements/16_run_macos_ui_regression_tests-requirements.md`.
+Rollout guidance and gating behavior are captured in `../../requirements/15_run_macos_ui_regression_tests-requirements.md`.

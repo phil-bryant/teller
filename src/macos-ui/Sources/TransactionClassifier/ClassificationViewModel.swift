@@ -52,7 +52,7 @@ struct CategoryDraft: Equatable {
 @MainActor
 @Observable
 final class ClassificationViewModel {
-    private let pageSize = 300
+    private let pageSize = 150
     var categories: [CategoryOption] = []
     var allCategories: [CategoryOption] = []
     var transactions: [TransactionRow] = []
@@ -119,7 +119,9 @@ final class ClassificationViewModel {
 
     func loadAll() async {
         // #R001: Load categories and the first transaction page together, then refresh derived UI state.
-        busy = true; defer { busy = false }
+        TransactionListProfiler.beginLoad()
+        busy = true
+        let fetchClock = ContinuousClock()
         do {
             async let cats = api.fetchCategories()
             async let txs = api.fetchTransactions(
@@ -128,18 +130,34 @@ final class ClassificationViewModel {
                 matchState: matchReviewStateFilter,
                 onlyUnmovedMatch: matchReviewOnlyUnmoved,
                 limit: pageSize,
-                offset: 0
+                offset: 0,
+                includeTotal: false,
+                countOnly: false
             )
             let fetchedCategories = try await cats
             setCategories(fetchedCategories)
+            TransactionListProfiler.markCategoriesLoaded()
+            let txFetchStart = fetchClock.now
             let response = try await txs
+            let fetchMs = TransactionListProfiler.milliseconds(from: txFetchStart, to: fetchClock.now)
+            TransactionListProfiler.markTransactionsFetched(itemCount: response.items.count, milliseconds: fetchMs)
             transactions = response.items
             totalTransactions = response.total
+            TransactionListProfiler.markTransactionsAssigned(rowCount: transactions.count)
             syncPickerToSelection()
             statusText = loadStatusText(for: transactions)
             errorText = ""
-            await selectedTransactionDidChange()
-        } catch { errorText = error.localizedDescription; statusText = "Load failed" }
+        } catch {
+            errorText = error.localizedDescription
+            statusText = "Load failed"
+            TransactionListProfiler.markLoadFailed(error.localizedDescription)
+            busy = false
+            return
+        }
+        busy = false
+        TransactionListProfiler.markBusyCleared()
+        Task { await selectedTransactionDidChange() }
+        Task { await refreshTransactionTotal() }
     }
 
     func reloadCategories() async {
@@ -165,6 +183,25 @@ final class ClassificationViewModel {
         }
     }
 
+    func refreshTransactionTotal() async {
+        do {
+            let response = try await api.fetchTransactions(
+                search: searchText,
+                onlyUnclassified: onlyUnclassified,
+                matchState: matchReviewStateFilter,
+                onlyUnmovedMatch: matchReviewOnlyUnmoved,
+                limit: 1,
+                offset: 0,
+                includeTotal: true,
+                countOnly: true
+            )
+            totalTransactions = response.total
+            statusText = loadStatusText(for: transactions)
+        } catch {
+            // Keep the estimated total from the fast first load when the background count fails.
+        }
+    }
+
     func loadMore() async {
         // #R020: Load additional pages and merge by transaction id without duplicates.
         guard !busy, canLoadMore else { return }
@@ -176,7 +213,9 @@ final class ClassificationViewModel {
                 matchState: matchReviewStateFilter,
                 onlyUnmovedMatch: matchReviewOnlyUnmoved,
                 limit: pageSize,
-                offset: transactions.count
+                offset: transactions.count,
+                includeTotal: true,
+                countOnly: false
             )
             totalTransactions = response.total
             mergeTransactions(response.items)

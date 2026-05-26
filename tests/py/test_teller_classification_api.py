@@ -12,6 +12,7 @@ except RuntimeError:
     TestClient = None
 
 from teller.teller_classification_api import (
+    _estimate_transaction_total,
     _category_params,
     _create_transaction_match,
     _deactivate_match,
@@ -79,6 +80,11 @@ class _SessionContext:
 
 
 class ClassificationApiTests(unittest.TestCase):
+    def test_estimate_transaction_total(self):
+        self.assertEqual(_estimate_transaction_total(offset=0, limit=150, row_count=2), 2)
+        self.assertEqual(_estimate_transaction_total(offset=0, limit=150, row_count=150), 151)
+        self.assertEqual(_estimate_transaction_total(offset=150, limit=150, row_count=50), 200)
+
     def setUp(self):
         self._token_patch = patch(
             "teller.teller_classification_api._configured_write_token",
@@ -532,7 +538,7 @@ class ClassificationApiTests(unittest.TestCase):
         #R040-T03
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
-        session = _FakeSession(rows=[_Result(scalar=0), _Result(rows=[])])
+        session = _FakeSession(rows=[_Result(rows=[]), _Result(scalar=0)])
         get_session_mock.return_value = _SessionContext(session)
         with self.assertRaises(HTTPException) as ctx:
             endpoint(
@@ -542,6 +548,8 @@ class ClassificationApiTests(unittest.TestCase):
                 only_unclassified=False,
                 match_state="",
                 only_unmoved_match=False,
+                include_total=True,
+                count_only=False,
                 limit=100,
                 offset=0,
             )
@@ -660,7 +668,6 @@ class ClassificationApiTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
         session = _FakeSession(
             rows=[
-                _Result(scalar=1),
                 _Result(
                     rows=[
                         {
@@ -685,6 +692,7 @@ class ClassificationApiTests(unittest.TestCase):
                         }
                     ]
                 ),
+                _Result(scalar=1),
             ]
         )
         get_session_mock.return_value = _SessionContext(session)
@@ -698,11 +706,22 @@ class ClassificationApiTests(unittest.TestCase):
                 "offset": "2",
             }
         )
-        body = endpoint(request=request, search="cof", status="posted", only_unclassified=True, limit=10, offset=2)
+        body = endpoint(
+            request=request,
+            search="cof",
+            status="posted",
+            only_unclassified=True,
+            match_state="",
+            only_unmoved_match=False,
+            include_total=True,
+            count_only=False,
+            limit=10,
+            offset=2,
+        )
         self.assertEqual(body.total, 1)
         self.assertEqual(len(body.items), 1)
-        count_sql, count_params = session.calls[0]
-        list_sql, list_params = session.calls[1]
+        list_sql, list_params = session.calls[0]
+        count_sql, count_params = session.calls[1]
         self.assertIn("tt.status = 'posted'", count_sql)
         self.assertIn("tt.status::text = :status", count_sql)
         self.assertIn("ILIKE :search_pattern", count_sql)
@@ -1443,7 +1462,6 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
         session = _FakeSession(
             rows=[
-                _Result(scalar=1),
                 _Result(
                     rows=[
                         {
@@ -1462,6 +1480,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
                         }
                     ]
                 ),
+                _Result(scalar=1),
             ]
         )
         get_session_mock.return_value = _SessionContext(session)
@@ -1470,16 +1489,26 @@ class MatchCandidateProxyTests(unittest.TestCase):
             query_params={"search": "", "status": "", "only_unclassified": "false",
                           "match_state": "ai_match_confident", "limit": "10", "offset": "0"}
         )
-        body = endpoint(request=request, search="", status="", only_unclassified=False,
-                        match_state="ai_match_confident", only_unmoved_match=False, limit=10, offset=0)
+        body = endpoint(
+            request=request,
+            search="",
+            status="",
+            only_unclassified=False,
+            match_state="ai_match_confident",
+            only_unmoved_match=False,
+            include_total=True,
+            count_only=False,
+            limit=10,
+            offset=0,
+        )
         self.assertEqual(body.total, 1)
         self.assertEqual(body.items[0].transaction_id, "txn_x")
         self.assertIsNotNone(body.items[0].match)
         self.assertEqual(body.items[0].match.match_id, 351)
         self.assertEqual(body.items[0].match.state, "ai_match_confident")
         self.assertEqual(body.items[0].match.match_count, 3)
-        count_sql, count_params = session.calls[0]
-        list_sql, list_params = session.calls[1]
+        list_sql, list_params = session.calls[0]
+        count_sql, count_params = session.calls[1]
         self.assertIn("transaction_email_match", count_sql)
         self.assertIn("match_state", count_sql)
         self.assertEqual(count_params["match_state"], "ai_match_confident")
@@ -1494,8 +1523,8 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
         session = _FakeSession(
             rows=[
-                _Result(scalar=0),
                 _Result(rows=[]),
+                _Result(scalar=0),
             ]
         )
         get_session_mock.return_value = _SessionContext(session)
@@ -1505,11 +1534,20 @@ class MatchCandidateProxyTests(unittest.TestCase):
                           "match_state": "human_confirmed_ai_match", "only_unmoved_match": "true",
                           "limit": "10", "offset": "0"}
         )
-        body = endpoint(request=request, search="", status="", only_unclassified=False,
-                        match_state="human_confirmed_ai_match", only_unmoved_match=True,
-                        limit=10, offset=0)
+        body = endpoint(
+            request=request,
+            search="",
+            status="",
+            only_unclassified=False,
+            match_state="human_confirmed_ai_match",
+            only_unmoved_match=True,
+            include_total=True,
+            count_only=False,
+            limit=10,
+            offset=0,
+        )
         self.assertEqual(body.total, 0)
-        list_sql, list_params = session.calls[1]
+        list_sql, list_params = session.calls[0]
         self.assertIn("match_state", list_sql)
         self.assertIn("only_unmoved_match", list_sql)
         self.assertEqual(list_params["match_state"], "human_confirmed_ai_match")
@@ -1519,16 +1557,26 @@ class MatchCandidateProxyTests(unittest.TestCase):
     def test_transactions_endpoint_filters_unmatched_match_state(self, get_session_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
-        session = _FakeSession(rows=[_Result(scalar=0), _Result(rows=[])])
+        session = _FakeSession(rows=[_Result(rows=[]), _Result(scalar=0)])
         get_session_mock.return_value = _SessionContext(session)
         request = SimpleNamespace(
             headers={"x-teller-write-token": "test-write-token"},
             query_params={"search": "", "status": "", "only_unclassified": "false",
                           "match_state": "unmatched", "limit": "10", "offset": "0"}
         )
-        endpoint(request=request, search="", status="", only_unclassified=False,
-                 match_state="unmatched", only_unmoved_match=False, limit=10, offset=0)
-        list_sql, list_params = session.calls[1]
+        endpoint(
+            request=request,
+            search="",
+            status="",
+            only_unclassified=False,
+            match_state="unmatched",
+            only_unmoved_match=False,
+            include_total=True,
+            count_only=False,
+            limit=10,
+            offset=0,
+        )
+        list_sql, list_params = session.calls[0]
         self.assertIn("unmatched", list_sql)
         self.assertIn("ai_no_match_found", list_sql)
         self.assertEqual(list_params["match_state"], "unmatched")
@@ -1537,19 +1585,112 @@ class MatchCandidateProxyTests(unittest.TestCase):
     def test_transactions_endpoint_filters_no_email_match_state(self, get_session_mock):
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
-        session = _FakeSession(rows=[_Result(scalar=0), _Result(rows=[])])
+        session = _FakeSession(rows=[_Result(rows=[]), _Result(scalar=0)])
         get_session_mock.return_value = _SessionContext(session)
         request = SimpleNamespace(
             headers={"x-teller-write-token": "test-write-token"},
             query_params={"search": "", "status": "", "only_unclassified": "false",
                           "match_state": "no_email", "limit": "10", "offset": "0"}
         )
-        endpoint(request=request, search="", status="", only_unclassified=False,
-                 match_state="no_email", only_unmoved_match=False, limit=10, offset=0)
-        list_sql, list_params = session.calls[1]
+        endpoint(
+            request=request,
+            search="",
+            status="",
+            only_unclassified=False,
+            match_state="no_email",
+            only_unmoved_match=False,
+            include_total=True,
+            count_only=False,
+            limit=10,
+            offset=0,
+        )
+        list_sql, list_params = session.calls[0]
         self.assertIn("no_email", list_sql)
         self.assertIn("selected_by = 'human'", list_sql)
         self.assertEqual(list_params["match_state"], "no_email")
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_count_only_runs_count_without_list(self, get_session_mock):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        session = _FakeSession(rows=[_Result(scalar=1074)])
+        get_session_mock.return_value = _SessionContext(session)
+        request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
+            query_params={"search": "", "status": "", "only_unclassified": "true",
+                          "count_only": "true", "limit": "1", "offset": "0"},
+        )
+        body = endpoint(
+            request=request,
+            search="",
+            status="",
+            only_unclassified=True,
+            match_state="",
+            only_unmoved_match=False,
+            include_total=True,
+            count_only=True,
+            limit=1,
+            offset=0,
+        )
+        self.assertEqual(body.total, 1074)
+        self.assertEqual(body.items, [])
+        self.assertEqual(len(session.calls), 1)
+        self.assertIn("COUNT", session.calls[0][0].upper())
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_include_total_false_skips_count_query(self, get_session_mock):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        session = _FakeSession(
+            rows=[
+                _Result(
+                    rows=[
+                        {
+                            "transaction_id": "txn_1",
+                            "account_id": "acc_1",
+                            "institution_id": None,
+                            "account_last_four": None,
+                            "date": "2026-01-01",
+                            "amount": "5.00",
+                            "description": "Coffee",
+                            "status": "posted",
+                            "transaction_type_code": "card_payment",
+                            "teller_category": None,
+                            "nys_snw_category_id": None,
+                            "level_1": None,
+                            "level_1_name": None,
+                            "level_2": None,
+                            "level_2_name": None,
+                            "level_3": None,
+                            "level_4": None,
+                            "categorization": None,
+                        }
+                    ]
+                ),
+            ]
+        )
+        get_session_mock.return_value = _SessionContext(session)
+        request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
+            query_params={"search": "", "status": "", "only_unclassified": "false",
+                          "include_total": "false", "limit": "150", "offset": "0"},
+        )
+        body = endpoint(
+            request=request,
+            search="",
+            status="",
+            only_unclassified=False,
+            match_state="",
+            only_unmoved_match=False,
+            include_total=False,
+            count_only=False,
+            limit=150,
+            offset=0,
+        )
+        self.assertEqual(len(session.calls), 1)
+        self.assertIn("LIMIT", session.calls[0][0])
+        self.assertEqual(body.total, 1)
+        self.assertEqual(len(body.items), 1)
 
 
 if __name__ == "__main__":

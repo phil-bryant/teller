@@ -304,7 +304,8 @@ actor SnapshotFixtureAPI: ClassificationAPI {
         categories
     }
 
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int) async throws -> TransactionListResponse {
+    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool, countOnly: Bool) async throws -> TransactionListResponse {
+        _ = includeTotal; _ = countOnly
         _ = matchState; _ = onlyUnmovedMatch
         let normalizedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let filtered = rows.filter { row in

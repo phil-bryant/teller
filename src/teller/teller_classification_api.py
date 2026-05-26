@@ -61,13 +61,23 @@ _TRANSACTION_COUNT_SQL = text("""
       ) m ON TRUE
       LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
       LEFT JOIN LATERAL (
-          SELECT tem.match_id, tem.state::text AS state, tem.selected_by::text AS selected_by,
-                 tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence
-            FROM teller.transaction_email_match tem
-           WHERE tem.transaction_id = tt.transaction_id
-             AND tem.active = TRUE
-           ORDER BY tem.ai_confidence DESC NULLS LAST, tem.selected_at DESC, tem.match_id DESC
-           LIMIT 1
+          SELECT ranked.match_id, ranked.state AS match_state,
+                 ranked.selected_by AS match_selected_by,
+                 ranked.email_message_id, ranked.moved_to_matchy_at,
+                 ranked.ai_confidence
+            FROM (
+                SELECT tem.match_id, tem.state::text AS state, tem.selected_by::text AS selected_by,
+                       tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence,
+                       ROW_NUMBER() OVER (
+                           ORDER BY tem.ai_confidence DESC NULLS LAST,
+                                    tem.selected_at DESC,
+                                    tem.match_id DESC
+                       ) AS rn
+                  FROM teller.transaction_email_match tem
+                 WHERE tem.transaction_id = tt.transaction_id
+                   AND tem.active = TRUE
+            ) ranked
+           WHERE ranked.rn = 1
       ) tem ON TRUE
      WHERE tt.status = 'posted'
        AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
@@ -75,9 +85,9 @@ _TRANSACTION_COUNT_SQL = text("""
        AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
        AND (:match_state = ''
             OR (:match_state = 'unmatched' AND (tem.match_id IS NULL
-                OR (tem.state = 'ai_no_match_found' AND tem.selected_by <> 'human')))
-            OR (:match_state = 'no_email' AND tem.state = 'ai_no_match_found' AND tem.selected_by = 'human')
-            OR (tem.state = :match_state))
+                OR (tem.match_state = 'ai_no_match_found' AND tem.match_selected_by <> 'human')))
+            OR (:match_state = 'no_email' AND tem.match_state = 'ai_no_match_found' AND tem.match_selected_by = 'human')
+            OR (tem.match_state = :match_state))
        AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
 """)
 
@@ -87,11 +97,9 @@ _TRANSACTION_LIST_SQL = text("""
            ttt.code AS transaction_type_code, ttd.category AS teller_category,
            m.nys_snw_category_id, nsc.level_1, nsc.level_1_name, nsc.level_2, nsc.level_2_name,
            nsc.level_3, nsc.level_4, nsc.categorization,
-           tem.match_id, tem.state AS match_state, tem.selected_by AS match_selected_by,
-           tem.email_message_id AS match_email_message_id, tem.moved_to_matchy_at,
-           tem.ai_confidence AS match_ai_confidence,
-           (SELECT COUNT(*) FROM teller.transaction_email_match
-             WHERE transaction_id = tt.transaction_id AND active = TRUE)::INT AS match_count
+           tem.match_id, tem.match_state, tem.match_selected_by,
+           tem.match_email_message_id, tem.moved_to_matchy_at,
+           tem.match_ai_confidence, tem.match_count
       FROM teller.transaction tt
       LEFT JOIN teller.account ta USING (account_id)
       LEFT JOIN teller.transaction_type ttt USING (transaction_type_id)
@@ -105,13 +113,25 @@ _TRANSACTION_LIST_SQL = text("""
       ) m ON TRUE
       LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
       LEFT JOIN LATERAL (
-          SELECT tem.match_id, tem.state::text AS state, tem.selected_by::text AS selected_by,
-                 tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence
-            FROM teller.transaction_email_match tem
-           WHERE tem.transaction_id = tt.transaction_id
-             AND tem.active = TRUE
-           ORDER BY tem.ai_confidence DESC NULLS LAST, tem.selected_at DESC, tem.match_id DESC
-           LIMIT 1
+          SELECT ranked.match_id, ranked.state AS match_state,
+                 ranked.selected_by AS match_selected_by,
+                 ranked.email_message_id AS match_email_message_id,
+                 ranked.moved_to_matchy_at, ranked.ai_confidence AS match_ai_confidence,
+                 ranked.match_count
+            FROM (
+                SELECT tem.match_id, tem.state::text AS state, tem.selected_by::text AS selected_by,
+                       tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence,
+                       COUNT(*) OVER ()::INT AS match_count,
+                       ROW_NUMBER() OVER (
+                           ORDER BY tem.ai_confidence DESC NULLS LAST,
+                                    tem.selected_at DESC,
+                                    tem.match_id DESC
+                       ) AS rn
+                  FROM teller.transaction_email_match tem
+                 WHERE tem.transaction_id = tt.transaction_id
+                   AND tem.active = TRUE
+            ) ranked
+           WHERE ranked.rn = 1
       ) tem ON TRUE
      WHERE tt.status = 'posted'
        AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
@@ -119,13 +139,20 @@ _TRANSACTION_LIST_SQL = text("""
        AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
        AND (:match_state = ''
             OR (:match_state = 'unmatched' AND (tem.match_id IS NULL
-                OR (tem.state = 'ai_no_match_found' AND tem.selected_by <> 'human')))
-            OR (:match_state = 'no_email' AND tem.state = 'ai_no_match_found' AND tem.selected_by = 'human')
-            OR (tem.state = :match_state))
+                OR (tem.match_state = 'ai_no_match_found' AND tem.match_selected_by <> 'human')))
+            OR (:match_state = 'no_email' AND tem.match_state = 'ai_no_match_found' AND tem.match_selected_by = 'human')
+            OR (tem.match_state = :match_state))
        AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
     ORDER BY tt.date DESC, tt.transaction_id DESC
     LIMIT :limit OFFSET :offset
 """)
+
+def _estimate_transaction_total(*, offset: int, limit: int, row_count: int) -> int:
+    """Lower-bound total when COUNT is skipped so pagination can proceed."""
+    if row_count < limit:
+        return offset + row_count
+    return offset + row_count + 1
+
 
 _WRITE_TOKEN_PSA_ITEM = "_".join(("TELLER", "CLASSIFIER", "WRITE", "TOKEN"))
 _WRITE_TOKEN_HEADER = "-".join(("x", "teller", "write", "token"))
@@ -1132,12 +1159,15 @@ def create_app() -> FastAPI:
         match_state: Literal["", "unmatched", "no_email", "ai_no_match_found", "ai_candidate_uncertain",
                               "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
         only_unmoved_match: bool = Query(default=False),
+        include_total: bool = Query(default=True),
+        count_only: bool = Query(default=False),
         limit: int = Query(default=150, ge=1, le=500),
         offset: int = Query(default=0, ge=0, le=1_000_000),
     ):
         _require_authenticated_access(request)
         allowed_query_params = {
-            "search", "status", "only_unclassified", "match_state", "only_unmoved_match", "limit", "offset",
+            "search", "status", "only_unclassified", "match_state", "only_unmoved_match",
+            "include_total", "count_only", "limit", "offset",
         }
         unknown_params = sorted(set(request.query_params.keys()) - allowed_query_params)
         if unknown_params:
@@ -1166,8 +1196,14 @@ def create_app() -> FastAPI:
         }
         try:
             with get_session() as session:
-                total = session.execute(_TRANSACTION_COUNT_SQL, params).scalar_one()
+                if count_only:
+                    total = session.execute(_TRANSACTION_COUNT_SQL, params).scalar_one()
+                    return TransactionListResponse(total=total, items=[])
                 rows = session.execute(_TRANSACTION_LIST_SQL, params).mappings().all()
+                if include_total:
+                    total = session.execute(_TRANSACTION_COUNT_SQL, params).scalar_one()
+                else:
+                    total = _estimate_transaction_total(offset=offset, limit=limit, row_count=len(rows))
         except HTTPException:
             raise
         except (DataError, UnicodeEncodeError):
