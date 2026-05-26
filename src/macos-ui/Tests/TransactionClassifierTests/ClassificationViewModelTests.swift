@@ -16,6 +16,7 @@ actor MockAPI: ClassificationAPI {
     var fetchOffsets: [Int] = []
     var fetchTransactionsCalls: [FetchTransactionsCall] = []
     var candidatesFetchCount = 0
+    var candidatesByTransactionId: [String: [MatchCandidateRow]] = [:]
     var candidatesDelayNanoseconds: UInt64 = 0
     var lastSaved: [ClassificationMutation] = []
     var deletedCategoryIds: [Int] = []
@@ -26,6 +27,7 @@ actor MockAPI: ClassificationAPI {
     var searchError: Error?
     var saveError: Error?
     init(categories: [CategoryOption], response: TransactionListResponse, pagedResponses: [Int: TransactionListResponse] = [:],
+         candidatesByTransactionId: [String: [MatchCandidateRow]] = [:],
          candidatesDelayNanoseconds: UInt64 = 0,
          searchResponse: EmailSearchResponse = .init(query: "", items: []), searchError: Error? = nil, saveError: Error? = nil) {
         self.categories = categories
@@ -33,6 +35,7 @@ actor MockAPI: ClassificationAPI {
         var merged = pagedResponses
         merged[0] = response
         self.pagedResponses = merged
+        self.candidatesByTransactionId = candidatesByTransactionId
         self.candidatesDelayNanoseconds = candidatesDelayNanoseconds
         self.searchResponse = searchResponse
         self.searchError = searchError
@@ -49,12 +52,11 @@ actor MockAPI: ClassificationAPI {
         return pagedResponses[offset] ?? response
     }
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
-        _ = transactionId
         candidatesFetchCount += 1
         if candidatesDelayNanoseconds > 0 {
             try await Task.sleep(nanoseconds: candidatesDelayNanoseconds)
         }
-        return []
+        return candidatesByTransactionId[transactionId] ?? []
     }
     func recordedFetchOffsets() -> [Int] { fetchOffsets }
     func recordedFetchTransactionsCalls() -> [FetchTransactionsCall] { fetchTransactionsCalls }
@@ -143,6 +145,46 @@ final class ClassificationViewModelTests: XCTestCase {
         XCTAssertEqual(calls[0].includeTotal, false)
         XCTAssertEqual(calls[0].countOnly, false)
         XCTAssertEqual(calls[0].limit, 150)
+    }
+
+    @MainActor
+    func testReselectingTransactionReloadsCandidatesWhenPaneWasCleared() async {
+        let txn = sampleTransactionWithMatch(id: "txn_1", matchId: 1, emailId: "msg_a", confidence: 0.9, count: 1)
+        let candidate = sampleCandidate(emailId: "msg_a", isSelectedByAi: true)
+        let api = MockAPI(
+            categories: [],
+            response: .init(total: 1, items: [txn]),
+            candidatesByTransactionId: ["txn_1": [candidate]]
+        )
+        let vm = ClassificationViewModel(api: api)
+        vm.transactions = [txn]
+        vm.selection = ["txn_1"]
+        await vm.selectedTransactionDidChange()
+        XCTAssertEqual(vm.candidates.map(\.email_message_id), ["msg_a"])
+
+        vm.candidates = []
+        await vm.selectedTransactionDidChange()
+        XCTAssertEqual(vm.candidates.map(\.email_message_id), ["msg_a"])
+        let fetches = await api.candidatesFetchCount
+        XCTAssertGreaterThanOrEqual(fetches, 2)
+    }
+
+    @MainActor
+    func testLoadAllReloadsCandidatesForCurrentSelection() async {
+        let txn = sampleTransactionWithMatch(id: "txn_1", matchId: 1, emailId: "msg_a", confidence: 0.9, count: 1)
+        let candidate = sampleCandidate(emailId: "msg_a", isSelectedByAi: true)
+        let api = MockAPI(
+            categories: [sampleCategory(1, "Dining")],
+            response: .init(total: 1, items: [txn]),
+            candidatesByTransactionId: ["txn_1": [candidate]]
+        )
+        let vm = ClassificationViewModel(api: api)
+        vm.selection = ["txn_1"]
+        await vm.loadAll()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(vm.candidates.map(\.email_message_id), ["msg_a"])
+        let fetches = await api.candidatesFetchCount
+        XCTAssertGreaterThanOrEqual(fetches, 1)
     }
 
     @MainActor

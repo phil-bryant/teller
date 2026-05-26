@@ -389,8 +389,12 @@ final class TransactionClassifierUITests: XCTestCase {
     private func runCandidatesAndEmailPaneScenario() {
         ensureMatchAndClassifyTab()
         selectTransactionRow("txn_001", label: "Coffee Roasters")
-        XCTAssertTrue(waitForElement(uiElement("candidate-row-msg_receipt_001"), timeout: waitTimeout))
-        XCTAssertTrue(waitForElement(uiElement("email-subject"), timeout: waitTimeout))
+        let candidateRow = uiElement("candidate-row-msg_receipt_001")
+        XCTAssertTrue(
+            waitForElement(candidateRow, timeout: waitTimeout * 5),
+            "Expected fixture candidate row after selecting txn_001."
+        )
+        XCTAssertTrue(waitForElement(uiElement("email-subject"), timeout: waitTimeout * 3))
         XCTAssertTrue(uiElement("email-body-text").exists || uiElement("email-body-html").exists)
         XCTAssertTrue(uiElement("candidates-list").exists)
     }

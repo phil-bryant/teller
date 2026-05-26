@@ -157,6 +157,7 @@ final class ClassificationViewModel {
         }
         busy = false
         TransactionListProfiler.markBusyCleared()
+        lastLoadedCandidatesTransactionId = nil
         Task { await selectedTransactionDidChange() }
         Task { await refreshTransactionTotal() }
     }
@@ -303,7 +304,7 @@ final class ClassificationViewModel {
             lastLoadedCandidatesTransactionId = nil
             return
         }
-        if lastLoadedCandidatesTransactionId == row.transaction_id { return }
+        if lastLoadedCandidatesTransactionId == row.transaction_id, !candidates.isEmpty { return }
         // Clear the candidates pane + email pane immediately so the user never sees stale data
         // from the previously-selected transaction while the new fetch is in flight.
         candidates = []
