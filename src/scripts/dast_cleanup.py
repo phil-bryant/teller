@@ -53,6 +53,8 @@ def _write_summary(path: pathlib.Path, summary: dict[str, Any]) -> None:
 
 
 def main() -> int:
+    # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    os.umask(0o007)
     if len(sys.argv) != 4:
         print(
             "usage: dast_cleanup.py <baseline_json_path> <run_id> <summary_json_path>",

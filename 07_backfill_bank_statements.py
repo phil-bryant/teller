@@ -319,6 +319,8 @@ def match_statement_to_account(pdf_path: Path, pages, account_rows, account_id_o
     raise SystemExit(f"Multiple accounts with last_four={hint!r} in DB (unexpected).")
 
 def main():
+    # New files/dirs from this process: no group/other access (aligns with umask 007 in shell scripts).
+    os.umask(0o007)
     #R020: Parse CLI controls for scope, account override, statement root, dry-run, and debug.
     parser = argparse.ArgumentParser(description='Backfill transactions from bank statement PDFs')
     parser.add_argument('--institution-id', help='Limit to one teller.institution.institution_id; default: all in teller.account')

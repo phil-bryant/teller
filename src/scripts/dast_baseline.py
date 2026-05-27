@@ -24,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import sys
 from datetime import datetime, timezone
@@ -43,6 +44,8 @@ def _serialize_row(row, columns: list[str]) -> dict[str, Any]:
 
 
 def main() -> int:
+    # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    os.umask(0o007)
     if len(sys.argv) != 2:
         print("usage: dast_baseline.py <output_json_path>", file=sys.stderr)
         return 2

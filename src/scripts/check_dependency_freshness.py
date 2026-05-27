@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -255,6 +256,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    os.umask(0o007)
     args = parse_args()
     requirements_path = Path(args.requirements)
     if not requirements_path.exists():

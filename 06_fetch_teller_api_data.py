@@ -268,6 +268,8 @@ def _build_enrollment_contexts(institution_id: str) -> List[dict]:
     return contexts
 
 def main():
+    # New files/dirs from this process: no group/other access (aligns with umask 007 in shell scripts).
+    os.umask(0o007)
     #R001: Parse CLI flags and configure runtime log level.
     parser = argparse.ArgumentParser(description='Teller API Client')
     parser.add_argument('--debug', action='store_true')

@@ -11,6 +11,7 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -431,6 +432,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    os.umask(0o007)
     args = parse_args()
     output_json = Path(args.output_json)
     output_text = Path(args.output_text)

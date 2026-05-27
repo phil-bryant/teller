@@ -284,6 +284,8 @@ def build_text_report(report: dict[str, Any]) -> str:
 
 
 def main() -> int:
+    # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    os.umask(0o007)
     args = parse_args()
     output_json = Path(args.output_json)
     output_text = Path(args.output_text)

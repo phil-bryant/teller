@@ -161,6 +161,8 @@ def _execute(root: Path, python: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    os.umask(0o007)
     parser = argparse.ArgumentParser(description="macOS-safe mutmut driver")
     parser.add_argument("command", choices=["prepare", "execute"])
     parser.add_argument("--max-children", type=int, default=1)
