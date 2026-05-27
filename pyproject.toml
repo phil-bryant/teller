@@ -9,7 +9,7 @@ authors = [
     { name = "Your Name" }
 ]
 description = "Teller API Integration"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 [tool.setuptools]
 packages = ["teller"]
