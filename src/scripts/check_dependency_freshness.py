@@ -122,48 +122,66 @@ def run_outdated_list() -> list[dict[str, Any]]:
     return [item for item in parsed if isinstance(item, dict)]
 
 
+def _package_entry_from_outdated_row(row: dict[str, Any], requirements: dict[str, RequirementSpec]) -> dict[str, Any] | None:
+    name = str(row.get("name", "")).strip()
+    current_version = str(row.get("version", "")).strip()
+    latest_version = str(row.get("latest_version", "")).strip()
+    if not name or not current_version or not latest_version:
+        return None
+    normalized = normalize_package_name(name)
+    req_spec = requirements.get(normalized)
+    update_type = classify_update(current_version, latest_version)
+    return {
+        "name": name,
+        "current_version": current_version,
+        "latest_version": latest_version,
+        "update_type": update_type,
+        "in_requirements_txt": bool(req_spec),
+        "is_exact_pin_in_requirements": bool(req_spec and req_spec.is_exact_pin),
+        "requirements_pin_version": req_spec.pinned_version if req_spec else None,
+    }
+
+
+def _build_summary(packages: list[dict[str, Any]]) -> dict[str, int]:
+    summary = {
+        "total_outdated": len(packages),
+        "major_updates": 0,
+        "minor_updates": 0,
+        "patch_updates": 0,
+        "unknown_updates": 0,
+        "direct_requirements_outdated": 0,
+    }
+    for item in packages:
+        update_type = item["update_type"]
+        if update_type == "major":
+            summary["major_updates"] += 1
+        elif update_type == "minor":
+            summary["minor_updates"] += 1
+        elif update_type == "patch":
+            summary["patch_updates"] += 1
+        else:
+            summary["unknown_updates"] += 1
+        if item["in_requirements_txt"]:
+            summary["direct_requirements_outdated"] += 1
+    return summary
+
+
 def make_report(requirements_path: Path) -> dict[str, Any]:
     requirements = parse_requirements(requirements_path)
     outdated_rows = run_outdated_list()
 
     packages: list[dict[str, Any]] = []
     for row in outdated_rows:
-        name = str(row.get("name", "")).strip()
-        current_version = str(row.get("version", "")).strip()
-        latest_version = str(row.get("latest_version", "")).strip()
-        if not name or not current_version or not latest_version:
-            continue
-
-        normalized = normalize_package_name(name)
-        req_spec = requirements.get(normalized)
-        update_type = classify_update(current_version, latest_version)
-        packages.append(
-            {
-                "name": name,
-                "current_version": current_version,
-                "latest_version": latest_version,
-                "update_type": update_type,
-                "in_requirements_txt": bool(req_spec),
-                "is_exact_pin_in_requirements": bool(req_spec and req_spec.is_exact_pin),
-                "requirements_pin_version": req_spec.pinned_version if req_spec else None,
-            }
-        )
+        item = _package_entry_from_outdated_row(row, requirements)
+        if item is not None:
+            packages.append(item)
 
     packages.sort(key=lambda item: (UPDATE_ORDER.get(item["update_type"], 99), item["name"].lower()))
-
-    summary = {
-        "total_outdated": len(packages),
-        "major_updates": sum(1 for item in packages if item["update_type"] == "major"),
-        "minor_updates": sum(1 for item in packages if item["update_type"] == "minor"),
-        "patch_updates": sum(1 for item in packages if item["update_type"] == "patch"),
-        "unknown_updates": sum(1 for item in packages if item["update_type"] == "unknown"),
-        "direct_requirements_outdated": sum(1 for item in packages if item["in_requirements_txt"]),
-    }
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "requirements_file": str(requirements_path),
-        "summary": summary,
+        "summary": _build_summary(packages),
         "packages": packages,
     }
 

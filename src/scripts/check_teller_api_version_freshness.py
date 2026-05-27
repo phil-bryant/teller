@@ -122,38 +122,49 @@ def extract_hidden_input(text: str, name: str) -> str | None:
     return None
 
 
+def _otp_from_digits(text: str) -> str:
+    digits_only = "".join(ch for ch in text if ch.isdigit())
+    if len(digits_only) >= 6:
+        return digits_only[:6]
+    return ""
+
+
+def _totp_from_otpauth(text: str) -> str:
+    if not text.startswith("otpauth://"):
+        return ""
+    parsed = urlsplit(text)
+    params = parse_qs(parsed.query)
+    secret = (params.get("secret") or [""])[0].strip().replace(" ", "")
+    if not secret:
+        return ""
+    try:
+        secret_bytes = base64.b32decode(secret.upper(), casefold=True)
+    except Exception:
+        return ""
+    period = int((params.get("period") or ["30"])[0] or "30")
+    digits = int((params.get("digits") or ["6"])[0] or "6")
+    counter = int(time.time() // max(period, 1))
+    msg = counter.to_bytes(8, byteorder="big")
+    digest = hmac.new(secret_bytes, msg, hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    binary = (
+        ((digest[offset] & 0x7F) << 24)
+        | (digest[offset + 1] << 16)
+        | (digest[offset + 2] << 8)
+        | digest[offset + 3]
+    )
+    code = str(binary % (10**digits)).zfill(digits)
+    return code[:6]
+
+
 def resolve_otp_code(raw_value: str) -> str:
     text = (raw_value or "").strip()
     if not text:
         return ""
-    digits_only = "".join(ch for ch in text if ch.isdigit())
-    if len(digits_only) >= 6:
-        return digits_only[:6]
-    if text.startswith("otpauth://"):
-        parsed = urlsplit(text)
-        params = parse_qs(parsed.query)
-        secret = (params.get("secret") or [""])[0].strip().replace(" ", "")
-        if not secret:
-            return ""
-        try:
-            secret_bytes = base64.b32decode(secret.upper(), casefold=True)
-        except Exception:
-            return ""
-        period = int((params.get("period") or ["30"])[0] or "30")
-        digits = int((params.get("digits") or ["6"])[0] or "6")
-        counter = int(time.time() // max(period, 1))
-        msg = counter.to_bytes(8, byteorder="big")
-        digest = hmac.new(secret_bytes, msg, hashlib.sha1).digest()
-        offset = digest[-1] & 0x0F
-        binary = (
-            ((digest[offset] & 0x7F) << 24)
-            | (digest[offset + 1] << 16)
-            | (digest[offset + 2] << 8)
-            | digest[offset + 3]
-        )
-        code = str(binary % (10**digits)).zfill(digits)
-        return code[:6]
-    return ""
+    digit_code = _otp_from_digits(text)
+    if digit_code:
+        return digit_code
+    return _totp_from_otpauth(text)
 
 
 def read_1psa_field(item: str, field: str) -> str:
@@ -167,20 +178,205 @@ def read_1psa_field(item: str, field: str) -> str:
     return result.stdout.strip()
 
 
-def parse_dashboard_versions(page_text: str) -> dict[str, Any]:
+def _extract_latest_version(page_text: str) -> str | None:
     latest_match = re.search(r"latest API version\s*\((\d{4}-\d{2}-\d{2})\)", page_text, flags=re.I)
+    return latest_match.group(1) if latest_match else None
+
+
+def _extract_current_version(page_text: str) -> str | None:
     current_match = re.search(r"currently using(?: the latest)? API version\s*\((\d{4}-\d{2}-\d{2})\)", page_text, flags=re.I)
+    return current_match.group(1) if current_match else None
+
+
+def _is_dashboard_on_latest(page_text: str, current_version: str | None, latest_version: str | None) -> bool:
     on_latest = bool(re.search(r"currently using the latest API version", page_text, flags=re.I))
-    latest_version = latest_match.group(1) if latest_match else None
-    current_version = current_match.group(1) if current_match else None
+    if on_latest and current_version and not latest_version:
+        return True
+    if not latest_version or not current_version:
+        return on_latest
+    comparison = compare_versions(current_version, latest_version)
+    if comparison is not None:
+        return comparison >= 0
+    if current_version == latest_version:
+        return True
+    return on_latest
+
+
+def _dashboard_error_result(result: dict[str, Any], warnings: list[str], message: str) -> tuple[dict[str, Any], list[str]]:
+    result["checked"] = True
+    result["status"] = "error"
+    warnings.append(message)
+    return result, warnings
+
+
+def _load_dashboard_credentials(
+    psa_item: str,
+    username_field: str,
+    password_field: str,
+    otp_field: str,
+) -> tuple[str, str, str]:
+    username = read_1psa_field(psa_item, username_field)
+    password = read_1psa_field(psa_item, password_field)
+    otp_raw = read_1psa_field(psa_item, otp_field) if otp_field else ""
+    otp = resolve_otp_code(otp_raw)
+    return username, password, otp
+
+
+def _submit_dashboard_login(
+    opener: Any,
+    parsed_url,
+    username: str,
+    password: str,
+    otp: str,
+    csrf_token: str,
+    timeout_seconds: int,
+) -> tuple[str | None, str]:
+    login_url = urljoin(f"{parsed_url.scheme}://{parsed_url.netloc}", "/session")
+    form_payload = {
+        "_csrf_token": csrf_token,
+        "session[email]": username,
+        "session[username]": username,
+        "session[password]": password,
+    }
+    if otp:
+        form_payload["session[otp]"] = otp
+        form_payload["session[one_time_password]"] = otp
+    payload = urlencode(form_payload).encode("utf-8")
+    login_request = Request(
+        login_url,
+        data=payload,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "teller-api-version-freshness/1.0",
+        },
+    )
+    try:
+        response = opener.open(login_request, timeout=timeout_seconds).read().decode("utf-8", errors="ignore")
+    except Exception as exc:  # pragma: no cover - network/login path can vary
+        return None, str(exc)
+    return response, ""
+
+
+def _submit_dashboard_mfa(
+    opener: Any,
+    parsed_url,
+    otp: str,
+    mfa_csrf: str,
+    timeout_seconds: int,
+) -> str:
+    mfa_payload = urlencode({"_csrf_token": mfa_csrf, "mfa[code]": otp}).encode("utf-8")
+    mfa_request = Request(
+        urljoin(f"{parsed_url.scheme}://{parsed_url.netloc}", "/session/mfa"),
+        data=mfa_payload,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "teller-api-version-freshness/1.0",
+        },
+    )
+    try:
+        opener.open(mfa_request, timeout=timeout_seconds).read()
+    except Exception as exc:  # pragma: no cover
+        return str(exc)
+    return ""
+
+
+def _maybe_complete_dashboard_mfa(
+    *,
+    login_response: str,
+    otp: str,
+    opener: Any,
+    parsed_url,
+    timeout_seconds: int,
+) -> str:
+    requires_mfa = "/session/mfa" in login_response or 'action="/session/mfa"' in login_response
+    if not requires_mfa:
+        return ""
+    mfa_csrf = extract_hidden_input(login_response, "_csrf_token")
+    if not otp:
+        return "Teller dashboard requires MFA but OTP code was unavailable from 1psa."
+    if not mfa_csrf:
+        return "Teller dashboard MFA page did not expose _csrf_token."
+    mfa_error = _submit_dashboard_mfa(opener, parsed_url, otp, mfa_csrf, timeout_seconds)
+    if mfa_error:
+        return f"Failed to submit Teller dashboard MFA form: {mfa_error}"
+    return ""
+
+
+def _apply_parsed_dashboard_versions(
+    result: dict[str, Any],
+    warnings: list[str],
+    parsed_versions: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
+    result["checked"] = True
+    if parsed_versions["latest_version"] or parsed_versions["current_version"]:
+        result["status"] = "ok"
+        result["latest_version"] = parsed_versions["latest_version"]
+        result["current_version"] = parsed_versions["current_version"]
+        result["on_latest"] = parsed_versions["on_latest"]
+        return result, warnings
+    result["status"] = "error"
+    warnings.append("Logged in to Teller dashboard but could not parse API version text.")
+    return result, warnings
+
+
+def _discover_dashboard_version_authenticated(
+    *,
+    dashboard_url: str,
+    timeout_seconds: int,
+    username: str,
+    password: str,
+    otp: str,
+    result: dict[str, Any],
+    warnings: list[str],
+) -> tuple[dict[str, Any], list[str]]:
+    cookies = CookieJar()
+    opener = build_opener(HTTPCookieProcessor(cookies))
+    login_page, login_error = fetch_text_with_opener(dashboard_url, timeout_seconds, opener)
+    if login_page is None:
+        warnings.append(f"Failed to load Teller dashboard login page: {login_error}")
+        return result, warnings
+    csrf_token = extract_hidden_input(login_page, "_csrf_token")
+    if not csrf_token:
+        warnings.append("Teller dashboard login page did not expose _csrf_token.")
+        return result, warnings
+    parsed = urlsplit(dashboard_url)
+    login_response, login_error = _submit_dashboard_login(
+        opener,
+        parsed,
+        username,
+        password,
+        otp,
+        csrf_token,
+        timeout_seconds,
+    )
+    if login_response is None:
+        warnings.append(f"Failed to submit Teller dashboard login form: {login_error}")
+        return result, warnings
+    mfa_error = _maybe_complete_dashboard_mfa(
+        login_response=login_response,
+        otp=otp,
+        opener=opener,
+        parsed_url=parsed,
+        timeout_seconds=timeout_seconds,
+    )
+    if mfa_error:
+        return _dashboard_error_result(result, warnings, mfa_error)
+    dashboard_page, dashboard_error = fetch_text_with_opener(dashboard_url, timeout_seconds, opener)
+    if dashboard_page is None:
+        warnings.append(f"Failed to load Teller dashboard settings page after login: {dashboard_error}")
+        return result, warnings
+    if "You need to sign in or sign up before continuing." in dashboard_page:
+        return _dashboard_error_result(result, warnings, "Teller dashboard login was rejected; check 1psa credential/OTP fields.")
+    parsed_versions = parse_dashboard_versions(dashboard_page)
+    return _apply_parsed_dashboard_versions(result, warnings, parsed_versions)
+
+
+def parse_dashboard_versions(page_text: str) -> dict[str, Any]:
+    latest_version = _extract_latest_version(page_text)
+    current_version = _extract_current_version(page_text)
+    on_latest = _is_dashboard_on_latest(page_text, current_version, latest_version)
     if on_latest and current_version and not latest_version:
         latest_version = current_version
-    if latest_version and current_version:
-        comparison = compare_versions(current_version, latest_version)
-        if comparison is not None:
-            on_latest = comparison >= 0
-        elif current_version == latest_version:
-            on_latest = True
     return {
         "latest_version": latest_version,
         "current_version": current_version,
@@ -212,102 +408,19 @@ def discover_dashboard_version(
         warnings.append("1psa not found; skipping Teller dashboard version check.")
         return result, warnings
 
-    username = read_1psa_field(psa_item, username_field)
-    password = read_1psa_field(psa_item, password_field)
-    otp_raw = read_1psa_field(psa_item, otp_field) if otp_field else ""
-    otp = resolve_otp_code(otp_raw)
+    username, password, otp = _load_dashboard_credentials(psa_item, username_field, password_field, otp_field)
     if not username or not password:
         warnings.append(f"Could not read Teller dashboard credentials from 1psa item '{psa_item}'.")
         return result, warnings
-
-    cookies = CookieJar()
-    opener = build_opener(HTTPCookieProcessor(cookies))
-    login_page, login_error = fetch_text_with_opener(dashboard_url, timeout_seconds, opener)
-    if login_page is None:
-        warnings.append(f"Failed to load Teller dashboard login page: {login_error}")
-        return result, warnings
-
-    csrf_token = extract_hidden_input(login_page, "_csrf_token")
-    if not csrf_token:
-        warnings.append("Teller dashboard login page did not expose _csrf_token.")
-        return result, warnings
-
-    parsed = urlsplit(dashboard_url)
-    login_url = urljoin(f"{parsed.scheme}://{parsed.netloc}", "/session")
-    form_payload = {
-        "_csrf_token": csrf_token,
-        "session[email]": username,
-        "session[username]": username,
-        "session[password]": password,
-    }
-    if otp:
-        form_payload["session[otp]"] = otp
-        form_payload["session[one_time_password]"] = otp
-    payload = urlencode(form_payload).encode("utf-8")
-    login_request = Request(
-        login_url,
-        data=payload,
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "teller-api-version-freshness/1.0",
-        },
+    return _discover_dashboard_version_authenticated(
+        dashboard_url=dashboard_url,
+        timeout_seconds=timeout_seconds,
+        username=username,
+        password=password,
+        otp=otp,
+        result=result,
+        warnings=warnings,
     )
-    try:
-        login_response = opener.open(login_request, timeout=timeout_seconds).read().decode("utf-8", errors="ignore")
-    except Exception as exc:  # pragma: no cover - network/login path can vary
-        warnings.append(f"Failed to submit Teller dashboard login form: {exc}")
-        return result, warnings
-
-    if "/session/mfa" in login_response or 'action="/session/mfa"' in login_response:
-        mfa_csrf = extract_hidden_input(login_response, "_csrf_token")
-        if not otp:
-            result["checked"] = True
-            result["status"] = "error"
-            warnings.append("Teller dashboard requires MFA but OTP code was unavailable from 1psa.")
-            return result, warnings
-        if not mfa_csrf:
-            result["checked"] = True
-            result["status"] = "error"
-            warnings.append("Teller dashboard MFA page did not expose _csrf_token.")
-            return result, warnings
-        mfa_payload = urlencode({"_csrf_token": mfa_csrf, "mfa[code]": otp}).encode("utf-8")
-        mfa_request = Request(
-            urljoin(f"{parsed.scheme}://{parsed.netloc}", "/session/mfa"),
-            data=mfa_payload,
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "teller-api-version-freshness/1.0",
-            },
-        )
-        try:
-            opener.open(mfa_request, timeout=timeout_seconds).read()
-        except Exception as exc:  # pragma: no cover
-            result["checked"] = True
-            result["status"] = "error"
-            warnings.append(f"Failed to submit Teller dashboard MFA form: {exc}")
-            return result, warnings
-
-    dashboard_page, dashboard_error = fetch_text_with_opener(dashboard_url, timeout_seconds, opener)
-    if dashboard_page is None:
-        warnings.append(f"Failed to load Teller dashboard settings page after login: {dashboard_error}")
-        return result, warnings
-    if "You need to sign in or sign up before continuing." in dashboard_page:
-        result["checked"] = True
-        result["status"] = "error"
-        warnings.append("Teller dashboard login was rejected; check 1psa credential/OTP fields.")
-        return result, warnings
-
-    parsed_versions = parse_dashboard_versions(dashboard_page)
-    result["checked"] = True
-    if parsed_versions["latest_version"] or parsed_versions["current_version"]:
-        result["status"] = "ok"
-        result["latest_version"] = parsed_versions["latest_version"]
-        result["current_version"] = parsed_versions["current_version"]
-        result["on_latest"] = parsed_versions["on_latest"]
-    else:
-        result["status"] = "error"
-        warnings.append("Logged in to Teller dashboard but could not parse API version text.")
-    return result, warnings
 
 
 def discover_version(urls: list[str], timeout_seconds: int) -> tuple[str | None, str | None, list[str]]:
@@ -337,10 +450,34 @@ def discover_version(urls: list[str], timeout_seconds: int) -> tuple[str | None,
     return None, None, warnings
 
 
+def _resolve_version_sources(raw_sources: str) -> list[str]:
+    sources = [item.strip() for item in raw_sources.split(",") if item.strip()]
+    if sources:
+        return sources
+    return list(DEFAULT_VERSION_URLS)
+
+
+def _compute_newer_available(
+    latest_version: str | None,
+    baseline: str | None,
+    dashboard: dict[str, Any],
+) -> tuple[str, bool | None]:
+    if not latest_version:
+        return "unknown", None
+    if dashboard.get("checked") and dashboard.get("on_latest") is True:
+        return "ok", False
+    if not baseline:
+        return "ok", None
+    comparison = compare_versions(baseline, latest_version)
+    if comparison is None:
+        newer_available = baseline != latest_version
+    else:
+        newer_available = comparison < 0
+    return ("update-available" if newer_available else "ok"), newer_available
+
+
 def build_report(args: argparse.Namespace) -> dict[str, Any]:
-    sources = [item.strip() for item in args.version_sources.split(",") if item.strip()]
-    if not sources:
-        sources = list(DEFAULT_VERSION_URLS)
+    sources = _resolve_version_sources(args.version_sources)
     dashboard, dashboard_warnings = discover_dashboard_version(
         dashboard_url=args.dashboard_url,
         psa_item=args.dashboard_psa_item,
@@ -358,22 +495,8 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         source_url = discovered_source
         warnings.extend(discovered_warnings)
     baseline = args.baseline_version.strip() or None
-    status = "unknown"
-    newer_available = None
-    comparison = None
-    if latest_version:
-        status = "ok"
-        if dashboard.get("checked") and dashboard.get("on_latest") is True:
-            newer_available = False
-        if baseline:
-            comparison = compare_versions(baseline, latest_version)
-            if comparison is None:
-                newer_available = baseline != latest_version
-            else:
-                newer_available = comparison < 0
-            if newer_available:
-                status = "update-available"
-    else:
+    status, newer_available = _compute_newer_available(latest_version, baseline, dashboard)
+    if latest_version is None:
         warnings.append("Could not determine Teller API version from configured sources.")
 
     gate_failed = bool(args.fail_on_new and newer_available is True)

@@ -298,13 +298,8 @@ def fetch_postgresql_cve_snapshot(majors: set[str]) -> dict[str, Any]:
     }
 
 
-def evaluate_cves(
-    *,
-    args: argparse.Namespace,
-    client_version: str | None,
-    server_version: str | None,
-) -> dict[str, Any]:
-    result: dict[str, Any] = {
+def _initial_cve_result(args: argparse.Namespace) -> dict[str, Any]:
+    return {
         "checked": args.check_cves,
         "policy_file": args.cve_policy or None,
         "snapshot_file": args.cve_snapshot or None,
@@ -322,33 +317,33 @@ def evaluate_cves(
         "assurance": "not-applicable",
         "gate_failed": False,
     }
-    if not args.check_cves:
-        return result
-    result["status"] = "evaluating"
-    result["assurance"] = "unknown"
 
+
+def _load_cve_policy(args: argparse.Namespace) -> dict[str, Any]:
     policy = {
         "severity_threshold": "high",
         "max_snapshot_age_hours": 168,
         "fail_on_stale_snapshot": False,
     }
     policy_payload = read_json_file(args.cve_policy)
-    if policy_payload:
-        policy.update(
-            {
-                "severity_threshold": policy_payload.get("severity_threshold", policy["severity_threshold"]),
-                "max_snapshot_age_hours": int(
-                    policy_payload.get("max_snapshot_age_hours", policy["max_snapshot_age_hours"])
-                ),
-                "fail_on_stale_snapshot": bool(
-                    policy_payload.get("fail_on_stale_snapshot", policy["fail_on_stale_snapshot"])
-                ),
-            }
-        )
-    result["severity_threshold"] = str(policy["severity_threshold"])
-    result["max_snapshot_age_hours"] = int(policy["max_snapshot_age_hours"])
-    result["fail_on_stale_snapshot"] = bool(policy["fail_on_stale_snapshot"])
+    if not policy_payload:
+        return policy
+    policy.update(
+        {
+            "severity_threshold": policy_payload.get("severity_threshold", policy["severity_threshold"]),
+            "max_snapshot_age_hours": int(policy_payload.get("max_snapshot_age_hours", policy["max_snapshot_age_hours"])),
+            "fail_on_stale_snapshot": bool(policy_payload.get("fail_on_stale_snapshot", policy["fail_on_stale_snapshot"])),
+        }
+    )
+    return policy
 
+
+def _refresh_or_load_snapshot(
+    args: argparse.Namespace,
+    client_version: str | None,
+    server_version: str | None,
+    result: dict[str, Any],
+) -> dict[str, Any] | None:
     snapshot: dict[str, Any] | None = None
     if args.refresh_cve_snapshot:
         target_majors: set[str] = set()
@@ -370,58 +365,45 @@ def evaluate_cves(
                     snapshot_path.write_text(json.dumps(snapshot, indent=2) + "\n", encoding="utf-8")
         except Exception as exc:  # pragma: no cover - network can fail for many reasons
             result["warnings"].append(f"Failed to refresh CVE snapshot from postgresql.org: {exc}")
-    if snapshot is None:
-        snapshot = read_json_file(args.cve_snapshot)
-    if snapshot is None:
-        result["warnings"].append("CVE snapshot is missing or invalid; skipping CVE evaluation.")
-        result["status"] = "inconclusive"
-        result["assurance"] = "no-snapshot"
-        if args.fail_on_cve:
-            result["gate_failed"] = True
-            result["status"] = "failed"
-            result["assurance"] = "policy-failed"
-        return result
+    if snapshot is not None:
+        return snapshot
+    return read_json_file(args.cve_snapshot)
 
-    generated_at = parse_iso_datetime(str(snapshot.get("generated_at", "")))
+
+def _mark_policy_failed(result: dict[str, Any]) -> None:
+    result["gate_failed"] = True
+    result["status"] = "failed"
+    result["assurance"] = "policy-failed"
+
+
+def _apply_snapshot_freshness(result: dict[str, Any], generated_at: datetime | None, args: argparse.Namespace) -> None:
     if generated_at is None:
         result["warnings"].append("CVE snapshot missing valid generated_at timestamp.")
         result["snapshot_stale"] = True
         result["status"] = "inconclusive"
         result["assurance"] = "invalid-snapshot-timestamp"
         if args.fail_on_cve and result["fail_on_stale_snapshot"]:
-            result["gate_failed"] = True
-            result["status"] = "failed"
-            result["assurance"] = "policy-failed"
-    else:
-        now = datetime.now(timezone.utc)
-        age_hours = (now - generated_at).total_seconds() / 3600.0
-        result["snapshot_generated_at"] = generated_at.isoformat().replace("+00:00", "Z")
-        result["snapshot_age_hours"] = round(age_hours, 2)
-        result["snapshot_stale"] = age_hours > float(result["max_snapshot_age_hours"])
-        if result["snapshot_stale"]:
-            result["warnings"].append("CVE snapshot is older than allowed freshness policy.")
-            result["status"] = "inconclusive"
-            result["assurance"] = "stale-snapshot"
-            if args.fail_on_cve and result["fail_on_stale_snapshot"]:
-                result["gate_failed"] = True
-                result["status"] = "failed"
-                result["assurance"] = "policy-failed"
-
-    cve_entries = snapshot.get("cves", [])
-    if not isinstance(cve_entries, list):
-        result["warnings"].append("CVE snapshot 'cves' payload is not a list.")
+            _mark_policy_failed(result)
+        return
+    now = datetime.now(timezone.utc)
+    age_hours = (now - generated_at).total_seconds() / 3600.0
+    result["snapshot_generated_at"] = generated_at.isoformat().replace("+00:00", "Z")
+    result["snapshot_age_hours"] = round(age_hours, 2)
+    result["snapshot_stale"] = age_hours > float(result["max_snapshot_age_hours"])
+    if result["snapshot_stale"]:
+        result["warnings"].append("CVE snapshot is older than allowed freshness policy.")
         result["status"] = "inconclusive"
-        result["assurance"] = "invalid-snapshot-format"
-        return result
-    result["snapshot_cve_count"] = len(cve_entries)
-    if len(cve_entries) == 0:
-        result["warnings"].append(
-            "CVE snapshot contains zero entries; vulnerability evaluation is inconclusive."
-        )
-        result["status"] = "inconclusive"
-        result["assurance"] = "empty-snapshot"
+        result["assurance"] = "stale-snapshot"
+        if args.fail_on_cve and result["fail_on_stale_snapshot"]:
+            _mark_policy_failed(result)
 
-    threshold = result["severity_threshold"]
+
+def _collect_cve_findings(
+    cve_entries: list[Any],
+    threshold: str,
+    client_version: str | None,
+    server_version: str | None,
+) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     for cve in cve_entries:
         if not isinstance(cve, dict):
@@ -434,40 +416,281 @@ def evaluate_cves(
         if not isinstance(affected_specs, list):
             continue
         for spec in affected_specs:
-            if not isinstance(spec, dict):
-                continue
-            component = str(spec.get("component", "both")).lower()
-            ranges = spec.get("ranges", [])
-            if isinstance(ranges, str):
-                ranges = [ranges]
-            if not isinstance(ranges, list):
-                continue
-
-            if component in {"client", "both"} and version_in_any_range(client_version, ranges):
-                findings.append(
-                    {
-                        "id": cve_id,
-                        "severity": normalize_severity(severity),
-                        "component": "client",
-                        "installed_version": client_version,
-                        "matched_ranges": ranges,
-                        "fixed_versions": spec.get("fixed_versions", []),
-                        "title": cve.get("title"),
-                    }
+            findings.extend(
+                _findings_for_spec(
+                    cve_id=cve_id,
+                    severity=severity,
+                    title=cve.get("title"),
+                    spec=spec,
+                    client_version=client_version,
+                    server_version=server_version,
                 )
-            if component in {"server", "both"} and version_in_any_range(server_version, ranges):
-                findings.append(
-                    {
-                        "id": cve_id,
-                        "severity": normalize_severity(severity),
-                        "component": "server",
-                        "installed_version": server_version,
-                        "matched_ranges": ranges,
-                        "fixed_versions": spec.get("fixed_versions", []),
-                        "title": cve.get("title"),
-                    }
-                )
+            )
+    return findings
 
+
+def _findings_for_spec(
+    *,
+    cve_id: str,
+    severity: str,
+    title: Any,
+    spec: Any,
+    client_version: str | None,
+    server_version: str | None,
+) -> list[dict[str, Any]]:
+    if not isinstance(spec, dict):
+        return []
+    component = str(spec.get("component", "both")).lower()
+    ranges = spec.get("ranges", [])
+    if isinstance(ranges, str):
+        ranges = [ranges]
+    if not isinstance(ranges, list):
+        return []
+    results: list[dict[str, Any]] = []
+    if component in {"client", "both"} and version_in_any_range(client_version, ranges):
+        results.append(
+            {
+                "id": cve_id,
+                "severity": normalize_severity(severity),
+                "component": "client",
+                "installed_version": client_version,
+                "matched_ranges": ranges,
+                "fixed_versions": spec.get("fixed_versions", []),
+                "title": title,
+            }
+        )
+    if component in {"server", "both"} and version_in_any_range(server_version, ranges):
+        results.append(
+            {
+                "id": cve_id,
+                "severity": normalize_severity(severity),
+                "component": "server",
+                "installed_version": server_version,
+                "matched_ranges": ranges,
+                "fixed_versions": spec.get("fixed_versions", []),
+                "title": title,
+            }
+        )
+    return results
+
+
+def _build_server_version_command(args: argparse.Namespace) -> list[str]:
+    server_cmd = ["psql"]
+    if args.server_psql_args:
+        server_cmd.extend(shlex.split(args.server_psql_args))
+    elif args.server_dsn:
+        server_cmd.append(args.server_dsn)
+    server_cmd.extend(["-tAc", "SHOW server_version_num;"])
+    return server_cmd
+
+
+def _check_client_version(
+    *,
+    args: argparse.Namespace,
+    psql_path: str | None,
+    client_info: dict[str, Any],
+    warnings: list[str],
+    stale_components: list[str],
+) -> None:
+    if not psql_path:
+        warnings.append("psql not found on PATH; PostgreSQL freshness checks skipped.")
+        if args.fail_on_stale:
+            stale_components.append("client_missing")
+            if args.check_server_version:
+                stale_components.append("server_missing")
+        return
+    client_exit, client_output = run_command(["psql", "--version"])
+    if client_exit != 0:
+        client_info["status"] = "error"
+        client_info["error"] = client_output or "psql --version failed"
+        warnings.append("Could not determine psql client version.")
+        if args.fail_on_stale:
+            stale_components.append("client_unknown")
+        return
+    client_version = parse_psql_client_version(client_output)
+    client_info["version"] = client_version
+    client_min_check = meets_minimum(client_version, args.min_client_version)
+    client_info["meets_minimum"] = client_min_check
+    if client_version is None:
+        client_info["status"] = "unknown"
+        warnings.append("Could not parse psql client version output.")
+        if args.fail_on_stale:
+            stale_components.append("client_unknown")
+    elif client_min_check is False:
+        client_info["status"] = "stale"
+        stale_components.append("client_outdated")
+    else:
+        client_info["status"] = "ok"
+
+
+def _check_server_version(
+    *,
+    args: argparse.Namespace,
+    psql_path: str | None,
+    server_info: dict[str, Any],
+    warnings: list[str],
+    stale_components: list[str],
+) -> None:
+    if not args.check_server_version or not psql_path:
+        return
+    server_exit, server_output = run_command(_build_server_version_command(args))
+    if server_exit != 0:
+        server_info["status"] = "error"
+        server_info["error"] = server_output or "SHOW server_version_num failed"
+        warnings.append("Could not determine PostgreSQL server version " f"(attempted {describe_server_target(args)}).")
+        if args.fail_on_stale:
+            stale_components.append("server_unknown")
+        return
+    server_version = parse_server_version_num(server_output)
+    server_info["version"] = server_version
+    server_min_check = meets_minimum(server_version, args.min_server_version)
+    server_info["meets_minimum"] = server_min_check
+    if server_version is None:
+        server_info["status"] = "unknown"
+        warnings.append("Could not parse server_version_num.")
+        if args.fail_on_stale:
+            stale_components.append("server_unknown")
+    elif server_min_check is False:
+        server_info["status"] = "stale"
+        stale_components.append("server_outdated")
+    else:
+        server_info["status"] = "ok"
+
+
+def _validate_cve_entries(result: dict[str, Any], snapshot: dict[str, Any]) -> list[Any] | None:
+    cve_entries = snapshot.get("cves", [])
+    if not isinstance(cve_entries, list):
+        result["warnings"].append("CVE snapshot 'cves' payload is not a list.")
+        result["status"] = "inconclusive"
+        result["assurance"] = "invalid-snapshot-format"
+        return None
+    result["snapshot_cve_count"] = len(cve_entries)
+    if len(cve_entries) == 0:
+        result["warnings"].append(
+            "CVE snapshot contains zero entries; vulnerability evaluation is inconclusive."
+        )
+        result["status"] = "inconclusive"
+        result["assurance"] = "empty-snapshot"
+    return cve_entries
+
+
+def _merge_cve_summary(
+    *,
+    cve_result: dict[str, Any],
+    warnings: list[str],
+    stale_components: list[str],
+) -> None:
+    if cve_result.get("warnings"):
+        warnings.extend(cve_result["warnings"])
+    if cve_result.get("vulnerabilities"):
+        stale_components.append("cve_vulnerable")
+    if cve_result.get("snapshot_stale"):
+        stale_components.append("cve_snapshot_stale")
+    if cve_result["checked"] and cve_result["gate_failed"] and not cve_result.get("vulnerabilities"):
+        stale_components.append("cve_policy_unmet")
+
+
+def _base_report_lines(report: dict[str, Any]) -> list[str]:
+    client = report["client"]
+    server = report["server"]
+    cve = report["cve"]
+    return [
+        "PostgreSQL freshness report",
+        f"- Client status: {client['status']}",
+        f"- Client version: {client['version'] or 'unknown'}",
+        f"- Client minimum: {client['minimum_version'] or 'not configured'}",
+        f"- Server check enabled: {'yes' if server['checked'] else 'no'}",
+        f"- Server status: {server['status']}",
+        f"- Server version: {server['version'] or 'unknown'}",
+        f"- Server minimum: {server['minimum_version'] or 'not configured'}",
+        f"- CVE checks enabled: {'yes' if cve['checked'] else 'no'}",
+        f"- CVE severity threshold: {cve['severity_threshold']}",
+        f"- CVE snapshot entries: {cve['snapshot_cve_count']}",
+        f"- CVE snapshot generated at: {cve['snapshot_generated_at'] or 'unknown'}",
+        f"- CVE snapshot age hours: {cve['snapshot_age_hours'] if cve['snapshot_age_hours'] is not None else 'unknown'}",
+        f"- CVE evaluation status: {cve['status']}",
+        f"- CVE assurance: {cve['assurance']}",
+        f"- CVE vulnerabilities found: {len(cve['vulnerabilities'])}",
+    ]
+
+
+def _initial_client_info(args: argparse.Namespace, psql_path: str | None) -> dict[str, Any]:
+    status = "unknown"
+    if not psql_path:
+        status = "missing"
+    return {
+        "available": bool(psql_path),
+        "version": None,
+        "minimum_version": args.min_client_version or None,
+        "meets_minimum": None,
+        "status": status,
+        "error": None,
+    }
+
+
+def _initial_server_info(args: argparse.Namespace, psql_path: str | None) -> dict[str, Any]:
+    status = "unknown"
+    if not args.check_server_version:
+        status = "not-checked"
+    return {
+        "checked": args.check_server_version,
+        "available": bool(psql_path),
+        "version": None,
+        "minimum_version": args.min_server_version or None,
+        "meets_minimum": None,
+        "status": status,
+        "error": None,
+    }
+
+
+def _policy_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    return {
+        "min_client_version": args.min_client_version or None,
+        "min_server_version": args.min_server_version or None,
+        "check_server_version": args.check_server_version,
+        "fail_on_stale": args.fail_on_stale,
+        "check_cves": args.check_cves,
+        "fail_on_cve": args.fail_on_cve,
+        "cve_snapshot": args.cve_snapshot or None,
+        "cve_policy": args.cve_policy or None,
+    }
+
+
+def evaluate_cves(
+    *,
+    args: argparse.Namespace,
+    client_version: str | None,
+    server_version: str | None,
+) -> dict[str, Any]:
+    result: dict[str, Any] = _initial_cve_result(args)
+    if not args.check_cves:
+        return result
+    result["status"] = "evaluating"
+    result["assurance"] = "unknown"
+
+    policy = _load_cve_policy(args)
+    result["severity_threshold"] = str(policy["severity_threshold"])
+    result["max_snapshot_age_hours"] = int(policy["max_snapshot_age_hours"])
+    result["fail_on_stale_snapshot"] = bool(policy["fail_on_stale_snapshot"])
+
+    snapshot = _refresh_or_load_snapshot(args, client_version, server_version, result)
+    if snapshot is None:
+        result["warnings"].append("CVE snapshot is missing or invalid; skipping CVE evaluation.")
+        result["status"] = "inconclusive"
+        result["assurance"] = "no-snapshot"
+        if args.fail_on_cve:
+            _mark_policy_failed(result)
+        return result
+
+    generated_at = parse_iso_datetime(str(snapshot.get("generated_at", "")))
+    _apply_snapshot_freshness(result, generated_at, args)
+
+    cve_entries = _validate_cve_entries(result, snapshot)
+    if cve_entries is None:
+        return result
+
+    threshold = result["severity_threshold"]
+    findings = _collect_cve_findings(cve_entries, threshold, client_version, server_version)
     result["vulnerabilities"] = findings
     if findings:
         result["status"] = "failed" if args.fail_on_cve else "vulnerable"
@@ -510,114 +733,35 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     warnings: list[str] = []
     psql_path = shutil.which("psql")
 
-    client_info: dict[str, Any] = {
-        "available": bool(psql_path),
-        "version": None,
-        "minimum_version": args.min_client_version or None,
-        "meets_minimum": None,
-        "status": "missing" if not psql_path else "unknown",
-        "error": None,
-    }
-    server_info: dict[str, Any] = {
-        "checked": args.check_server_version,
-        "available": bool(psql_path),
-        "version": None,
-        "minimum_version": args.min_server_version or None,
-        "meets_minimum": None,
-        "status": "not-checked" if not args.check_server_version else "unknown",
-        "error": None,
-    }
+    client_info = _initial_client_info(args, psql_path)
+    server_info = _initial_server_info(args, psql_path)
 
-    if not psql_path:
-        warnings.append("psql not found on PATH; PostgreSQL freshness checks skipped.")
-        if args.fail_on_stale:
-            stale_components.append("client_missing")
-            if args.check_server_version:
-                stale_components.append("server_missing")
-    else:
-        client_exit, client_output = run_command(["psql", "--version"])
-        if client_exit != 0:
-            client_info["status"] = "error"
-            client_info["error"] = client_output or "psql --version failed"
-            warnings.append("Could not determine psql client version.")
-            if args.fail_on_stale:
-                stale_components.append("client_unknown")
-        else:
-            client_version = parse_psql_client_version(client_output)
-            client_info["version"] = client_version
-            client_min_check = meets_minimum(client_version, args.min_client_version)
-            client_info["meets_minimum"] = client_min_check
-            if client_version is None:
-                client_info["status"] = "unknown"
-                warnings.append("Could not parse psql client version output.")
-                if args.fail_on_stale:
-                    stale_components.append("client_unknown")
-            elif client_min_check is False:
-                client_info["status"] = "stale"
-                stale_components.append("client_outdated")
-            else:
-                client_info["status"] = "ok"
-
-        if args.check_server_version:
-            server_cmd = ["psql"]
-            if args.server_psql_args:
-                server_cmd.extend(shlex.split(args.server_psql_args))
-            elif args.server_dsn:
-                server_cmd.append(args.server_dsn)
-            server_cmd.extend(["-tAc", "SHOW server_version_num;"])
-            server_exit, server_output = run_command(server_cmd)
-            if server_exit != 0:
-                server_info["status"] = "error"
-                server_info["error"] = server_output or "SHOW server_version_num failed"
-                warnings.append(
-                    "Could not determine PostgreSQL server version "
-                    f"(attempted {describe_server_target(args)})."
-                )
-                if args.fail_on_stale:
-                    stale_components.append("server_unknown")
-            else:
-                server_version = parse_server_version_num(server_output)
-                server_info["version"] = server_version
-                server_min_check = meets_minimum(server_version, args.min_server_version)
-                server_info["meets_minimum"] = server_min_check
-                if server_version is None:
-                    server_info["status"] = "unknown"
-                    warnings.append("Could not parse server_version_num.")
-                    if args.fail_on_stale:
-                        stale_components.append("server_unknown")
-                elif server_min_check is False:
-                    server_info["status"] = "stale"
-                    stale_components.append("server_outdated")
-                else:
-                    server_info["status"] = "ok"
+    _check_client_version(
+        args=args,
+        psql_path=psql_path,
+        client_info=client_info,
+        warnings=warnings,
+        stale_components=stale_components,
+    )
+    _check_server_version(
+        args=args,
+        psql_path=psql_path,
+        server_info=server_info,
+        warnings=warnings,
+        stale_components=stale_components,
+    )
 
     cve_result = evaluate_cves(
         args=args,
         client_version=client_info["version"],
         server_version=server_info["version"],
     )
-    if cve_result.get("warnings"):
-        warnings.extend(cve_result["warnings"])
-    if cve_result.get("vulnerabilities"):
-        stale_components.append("cve_vulnerable")
-    if cve_result.get("snapshot_stale"):
-        stale_components.append("cve_snapshot_stale")
-    if cve_result["checked"] and cve_result["gate_failed"] and not cve_result.get("vulnerabilities"):
-        stale_components.append("cve_policy_unmet")
+    _merge_cve_summary(cve_result=cve_result, warnings=warnings, stale_components=stale_components)
 
     gate_failed = bool((args.fail_on_stale and stale_components) or cve_result.get("gate_failed"))
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "policy": {
-            "min_client_version": args.min_client_version or None,
-            "min_server_version": args.min_server_version or None,
-            "check_server_version": args.check_server_version,
-            "fail_on_stale": args.fail_on_stale,
-            "check_cves": args.check_cves,
-            "fail_on_cve": args.fail_on_cve,
-            "cve_snapshot": args.cve_snapshot or None,
-            "cve_policy": args.cve_policy or None,
-        },
+        "policy": _policy_from_args(args),
         "client": client_info,
         "server": server_info,
         "cve": cve_result,
@@ -630,28 +774,8 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def format_text_report(report: dict[str, Any]) -> str:
-    client = report["client"]
-    server = report["server"]
     summary = report["summary"]
-    cve = report["cve"]
-    lines = [
-        "PostgreSQL freshness report",
-        f"- Client status: {client['status']}",
-        f"- Client version: {client['version'] or 'unknown'}",
-        f"- Client minimum: {client['minimum_version'] or 'not configured'}",
-        f"- Server check enabled: {'yes' if server['checked'] else 'no'}",
-        f"- Server status: {server['status']}",
-        f"- Server version: {server['version'] or 'unknown'}",
-        f"- Server minimum: {server['minimum_version'] or 'not configured'}",
-        f"- CVE checks enabled: {'yes' if cve['checked'] else 'no'}",
-        f"- CVE severity threshold: {cve['severity_threshold']}",
-        f"- CVE snapshot entries: {cve['snapshot_cve_count']}",
-        f"- CVE snapshot generated at: {cve['snapshot_generated_at'] or 'unknown'}",
-        f"- CVE snapshot age hours: {cve['snapshot_age_hours'] if cve['snapshot_age_hours'] is not None else 'unknown'}",
-        f"- CVE evaluation status: {cve['status']}",
-        f"- CVE assurance: {cve['assurance']}",
-        f"- CVE vulnerabilities found: {len(cve['vulnerabilities'])}",
-    ]
+    lines = _base_report_lines(report)
     if summary["warnings"]:
         lines.append("- Warnings:")
         for warning in summary["warnings"]:

@@ -69,37 +69,52 @@ def _upsert_account(session, account_data):
     """, vals)
 
 #R010: Identity graph upsert and reuse via known email linkage.
-def _upsert_identity(session, owner_data):
-    identity_id = None
-    for email_data in (owner_data.get("emails") or []):
+def _existing_identity_id_by_email(session, emails):
+    for email_data in emails:
         row = _exec(session, "SELECT identity_id FROM teller.identity_email WHERE data = :data", {"data": email_data["data"]}).fetchone()
         if row:
-            identity_id = row[0]
+            return row[0]
+    return None
+
+
+def _upsert_identity_record(session, owner_type, identity_id=None):
     if identity_id:
-        _exec(session, "UPDATE teller.identity SET type = :type WHERE identity_id = :id", {"type": owner_data["type"], "id": identity_id})
-    else:
-        identity_id = _exec_returning(session, """
-            INSERT INTO teller.identity (type) VALUES (:type) RETURNING identity_id
-        """, {"type": owner_data["type"]})[0]
-    for n in (owner_data.get("names") or []):
+        _exec(session, "UPDATE teller.identity SET type = :type WHERE identity_id = :id", {"type": owner_type, "id": identity_id})
+        return identity_id
+    return _exec_returning(session, """
+        INSERT INTO teller.identity (type) VALUES (:type) RETURNING identity_id
+    """, {"type": owner_type})[0]
+
+
+def _upsert_identity_names(session, names, identity_id):
+    for n in names:
         _exec(session, """
             INSERT INTO teller.identity_name (type, data, identity_id)
             VALUES (:type, :data, :identity_id)
             ON CONFLICT (data, identity_id) DO UPDATE SET type = EXCLUDED.type
         """, {"type": n["type"], "data": n["data"], "identity_id": identity_id})
-    for e in (owner_data.get("emails") or []):
+
+
+def _upsert_identity_emails(session, emails, identity_id):
+    for e in emails:
         _exec(session, """
             INSERT INTO teller.identity_email (data, identity_id)
             VALUES (:data, :identity_id)
             ON CONFLICT (data) DO UPDATE SET identity_id = EXCLUDED.identity_id
         """, {"data": e["data"], "identity_id": identity_id})
-    for p in (owner_data.get("phone_numbers") or []):
+
+
+def _upsert_identity_phone_numbers(session, phone_numbers, identity_id):
+    for p in phone_numbers:
         _exec(session, """
             INSERT INTO teller.identity_phone_number (type, data, identity_id)
             VALUES (:type, :data, :identity_id)
             ON CONFLICT (data, identity_id) DO UPDATE SET type = EXCLUDED.type
         """, {"type": p["type"], "data": p["data"], "identity_id": identity_id})
-    for a in (owner_data.get("addresses") or []):
+
+
+def _upsert_identity_addresses(session, addresses, identity_id):
+    for a in addresses:
         addr = a["data"]
         addr_data_id = _exec_returning(session, """
             INSERT INTO teller.identity_address_data (street, city, region, country, postal_code)
@@ -112,6 +127,17 @@ def _upsert_identity(session, owner_data):
             VALUES (:primary, :addr_data_id, :identity_id)
             ON CONFLICT (identity_address_data_id, identity_id) DO UPDATE SET primary_address = EXCLUDED.primary_address
         """, {"primary": a.get("primary", False), "addr_data_id": addr_data_id, "identity_id": identity_id})
+
+
+def _upsert_identity(session, owner_data):
+    emails = owner_data.get("emails") or []
+    identity_id = None
+    identity_id = _existing_identity_id_by_email(session, emails)
+    identity_id = _upsert_identity_record(session, owner_data["type"], identity_id)
+    _upsert_identity_names(session, owner_data.get("names") or [], identity_id)
+    _upsert_identity_emails(session, emails, identity_id)
+    _upsert_identity_phone_numbers(session, owner_data.get("phone_numbers") or [], identity_id)
+    _upsert_identity_addresses(session, owner_data.get("addresses") or [], identity_id)
     return identity_id
 
 def _upsert_account_identity(session, account_id, identity_id):

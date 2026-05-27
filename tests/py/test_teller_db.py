@@ -113,7 +113,7 @@ class ConnectListenerTests(_IsolatedEnvTest):
         os.environ["TELLER_DB_PASSWORD"] = "pw"  # pragma: allowlist secret
         captured = {}
 
-        def fake_listens_for(target, event_name):  # noqa: ARG001
+        def fake_listens_for(target, _event_name):  # noqa: ARG001
             def decorator(fn):
                 captured["fn"] = fn
                 return fn

@@ -156,23 +156,34 @@ def _record_from_fields(fields: dict[str, str]) -> dict:
     )
 
 
-def _build_record(host, port_raw, database, username, schema, runtime_role, target, sslmode) -> dict:
+def _parse_port(port_raw: str | None) -> int:
     try:
-        port = int(port_raw) if port_raw else 5432
+        return int(port_raw) if port_raw else 5432
     except (TypeError, ValueError):
-        port = 5432
-    resolved_target = target if target in _ALLOWED_TARGETS else "local"
+        return 5432
+
+
+def _resolve_target(target: str | None) -> str:
+    return target if target in _ALLOWED_TARGETS else "local"
+
+
+def _resolve_sslmode(sslmode: str | None, resolved_target: str) -> str:
     if not sslmode:
         sslmode = "require" if resolved_target == "managed" else "disable"
+    return sslmode if sslmode in _ALLOWED_SSLMODES else "disable"
+
+
+def _build_record(host, port_raw, database, username, schema, runtime_role, target, sslmode) -> dict:
+    resolved_target = _resolve_target(target)
     return {
         "host": host or "localhost",
-        "port": port,
+        "port": _parse_port(port_raw),
         "dbname": database or "prod",
         "user": username or "teller",
         "search_path": schema or "teller",
         "runtime_role": runtime_role or "",
         "target": resolved_target,
-        "sslmode": sslmode if sslmode in _ALLOWED_SSLMODES else "disable",
+        "sslmode": _resolve_sslmode(sslmode, resolved_target),
     }
 
 

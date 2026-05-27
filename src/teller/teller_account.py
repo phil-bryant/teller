@@ -8,7 +8,8 @@ from .teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccount
 from .teller_account_details import TellerAccountDetails
 from .teller_account_balances import TellerAccountBalances
 from .teller_transaction import TellerTransaction
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
+
 if TYPE_CHECKING:
     from .teller_account_identities import TellerAccountIdentities
 

@@ -12,27 +12,11 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
 - `04_install_classifier_api_tls.sh`
-- `tests/t00_run_code_quality_tests.sh`
-- `tests/t02_run_dependency_freshness_tests.sh`
-- `tests/t01_run_av_test.sh`
-- `tests/t03_run_static_security_tests.sh`
 - `05_deploy_database.sh`
-- `tests/t05_deploy_database_verification_test.sh` (includes updated_at trigger coverage verification)
-- `tests/t07_run_shell_unit_tests.sh`
-- `tests/t08_run_python_unit_tests.sh`
-- `tests/t09_run_mutation_tests.sh`
-- `tests/t06_run_sql_unit_tests.sh`
-- `tests/t11_run_fuzz_tests.sh`
-- `tests/t10_run_swift_unit_tests.sh`
-- `tests/t14_run_macos_ui_regression_tests.sh` (recommended pre-merge gate)
-- `tests/t15_verify_macos_crash_test.sh`
-- `tests/t13_run_teller_api_smoke_tests.sh`
 - `06_fetch_teller_api_data.py`
 - `07_backfill_bank_statements.py`
 - `08_run_classification_api.py`
 - `08_run_classification_api.py` (compatibility alias)
-- `tests/t16_classification_persistence_verification_test.sh`
-- `tests/t12_run_dynamic_security_tests.sh`
 - `09_run_classification_macos_ui.sh`
 - `10_run_all_tests_parallel.sh`
 - `11_report_quality_trends.sh`
@@ -54,29 +38,13 @@ From the project root:
 source ./teller-venv/bin/activate
 ./03_load_requirements.sh
 ./04_install_classifier_api_tls.sh
-./tests/t00_run_code_quality_tests.sh
-./tests/t02_run_dependency_freshness_tests.sh
-./tests/t01_run_av_test.sh
-./tests/t03_run_static_security_tests.sh
 mkdir -p config/local
 cp config/db-profiles-EXAMPLE.json config/db-profiles.json
 # Edit config/db-profiles.json default_profile / 1psa_or_env_item for your environment.
 ./05_deploy_database.sh
-./tests/t05_deploy_database_verification_test.sh
-./tests/t07_run_shell_unit_tests.sh
-./tests/t08_run_python_unit_tests.sh
-./tests/t09_run_mutation_tests.sh
-./tests/t06_run_sql_unit_tests.sh
-./tests/t11_run_fuzz_tests.sh
-./tests/t10_run_swift_unit_tests.sh
-./tests/t14_run_macos_ui_regression_tests.sh
-./tests/t15_verify_macos_crash_test.sh
-./tests/t13_run_teller_api_smoke_tests.sh
 ./06_fetch_teller_api_data.py
 ./07_backfill_bank_statements.py
 ./08_run_classification_api.py
-./tests/t16_classification_persistence_verification_test.sh
-./tests/t12_run_dynamic_security_tests.sh
 ./09_run_classification_macos_ui.sh
 ./10_run_all_tests_parallel.sh
 ```
@@ -92,70 +60,26 @@ Before `./05_deploy_database.sh`, ensure PostgreSQL is installed and running for
 - `requirements/` - requirements traceability docs mapped to source `#R...` tags.
 - `archive/legacy/` - archived legacy/demo assets (including the retired Teller Connect demo HTML and `teller-connect-ui` sample project).
 
-## Tech Stack Overview
-
-```text
-External systems
-  - Teller API (api.teller.io)
-  - 1psa secret store CLI
-  - Mailcart local service (optional)
-
-Python backend layer
-  - Runtime: Python 3.10+ (setup prefers 3.12)
-  - Frameworks/libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,
-    psycopg2-binary, requests, structlog, python-dotenv
-  - Main flows:
-    * Ingest: 18_fetch_teller_api_data.py
-    * Backfill: 19_backfill_bank_statements.py
-    * API: 08_run_classification_api.py -> src/teller/teller_classification_api.py
-
-Data/persistence layer
-  - PostgreSQL (local or managed profile via db profile config)
-  - Schema objects: src/sql/postgres/
-  - DB helpers: src/teller/teller_db.py, src/teller/teller_db_profile.py
-
-macOS app/UI layer
-  - Swift 5.9, SwiftUI, macOS 14+
-  - Package: src/macos-ui/Package.swift
-  - App: TransactionClassifier (includes WKWebView Connect + crash reporting)
-```
-
-Testing stack:
-
-- Shell lane: `bats` (`tests/sh`)
-- Python lane: `unittest` (`tests/py`)
-- SQL lane: `pgTAP`/`pg_prove` (`tests/sql`)
-- Swift lane: `swift test` (`src/macos-ui/Tests`)
-- macOS UI lane: snapshot + XCUITest
-
-Security stack:
-
-- SAST: `semgrep`, `bandit`, `pip-audit`, `detect-secrets`, `gitleaks`, `shellcheck`, `swiftlint`
-- DAST: `schemathesis`, OWASP ZAP
-- AV: ClamAV
-
 ## Testing and Verification
 
-Run these checks from the project root after activating the project virtual environment:
+Run checks from the project root after activating the virtual environment:
 
 ```bash
 source ./teller-venv/bin/activate
 ```
 
-### Local Run Profiles
-
-Use these profiles to keep day-to-day runs fast while preserving a high-confidence full gate before release work.
+### Quick Profiles
 
 PR-fast profile (recommended default):
 
 ```bash
 source ./teller-venv/bin/activate
 ./tests/t04_run_requirements_traceability_tests.sh
-./09_run_shell_unit_tests.sh
-./10_run_python_unit_tests.sh
-./12_run_sql_unit_tests.sh
-./14_run_swift_unit_tests.sh
-RUN_XCUITESTS=false ./15_run_macos_ui_regression_tests.sh
+./tests/t07_run_shell_unit_tests.sh
+./tests/t08_run_python_unit_tests.sh
+./tests/t06_run_sql_unit_tests.sh
+./tests/t10_run_swift_unit_tests.sh
+RUN_XCUITESTS=false ./tests/t14_run_macos_ui_regression_tests.sh
 ```
 
 Full-confidence profile (parallel aggregate gate):
@@ -165,295 +89,50 @@ source ./teller-venv/bin/activate
 PARALLEL_CLASSIFIER_API_PORT=8787 \
 PARALLEL_DAST_BASE_PORT=8788 \
 PARALLEL_DAST_REUSE_EXISTING_API=false \
-./24_run_all_tests_parallel.sh
+./10_run_all_tests_parallel.sh
 ```
 
 Quality trend / target checks:
 
 ```bash
-./25_report_quality_trends.sh
-./26_validate_quality_target.sh
+./11_report_quality_trends.sh
+./12_validate_quality_target.sh
 ```
 
-Profile notes:
+### Individual Test Lanes
 
-- `25` keeps lanes parallel; API/DAST ports are isolated by default (`8787` vs `8788`) to reduce race-driven flakes.
-- Override lane isolation only when intentionally diagnosing a single shared-runtime issue.
-- For deeper security/fuzz coverage, combine with nightly-style knobs:
-  - `SCHEMATHESIS_MAX_EXAMPLES=100`
-  - `FUZZ_MAX_EXAMPLES=500 FUZZ_TIMEOUT_SECONDS=600`
-  - `MUTATION_SKIP_PREFLIGHT=false` (now default for strict local full runs)
+All primary lanes live under `tests/t*.sh`:
 
-Security scanning runs via `06_run_static_security_tests.sh` (SAST) and `22_run_dynamic_security_tests.sh` (DAST).
-Security policy defaults live under `config/security/` (`semgrep.yml`, `bandit.yml`, `gitleaksignore`) and can be overridden with `SEMGREP_CONFIG_PATH`, `BANDIT_CONFIG_PATH`, and `GITLEAKS_IGNORE_PATH`.
-Antivirus scanning runs via `05_run_av_test.sh` (ClamAV lane).
-Dependency freshness automation runs via `04_run_dependency_freshness_tests.sh`.
+- `./tests/t00_run_code_quality_tests.sh` - code-quality analyzers (Vulture, Radon, Xenon)
+- `./tests/t01_run_av_test.sh` - antivirus scan (ClamAV)
+- `./tests/t02_run_dependency_freshness_tests.sh` - dependency + PostgreSQL + Teller API freshness
+- `./tests/t03_run_static_security_tests.sh` - static security scanning (SAST)
+- `./tests/t04_run_requirements_traceability_tests.sh` - requirements to `#R...` tag traceability
+- `./tests/t05_deploy_database_verification_test.sh` - deployed database invariant checks
+- `./tests/t06_run_sql_unit_tests.sh` - SQL unit tests
+- `./tests/t07_run_shell_unit_tests.sh` - shell unit tests (`bats`)
+- `./tests/t08_run_python_unit_tests.sh` - Python unit tests
+- `./tests/t09_run_mutation_tests.sh` - mutation testing (`mutmut`)
+- `./tests/t10_run_swift_unit_tests.sh` - Swift unit tests
+- `./tests/t11_run_fuzz_tests.sh` - property/stateful fuzz tests (Hypothesis)
+- `./tests/t12_run_dynamic_security_tests.sh` - dynamic security scanning (DAST, optional ZAP)
+- `./tests/t13_run_teller_api_smoke_tests.sh` - Teller API smoke checks
+- `./tests/t14_run_macos_ui_regression_tests.sh` - macOS UI snapshot + XCUITest regression
+- `./tests/t15_verify_macos_crash_test.sh` - macOS crash reporter verification
+- `./tests/t16_classification_persistence_verification_test.sh` - classification API to Postgres persistence E2E
 
-### 1) Requirements Traceability Verification
-
-Verifies every requirement ID in `requirements/**/*-requirements.md` is mapped to matching `#R...` tags in referenced source files.
-
-```bash
-./tests/t04_run_requirements_traceability_tests.sh
-```
-
-Optional single-pair mode:
-
-```bash
-./tests/t04_run_requirements_traceability_tests.sh requirements/t16_classification_persistence_verification_test-requirements.md tests/t16_classification_persistence_verification_test.sh
-```
-
-### 2) Unit Tests
-
-Runs split unit lanes so each suite can run independently (and in parallel under `25`).
-
-```bash
-./09_run_shell_unit_tests.sh
-./10_run_python_unit_tests.sh
-./12_run_sql_unit_tests.sh
-./14_run_swift_unit_tests.sh
-```
-
-Equivalent direct Python unittest invocation:
+Equivalent direct Python invocation:
 
 ```bash
 python3 -m unittest discover tests/py
 ```
 
-Shell tests (`tests/sh`) run via `bats` in lane `10`. See `tests/sh/README.md` for stubbing conventions and scope boundaries.
-
-Hypothesis and other Python tool caches live under `artifacts/cache/` (not a root-level `.hypothesis/`). Test runners source `src/scripts/export_test_cache_env.sh`; activating `teller-venv` inside this repo does the same via `bin/activate`.
-
-### 2b) Fuzz Tests
-
-Run dedicated property/stateful fuzz tests:
-
-```bash
-./13_run_fuzz_tests.sh
-```
-
-The fuzz lane defaults to `tests/py/properties` and writes machine-readable telemetry to `artifacts/fuzz/fuzz-summary.json`.
-
-Useful flags:
-
-- `FUZZ_TEST_PATHS=tests/py/properties` (default; path or glob accepted by pytest)
-- `FUZZ_MAX_EXAMPLES=500` (default per-property budget)
-- `FUZZ_DEADLINE_MS=1000` (default Hypothesis deadline in ms; set `0` to disable)
-- `FUZZ_TIMEOUT_SECONDS=300` (default lane timeout)
-- `FUZZ_MIN_PROPERTY_TESTS=4` (default minimum collected property tests)
-- `FUZZ_MIN_PER_TEST_RATIO_PERCENT=90` (default per-test passing floor percentage)
-- `FUZZ_MIN_TOTAL_EXAMPLES=<int>` (default derived from `FUZZ_MIN_PROPERTY_TESTS * FUZZ_MAX_EXAMPLES * FUZZ_MIN_PER_TEST_RATIO_PERCENT / 100`)
-- `FUZZ_REPORT_DIR=./artifacts/fuzz` (summary + replay log output root)
-- `HYPOTHESIS_STORAGE_DIRECTORY=./artifacts/cache/hypothesis` (example database path)
-
-Recommended profiles:
-
-- PR-fast profile:
-
-```bash
-FUZZ_MAX_EXAMPLES=100 FUZZ_TIMEOUT_SECONDS=180 ./13_run_fuzz_tests.sh
-```
-
-- Nightly-deep profile:
-
-```bash
-FUZZ_MAX_EXAMPLES=500 FUZZ_TIMEOUT_SECONDS=600 ./13_run_fuzz_tests.sh
-```
-
-On failure, the lane saves the most recent replayable run log at `artifacts/fuzz/fuzz-failure-last.log`.
-
-### 2c) macOS UI Regression Tests
-
-Runs deterministic snapshot tests and macOS XCUITest smoke flows for `macos-ui`.
-
-This lane can run before full Connect enrollment and before script `19`.
-
-```bash
-./15_run_macos_ui_regression_tests.sh
-```
-
-Common flags:
-
-- `RUN_SNAPSHOT_TESTS=true|false` (default `true`)
-- `SNAPSHOT_RECORD=true|false` (default `false`)
-- `RUN_XCUITESTS=true|false` (default `true`)
-
-### 3) Classification Persistence End-to-End Verification
-
-This checks API-to-database persistence by writing one classification via API and reading it back from Postgres.
-
-The verifier auto-starts the API by default if `/health` is unavailable (`CLASSIFICATION_PERSISTENCE_START_API=true`).
-
-1. Start the API in one terminal (optional):
-
-```bash
-./08_run_classification_api.py
-```
-
-1. Run the verifier:
-
-```bash
-./21_classification_persistence_verification_test.sh
-```
-
-Strict/CI-style mode requiring explicit IDs:
-
-```bash
-TXN_ID=txn_xxx CATEGORY_ID=123 ./21_classification_persistence_verification_test.sh --require-env-ids
-```
-
-Mutation endpoints require a write token from the `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` (checked by `08_run_classification_api.py`).
-
-### 4) Built-In Smoke Verifications in Setup Scripts
-
-These checks run as part of existing app/setup workflows:
-
-- `./09_run_classification_macos_ui.sh`
-  - Builds and launches the native macOS app; Connect tab owns enrollment add/reconnect/delete and token persistence.
-  - Connect setup smoke checks are handled in-app by `TellerSetupService` (`GET /institutions`, and optionally `GET /accounts` when token is present).
-
-### 5) Security Scanning (SAST/DAST)
-
-Security scanners are installed automatically into an isolated `artifacts/venv/security` when you run the security lane (avoids dependency conflicts with the app venv).
-
-Manual install into `artifacts/venv/security` (optional):
-
-```bash
-python3 -m venv artifacts/venv/security
-./artifacts/venv/security/bin/pip install --upgrade pip
-./artifacts/venv/security/bin/pip install -r requirements/security/requirements-security.txt
-```
-
-Run the SAST lane:
-
-```bash
-./06_run_static_security_tests.sh
-```
-
-Run the DAST lane:
-
-```bash
-./22_run_dynamic_security_tests.sh
-```
-
-Useful flags:
-
-- `RUN_SAST=true|false` (default `true`)
-- `RUN_DAST=true|false` (default `true`)
-- `RUN_SWIFT_SAST=true|false` (default `true`; runs security-focused SwiftLint rules on first-party `./src/macos-ui` Swift code)
-- `RUN_ZAP=true|false` (default `true`, requires local ZAP CLI executable, e.g. `ZAP.sh`)
-- `ZAP_HOME_DIR=/path` (default `./artifacts/security/zap-home`; isolates ZAP state per repo to avoid global home-directory lock conflicts)
-- `ZAP_QUIET=true|false` (default `false`; when `false`, shows live ZAP quick-scan progress including attack phase output)
-- `DAST_REUSE_EXISTING_API=true|false` (default `false`; reuse already-running classification API instead of starting one)
-- `SECURITY_FAIL_ON_HIGH_CRITICAL=true|false` (default `true`)
-- `RUN_TOKEN_CAPTURE_DAST=true|false|auto` (default `auto`)
-- `RUN_SCHEMATHESIS=true|false` (default `true`)
-- `SCHEMATHESIS_SEED=424242` (default deterministic seed)
-- `SCHEMATHESIS_MAX_EXAMPLES=25` (default API fuzz depth per operation)
-- ShellCheck runs automatically in SAST mode and writes `shellcheck.json` into the report directory.
-
-Recommended DAST profiles:
-
-- PR-fast profile:
-
-```bash
-RUN_DAST=true RUN_ZAP=false SCHEMATHESIS_MAX_EXAMPLES=10 ./22_run_dynamic_security_tests.sh
-```
-
-- Nightly-deep profile:
-
-```bash
-RUN_DAST=true RUN_ZAP=true SCHEMATHESIS_MAX_EXAMPLES=100 ./22_run_dynamic_security_tests.sh
-```
-
-### 5b) Antivirus Scanning (ClamAV)
-
-Run the dedicated AV lane:
-
-```bash
-./05_run_av_test.sh
-```
-
-Useful flags:
-
-- `RUN_CLAMAV=true|false` (default `true`; runs recursive ClamAV malware scan on repository files)
-- `AV_FAIL_ON_INFECTED=true|false` (default `true`; fails lane when infected files are detected)
-- `SECURITY_REPORT_DIR=/path` (default `./artifacts/security/reports`; output root for AV/SAST lane artifacts)
-- `CLAMAV_SCAN_TARGET=/path` (default `.`; scan root for ClamAV repository scan)
-- `CLAMAV_HEARTBEAT_SECONDS=15` (default `15`; emits periodic "still scanning" status lines during ClamAV scans)
-- `CLAMAV_SIGNATURE_MAX_AGE_HOURS=48` (default `48`; freshness threshold for signature age warning output)
-
-ClamAV AV-lane notes:
-
-- The AV script prints the resolved scan target path before scanning.
-- It prints signature freshness metadata (latest DB file + age).
-- During long scans, it emits periodic heartbeat lines so the run is not silent.
-- On first run, if malware signature databases are missing, the script automatically attempts a one-time `freshclam --stdout` update and retries the scan.
-
-For policy and behavior details, see `requirements/06_run_static_security_tests-requirements.md`, `requirements/22_run_dynamic_security_tests-requirements.md`, and `requirements/05_run_av_test-requirements.md`.
-
-### 6) Dependency Freshness + Teller API Smoke
-
-Use separate lanes for dependency/PostgreSQL freshness and Teller API smoke coverage.
-
-Run locally:
-
-```bash
-./04_run_dependency_freshness_tests.sh
-./17_run_teller_api_smoke_tests.sh
-```
-
-Artifacts are written to `./artifacts/security/`:
-
-- `dependency-freshness.json` and `dependency-freshness.txt` (outdated package summary with major/minor/patch classification)
-- `teller-api-version-freshness.json` and `teller-api-version-freshness.txt` (best-effort Teller API version metadata freshness check)
-- `postgres-freshness.json` and `postgres-freshness.txt` (PostgreSQL client/server freshness status and policy evaluation)
-- `teller-api-smoke.json` and `teller-api-smoke.txt` (live Teller smoke checks / fallback compatibility checks)
-
-Useful flags:
-
-- `DEPENDENCY_FAIL_ON_MAJOR=true|false` (default `false`) to fail when major dependency updates are available
-- `DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=true|false` (default `true`; direct `requirements.txt` entries gate failure, transitive updates remain informational)
-- `RUN_POSTGRES_FRESHNESS=true|false` (default `true`)
-- `POSTGRES_MIN_CLIENT_VERSION=x.y` (optional minimum accepted `psql` version)
-- `POSTGRES_CHECK_SERVER_VERSION=true|false` (default `true`; runs `SHOW server_version_num`)
-- `POSTGRES_MIN_SERVER_VERSION=x.y` (optional minimum accepted server version; used when server checks are enabled)
-- `POSTGRES_SERVER_DSN=...` (optional DSN passed to `psql` for server checks)
-- `POSTGRES_SERVER_PSQL_ARGS="-h localhost -U teller -d prod"` (optional explicit `psql` args for server checks)
-- `POSTGRES_SERVER_PSA_ITEM` / `POSTGRES_SERVER_PSA_FIELD` (defaults `localhost_postgres_teller` / `password`; used to resolve `PGPASSWORD` via `1psa` when needed)
-- `POSTGRES_FAIL_ON_STALE=true|false` (default `false`; fail when configured Postgres freshness policy is not met)
-- `POSTGRES_CHECK_CVES=true|false` (default `true`; evaluates versions against local CVE snapshot ranges)
-- `POSTGRES_FAIL_ON_CVE=true|false` (default `true`; fail when CVE policy is violated)
-- `POSTGRES_CVE_POLICY_FILE=/path/to/postgres-cve-policy.json` (default `./config/security/postgres-cve-policy.json`)
-- `POSTGRES_CVE_SNAPSHOT_FILE=/path/to/postgres-cve-snapshot.json` (default `./config/security/postgres-cve-snapshot.json`)
-- `POSTGRES_REFRESH_CVE_SNAPSHOT=true|false` (default `true`; refreshes CVE snapshot from postgresql.org at runtime)
-- `DEPENDENCY_REPORT_DIR=/path` (default `./artifacts/security`)
-- `DEPENDENCY_CHECK_PYTHON=/path/to/python` (default `./teller-venv/bin/python` when available)
-- `RUN_TELLER_VERSION_FRESHNESS=true|false` (default `true`)
-- `TELLER_API_VERSION_SOURCES=url1,url2` (default: `https://teller.io/docs/api,https://api.teller.io/openapi.json,https://api.teller.io/swagger.json`)
-- `TELLER_API_BASELINE_VERSION=x.y.z` (optional baseline for update detection)
-- `TELLER_API_VERSION_FAIL_ON_NEW=true|false` (default `false`)
-- `TELLER_API_VERSION_DASHBOARD_URL=https://teller.io/settings/application` (dashboard page to scrape for app-specific version state)
-- `TELLER_API_VERSION_DASHBOARD_PSA_ITEM=TELLER_IO` (1psa item for dashboard login; when present, used before public docs sources)
-- `TELLER_API_VERSION_DASHBOARD_USERNAME_FIELD=username` and `TELLER_API_VERSION_DASHBOARD_PASSWORD_FIELD=password`
-- `TELLER_API_VERSION_DASHBOARD_OTP_FIELD=one-time password` (optional 1psa TOTP/OTP field forwarded during dashboard login)
-- `TELLER_ACCESS_TOKEN=...` (optional for smoke checks; when omitted, smoke checks use local `~/.teller/auth_token*.json` discovery)
-- `TELLER_SMOKE_INSTITUTION_ID=<suffix>` (optional; passes `--institution-id` to smoke checks)
-- `TELLER_SMOKE_REPORT_DIR=/path` (default `./artifacts/security`)
-- `TELLER_SMOKE_TIMEOUT_SECONDS=<int>` (default `15`)
-
-PostgreSQL CVE policy files:
-
-- `./config/security/postgres-cve-policy.json` controls severity threshold and snapshot freshness requirements.
-- `./config/security/postgres-cve-snapshot.json` is the local advisory snapshot used by the freshness lane.
-
-Triage expectations:
-
-- Dependency freshness failures: review `dependency-freshness.*` artifacts, validate compatibility, and rerun `./09_run_shell_unit_tests.sh`.
-- Teller API version freshness: checks your dashboard-configured app version first (via optional `1psa` credentials) and falls back to public docs/spec metadata; can report `unknown` when sources are unavailable.
-- Dependency transitive update warnings: informational by default; refresh the venv (`./03_load_requirements.sh`) when you want to align transitive packages.
-- Teller smoke warnings/failures: local token discovery is the default path and authenticated checks run across all discovered local tokens; set `TELLER_ACCESS_TOKEN` only when you want to force one token context.
-- PostgreSQL server-version warnings: verify connection target (`POSTGRES_SERVER_PSQL_ARGS` or `POSTGRES_SERVER_DSN`) and password source (`PGPASSWORD` or `1psa`) shown in script output.
+### Useful Notes
+
+- `10_run_all_tests_parallel.sh` orchestrates `tests/t*.sh` lanes and writes lane logs/artifacts.
+- Hypothesis and related caches are stored under `artifacts/cache/` (not a root-level `.hypothesis/`).
+- Security and freshness outputs are written under `artifacts/security/`.
+- Fuzz outputs are written under `artifacts/fuzz/`.
 
 ## API Reference Docs
 
@@ -481,62 +160,77 @@ Active secret and credential sources are:
 ## What Each Core Script Does
 
 - `01_install_prerequisites.sh`
-  - Ensures Homebrew is installed.
-  - Ensures required tooling is available (`go`, `git`, `bats`, `swiftlint`, `shellcheck`, `clamscan`, `gitleaks`, `perl`/`cpanm`, OWASP ZAP).
-  - Installs `1psa` (from `../1psa`) and clones `pg_install` and `pgtap` siblings.
+  - Verifies/installs local prerequisites (Homebrew, dev/security tooling, `1psa`, `pg_install`, `pgtap`, and first-run Xcode readiness).
 - `02_create_venv.sh`
-  - Creates a Python virtual environment named `<repo>-venv`.
+  - Creates `<repo>-venv` using `python3.12` (fallback `python3`) and wires test cache env defaults into the venv activation script.
 - `03_load_requirements.sh`
-  - Installs dependencies from `requirements.txt` (supports optional `requirements-cpu.txt` / `requirements-gpu.txt` if present).
-  - Must be run with the project virtual environment active.
-- `05_run_av_test.sh`
-  - Runs dedicated ClamAV antivirus checks (signature freshness, recursive scan, optional one-time `freshclam` retry, and AV gating).
-- `06_run_static_security_tests.sh`
-  - Runs local SAST checks (Semgrep, Bandit, pip-audit, gitleaks, detect-secrets, ShellCheck, and SwiftLint for `macos-ui`).
-- `09_run_shell_unit_tests.sh`
-  - Runs shell (`bats`), Python (`unittest` in `tests/py`), SQL (`pgTAP` via `pg_prove`), and Swift (`swift test`) lanes.
-  - Supports lane toggles with `RUN_SHELL_TESTS`, `RUN_PYTHON_TESTS`, `RUN_SQL_TESTS`, and `RUN_SWIFT_TESTS`.
-- `07_deploy_database.sh`
-  - Creates/configures the `prod` database.
-  - Applies SQL schema objects in dependency order from `src/sql/postgres/`.
-- `08_deploy_database_verification_test.sh`
-  - Verifies required database objects, trigger/FK invariants, and `updated_at` trigger coverage after deploy.
-- `15_run_macos_ui_regression_tests.sh`
-  - Runs `macos-ui` snapshot regression tests and the macOS XCUITest smoke suite.
-  - Supports selective gates with `RUN_SNAPSHOT_TESTS`, `SNAPSHOT_RECORD`, and `RUN_XCUITESTS`.
-- `16_verify_macos_crash_test.sh`
-  - Validates crash-reporter behavior and expected failure metadata for `macos-ui`.
-- `17_run_teller_api_smoke_tests.sh`
-  - Runs Teller API smoke checks (`/institutions`, and token-backed `/accounts` / `/identity` when auth resolves).
-  - Writes smoke artifacts to `artifacts/security/`.
-- `18_fetch_teller_api_data.py`
-  - Runs Teller API client operations.
-- `19_backfill_bank_statements.py`
-  - Backfills statements data.
+  - Installs Python dependencies from `requirements.txt` (or `requirements-cpu.txt` / `requirements-gpu.txt` when used) into the active project venv.
+- `04_install_classifier_api_tls.sh`
+  - Installs/refreshes locally trusted TLS cert/key files used by `08_run_classification_api.py` (via `mkcert`, under `~/.teller` by default).
+- `05_deploy_database.sh`
+  - Resolves DB profile and deploys schema/roles/DDL for local or managed targets from `src/sql/postgres/` in dependency order.
+- `06_fetch_teller_api_data.py`
+  - Pulls Teller API data, normalizes and deduplicates transaction history, and persists or upserts accounts, transactions, and related objects into Postgres.
+- `07_backfill_bank_statements.py`
+  - OCR-parses bank statement PDFs, derives typed/signed transactions, and backfills missing statement-linked transaction rows.
 - `08_run_classification_api.py`
-  - Starts local FastAPI service for listing transactions/categories and saving user SNW classifications.
-  - Requires `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` before serving.
-- `21_classification_persistence_verification_test.sh`
-  - End-to-end check: writes one classification via API then confirms DB persistence.
-  - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
-- `22_run_dynamic_security_tests.sh`
-  - Runs DAST checks (Schemathesis + OWASP ZAP quick scan and related hardening checks) against running/local API targets.
+  - Starts the local classifier FastAPI service (HTTPS by default), requires `1psa` write token, and supports explicit insecure/local override flags.
 - `09_run_classification_macos_ui.sh`
-  - Builds and launches `src/macos-ui/.build/debug/TransactionClassifier` from the repo root.
-  - Connect tab hosts native Teller Connect enrollment/reconnect/add/delete (WebView-backed, no standalone localhost server).
-- `24_run_all_tests_parallel.sh`
-  - Runs local parallel quality/security gate lanes and aggregates reports under `artifacts/parallel/`.
-  - Includes traceability, dependency freshness, Teller smoke checks, AV, SAST, DB verify, unit tests, UI regression, crash reporter, and classification persistence checks.
-  - Inherits caller environment for child lanes, so fuzz profile knobs (`FUZZ_*`, `SCHEMATHESIS_*`, `RUN_ZAP`) can be set once before invoking `25`.
+  - Builds and launches the native macOS app (`TransactionClassifier`) with in-process Connect flows; supports optional transaction-list profiling.
+- `10_run_all_tests_parallel.sh`
+  - Orchestrates all numbered `tests/t*.sh` checks in parallel, captures per-lane logs/artifacts, and updates quality telemetry summaries.
+- `11_report_quality_trends.sh`
+  - Reads telemetry and prints a local quality trend summary (latest score, rolling windows, and SLO status).
+- `12_validate_quality_target.sh`
+  - Enforces quality target gates from historical telemetry (including consecutive-week attainment checks).
+- `13_prune_quality_telemetry.sh`
+  - Prunes old lane-summary telemetry files, retaining the newest configured count.
+
+Core lane scripts under `tests/`:
+
+- `tests/t00_run_code_quality_tests.sh`
+  - Runs static code-quality analyzers (Vulture/Radon/Xenon) and writes reports to `artifacts/quality/reports`.
+- `tests/t01_run_av_test.sh`
+  - Runs ClamAV lane (signature freshness + scan + optional freshclam recovery).
+- `tests/t02_run_dependency_freshness_tests.sh`
+  - Runs dependency freshness, Teller API version freshness, and PostgreSQL freshness/CVE checks.
+- `tests/t03_run_static_security_tests.sh`
+  - Runs SAST tooling and writes security reports.
+- `tests/t04_run_requirements_traceability_tests.sh`
+  - Validates requirements-to-source traceability via `#R...` tags.
+- `tests/t05_deploy_database_verification_test.sh`
+  - Verifies deployed database invariants (schema objects, constraints/triggers, role expectations by target).
+- `tests/t06_run_sql_unit_tests.sh`
+  - Runs only SQL unit-test lane.
+- `tests/t07_run_shell_unit_tests.sh`
+  - Runs only shell unit-test lane.
+- `tests/t08_run_python_unit_tests.sh`
+  - Runs only Python unit-test lane.
+- `tests/t09_run_mutation_tests.sh`
+  - Runs mutation testing (`mutmut`) with score/coverage gating and mutation telemetry output.
+- `tests/t10_run_swift_unit_tests.sh`
+  - Runs only Swift unit-test lane.
+- `tests/t11_run_fuzz_tests.sh`
+  - Runs property/stateful fuzz tests (Hypothesis) with budget/time gating.
+- `tests/t12_run_dynamic_security_tests.sh`
+  - Runs DAST lane (including Schemathesis and optional ZAP flows).
+- `tests/t13_run_teller_api_smoke_tests.sh`
+  - Runs Teller API smoke checks and writes JSON/text smoke artifacts.
+- `tests/t14_run_macos_ui_regression_tests.sh`
+  - Runs macOS UI snapshot and XCUITest regression flows.
+- `tests/t15_verify_macos_crash_test.sh`
+  - Verifies macOS UI crash-reporter behavior and recovery metadata handling.
+- `tests/t16_classification_persistence_verification_test.sh`
+  - End-to-end API-to-DB persistence check for classification writes.
+
+Operational recovery scripts:
+
 - `97_backup_database.sh`
-  - Creates a timestamped PostgreSQL custom-format dump in `./backups`.
-  - Also captures matching cluster globals (roles/grants) for reliable restores.
+  - Creates timestamped custom-format DB backup plus matching globals dump.
 - `98_destroy_database.sh`
-  - Destroys `prod` database and related roles after explicit confirmation.
+  - Performs explicit-confirmation teardown for local DB or managed schema/roles based on active profile.
 - `99_restore_database.sh`
-  - Restores latest backup by default (or accepts `--from /path/to/backup.dump`).
-  - Exits if `teller` schema already exists in `prod`.
-  - Restores matching globals before database objects.
+  - Restores latest (or selected) backup with full-restore safety checks, globals-first flow, and optional table-scoped restore mode.
 
 ### Operations Recovery Flow (`97` -> `98` -> `99`)
 
@@ -556,11 +250,11 @@ optional destructive teardown?
       +--> no  -> continue to restore preflight
       |
       +--> yes -> 98_destroy_database.sh
-                 |
-                 +--> profile selection: TELLER_DB_PROFILE override -> db_profiles default_profile
-                 +--> local target: drop DB + roles
-                 +--> managed target: drop schema + roles (no DROP DATABASE)
-                 +--> confirmation gate: must type "destroy"
+      |           |
+      |           +--> profile selection: TELLER_DB_PROFILE override -> db_profiles default_profile
+      |           +--> local target: drop DB + roles
+      |           +--> managed target: drop schema + roles (no DROP DATABASE)
+      |           +--> confirmation gate: must type "destroy"
       |
       v
 99_restore_database.sh
@@ -572,8 +266,8 @@ optional destructive teardown?
       v
 post-restore verification
       |
-      +--> ./08_deploy_database_verification_test.sh
-      +--> ./21_classification_persistence_verification_test.sh
+      +--> ./tests/t05_deploy_database_verification_test.sh
+      +--> ./tests/t16_classification_persistence_verification_test.sh
 ```
 
 Credential source resolution order used by recovery scripts:
@@ -659,7 +353,7 @@ Connect behavior:
 Quality/security aggregate checks are available through:
 
 ```bash
-./24_run_all_tests_parallel.sh
+./10_run_all_tests_parallel.sh
 ```
 
 ## 1psa Items Used by Database Scripts
@@ -712,4 +406,3 @@ POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./07_deploy_d
 ## Architecture
 
 Detailed system and data-flow documentation now lives in `Architecture.md`.
-

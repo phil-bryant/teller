@@ -409,6 +409,19 @@ run_gitleaks_sast() {
     if [[ "$tracked_file" == .cursor/* || "$tracked_file" == .cursor* ]]; then
       continue
     fi
+    if [[ "$tracked_file" == artifacts/venv/security/* || \
+          "$tracked_file" == artifacts/security/* || \
+          "$tracked_file" == artifacts/security-dast/* || \
+          "$tracked_file" == artifacts/parallel/* || \
+          "$tracked_file" == artifacts/mutation/* || \
+          "$tracked_file" == artifacts/fuzz/* || \
+          "$tracked_file" == artifacts/macos-ui-regression/* || \
+          "$tracked_file" == artifacts/cache/* || \
+          "$tracked_file" == .ruff_cache/* || \
+          "$tracked_file" == .pytest_cache/* || \
+          "$tracked_file" == __pycache__/* ]]; then
+      continue
+    fi
     mkdir -p "${gitleaks_source_dir}/$(dirname "$tracked_file")"
     cp "$tracked_file" "${gitleaks_source_dir}/${tracked_file}"
   done < <(git ls-files -z)

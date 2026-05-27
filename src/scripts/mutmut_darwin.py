@@ -118,6 +118,56 @@ def _run_mutant_pytest(python: Path, root: Path, mutant_name: str, tests: list[s
     return int(proc.returncode)
 
 
+def _should_rerun_mutant(prior: int | None, rerun_codes: set[int | None]) -> bool:
+    return prior in rerun_codes or prior == 33
+
+
+def _status_for_exit_code(exit_code: int) -> str:
+    if exit_code in (1, 3):
+        return "killed"
+    if exit_code == 0:
+        return "survived"
+    return str(exit_code)
+
+
+def _run_and_record_mutant(
+    meta,
+    *,
+    mutant_name: str,
+    stats: dict,
+    python: Path,
+    root: Path,
+) -> bool:
+    tests = _tests_for_mutant(stats, mutant_name)
+    if not tests:
+        meta.exit_code_by_key[mutant_name] = 33
+        meta.save()
+        return False
+    start = time.monotonic()
+    exit_code = _run_mutant_pytest(python, root, mutant_name, tests)
+    meta.exit_code_by_key[mutant_name] = exit_code
+    meta.durations_by_key[mutant_name] = time.monotonic() - start
+    meta.save()
+    print(f"  {mutant_name}: {_status_for_exit_code(exit_code)} (exit {exit_code})")
+    return True
+
+
+def _execute_mutants_for_path(path, *, mutmut, SourceFileMutationData, rerun_codes: set[int | None], stats: dict, python: Path, root: Path) -> int:
+    if mutmut.config.should_ignore_for_mutation(path):
+        return 0
+    meta = SourceFileMutationData(path=path)
+    meta.load()
+    if not meta.exit_code_by_key:
+        return 0
+    tried = 0
+    for mutant_name, prior in list(meta.exit_code_by_key.items()):
+        if not _should_rerun_mutant(prior, rerun_codes):
+            continue
+        if _run_and_record_mutant(meta, mutant_name=mutant_name, stats=stats, python=python, root=root):
+            tried += 1
+    return tried
+
+
 def _execute(root: Path, python: Path) -> int:
     os.chdir(root)
     import mutmut
@@ -131,28 +181,15 @@ def _execute(root: Path, python: Path) -> int:
     rerun_codes = {None, -11, -9}
     tried = 0
     for path in walk_source_files():
-        if mutmut.config.should_ignore_for_mutation(path):
-            continue
-        meta = SourceFileMutationData(path=path)
-        meta.load()
-        if not meta.exit_code_by_key:
-            continue
-        for mutant_name, prior in list(meta.exit_code_by_key.items()):
-            if prior not in rerun_codes and prior != 33:
-                continue
-            tests = _tests_for_mutant(stats, mutant_name)
-            if not tests:
-                meta.exit_code_by_key[mutant_name] = 33
-                meta.save()
-                continue
-            start = time.monotonic()
-            exit_code = _run_mutant_pytest(python, root, mutant_name, tests)
-            meta.exit_code_by_key[mutant_name] = exit_code
-            meta.durations_by_key[mutant_name] = time.monotonic() - start
-            meta.save()
-            tried += 1
-            status = "killed" if exit_code in (1, 3) else "survived" if exit_code == 0 else str(exit_code)
-            print(f"  {mutant_name}: {status} (exit {exit_code})")
+        tried += _execute_mutants_for_path(
+            path,
+            mutmut=mutmut,
+            SourceFileMutationData=SourceFileMutationData,
+            rerun_codes=rerun_codes,
+            stats=stats,
+            python=python,
+            root=root,
+        )
     if tried == 0:
         print("No mutants executed (empty meta or all already verdicted).")
         return 1

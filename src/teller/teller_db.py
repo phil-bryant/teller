@@ -118,7 +118,7 @@ def get_engine():
         #R040: ``teller_write``; Supabase profiles can leave this blank to skip
         #R040: ``SET ROLE`` entirely.
         @event.listens_for(_engine, "connect")
-        def _on_connect(dbapi_conn, connection_record):  # noqa: ARG001
+        def _on_connect(dbapi_conn, _connection_record):
             cursor = dbapi_conn.cursor()
             cursor.execute(
                 """

@@ -75,7 +75,7 @@ class _SessionContext:
     def __enter__(self):
         return self.session
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, *args):
         return False
 
 

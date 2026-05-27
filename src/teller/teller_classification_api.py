@@ -636,62 +636,74 @@ def _category_option_from_row(row: Dict[str, object]) -> CategoryOption:
     return CategoryOption(**category_data, display_label=_display_label(category_data))
 
 
+def _normalized_category_fields(row: Dict[str, object]) -> Dict[str, Optional[str]]:
+    return {
+        "level_1": _normalize_text(row.get("level_1")),
+        "level_1_name": _normalize_text(row.get("level_1_name")),
+        "level_2": _normalize_text(row.get("level_2")),
+        "level_2_name": _normalize_text(row.get("level_2_name")),
+        "level_3": _normalize_text(row.get("level_3")),
+        "level_4": _normalize_text(row.get("level_4")),
+        "categorization": _normalize_text(row.get("categorization")),
+        "applicability": _normalize_text(row.get("applicability")),
+    }
+
+
+def _create_category(session, body: CategoryMutationBase) -> CategoryOption:
+    params = _category_params(body, include_unset=True)
+    if all(value is None for value in params.values()):
+        raise HTTPException(status_code=422, detail="Category create payload must include non-empty hierarchy text")
+    created = session.execute(text("""
+        INSERT INTO teller.nys_snw_category (
+            level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability
+        ) VALUES (
+            :level_1, :level_1_name, :level_2, :level_2_name, :level_3, :level_4, :categorization, :applicability
+        )
+        RETURNING nys_snw_category_id
+    """), params).fetchone()
+    session.commit()
+    row = _fetch_category(session, created[0])
+    return _category_option_from_row(row)
+
+
+def _update_category(session, body: CategoryMutationBase, category_id: int) -> CategoryOption:
+    _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", category_id,
+                   f"Unknown nys_snw_category_id: {category_id}")
+    existing = _fetch_category(session, category_id)
+    if existing.get("is_seed"):
+        raise HTTPException(status_code=409, detail=f"Category {category_id} is seed-protected and cannot be modified")
+    patch_params = _category_params(body, include_unset=False)
+    if not patch_params:
+        raise HTTPException(status_code=422, detail="Category update payload must include at least one mutable field")
+    merged_params = _normalized_category_fields(existing)
+    merged_params.update(patch_params)
+    if all(value is None for value in merged_params.values()):
+        raise HTTPException(status_code=409, detail="Category mutation must include at least one non-empty hierarchy field")
+    params = dict(merged_params)
+    params["nys_snw_category_id"] = category_id
+    session.execute(text("""
+        UPDATE teller.nys_snw_category
+           SET level_1 = :level_1,
+               level_1_name = :level_1_name,
+               level_2 = :level_2,
+               level_2_name = :level_2_name,
+               level_3 = :level_3,
+               level_4 = :level_4,
+               categorization = :categorization,
+               applicability = :applicability,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE nys_snw_category_id = :nys_snw_category_id
+    """), params)
+    session.commit()
+    row = _fetch_category(session, category_id)
+    return _category_option_from_row(row)
+
+
 def _write_category(session, body: CategoryMutationBase, category_id: Optional[int] = None) -> CategoryOption:
     try:
         if category_id is None:
-            params = _category_params(body, include_unset=True)
-            if all(value is None for value in params.values()):
-                raise HTTPException(status_code=422, detail="Category create payload must include non-empty hierarchy text")
-            created = session.execute(text("""
-                INSERT INTO teller.nys_snw_category (
-                    level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability
-                ) VALUES (
-                    :level_1, :level_1_name, :level_2, :level_2_name, :level_3, :level_4, :categorization, :applicability
-                )
-                RETURNING nys_snw_category_id
-            """), params).fetchone()
-            session.commit()
-            row = _fetch_category(session, created[0])
-            return _category_option_from_row(row)
-        _ensure_exists(session, "nys_snw_category", "nys_snw_category_id", category_id,
-                       f"Unknown nys_snw_category_id: {category_id}")
-        existing = _fetch_category(session, category_id)
-        if existing.get("is_seed"):
-            raise HTTPException(status_code=409, detail=f"Category {category_id} is seed-protected and cannot be modified")
-        patch_params = _category_params(body, include_unset=False)
-        if not patch_params:
-            raise HTTPException(status_code=422, detail="Category update payload must include at least one mutable field")
-        merged_params = {
-            "level_1": _normalize_text(existing.get("level_1")),
-            "level_1_name": _normalize_text(existing.get("level_1_name")),
-            "level_2": _normalize_text(existing.get("level_2")),
-            "level_2_name": _normalize_text(existing.get("level_2_name")),
-            "level_3": _normalize_text(existing.get("level_3")),
-            "level_4": _normalize_text(existing.get("level_4")),
-            "categorization": _normalize_text(existing.get("categorization")),
-            "applicability": _normalize_text(existing.get("applicability")),
-        }
-        merged_params.update(patch_params)
-        if all(value is None for value in merged_params.values()):
-            raise HTTPException(status_code=409, detail="Category mutation must include at least one non-empty hierarchy field")
-        params = dict(merged_params)
-        params["nys_snw_category_id"] = category_id
-        session.execute(text("""
-            UPDATE teller.nys_snw_category
-               SET level_1 = :level_1,
-                   level_1_name = :level_1_name,
-                   level_2 = :level_2,
-                   level_2_name = :level_2_name,
-                   level_3 = :level_3,
-                   level_4 = :level_4,
-                   categorization = :categorization,
-                   applicability = :applicability,
-                   updated_at = CURRENT_TIMESTAMP
-             WHERE nys_snw_category_id = :nys_snw_category_id
-        """), params)
-        session.commit()
-        row = _fetch_category(session, category_id)
-        return _category_option_from_row(row)
+            return _create_category(session, body)
+        return _update_category(session, body, category_id)
     except HTTPException:
         raise
     except IntegrityError:
@@ -1568,16 +1580,7 @@ def _validate_email_message_id(email_message_id: str) -> None:
 _MAILCART_ENRICHMENT_WORKERS = 16
 
 
-def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any]]) -> List[MatchCandidateRow]:
-    #R060: Best-effort fan-out enrichment; per-id Mailcart failures degrade to mailcart_error rather than 502.
-    #R060: For rows that already carry cached subject/sender/snippet (matchy persists these at
-    #R060: candidate-insert time), serve directly from the DB so the candidates pane is subsecond.
-    #R060: For rows with NULL cache (legacy data from before the cache columns existed), fall out to
-    #R060: Mailcart through a 16-worker thread pool and write the metadata back into the cache so
-    #R060: the next call is hot. Order of the input candidate list is preserved in the returned list.
-    if not candidate_rows:
-        return []
-
+def _partition_cached_candidates(candidate_rows: List[Dict[str, Any]]) -> tuple[List[MatchCandidateRow | None], List[int]]:
     enriched: List[MatchCandidateRow | None] = [None] * len(candidate_rows)
     cold_indexes: List[int] = []
     for index, row in enumerate(candidate_rows):
@@ -1585,38 +1588,34 @@ def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any
             enriched[index] = _candidate_row_from_cache(row)
         else:
             cold_indexes.append(index)
+    return enriched, cold_indexes
 
-    if not cold_indexes:
-        return [item for item in enriched if item is not None]
 
+def _candidate_from_mailcart_row(client, row: Dict[str, Any], index: int) -> tuple[int, MatchCandidateRow, Dict[str, Any] | None]:
     try:
-        client = get_mailcart_client()
-    except HTTPException as exc:
-        if exc.status_code == 503:
-            for index in cold_indexes:
-                enriched[index] = _candidate_row_with_error(candidate_rows[index], exc.detail)
-            return [item for item in enriched if item is not None]
-        raise
+        metadata = client.get_message(row["email_message_id"])
+    except MailcartError as exc:
+        # Translate Mailcart's "no longer in inbox" signal (404) into a user-friendly label and
+        # mark the row negatively-cached so we don't re-ask Graph for it on every UI render.
+        if exc.status_code == 404:
+            return index, _candidate_row_with_error(row, "email no longer in inbox"), {"_negative": True}
+        return index, _candidate_row_with_error(row, exc.message), None
+    return index, _candidate_row_from_db_and_metadata(row, metadata), metadata
 
+
+def _fetch_cold_candidates(client, candidate_rows: List[Dict[str, Any]], cold_indexes: List[int]) -> tuple[List[MatchCandidateRow | None], List[Dict[str, Any]]]:
     from concurrent.futures import ThreadPoolExecutor
 
-    def _fetch_one(index):
-        row = candidate_rows[index]
-        try:
-            metadata = client.get_message(row["email_message_id"])
-        except MailcartError as exc:
-            # Translate Mailcart's "no longer in inbox" signal (404) into a user-friendly label and
-            # mark the row negatively-cached so we don't re-ask Graph for it on every UI render.
-            if exc.status_code == 404:
-                return index, _candidate_row_with_error(row, "email no longer in inbox"), {"_negative": True}
-            return index, _candidate_row_with_error(row, exc.message), None
-        return index, _candidate_row_from_db_and_metadata(row, metadata), metadata
+    cold_results: List[MatchCandidateRow | None] = [None] * len(candidate_rows)
+    cache_updates: List[Dict[str, Any]] = []
+
+    def _fetch_one(index: int):
+        return _candidate_from_mailcart_row(client, candidate_rows[index], index)
 
     worker_count = min(_MAILCART_ENRICHMENT_WORKERS, max(1, len(cold_indexes)))
-    cache_updates: List[Dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="mailcart-enrich") as pool:
         for index, candidate, metadata in pool.map(_fetch_one, cold_indexes):
-            enriched[index] = candidate
+            cold_results[index] = candidate
             if metadata and isinstance(metadata, dict):
                 if metadata.get("_negative"):
                     # Negative cache: write sentinel so the row is treated as "known-missing" and
@@ -1634,6 +1633,10 @@ def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any
                         "cached_sender": metadata.get("from") or metadata.get("sender"),
                         "cached_snippet": metadata.get("snippet") or metadata.get("preview") or (metadata.get("body_text") or "")[:240] or None,
                     })
+    return cold_results, cache_updates
+
+
+def _apply_candidate_cache_updates(session, cache_updates: List[Dict[str, Any]]) -> None:
     # Backfill the cache so the next call is hot. Best-effort: if the write fails (e.g. read-only
     # role), log and continue rather than 500ing on the user.
     for cache_update in cache_updates:
@@ -1646,6 +1649,45 @@ def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any
         session.commit()
     except Exception:
         session.rollback()
+
+
+def _candidates_with_service_unavailable_error(
+    candidate_rows: List[Dict[str, Any]],
+    cold_indexes: List[int],
+    detail: str,
+    enriched: List[MatchCandidateRow | None],
+) -> List[MatchCandidateRow]:
+    for index in cold_indexes:
+        enriched[index] = _candidate_row_with_error(candidate_rows[index], detail)
+    return [item for item in enriched if item is not None]
+
+
+def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any]]) -> List[MatchCandidateRow]:
+    #R060: Best-effort fan-out enrichment; per-id Mailcart failures degrade to mailcart_error rather than 502.
+    #R060: For rows that already carry cached subject/sender/snippet (matchy persists these at
+    #R060: candidate-insert time), serve directly from the DB so the candidates pane is subsecond.
+    #R060: For rows with NULL cache (legacy data from before the cache columns existed), fall out to
+    #R060: Mailcart through a 16-worker thread pool and write the metadata back into the cache so
+    #R060: the next call is hot. Order of the input candidate list is preserved in the returned list.
+    if not candidate_rows:
+        return []
+
+    enriched, cold_indexes = _partition_cached_candidates(candidate_rows)
+
+    if not cold_indexes:
+        return [item for item in enriched if item is not None]
+
+    try:
+        client = get_mailcart_client()
+    except HTTPException as exc:
+        if exc.status_code == 503:
+            return _candidates_with_service_unavailable_error(candidate_rows, cold_indexes, exc.detail, enriched)
+        raise
+
+    cold_results, cache_updates = _fetch_cold_candidates(client, candidate_rows, cold_indexes)
+    for index in cold_indexes:
+        enriched[index] = cold_results[index]
+    _apply_candidate_cache_updates(session, cache_updates)
     return [item for item in enriched if item is not None]
 
 

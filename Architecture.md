@@ -128,7 +128,7 @@ managed by Mailcart itself (cached at `~/.cache/mailcart/graph_oauth.json`, refr
 with `mailcart_error` rather than failing the whole listing — so the review pane remains
 usable when Mailcart is partially unavailable.
 
-## Teller Technology Stack
+## Tech Stack Overview
 
 ```text
 TELLER TECH STACK (repo: /Users/phil/local/src/teller)
@@ -146,7 +146,7 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  ┌──────────────────────────────────────────────────────────────────────────────┐
  │                              PYTHON BACKEND LAYER                            │
  ├──────────────────────────────────────────────────────────────────────────────┤
-│ Runtime: Python 3.10+ (venv; prefers 3.12 in setup script)                   │
+ │ Runtime: Python 3.10+ (venv; prefers 3.12 in setup script)                   │
  │ Frameworks/Libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,          │
  │                  psycopg2-binary, requests, structlog, python-dotenv         │
  │ Main flows:                                                                  │
@@ -278,15 +278,15 @@ Trust boundaries:
 │                                                                                    │
 │  1) Connect session bootstrap                                                      │
 │  ┌──────────────────────────────────┐       app_id + env + optional enrollment_id  │
-│  │ SwiftUI app (ConnectViewModel)  │ -------------------------------------------┐  │
-│  │ ConnectAPIClient.startSession   │                                            │  │
+│  │ SwiftUI app (ConnectViewModel)   │-------------------------------------------┐  │
+│  │ ConnectAPIClient.startSession    │                                           │  │
 │  └──────────────────────────────────┘                                           │  │
 │                                                                                 v  │
 │  ┌─────────────────────────────────────────────────────────┐  callback(token, id)  │
-│  │ Teller Connect JS in WKWebView (ConnectWebFlowView)    │ --------------------┐  │
+│  │ Teller Connect JS in WKWebView (ConnectWebFlowView)     │--------------------┐  │
 │  └─────────────────────────────────────────────────────────┘                    │  │
-│                                                                                 v  │
-│  2) Token/enrollment persistence                                                   │
+│                                                                                 |  │
+│  2) Token/enrollment persistence                                                v  │
 │  ┌──────────────────────────────────────────────────────────────────────────────┐  │
 │  │ ~/.teller/                                                                   │  │
 │  │ - auth_token.json + enrollment_id.txt (default context)                      │  │
@@ -299,7 +299,7 @@ Trust boundaries:
 │  3) API usage path                                                 4) disconnected │
 │  ┌──────────────────────────────────────────────────────────────┐     enrollment   │
 │  │ 18_fetch_teller_api_data.py                                  │                  │
-│  │ - builds contexts from default/suffix/metadata files         │ ----repair---┐   │
+│  │ - builds contexts from default/suffix/metadata files         │-----repair---┐   │
 │  │ - sends cert/key (mTLS) + token (basic user token:blank)     │              │   │
 │  │ - retries once after local repair workflow                   │              │   │
 │  └───────────────────────────────┬──────────────────────────────┘              │   │

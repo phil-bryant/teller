@@ -48,32 +48,71 @@ def discover_token_candidates() -> list[tuple[str, str]]:
     return candidates
 
 
+def _resolve_cert_key_paths(cert_path: str, key_path: str) -> tuple[str, str]:
+    resolved_cert = cert_path
+    resolved_key = key_path
+    if not resolved_cert:
+        cert_candidate = HOME_TELLER_DIR / "certificate.pem"
+        if cert_candidate.is_file():
+            resolved_cert = str(cert_candidate)
+    if not resolved_key:
+        key_candidate = HOME_TELLER_DIR / "private_key.pem"
+        if key_candidate.is_file():
+            resolved_key = str(key_candidate)
+    return resolved_cert, resolved_key
+
+
+def _filter_token_candidates(
+    candidates: list[tuple[str, str]],
+    institution_id: str,
+    warnings: list[str],
+) -> list[tuple[str, str]]:
+    if not institution_id:
+        return candidates
+    filtered = [item for item in candidates if item[0] == institution_id]
+    if not filtered:
+        warnings.append(
+            f"No token candidates matched --institution-id={institution_id}. "
+            "Set TELLER_ACCESS_TOKEN or choose a matching suffix."
+        )
+    return filtered
+
+
+def _select_local_token(
+    candidates: list[tuple[str, str]],
+    institution_id: str,
+    warnings: list[str],
+) -> tuple[str, str]:
+    filtered = _filter_token_candidates(candidates, institution_id, warnings)
+    if institution_id:
+        if len(filtered) > 1:
+            warnings.append(
+                f"Multiple token candidates matched --institution-id={institution_id}; "
+                "set TELLER_ACCESS_TOKEN to disambiguate."
+            )
+            return "", ""
+        return filtered[0] if filtered else ("", "")
+    if len(filtered) == 1:
+        return filtered[0]
+    if len(filtered) > 1:
+        warnings.append(
+            "Multiple local Teller token files were found. "
+            "Set TELLER_ACCESS_TOKEN or use --institution-id <suffix>."
+        )
+    return "", ""
+
+
 def resolve_credentials(institution_id: str = "", run_all_tokens: bool = False) -> dict[str, Any]:
     cert_path = os.environ.get("TELLER_CERT_PATH", "").strip()
     key_path = os.environ.get("TELLER_KEY_PATH", "").strip()
     token = os.environ.get("TELLER_ACCESS_TOKEN", "").strip()
     token_source = "env:TELLER_ACCESS_TOKEN" if token else ""
     warnings: list[str] = []
-
-    if not cert_path:
-        candidate = HOME_TELLER_DIR / "certificate.pem"
-        if candidate.is_file():
-            cert_path = str(candidate)
-    if not key_path:
-        candidate = HOME_TELLER_DIR / "private_key.pem"
-        if candidate.is_file():
-            key_path = str(candidate)
+    cert_path, key_path = _resolve_cert_key_paths(cert_path, key_path)
     if not token:
         candidates = discover_token_candidates()
         if run_all_tokens and candidates:
-            if institution_id:
-                filtered = [item for item in candidates if item[0] == institution_id]
-                if not filtered:
-                    warnings.append(
-                        f"No token candidates matched --institution-id={institution_id}. "
-                        "Set TELLER_ACCESS_TOKEN or choose a matching suffix."
-                    )
-                candidates = filtered
+            candidates = _filter_token_candidates(candidates, institution_id, warnings)
             return {
                 "cert_path": cert_path,
                 "key_path": key_path,
@@ -82,28 +121,7 @@ def resolve_credentials(institution_id: str = "", run_all_tokens: bool = False) 
                 "token_candidates": candidates,
                 "warnings": warnings,
             }
-        if institution_id:
-            filtered = [item for item in candidates if item[0] == institution_id]
-            if not filtered:
-                warnings.append(
-                    f"No token candidates matched --institution-id={institution_id}. "
-                    "Set TELLER_ACCESS_TOKEN or choose a matching suffix."
-                )
-            elif len(filtered) > 1:
-                warnings.append(
-                    f"Multiple token candidates matched --institution-id={institution_id}; "
-                    "set TELLER_ACCESS_TOKEN to disambiguate."
-                )
-            else:
-                token_source, token = filtered[0]
-        else:
-            if len(candidates) == 1:
-                token_source, token = candidates[0]
-            elif len(candidates) > 1:
-                warnings.append(
-                    "Multiple local Teller token files were found. "
-                    "Set TELLER_ACCESS_TOKEN or use --institution-id <suffix>."
-                )
+        token_source, token = _select_local_token(candidates, institution_id, warnings)
 
     return {
         "cert_path": cert_path,
@@ -115,16 +133,133 @@ def resolve_credentials(institution_id: str = "", run_all_tokens: bool = False) 
     }
 
 
+def _run_live_check(
+    *,
+    requests,
+    checks: list[dict[str, Any]],
+    headers: dict[str, str],
+    cert_pair: tuple[str, str],
+    timeout_seconds: int,
+    name: str,
+    path: str,
+    auth_token: str = "",
+) -> None:
+    auth = (auth_token, "") if auth_token else None
+    url = f"{BASE_URL}{path}"
+    check_result: dict[str, Any] = {
+        "name": name,
+        "url": url,
+        "status": "pass",
+        "http_status": None,
+        "error": "",
+    }
+    try:
+        response = requests.get(url, headers=headers, cert=cert_pair, auth=auth, timeout=timeout_seconds)
+        check_result["http_status"] = response.status_code
+        if response.status_code != 200:
+            check_result["status"] = "fail"
+            check_result["error"] = response.text[:500]
+    except requests.RequestException as exc:
+        check_result["status"] = "fail"
+        check_result["error"] = str(exc)
+    checks.append(check_result)
+
+
+def _collect_source_checks(
+    source_files: list[Path],
+    endpoint_markers: list[str],
+) -> list[dict[str, Any]]:
+    checks: list[dict[str, Any]] = []
+    for source_path in source_files:
+        status = "pass"
+        detail = ""
+        if not source_path.is_file():
+            status = "fail"
+            detail = "Source file missing"
+        else:
+            text = source_path.read_text(encoding="utf-8")
+            missing = [marker for marker in endpoint_markers if marker not in text]
+            if missing:
+                status = "warn"
+                detail = f"Missing endpoint markers: {', '.join(missing)}"
+        checks.append({"name": f"source:{source_path}", "status": status, "detail": detail})
+    return checks
+
+
+def _fallback_live_result(message: str) -> dict[str, Any]:
+    return {
+        "mode": "fallback",
+        "status": "warn",
+        "checks": [],
+        "warnings": [message],
+    }
+
+
+def _run_authenticated_live_checks(
+    *,
+    requests,
+    checks: list[dict[str, Any]],
+    headers: dict[str, str],
+    cert_pair: tuple[str, str],
+    timeout_seconds: int,
+    token: str,
+    token_candidates: list[tuple[str, str]],
+    run_all_tokens: bool,
+    warnings: list[str],
+) -> None:
+    if run_all_tokens and token_candidates:
+        for token_source, candidate_token in token_candidates:
+            _run_live_check(
+                requests=requests,
+                checks=checks,
+                headers=headers,
+                cert_pair=cert_pair,
+                timeout_seconds=timeout_seconds,
+                name=f"accounts[{token_source}]",
+                path="/accounts",
+                auth_token=candidate_token,
+            )
+            _run_live_check(
+                requests=requests,
+                checks=checks,
+                headers=headers,
+                cert_pair=cert_pair,
+                timeout_seconds=timeout_seconds,
+                name=f"identity[{token_source}]",
+                path="/identity",
+                auth_token=candidate_token,
+            )
+        return
+    if token:
+        _run_live_check(
+            requests=requests,
+            checks=checks,
+            headers=headers,
+            cert_pair=cert_pair,
+            timeout_seconds=timeout_seconds,
+            name="accounts",
+            path="/accounts",
+            auth_token=token,
+        )
+        _run_live_check(
+            requests=requests,
+            checks=checks,
+            headers=headers,
+            cert_pair=cert_pair,
+            timeout_seconds=timeout_seconds,
+            name="identity",
+            path="/identity",
+            auth_token=token,
+        )
+        return
+    warnings.append("Skipping /accounts and /identity checks: no usable Teller auth token was resolved.")
+
+
 def run_live_canary(timeout_seconds: int, institution_id: str = "", run_all_tokens: bool = False) -> dict[str, Any]:
     try:
         import requests
     except ImportError:
-        return {
-            "mode": "fallback",
-            "status": "warn",
-            "checks": [],
-            "warnings": ["Skipping live canary: Python package 'requests' is not installed."],
-        }
+        return _fallback_live_result("Skipping live canary: Python package 'requests' is not installed.")
 
     credentials = resolve_credentials(institution_id=institution_id, run_all_tokens=run_all_tokens)
     cert_path = credentials["cert_path"]
@@ -136,47 +271,30 @@ def run_live_canary(timeout_seconds: int, institution_id: str = "", run_all_toke
     warnings: list[str] = list(credentials.get("warnings", []))
 
     if not cert_path or not key_path:
-        return {
-            "mode": "fallback",
-            "status": "warn",
-            "checks": [],
-            "warnings": ["Skipping live canary: Teller mTLS certificate/key not found."],
-        }
+        return _fallback_live_result("Skipping live canary: Teller mTLS certificate/key not found.")
 
     cert_pair = (cert_path, key_path)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
-
-    def run_check(name: str, path: str, auth_token: str = "") -> None:
-        auth = (auth_token, "") if auth_token else None
-        url = f"{BASE_URL}{path}"
-        check_result: dict[str, Any] = {
-            "name": name,
-            "url": url,
-            "status": "pass",
-            "http_status": None,
-            "error": "",
-        }
-        try:
-            response = requests.get(url, headers=headers, cert=cert_pair, auth=auth, timeout=timeout_seconds)
-            check_result["http_status"] = response.status_code
-            if response.status_code != 200:
-                check_result["status"] = "fail"
-                check_result["error"] = response.text[:500]
-        except requests.RequestException as exc:
-            check_result["status"] = "fail"
-            check_result["error"] = str(exc)
-        checks.append(check_result)
-
-    run_check("institutions", "/institutions")
-    if run_all_tokens and token_candidates:
-        for token_source, candidate_token in token_candidates:
-            run_check(f"accounts[{token_source}]", "/accounts", auth_token=candidate_token)
-            run_check(f"identity[{token_source}]", "/identity", auth_token=candidate_token)
-    elif token:
-        run_check("accounts", "/accounts", auth_token=token)
-        run_check("identity", "/identity", auth_token=token)
-    else:
-        warnings.append("Skipping /accounts and /identity checks: no usable Teller auth token was resolved.")
+    _run_live_check(
+        requests=requests,
+        checks=checks,
+        headers=headers,
+        cert_pair=cert_pair,
+        timeout_seconds=timeout_seconds,
+        name="institutions",
+        path="/institutions",
+    )
+    _run_authenticated_live_checks(
+        requests=requests,
+        checks=checks,
+        headers=headers,
+        cert_pair=cert_pair,
+        timeout_seconds=timeout_seconds,
+        token=token,
+        token_candidates=token_candidates,
+        run_all_tokens=run_all_tokens,
+        warnings=warnings,
+    )
 
     failed = [check for check in checks if check["status"] == "fail"]
     status = "fail" if failed else ("warn" if warnings else "pass")
@@ -208,19 +326,7 @@ def run_fallback_checks() -> dict[str, Any]:
         Path("06_fetch_teller_api_data.py"),
     ]
     endpoint_markers = ["/institutions", "/accounts", "/identity"]
-    for source_path in source_files:
-        status = "pass"
-        detail = ""
-        if not source_path.is_file():
-            status = "fail"
-            detail = "Source file missing"
-        else:
-            text = source_path.read_text(encoding="utf-8")
-            missing = [marker for marker in endpoint_markers if marker not in text]
-            if missing:
-                status = "warn"
-                detail = f"Missing endpoint markers: {', '.join(missing)}"
-        checks.append({"name": f"source:{source_path}", "status": status, "detail": detail})
+    checks.extend(_collect_source_checks(source_files, endpoint_markers))
 
     failures = [check for check in checks if check["status"] == "fail"]
     warnings = [check for check in checks if check["status"] == "warn"]

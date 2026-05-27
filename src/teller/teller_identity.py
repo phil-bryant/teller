@@ -13,7 +13,7 @@ from typing import List
 class TellerIdentity(TellerObject): ## https://teller.io/docs/api/identity
     type: Mapped[TellerIdentityType] = mapped_column(Enum(TellerIdentityType))
     identity_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    names: Mapped[List["TellerIdentityName"]] = relationship()
-    addresses: Mapped[List["TellerIdentityAddress"]] = relationship()
-    phone_numbers: Mapped[List["TellerIdentityPhoneNumber"]] = relationship()
-    emails: Mapped[List["TellerIdentityEmail"]] = relationship()
+    names: Mapped[List[TellerIdentityName]] = relationship(TellerIdentityName)
+    addresses: Mapped[List[TellerIdentityAddress]] = relationship(TellerIdentityAddress)
+    phone_numbers: Mapped[List[TellerIdentityPhoneNumber]] = relationship(TellerIdentityPhoneNumber)
+    emails: Mapped[List[TellerIdentityEmail]] = relationship(TellerIdentityEmail)
