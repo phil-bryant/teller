@@ -50,6 +50,17 @@ Design: The candidates pane search section title is `Search Email` to match end-
 Tests:
 - R065-T01: Open Match & Classify and verify the candidates pane renders a visible `Search Email` section heading above the search field.
 
+R066  Statement: The middle pane header uses user-facing copy "Transaction - Email Match Candidates".
+Design: The candidates pane headline is `Transaction - Email Match Candidates` instead of the generic label `Candidates` so users understand the pane lists email-match options for the selected transaction.
+Tests:
+- R066-T01: Open Match & Classify and verify the middle pane renders a visible `Transaction - Email Match Candidates` heading above the candidate list.
+
+R067  Statement: The classification section header uses user-facing copy "Transaction Classification".
+Design: The right-pane classification picker headline is `Transaction Classification` instead of the generic label `Classify` so users understand that section is for assigning categories to selected transactions.
+Tests:
+- R067-T01: Open Match & Classify and verify the right pane renders a visible `Transaction Classification` heading above the category typeahead.
+
 ## Changelog
 
+- 2026-05-26: Added R066 (middle pane title `Transaction - Email Match Candidates`) and R067 (classification section title `Transaction Classification`).
 - 2026-05-26: Extracted Match & Classify requirements from `ContentView-requirements.md` after view-file split.

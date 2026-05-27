@@ -341,7 +341,8 @@ private struct CandidatesPane: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Candidates")
+                // #R066: Middle pane header uses explicit transaction email-match terminology.
+                Text("Transaction - Email Match Candidates")
                     .font(.headline)
                 Spacer()
                 if viewModel.candidatesBusy {
@@ -532,7 +533,8 @@ private struct ClassifySection: View {
         // #R015: the email evidence.
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Classify").font(.headline)
+                // #R067: Right-pane classification section uses "Transaction Classification" copy.
+                Text("Transaction Classification").font(.headline)
                 Spacer()
                 Text("\(viewModel.selection.count) selected")
                     .font(.caption).foregroundStyle(.secondary)

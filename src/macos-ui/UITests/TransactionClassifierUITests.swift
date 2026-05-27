@@ -74,7 +74,8 @@ final class TransactionClassifierUITests: XCTestCase {
             case 11: runClearSelectionScenario()
             case 12: runUndoRestoresUnclassifiedScenario()
             case 13: runUndoRestoresPriorCategoryScenario()
-            case 14: runCandidatesAndEmailPaneScenario()
+            case 14: // #R066-T01 #R067-T01
+                runCandidatesAndEmailPaneScenario()
             case 15: // #R065-T01
                 runEmailSearchScenario()
             case 16: // #R045-T01
@@ -404,6 +405,8 @@ final class TransactionClassifierUITests: XCTestCase {
 
     private func runCandidatesAndEmailPaneScenario() {
         ensureMatchAndClassifyTab()
+        XCTAssertTrue(app.staticTexts["Transaction - Email Match Candidates"].exists)
+        XCTAssertTrue(app.staticTexts["Transaction Classification"].exists)
         selectTransactionRow("txn_001", label: "Coffee Roasters")
         let candidateRow = uiElement("candidate-row-msg_receipt_001")
         XCTAssertTrue(
