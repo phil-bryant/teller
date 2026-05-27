@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: verify-and-cleanup
     content: Run impacted lanes/tests, confirm outputs land in new directories, and finalize ignore/cleanup strategy for legacy paths.
-    status: in_progress
+    status: completed
 isProject: false
 ---
 
@@ -97,3 +97,9 @@ Use a stable root convention:
 - Tests and README align with the new canonical paths.
 - `./24_run_all_tests_parallel.sh` completes with all checks green.
 - Legacy paths are either auto-routed, ignored, or explicitly documented as deprecated fallback behavior.
+
+## Closure Note
+- Verified migration targets on 2026-05-27:
+  - Legacy root clutter paths from the original 13-item list are absent (`.hypothesis`, `.parallel-checks-reports`, `.pytest_cache`, `.ruff_cache`, `.security-reports`, `.security-venv`, `.zap`, root `db-profiles*.json`, root `requirements-security.txt`, root `security`, `mutants`, `teller.egg-info`).
+  - Canonical locations are present (`artifacts/*`, `config/db-profiles*.json`, `requirements/security/requirements-security.txt`).
+- Lane executions were run for validation (`./tests/t02_run_dependency_freshness_tests.sh`, `./tests/t03_run_static_security_tests.sh`, `./tests/t09_run_mutation_tests.sh`, `./tests/t12_run_dynamic_security_tests.sh`, `./10_run_all_tests_parallel.sh`); observed failures were in quality/security gates unrelated to path-migration routing.

@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: full-regression
     content: Run `24_run_all_tests_parallel.sh` and confirm all lanes pass with no suppression.
-    status: in_progress
+    status: completed
 isProject: false
 ---
 
@@ -41,6 +41,10 @@ isProject: false
   - dynamic SQL construction in [src/scripts/dast_cleanup.py](src/scripts/dast_cleanup.py)
   - missing request timeout in [18_fetch_teller_api_data.py](18_fetch_teller_api_data.py)
   - duplicated module block in [tests/py/test_teller_mailcart_client.py](tests/py/test_teller_mailcart_client.py)
+
+## Closure Note
+- `full-regression` is treated as superseded historical validation: a later completed plan ([`.cursor/plans/done/fix-parallel-failures_1030ed6d.plan.md`](.cursor/plans/done/fix-parallel-failures_1030ed6d.plan.md)) already captured the full-suite revalidation closure.
+- Script numbering later changed from `24_*` to `10_*`; current equivalent orchestrator is [`10_run_all_tests_parallel.sh`](10_run_all_tests_parallel.sh).
 
 ## Implementation Plan
 1. **Fix dependency freshness failure**

@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: verify-suite
     content: Run full script 10 and bats; confirm single launch in xcresult logs
-    status: in_progress
+    status: completed
 isProject: false
 ---
 
@@ -171,4 +171,11 @@ Update assertions to current UI:
 - **Stateful ordering**: scenarios must run in dependency order (e.g. apply before undo). Single test method enforces this; document order in code.
 - **Flaky scroll (#R025)**: keep hittability polling + generous timeouts; same technique as today but using `transaction-row-`* identifiers.
 - **Tab switching**: prefer TabView tab buttons (`Match & Classify`, `Connect`) with fallback to accessibility identifiers; remove Connect-only launch env (`TELLER_MACOS_START_TAB`) since single session navigates in-app.
+
+## Closure Note
+- Verified on 2026-05-27 with current numbering:
+  - `xcodebuild test ... -only-testing:TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite`
+  - `./tests/t14_run_macos_ui_regression_tests.sh`
+  - `./tests/t14_run_macos_ui_regression_tests.sh 3,6`
+  - `bats tests/sh/t14_run_macos_ui_regression_tests.bats`
 
