@@ -1,6 +1,6 @@
-bandit
-detect-secrets
-pip-audit<2.10
-ruff
-schemathesis
-semgrep
+bandit==1.9.4
+detect-secrets==1.5.0
+pip-audit==2.9.0
+ruff==0.15.14
+schemathesis==4.20.1
+semgrep==1.163.0

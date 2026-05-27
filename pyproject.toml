@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "teller"
 version = "0.1.0"
 authors = [
-    { name = "Your Name" }
+    { name = "phil-bryant", email = "phil-bryant@outlook.com" }
 ]
 description = "Teller API Integration"
 requires-python = ">=3.10"
