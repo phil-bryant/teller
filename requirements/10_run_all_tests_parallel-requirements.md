@@ -79,6 +79,13 @@ Design: When `PARALLEL_CHECKS_TEST_INTERRUPT=1`, invoke the same interrupt stop 
 Tests:
 - R055-T01: Launch long-running child stubs with `PARALLEL_CHECKS_TEST_INTERRUPT=1` and verify child processes terminate and interrupt messaging is emitted.
 
+R065  Statement: Support `--no-ui` CLI argument to skip the macOS UI regression lane.
+Design: Parse `--no-ui` (and `-h|--help`) from argv before discovery; when set, remove `t14_run_macos_ui_regression_tests.sh` from the discovered `CHECKS` list, print an explicit skip banner, and export the skipped lane name (`PARALLEL_CHECKS_SKIPPED_LANES`) so the quality-telemetry block suppresses missing-lane drift warnings for intentional skips.
+Design: Unknown arguments cause an immediate non-zero exit with usage guidance.
+Tests:
+- R065-T01: Run with `--no-ui` and verify `t14_run_macos_ui_regression_tests.sh` is not invoked and the overall PASS line reflects the reduced lane count.
+- R065-T02: Run with an unknown argument and verify the script exits non-zero with usage guidance.
+
 ## Changelog
 
 - 2026-05-20: Initial requirements for `10_run_all_tests_parallel.sh`.
@@ -87,3 +94,4 @@ Tests:
 - 2026-05-20: Added single-run lock semantics to prevent concurrent orchestrator invocations.
 - 2026-05-20: Terminate child check process trees on SIGINT/SIGTERM instead of leaving orphaned jobs.
 - 2026-05-25: Switched child-check discovery to dynamic `test/tests` filename matching and self-exclusion.
+- 2026-05-26: Added R065 `--no-ui` CLI flag to optionally skip the macOS UI regression lane.

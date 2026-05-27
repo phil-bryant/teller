@@ -24,15 +24,10 @@ extension ClassificationViewModel {
         await loadCandidatesForPrimaryTransaction()
     }
 
-    func selectCandidate(_ emailMessageId: String?) async {
-        selectedCandidateId = emailMessageId
-        await selectedCandidateDidChange()
-    }
-
-    // #R040: Debounce Mailcart search input and populate results or surface API errors.
+    // #R040 #R095: Debounce structured Mailcart search input and populate results or surface API errors.
     func searchMailcartIfNeeded() async {
-        let query = mailcartSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else {
+        let criteria = mailcartSearchCriteria.normalized()
+        guard criteria.hasActiveFilter else {
             mailcartSearchResults = []
             mailcartSearchErrorText = ""
             mailcartSearchBusy = false
@@ -44,7 +39,7 @@ extension ClassificationViewModel {
         try? await Task.sleep(nanoseconds: Self.mailcartSearchDebounceNanoseconds)
         guard mailcartSearchTaskToken == token else { return }
         do {
-            let response = try await api.searchMessages(query: query, limit: 25)
+            let response = try await api.searchMessages(criteria: criteria, limit: 25)
             guard mailcartSearchTaskToken == token else { return }
             mailcartSearchResults = response.items
             mailcartSearchErrorText = ""

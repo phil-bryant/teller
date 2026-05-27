@@ -5,7 +5,6 @@ import XCTest
 actor MockConnectAPI: ConnectAPI {
     var status: ConnectStatusResponse
     var contexts: [ConnectContext]
-    var lastStored: ConnectStoreTokenRequest?
     var lastDeleteTarget: String?
 
     init(status: ConnectStatusResponse, contexts: [ConnectContext]) {
@@ -22,7 +21,6 @@ actor MockConnectAPI: ConnectAPI {
     }
 
     func storeToken(_ request: ConnectStoreTokenRequest) async throws -> ConnectStoreTokenResponse {
-        lastStored = request
         if request.action == ConnectAction.add.rawValue {
             contexts.append(
                 ConnectContext(
@@ -52,22 +50,22 @@ actor MockConnectAPI: ConnectAPI {
             return ConnectStartSession(
                 action: action,
                 targetKey: selectedContext.key,
-                applicationId: "app_test",
-                environment: "development",
-                enrollmentId: selectedContext.enrollment_id
+                credentials: ConnectCredentials(
+                    applicationId: "app_test",
+                    environment: "development",
+                    enrollmentId: selectedContext.enrollment_id
+                )
             )
         }
         return ConnectStartSession(
             action: action,
             targetKey: "",
-            applicationId: "app_test",
-            environment: "development",
-            enrollmentId: ""
+            credentials: ConnectCredentials(
+                applicationId: "app_test",
+                environment: "development",
+                enrollmentId: ""
+            )
         )
-    }
-
-    func recordedLastStored() -> ConnectStoreTokenRequest? {
-        lastStored
     }
 
     func recordedLastDeleteTarget() -> String? {
@@ -206,19 +204,9 @@ final class ConnectViewModelTests: XCTestCase {
             let snapshot: TellerSetupSnapshot
 
             func loadSnapshot() async throws -> TellerSetupSnapshot { snapshot }
-            func saveApplicationID(_ applicationID: String) async throws -> String { _ = applicationID; return "/tmp/application_id.txt" }
-            func saveAuthToken(_ token: String) async throws -> String { _ = token; return "/tmp/auth_token.json" }
-            func runSmokeCheck() async throws -> TellerSmokeCheckResult {
-                TellerSmokeCheckResult(institutionsHTTPStatus: 200, institutionsCount: 1, accountsHTTPStatus: nil, warningText: "")
-            }
         }
 
         let snapshot = TellerSetupSnapshot(
-            tellerDirectory: "/tmp/.teller",
-            applicationIDPath: "/tmp/.teller/application_id.txt",
-            certificatePath: "/tmp/.teller/certificate.pem",
-            privateKeyPath: "/tmp/.teller/private_key.pem",
-            authTokenPath: "/tmp/.teller/auth_token.json",
             hasApplicationID: true,
             hasCertificate: true,
             hasPrivateKey: false,

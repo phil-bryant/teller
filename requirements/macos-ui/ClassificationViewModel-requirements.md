@@ -53,9 +53,9 @@ Tests:
 - R035-T02: Select a transaction with no active match and verify `canClearSelectedMatch` is false.
 
 R040  Statement: Debounce email search in the candidates pane and surface results or errors.
-Design: `searchMailcartIfNeeded()` trims the query, debounces non-empty input (~250ms), calls `searchMessages(query:limit:)`, and updates `mailcartSearchResults` / `mailcartSearchErrorText`. An empty query clears results and errors.
+Design: `searchMailcartIfNeeded()` debounces non-empty structured criteria (~250ms, see R095), calls `searchMessages(criteria:limit:)`, and updates `mailcartSearchResults` / `mailcartSearchErrorText`. Empty criteria clears results and errors.
 Tests:
-- R040-T01: Set a non-empty `mailcartSearchQuery`, await search, and verify results populate from the API response.
+- R040-T01: Set non-empty structured email search fields, await search, and verify results populate from the API response.
 - R040-T02: Simulate a search API failure and verify `mailcartSearchErrorText` is set and results clear.
 
 R075  Statement: Refresh accurate transaction totals after the fast first paint.
@@ -73,6 +73,18 @@ Design: `ClassificationViewModel` remains the observable state surface, while tr
 Tests:
 - R085-T01: Save a category draft and verify the category list reloads, editor selection updates to the saved id, and status text reflects the save result.
 
+R090  Statement: Forward advanced transaction filter state to every transaction fetch.
+Design: `ClassificationViewModel` stores `transactionStartDate`, `transactionEndDate`, `transactionInstitutionId`, `transactionMinAmount`, and `transactionMaxAmount`. `loadAll()`, `loadMore()`, and `refreshTransactionTotal()` include these values in `TransactionFetchOptions` on every `fetchTransactions` call.
+Tests:
+- R090-T01: Set advanced transaction filters and invoke `loadAll()`; verify the mock API receives the filter values on the fetch call.
+- R090-T02: Change advanced transaction filters in the UI and verify `loadAll()` runs without pressing Refresh.
+
+R095  Statement: Debounce structured email search criteria to the Mailcart search API.
+Design: `ClassificationViewModel` stores `mailcartSearchSubject`, `mailcartSearchSender`, `mailcartSearchBody`, `mailcartSearchStartDate`, and `mailcartSearchEndDate`. `searchMailcartIfNeeded()` trims each field, debounces when any field is non-empty, calls `searchMessages(criteria:limit:)` with an `EmailSearchCriteria` bundle, and clears results when all fields are empty.
+Tests:
+- R095-T01: Set non-empty structured email search fields, await search, and verify results populate from the API response.
+- R095-T02: Simulate a structured search API failure and verify `mailcartSearchErrorText` is set and results clear.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ClassificationViewModel.swift` to replace prior plan-only coverage.
@@ -81,4 +93,5 @@ Tests:
 - 2026-05-19: Added R035 (clear human-reviewed match back to unmatched).
 - 2026-05-19: Added R040 (debounced email search in candidates pane).
 - 2026-05-26: Expanded R001 for fast first load (R072 client, busy cleared before side pane); added R075 and R080.
+- 2026-05-26: Added R090 (advanced transaction filter state on fetch) and R095 (structured debounced email search).
 - 2026-05-26: Split `ClassificationViewModel` concerns into extension files and added R085 traceability for behavior-preserving decomposition.

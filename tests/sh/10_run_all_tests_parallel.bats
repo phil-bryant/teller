@@ -265,6 +265,33 @@ teardown() {
   done
 }
 
+@test "--no-ui skips the macOS UI regression lane" {
+  #R065-T01
+  write_all_child_stubs 'exit 0'
+
+  run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
+    bash "${FIXTURE_ROOT}/10_run_all_tests_parallel.sh" --no-ui
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"--no-ui: skipping t14_run_macos_ui_regression_tests.sh"* ]]
+  [[ "$output" != *"PASS: t14_run_macos_ui_regression_tests.sh"* ]]
+  [[ "$output" != *"FAIL: t14_run_macos_ui_regression_tests.sh"* ]]
+  local expected_total=$(( ${#CHECKS[@]} - 1 ))
+  [[ "$output" == *"▶ Starting parallel checks (${expected_total} scripts)..."* ]]
+  [[ "$output" == *"✅ PASS: all parallel checks succeeded (${expected_total}/${expected_total})"* ]]
+  [ ! -f "${REPORT_DIR}/t14_run_macos_ui_regression_tests.log.exit" ]
+}
+
+@test "rejects unknown CLI arguments with usage guidance" {
+  #R065-T02
+  write_all_child_stubs 'exit 0'
+
+  run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
+    bash "${FIXTURE_ROOT}/10_run_all_tests_parallel.sh" --nope
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"❌ FAIL: unknown argument: --nope"* ]]
+  [[ "$output" == *"Usage:"* ]]
+}
+
 @test "quality telemetry scores t-prefixed lane groups from actual lane outcomes" {
   write_all_child_stubs 'exit 1'
   local telemetry_dir="${FIXTURE_ROOT}/telemetry"

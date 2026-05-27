@@ -49,14 +49,14 @@ final class UITestingSupportTests: XCTestCase {
         XCTAssertEqual(categories.map(\.nys_snw_category_id), [101, 102, 103])
 
         let page = try await api.fetchTransactions(
-            search: "",
-            onlyUnclassified: true,
-            matchState: "",
-            onlyUnmovedMatch: false,
-            limit: 100,
-            offset: 0,
-            includeTotal: true,
-            countOnly: false
+            TransactionFetchOptions(
+                search: "",
+                onlyUnclassified: true,
+                limit: 100,
+                offset: 0,
+                includeTotal: true,
+                countOnly: false
+            )
         )
         XCTAssertEqual(page.total, 17)
         XCTAssertEqual(page.items.first?.transaction_id, "txn_001")
@@ -79,7 +79,7 @@ final class UITestingSupportTests: XCTestCase {
         XCTAssertTrue(contexts.contains { $0.key == "suffix:inst_gamma" && $0.enrollment_id == "enr_gamma" })
     }
 
-    func testSetupFixtureReturnsReadySnapshotAndSmoke() async throws {
+    func testSetupFixtureReturnsReadySnapshot() async throws {
         // #R020-T01
         let api = UITestingFixtureSetupAPI()
         let snapshot = try await api.loadSnapshot()
@@ -87,10 +87,5 @@ final class UITestingSupportTests: XCTestCase {
         XCTAssertTrue(snapshot.hasCertificate)
         XCTAssertTrue(snapshot.hasPrivateKey)
         XCTAssertTrue(snapshot.hasAuthToken)
-
-        let smoke = try await api.runSmokeCheck()
-        XCTAssertEqual(smoke.institutionsHTTPStatus, 200)
-        XCTAssertEqual(smoke.institutionsCount, 1)
-        XCTAssertEqual(smoke.accountsHTTPStatus, 200)
     }
 }

@@ -30,15 +30,6 @@ extension ClassificationViewModel {
         }
     }
 
-    func selectCategoryForEditing(_ categoryId: Int?) {
-        guard let categoryId else {
-            beginNewCategoryDraft()
-            return
-        }
-        categoryEditorSelection = [categoryId]
-        syncCategoryEditorToSelection()
-    }
-
     func saveCategoryDraft() async {
         categoryEditorBusy = true
         defer { categoryEditorBusy = false }

@@ -12,6 +12,40 @@ cd "$SCRIPT_DIR"
 source "${SCRIPT_DIR}/src/scripts/export_test_cache_env.sh"
 export_test_cache_env "$SCRIPT_DIR"
 
+#R065: Parse optional CLI arguments. `--no-ui` skips the macOS UI regression lane (t14).
+SKIP_UI_REGRESSION=false
+UI_REGRESSION_LANE="t14_run_macos_ui_regression_tests.sh"
+print_usage() {
+  cat <<USAGE
+Usage: $(basename "${BASH_SOURCE[0]}") [--no-ui] [-h|--help]
+
+Options:
+  --no-ui     Skip the macOS UI regression suite (${UI_REGRESSION_LANE}).
+  -h, --help  Show this help and exit.
+USAGE
+}
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-ui)
+      SKIP_UI_REGRESSION=true
+      shift
+      ;;
+    -h|--help)
+      print_usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "❌ FAIL: unknown argument: $1" >&2
+      print_usage >&2
+      exit 2
+      ;;
+  esac
+done
+
 #R010: Discover numbered check scripts dynamically by basename from tests/.
 SELF_SCRIPT_BASENAME="$(basename "${BASH_SOURCE[0]}")"
 CHECKS_DIR="./tests"
@@ -43,6 +77,28 @@ if [[ "${#CHECKS[@]}" -eq 0 ]]; then
   echo "❌ FAIL: no numbered test scripts found (expected names containing test or tests)." >&2
   exit 1
 fi
+
+#R065: Apply --no-ui filter after discovery so requirements traceability still recognizes t14 as a known lane.
+SKIPPED_LANES=""
+if [[ "$SKIP_UI_REGRESSION" == "true" ]]; then
+  filtered_checks=()
+  removed_lane=""
+  for candidate_script in "${CHECKS[@]}"; do
+    if [[ "$candidate_script" == "$UI_REGRESSION_LANE" ]]; then
+      removed_lane="$candidate_script"
+      continue
+    fi
+    filtered_checks+=("$candidate_script")
+  done
+  CHECKS=("${filtered_checks[@]}")
+  if [[ -n "$removed_lane" ]]; then
+    SKIPPED_LANES="${removed_lane%.sh}"
+    echo "ℹ️  --no-ui: skipping ${removed_lane}"
+  else
+    echo "ℹ️  --no-ui: ${UI_REGRESSION_LANE} not in discovery set; nothing to skip"
+  fi
+fi
+export PARALLEL_CHECKS_SKIPPED_LANES="$SKIPPED_LANES"
 
 #R040: Remain a standalone meta-runner; child check scripts must not invoke this script.
 
@@ -418,10 +474,20 @@ LANE_GROUPS = {
     ),
 }
 
+skipped_lanes = {
+    item.strip()
+    for item in os.environ.get("PARALLEL_CHECKS_SKIPPED_LANES", "").split(",")
+    if item.strip()
+}
+
 def score_group(group_name):
     members = LANE_GROUPS[group_name]
     values = [lane_status[name] for name in members if name in lane_status]
-    missing = [name for name in members if name not in lane_status]
+    missing = [
+        name
+        for name in members
+        if name not in lane_status and name not in skipped_lanes
+    ]
     if missing:
         # Surface drift: a configured lane is no longer being executed/discovered.
         sys.stderr.write(

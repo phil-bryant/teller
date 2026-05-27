@@ -44,6 +44,24 @@ Design: Apply mode `660` to both output files and print their locations.
 Tests:
 - R035-T01: Verify file modes and output lines after successful run.
 
+R040  Statement: Resolve the active DB profile via the shared `src/scripts/db_profile_export.sh` helper and refuse to back up when the helper is missing.
+Design: Source whitelisted `PROFILE_NAME`/`PROFILE_TARGET`/`PG_*` exports from the helper before any dump runs; require non-empty `PROFILE_NAME`, `PROFILE_TARGET`, `PG_DBNAME`; encode the resolved profile name into the backup basename so dumps across targets do not collide.
+Tests:
+- R040-T01: Verify local-target run uses the resolved profile and the backup basename includes `<profile>_<db>_<timestamp>` (e.g. `local_prod_...`).
+- R040-T02: Verify managed-target run encodes `<profile>_<db>_<timestamp>` (e.g. `supabase_direct_postgres_...`) when the profile resolves to managed.
+
+R045  Statement: Managed-target backup uses the profile's connection user against the direct (non-pooler) host and skips globals because managed targets do not expose role/grant state.
+Design: When `PROFILE_TARGET=managed`, re-resolve via the `supabase_direct` profile, read the connection password from `PG_ONEPSA_ITEM` via `1psa` (with `TELLER_DB_PASSWORD` env override), and run a schema-scoped `pg_dump -Fc -n <PG_SEARCH_PATH>`; skip `pg_dumpall` and print an explicit `Globals skipped:` line so the operator knows full restore is unavailable on managed targets.
+Tests:
+- R045-T01: Verify managed-target run invokes `pg_dump -n teller` (or the resolved `PG_SEARCH_PATH`) instead of a full-database dump.
+- R045-T02: Verify managed-target run prints `Globals skipped:` and does not call `pg_dumpall`.
+
+R050  Statement: Honor existing `DATABASE_NAME` env override for backward compatibility on local-target runs while defaulting to the profile-resolved `PG_DBNAME`.
+Design: For local-target runs, set `DATABASE_NAME="${DATABASE_NAME:-$PG_DBNAME}"` so callers that previously pinned `DATABASE_NAME=prod` keep working, while operators on alternative local DBs pick up the resolved profile DB by default.
+Tests:
+- R050-T01: Verify local-target run defaults `DATABASE_NAME` from the profile-resolved `PG_DBNAME` when no env override is set.
+
 ## Changelog
 
+- 2026-05-26: Added R040/R045/R050 for profile-aware backup behavior; managed-target schema-scoped dumps and env-override compatibility.
 - 2026-04-19: Initial reverse-engineered requirements for `97_backup_database.sh`.

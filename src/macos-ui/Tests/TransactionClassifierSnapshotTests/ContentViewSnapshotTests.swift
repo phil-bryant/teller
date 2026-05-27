@@ -187,10 +187,6 @@ final class ContentViewSnapshotTests: XCTestCase {
     }
 }
 
-private func fixtureAmount(_ value: String) -> Decimal {
-    Decimal(string: value) ?? .zero
-}
-
 actor SnapshotFixtureConnectAPI: ConnectAPI {
     func fetchStatus() async throws -> ConnectStatusResponse {
         ConnectStatusResponse(token_saved: false, saved_path: "", error: "")
@@ -235,28 +231,27 @@ actor SnapshotFixtureConnectAPI: ConnectAPI {
             return ConnectStartSession(
                 action: action,
                 targetKey: selectedContext.key,
-                applicationId: "app_snapshot",
-                environment: "development",
-                enrollmentId: selectedContext.enrollment_id
+                credentials: ConnectCredentials(
+                    applicationId: "app_snapshot",
+                    environment: "development",
+                    enrollmentId: selectedContext.enrollment_id
+                )
             )
         }
         return ConnectStartSession(
             action: action,
             targetKey: "",
-            applicationId: "app_snapshot",
-            environment: "development",
-            enrollmentId: ""
+            credentials: ConnectCredentials(
+                applicationId: "app_snapshot",
+                environment: "development",
+                enrollmentId: ""
+            )
         )
     }
 }
 
 actor SnapshotFixtureSetupAPI: TellerSetupAPI {
     private let snapshot = TellerSetupSnapshot(
-        tellerDirectory: "/tmp/.teller",
-        applicationIDPath: "/tmp/.teller/application_id.txt",
-        certificatePath: "/tmp/.teller/certificate.pem",
-        privateKeyPath: "/tmp/.teller/private_key.pem",
-        authTokenPath: "/tmp/.teller/auth_token.json",
         hasApplicationID: true,
         hasCertificate: true,
         hasPrivateKey: true,
@@ -266,59 +261,30 @@ actor SnapshotFixtureSetupAPI: TellerSetupAPI {
     func loadSnapshot() async throws -> TellerSetupSnapshot {
         snapshot
     }
-
-    func saveApplicationID(_ applicationID: String) async throws -> String {
-        _ = applicationID
-        return snapshot.applicationIDPath
-    }
-
-    func saveAuthToken(_ token: String) async throws -> String {
-        _ = token
-        return snapshot.authTokenPath
-    }
-
-    func runSmokeCheck() async throws -> TellerSmokeCheckResult {
-        TellerSmokeCheckResult(
-            institutionsHTTPStatus: 200,
-            institutionsCount: 12,
-            accountsHTTPStatus: 200,
-            warningText: ""
-        )
-    }
 }
 
 actor SnapshotFixtureAPI: ClassificationAPI {
-    private let categories: [CategoryOption] = [
-        .init(nys_snw_category_id: 101, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Dining", applicability: nil, display_label: "Dining"),
-        .init(nys_snw_category_id: 102, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Utilities", applicability: nil, display_label: "Utilities"),
-        .init(nys_snw_category_id: 103, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Transportation", applicability: nil, display_label: "Transportation"),
-    ]
-
-    private let rows: [TransactionRow] = [
-        .init(transaction_id: "txn_001", account_id: "acc_1", institution_id: "inst_1", account_last_four: "1111", date: "2026-04-20", amount: fixtureAmount("16.24"), description: "Coffee Roasters", status: "posted", transaction_type_code: "card_payment", teller_category: "food", classification: nil),
-        .init(transaction_id: "txn_002", account_id: "acc_1", institution_id: "inst_1", account_last_four: "1111", date: "2026-04-19", amount: fixtureAmount("88.50"), description: "Electric Utility Co", status: "posted", transaction_type_code: "ach", teller_category: "utilities", classification: .init(nys_snw_category_id: 102, display_label: "Utilities")),
-        .init(transaction_id: "txn_003", account_id: "acc_1", institution_id: "inst_1", account_last_four: "1111", date: "2026-04-18", amount: fixtureAmount("44.10"), description: "City Transit Card", status: "posted", transaction_type_code: "card_payment", teller_category: "transport", classification: .init(nys_snw_category_id: 103, display_label: "Transportation")),
-    ]
+    private let categories: [CategoryOption] = SnapshotFixtureData.categories
+    private let rows: [TransactionRow] = SnapshotFixtureData.rows
 
     func fetchCategories() async throws -> [CategoryOption] {
         categories
     }
 
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool, countOnly: Bool) async throws -> TransactionListResponse {
-        _ = includeTotal; _ = countOnly
-        _ = matchState; _ = onlyUnmovedMatch
-        let normalizedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    func fetchTransactions(_ options: TransactionFetchOptions) async throws -> TransactionListResponse {
+        let normalizedSearch = options.search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let filtered = rows.filter { row in
-            if onlyUnclassified && row.classification != nil {
+            if options.onlyUnclassified && row.classification != nil {
                 return false
             }
             guard !normalizedSearch.isEmpty else {
                 return true
             }
-            return row.description.lowercased().contains(normalizedSearch) || row.transaction_id.lowercased().contains(normalizedSearch)
+            return row.description.lowercased().contains(normalizedSearch)
+                || row.transaction_id.lowercased().contains(normalizedSearch)
         }
-        let safeOffset = max(0, min(offset, filtered.count))
-        let upperBound = min(filtered.count, safeOffset + max(limit, 0))
+        let safeOffset = max(0, min(options.offset, filtered.count))
+        let upperBound = min(filtered.count, safeOffset + max(options.limit, 0))
         return TransactionListResponse(total: filtered.count, items: Array(filtered[safeOffset..<upperBound]))
     }
 

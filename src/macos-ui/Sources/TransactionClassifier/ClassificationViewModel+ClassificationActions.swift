@@ -23,10 +23,6 @@ extension ClassificationViewModel {
         await apply(updates: selection.map { ClassificationMutation(transaction_id: $0, nys_snw_category_id: nil) })
     }
 
-    func classifySingle(_ transactionId: String, _ categoryId: Int?) async {
-        await apply(updates: [.init(transaction_id: transactionId, nys_snw_category_id: categoryId)])
-    }
-
     // #R015: Replay prior category assignments for the most recent save action.
     func undoLast() async {
         guard let last = undoStack.popLast() else { return }
@@ -71,18 +67,7 @@ extension ClassificationViewModel {
             _ = try await api.saveClassifications(effectiveUpdates)
             optimisticPatch(effectiveUpdates, state: .saved(Date()))
             if shouldRecordUndo {
-                let next = Dictionary(uniqueKeysWithValues: effectiveUpdates.map { mutation in
-                    let cat = mutation.nys_snw_category_id.flatMap { id in
-                        allCategories.first(where: { $0.nys_snw_category_id == id }).map {
-                            TransactionCategory(
-                                nys_snw_category_id: $0.nys_snw_category_id,
-                                display_label: $0.display_label
-                            )
-                        }
-                    }
-                    return (mutation.transaction_id, cat)
-                })
-                undoStack.append(UndoAction(prior: previous, next: next))
+                undoStack.append(UndoAction(prior: previous))
             }
             statusText = "Saved \(effectiveUpdates.count) classification(s)"
             errorText = ""

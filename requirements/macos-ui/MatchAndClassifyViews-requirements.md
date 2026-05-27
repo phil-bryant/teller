@@ -5,9 +5,10 @@
 Applies to `src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift`.
 
 R005  Statement: Provide inline search and filtering controls.
-Design: Header controls include `TextField` search, `onlyUnclassified` toggle, and refresh action bound to view-model reload.
+Design: A three-row filter toolbar includes `TextField` search and `onlyUnclassified` toggle on the first row, match-state picker and only-unmoved toggle on the second row, and advanced transaction filters (date range, institution, amount) on the third row (R070).
 Tests:
 - R005-T01: Enter search text and enable unclassified filter; verify view model reload path is invoked and list narrows accordingly.
+- R005-T02: Open Match & Classify and verify filter controls render on two toolbar rows (search/unclassified above match filters).
 
 R015  Statement: Support detail-pane classification edits for current selection.
 Design: Detail pane provides apply and clear actions bound to selected rows and currently chosen category.
@@ -60,7 +61,27 @@ Design: The right-pane classification picker headline is `Transaction Classifica
 Tests:
 - R067-T01: Open Match & Classify and verify the right pane renders a visible `Transaction Classification` heading above the category typeahead.
 
+R068  Statement: Transaction list actions belong beside the Transactions pane.
+Design: `MatchAndClassifyTransactionsPane` renders Refresh (bound to `loadAll()`) and Load more (bound to `loadMore()`, disabled when `!canLoadMore || busy`) in the pane header below the Transactions title and count, not in the global filter toolbar or bottom status bar.
+Tests:
+- R068-T01: Open Match & Classify and verify `refresh-button` and `load-more-button` are exposed from the transactions pane header.
+- R068-T02: Tap Refresh and verify status text reports a loaded transaction count; tap Load more when enabled and verify additional rows append.
+
+R070  Statement: Expose advanced transaction filters for date range, institution, and amount.
+Design: `MatchAndClassifyToolbar` renders a third row with start/end date fields (`YYYY-MM-DD`), an institution picker (`All institutions` plus distinct `institution_id` values), and min/max amount fields. Each control uses a stable accessibility identifier (`transaction-start-date-field`, `transaction-end-date-field`, `transaction-institution-picker`, `transaction-min-amount-field`, `transaction-max-amount-field`). Changing any advanced filter automatically reloads the transaction list (same UX as the Unclassified toggle).
+Tests:
+- R070-T01: Open Match & Classify and verify all five advanced transaction filter controls render in the filter toolbar.
+- R070-T02: Set a date range and amount bounds that exclude fixture rows, then verify the transaction list narrows without pressing Refresh.
+
+R071  Statement: Expose advanced email search fields for subject, sender, body, and received date range.
+Design: The candidates pane `Search Email` section replaces the single keyword field with subject, sender, body, and received start/end date fields (`YYYY-MM-DD`), each with stable accessibility identifiers (`mailcart-search-subject-field`, `mailcart-search-sender-field`, `mailcart-search-body-field`, `mailcart-search-start-date-field`, `mailcart-search-end-date-field`). Any field change debounces into the existing Mailcart search path.
+Tests:
+- R071-T01: Open Match & Classify and verify all five advanced email search fields render under the `Search Email` section heading.
+- R071-T02: Enter a subject filter that matches one fixture search hit and verify the hit row appears and can be selected to load the email body.
+
 ## Changelog
 
+- 2026-05-26: Added R070 (advanced transaction filters: date range, institution, amount) and R071 (advanced email search: subject, sender, body, date range).
+- 2026-05-26: Added R068 (Refresh/Load more beside Transactions pane) and updated R005 for two-row filter toolbar layout.
 - 2026-05-26: Added R066 (middle pane title `Transaction - Email Match Candidates`) and R067 (classification section title `Transaction Classification`).
 - 2026-05-26: Extracted Match & Classify requirements from `ContentView-requirements.md` after view-file split.

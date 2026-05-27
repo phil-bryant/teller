@@ -171,9 +171,16 @@ Tests:
 - R110-T01: Run without `mkcert` and verify installer installs `mkcert`.
 - R110-T02: Rerun with `mkcert` already available and verify no reinstall occurs.
 
+R115  Statement: Ensure Periphery Swift dead-code analyzer is available for the code-quality lane.
+Design: Install Homebrew tap formula `peripheryapp/periphery/periphery` and verify `periphery` resolves on `PATH`.
+Tests:
+- R115-T01: Run without `periphery` and verify installer installs `peripheryapp/periphery/periphery`.
+- R115-T02: Rerun with `periphery` already available and verify no reinstall occurs.
+
 ## Changelog
 
 - 2026-05-26: Added R110 to require Homebrew `mkcert` for slot `04` TLS installation.
+- 2026-05-26: Added R115 to require Homebrew `peripheryapp/periphery/periphery` for the `t00` Swift dead-code analysis lane.
 - 2026-05-07: Updated R050 guidance to include optional PLCrashReporter smoke verification entrypoint.
 - 2026-04-23: Added R055 to require `bats-core` installation for shell unit-test support.
 - 2026-04-26: Added R095 to require Homebrew `clamav` (`clamscan`) for repository malware scans.

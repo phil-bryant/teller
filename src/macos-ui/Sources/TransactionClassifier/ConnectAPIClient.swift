@@ -171,18 +171,22 @@ actor ConnectAPIClient: ConnectAPI {
             return ConnectStartSession(
                 action: action,
                 targetKey: selectedContext.key,
-                applicationId: applicationID,
-                environment: environment["CONNECT_ENVIRONMENT"] ?? "development",
-                enrollmentId: selectedContext.enrollment_id
+                credentials: ConnectCredentials(
+                    applicationId: applicationID,
+                    environment: environment["CONNECT_ENVIRONMENT"] ?? "development",
+                    enrollmentId: selectedContext.enrollment_id
+                )
             )
         }
 
         return ConnectStartSession(
             action: action,
             targetKey: "",
-            applicationId: applicationID,
-            environment: environment["CONNECT_ENVIRONMENT"] ?? "development",
-            enrollmentId: ""
+            credentials: ConnectCredentials(
+                applicationId: applicationID,
+                environment: environment["CONNECT_ENVIRONMENT"] ?? "development",
+                enrollmentId: ""
+            )
         )
     }
 

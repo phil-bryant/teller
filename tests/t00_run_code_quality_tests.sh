@@ -18,11 +18,26 @@ FAIL_ON_QUALITY_ISSUES="${FAIL_ON_QUALITY_ISSUES:-true}"
 RUN_VULTURE="${RUN_VULTURE:-true}"
 RUN_RADON="${RUN_RADON:-true}"
 RUN_XENON="${RUN_XENON:-true}"
+RUN_PERIPHERY="${RUN_PERIPHERY:-true}"
+RUN_LIZARD="${RUN_LIZARD:-true}"
 VULTURE_MIN_CONFIDENCE="${VULTURE_MIN_CONFIDENCE:-80}"
 RADON_EXCLUDE="${RADON_EXCLUDE:-.venv,venv,teller-venv,artifacts}"
 XENON_MAX_ABSOLUTE="${XENON_MAX_ABSOLUTE:-B}"
 XENON_MAX_MODULES="${XENON_MAX_MODULES:-B}"
 XENON_MAX_AVERAGE="${XENON_MAX_AVERAGE:-A}"
+PERIPHERY_PROJECT_DIR="${PERIPHERY_PROJECT_DIR:-./src/macos-ui}"
+# Default extra args reduce Codable/public/ObjC false positives in SwiftUI + AppKit projects,
+# so the findings that surface are real (no blanket suppression).
+PERIPHERY_EXTRA_ARGS="${PERIPHERY_EXTRA_ARGS:---retain-codable-properties --retain-public --retain-objc-accessible}"
+# Gate modes: `warn` reports findings without failing the lane; `block` honors FAIL_ON_QUALITY_ISSUES.
+# Default `block` because this is a financial application: dead code and undetected complexity are real risks.
+PERIPHERY_GATE_MODE="${PERIPHERY_GATE_MODE:-block}"
+LIZARD_TARGETS="${LIZARD_TARGETS:-./src/macos-ui/Sources ./src/macos-ui/Tests}"
+# Strict defaults (industry conventional) for a financial app: keep functions small and obvious.
+LIZARD_CCN_THRESHOLD="${LIZARD_CCN_THRESHOLD:-10}"
+LIZARD_LENGTH_THRESHOLD="${LIZARD_LENGTH_THRESHOLD:-60}"
+LIZARD_ARG_THRESHOLD="${LIZARD_ARG_THRESHOLD:-5}"
+LIZARD_GATE_MODE="${LIZARD_GATE_MODE:-block}"
 
 mkdir -p "$REPORT_DIR"
 
@@ -31,6 +46,8 @@ if [[ "${#QUALITY_TARGETS_ARR[@]}" -eq 0 ]]; then
   echo "ERROR: no quality targets configured."
   exit 1
 fi
+
+read -r -a LIZARD_TARGETS_ARR <<< "$LIZARD_TARGETS"
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -76,8 +93,12 @@ print_report_details() {
 vulture_exit=0
 radon_exit=0
 xenon_exit=0
+periphery_exit=0
+lizard_exit=0
 vulture_gate_failed=false
 xenon_gate_failed=false
+periphery_gate_failed=false
+lizard_gate_failed=false
 
 #R010: Run Vulture dead-code scanning and optionally gate on findings.
 if [[ "$RUN_VULTURE" == "true" ]]; then
@@ -158,7 +179,74 @@ else
   printf 'skipped\n' > "${REPORT_DIR}/xenon.txt"
 fi
 
-python3 - <<'PY' "${REPORT_DIR}/code-quality-summary.json" "$vulture_exit" "$radon_exit" "$xenon_exit" "$vulture_gate_failed" "$xenon_gate_failed"
+#R030: Run Periphery dead-code scanning on Swift sources and gate on findings.
+if [[ "$RUN_PERIPHERY" == "true" ]]; then
+  require_command periphery
+  print_tool_header \
+    "Periphery" \
+    "Finds likely dead Swift code (Vulture analog for Swift)." \
+    "Reports unused declarations, parameters, properties, and protocols." \
+    "https://github.com/peripheryapp/periphery"
+  set +e
+  (
+    if [[ -n "$PERIPHERY_PROJECT_DIR" && "$PERIPHERY_PROJECT_DIR" != "." ]]; then
+      cd "$PERIPHERY_PROJECT_DIR" || exit 127
+    fi
+    # shellcheck disable=SC2086
+    periphery scan --strict $PERIPHERY_EXTRA_ARGS
+  ) > "${REPORT_DIR}/periphery.txt" 2>&1
+  periphery_exit=$?
+  set -e
+  if [[ "$periphery_exit" -eq 127 ]]; then
+    echo "ERROR: Periphery project directory not found: ${PERIPHERY_PROJECT_DIR}"
+    exit 1
+  fi
+  if [[ "$periphery_exit" -ne 0 && "$periphery_exit" -ne 1 ]]; then
+    echo "ERROR: Periphery failed to execute."
+    exit 1
+  fi
+  periphery_findings="$(count_nonempty_lines "${REPORT_DIR}/periphery.txt")"
+  echo "INFO: Periphery detailed status: exit_code=${periphery_exit}; lines=${periphery_findings}; report=${REPORT_DIR}/periphery.txt"
+  print_report_details "Periphery" "${REPORT_DIR}/periphery.txt" 60
+  if [[ "$periphery_exit" -eq 1 ]] && [[ "$FAIL_ON_QUALITY_ISSUES" == "true" ]] && [[ "$PERIPHERY_GATE_MODE" == "block" ]]; then
+    periphery_gate_failed=true
+  fi
+else
+  printf 'skipped\n' > "${REPORT_DIR}/periphery.txt"
+fi
+
+#R035: Run Lizard cyclomatic-complexity analysis on Swift sources and gate on threshold violations.
+if [[ "$RUN_LIZARD" == "true" ]]; then
+  require_command lizard
+  print_tool_header \
+    "Lizard" \
+    "Reports Swift cyclomatic complexity and enforces thresholds (Radon+Xenon analog)." \
+    "Highlights overly complex, long, or wide-parameter functions in Swift code." \
+    "https://github.com/terryyin/lizard"
+  set +e
+  lizard \
+    -l swift \
+    --CCN "$LIZARD_CCN_THRESHOLD" \
+    --length "$LIZARD_LENGTH_THRESHOLD" \
+    --arguments "$LIZARD_ARG_THRESHOLD" \
+    "${LIZARD_TARGETS_ARR[@]}" > "${REPORT_DIR}/lizard.txt" 2>&1
+  lizard_exit=$?
+  set -e
+  if [[ "$lizard_exit" -ne 0 && "$lizard_exit" -ne 1 ]]; then
+    echo "ERROR: Lizard failed to execute."
+    exit 1
+  fi
+  lizard_lines="$(count_nonempty_lines "${REPORT_DIR}/lizard.txt")"
+  echo "INFO: Lizard detailed status: exit_code=${lizard_exit}; lines=${lizard_lines}; report=${REPORT_DIR}/lizard.txt"
+  print_report_details "Lizard" "${REPORT_DIR}/lizard.txt" 80
+  if [[ "$lizard_exit" -eq 1 ]] && [[ "$FAIL_ON_QUALITY_ISSUES" == "true" ]] && [[ "$LIZARD_GATE_MODE" == "block" ]]; then
+    lizard_gate_failed=true
+  fi
+else
+  printf 'skipped\n' > "${REPORT_DIR}/lizard.txt"
+fi
+
+python3 - <<'PY' "${REPORT_DIR}/code-quality-summary.json" "$vulture_exit" "$radon_exit" "$xenon_exit" "$periphery_exit" "$lizard_exit" "$vulture_gate_failed" "$xenon_gate_failed" "$periphery_gate_failed" "$lizard_gate_failed"
 import json
 import sys
 from pathlib import Path
@@ -167,21 +255,37 @@ summary_path = Path(sys.argv[1])
 vulture_exit = int(sys.argv[2])
 radon_exit = int(sys.argv[3])
 xenon_exit = int(sys.argv[4])
-vulture_gate_failed = sys.argv[5].lower() == "true"
-xenon_gate_failed = sys.argv[6].lower() == "true"
+periphery_exit = int(sys.argv[5])
+lizard_exit = int(sys.argv[6])
+vulture_gate_failed = sys.argv[7].lower() == "true"
+xenon_gate_failed = sys.argv[8].lower() == "true"
+periphery_gate_failed = sys.argv[9].lower() == "true"
+lizard_gate_failed = sys.argv[10].lower() == "true"
 
 payload = {
     "vulture_exit": vulture_exit,
     "radon_exit": radon_exit,
     "xenon_exit": xenon_exit,
+    "periphery_exit": periphery_exit,
+    "lizard_exit": lizard_exit,
     "vulture_gate_failed": vulture_gate_failed,
     "xenon_gate_failed": xenon_gate_failed,
-    "gate_failed": vulture_gate_failed or xenon_gate_failed,
+    "periphery_gate_failed": periphery_gate_failed,
+    "lizard_gate_failed": lizard_gate_failed,
+    "gate_failed": (
+        vulture_gate_failed
+        or xenon_gate_failed
+        or periphery_gate_failed
+        or lizard_gate_failed
+    ),
 }
 summary_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
 
-if [[ "$vulture_gate_failed" == "true" ]] || [[ "$xenon_gate_failed" == "true" ]]; then
+if [[ "$vulture_gate_failed" == "true" ]] \
+  || [[ "$xenon_gate_failed" == "true" ]] \
+  || [[ "$periphery_gate_failed" == "true" ]] \
+  || [[ "$lizard_gate_failed" == "true" ]]; then
   echo "ERROR: Code quality gate failed."
   exit 1
 fi

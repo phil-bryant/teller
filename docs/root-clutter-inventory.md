@@ -28,7 +28,7 @@ This inventory classifies root-level path assumptions discovered in scripts, tes
 
 ## Keep at root
 
-- Numbered script entrypoints (`00`-`24`, `97`-`99`) remain root-level.
+- Numbered script entrypoints (`01`-`13`, `97`-`99`) remain root-level. Test lane scripts (`t00`-`t16`) live under `tests/`.
 - Core project metadata remains root-level (`pyproject.toml`, `requirements*.txt`, `README.md`).
 - DB profile files live under `config/` (`config/db-profiles*.json`).
 

@@ -126,7 +126,14 @@ final class APIClientTests: XCTestCase {
         }
 
         let client = makeClient()
-        let response = try await client.fetchTransactions(search: "coffee", onlyUnclassified: true, matchState: "", onlyUnmovedMatch: false, limit: 25, offset: 50)
+        let response = try await client.fetchTransactions(
+            TransactionFetchOptions(
+                search: "coffee",
+                onlyUnclassified: true,
+                limit: 25,
+                offset: 50
+            )
+        )
         XCTAssertEqual(response.total, 1)
         XCTAssertEqual(response.items.first?.transaction_id, "txn_1")
     }
@@ -176,48 +183,49 @@ final class APIClientTests: XCTestCase {
 
     func testCategoryLifecycleUsesCreateUpdateDeleteEndpoints() async throws {
         // #R040-T01 #R040-T02 #R045-T01
-        var callIndex = 0
-        URLProtocolStub.requestHandler = { request in
-            defer { callIndex += 1 }
-            switch callIndex {
-            case 0:
-                XCTAssertEqual(request.httpMethod, "POST")
-                XCTAssertEqual(request.url?.path, "/v1/categories")
-                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
-                let response = try self.makeHTTPResponse(for: request, statusCode: 200)
-                let body = """
-                {"nys_snw_category_id":300,"level_1":null,"level_1_name":null,"level_2":null,"level_2_name":null,"level_3":null,"level_4":null,"categorization":"Pets","applicability":null,"display_label":"Pets"}
-                """
-                return (response, Data(body.utf8))
-            case 1:
-                XCTAssertEqual(request.httpMethod, "PUT")
-                XCTAssertEqual(request.url?.path, "/v1/categories/300")
-                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
-                let response = try self.makeHTTPResponse(for: request, statusCode: 200)
-                let body = """
-                {"nys_snw_category_id":300,"level_1":null,"level_1_name":null,"level_2":null,"level_2_name":null,"level_3":null,"level_4":null,"categorization":"Pets Updated","applicability":null,"display_label":"Pets Updated"}
-                """
-                return (response, Data(body.utf8))
-            default:
-                XCTAssertEqual(request.httpMethod, "DELETE")
-                XCTAssertEqual(request.url?.path, "/v1/categories/300")
-                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
-                let response = try self.makeHTTPResponse(for: request, statusCode: 200)
-                let body = """
-                {"nys_snw_category_id":300,"deleted":true}
-                """
-                return (response, Data(body.utf8))
-            }
-        }
-
+        installCategoryLifecycleHandler()
         let client = makeClient()
-        let created = try await client.createCategory(.init(level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Pets", applicability: nil))
+        let created = try await client.createCategory(petsCategoryRequest(label: "Pets"))
         XCTAssertEqual(created.nys_snw_category_id, 300)
-        let updated = try await client.updateCategory(id: 300, category: .init(level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: "Pets Updated", applicability: nil))
+        let updated = try await client.updateCategory(id: 300, category: petsCategoryRequest(label: "Pets Updated"))
         XCTAssertEqual(updated.display_label, "Pets Updated")
         let deleted = try await client.deleteCategory(id: 300)
         XCTAssertTrue(deleted.deleted)
     }
+
+    private func petsCategoryRequest(label: String) -> CategoryMutationRequest {
+        CategoryMutationRequest(level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: label, applicability: nil)
+    }
+
+    private func installCategoryLifecycleHandler() {
+        var callIndex = 0
+        URLProtocolStub.requestHandler = { request in
+            defer { callIndex += 1 }
+            return try Self.categoryLifecycleResponse(for: request, callIndex: callIndex, response: try self.makeHTTPResponse(for: request, statusCode: 200))
+        }
+    }
+
+    private static func categoryLifecycleResponse(for request: URLRequest, callIndex: Int, response: HTTPURLResponse) throws -> (HTTPURLResponse, Data) {
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
+        switch callIndex {
+        case 0:
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.url?.path, "/v1/categories")
+            return (response, Data(petsCreatedJSON.utf8))
+        case 1:
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertEqual(request.url?.path, "/v1/categories/300")
+            return (response, Data(petsUpdatedJSON.utf8))
+        default:
+            XCTAssertEqual(request.httpMethod, "DELETE")
+            XCTAssertEqual(request.url?.path, "/v1/categories/300")
+            return (response, Data(petsDeletedJSON.utf8))
+        }
+    }
+
+    private static let petsCreatedJSON: String = APIClientTestFixtures.petsCreatedJSON
+    private static let petsUpdatedJSON: String = APIClientTestFixtures.petsUpdatedJSON
+    private static let petsDeletedJSON: String = APIClientTestFixtures.petsDeletedJSON
 
     func testClearMatchUsesPutClearEndpoints() async throws {
         // #R050-T01
@@ -259,21 +267,94 @@ final class APIClientTests: XCTestCase {
                 throw APIError.invalidResponse
             }
             let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
-            XCTAssertEqual(query["query"], "phil")
+            XCTAssertEqual(query["subject"], "phil")
             XCTAssertEqual(query["limit"], "25")
             let response = try self.makeHTTPResponse(for: request, statusCode: 200)
             let body = """
-            {"query":"phil","items":[{"email_message_id":"msg_phil","subject":"Hello Phil","from":"phil@example.com","received_at":"2026-05-17T12:00:00+00:00","snippet":"preview"}]}
+            {"query":"subject:phil","items":[{"email_message_id":"msg_phil","subject":"Hello Phil","from":"phil@example.com","received_at":"2026-05-17T12:00:00+00:00","snippet":"preview"}]}
             """
             return (response, Data(body.utf8))
         }
 
         let client = makeClient()
-        let response = try await client.searchMessages(query: "phil", limit: 25)
-        XCTAssertEqual(response.query, "phil")
+        let response = try await client.searchMessages(
+            criteria: EmailSearchCriteria(subject: "phil"),
+            limit: 25
+        )
+        XCTAssertEqual(response.query, "subject:phil")
         XCTAssertEqual(response.items.count, 1)
         XCTAssertEqual(response.items.first?.email_message_id, "msg_phil")
         XCTAssertEqual(response.items.first?.from, "phil@example.com")
+    }
+
+    func testFetchTransactionsEncodesAdvancedFilterQueryParameters() async throws {
+        // #R063-T01
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/v1/transactions")
+            guard let requestURL = request.url,
+                  let components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false) else {
+                throw APIError.invalidResponse
+            }
+            let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+            XCTAssertEqual(query["start_date"], "2026-04-01")
+            XCTAssertEqual(query["end_date"], "2026-04-30")
+            XCTAssertEqual(query["institution_id"], "inst_alpha")
+            XCTAssertEqual(query["min_amount"], "10")
+            XCTAssertEqual(query["max_amount"], "100")
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            let body = """
+            {"total":0,"items":[]}
+            """
+            return (response, Data(body.utf8))
+        }
+
+        let client = makeClient()
+        _ = try await client.fetchTransactions(
+            TransactionFetchOptions(
+                startDate: "2026-04-01",
+                endDate: "2026-04-30",
+                institutionId: "inst_alpha",
+                minAmount: "10",
+                maxAmount: "100"
+            )
+        )
+    }
+
+    func testSearchMessagesEncodesStructuredCriteriaQueryParameters() async throws {
+        // #R064-T01
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/v1/matchy/messages/search")
+            guard let requestURL = request.url,
+                  let components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false) else {
+                throw APIError.invalidResponse
+            }
+            let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+            XCTAssertEqual(query["subject"], "Transit")
+            XCTAssertEqual(query["sender"], "alerts@transit.example.com")
+            XCTAssertEqual(query["body"], "Charge")
+            XCTAssertEqual(query["start_date"], "2026-04-01")
+            XCTAssertEqual(query["end_date"], "2026-04-30")
+            XCTAssertEqual(query["limit"], "25")
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            let body = """
+            {"query":"subject:Transit","items":[]}
+            """
+            return (response, Data(body.utf8))
+        }
+
+        let client = makeClient()
+        _ = try await client.searchMessages(
+            criteria: EmailSearchCriteria(
+                subject: "Transit",
+                sender: "alerts@transit.example.com",
+                body: "Charge",
+                receivedStartDate: "2026-04-01",
+                receivedEndDate: "2026-04-30"
+            ),
+            limit: 25
+        )
     }
 
     func testMissingWriteTokenThrowsExplicitError() async {

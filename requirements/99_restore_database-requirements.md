@@ -97,8 +97,26 @@ Design: After full restore and password reset, perform `psql` login as `teller` 
 Tests:
 - R080-T01: Force mismatch between restored role password and expected secret and verify script fails on post-restore teller login check.
 
+R085  Statement: Resolve the active DB profile via the shared `src/scripts/db_profile_export.sh` helper and refuse to restore when the helper is missing.
+Design: Source whitelisted `PROFILE_NAME`/`PROFILE_TARGET`/`PG_*` exports from the helper before any restore actions, and require non-empty `PROFILE_NAME`/`PROFILE_TARGET`/`PG_DBNAME` so restore never targets a stale hard-coded database.
+Tests:
+- R085-T01: Verify successful run resolves profile via helper and continues with the resolved target (local-target full restore path exercises this).
+
+R090  Statement: Managed-target restore refuses full restore (cannot CREATE DATABASE or replay globals) and only supports `--table` scoped restore against the direct (non-pooler) host using the profile's connection user.
+Design: When `PROFILE_TARGET=managed` and no `--table` is provided, exit non-zero with explicit guidance to re-run with `--table schema.table_name`; otherwise re-resolve via the `supabase_direct` profile, read the password from `PG_ONEPSA_ITEM` via `1psa` (with `TELLER_DB_PASSWORD` env override), and invoke `pg_restore -h <PG_HOST> -p <PG_PORT> -U <PG_USER> -d <PG_DBNAME> --clean --if-exists --schema <schema> --table <table>`.
+Tests:
+- R090-T01: Verify managed-target run without `--table` exits non-zero with the explicit refuse message and guidance.
+- R090-T02: Verify managed-target `--table` restore invokes `pg_restore` against the resolved managed host/user/database.
+- R090-T03: Verify managed-target `--table` restore passes the resolved schema/table to `pg_restore` and prints the completion line.
+
+R095  Statement: Honor existing `DATABASE_NAME` env override for backward compatibility on local-target runs while defaulting to the profile-resolved `PG_DBNAME`.
+Design: For local-target runs, set `DATABASE_NAME="${DATABASE_NAME:-$PG_DBNAME}"` so callers that previously pinned `DATABASE_NAME=prod` keep working, while operators on alternative local DBs pick up the resolved profile DB by default.
+Tests:
+- R095-T01: Verify local-target run defaults `DATABASE_NAME` from the profile-resolved `PG_DBNAME` when no env override is set (exercised by the existing latest-dump completion test).
+
 ## Changelog
 
+- 2026-05-26: Added R085/R090/R095 for profile-aware restore behavior; managed-target restore is `--table`-only with profile-resolved credentials.
 - 2026-04-21: Refined R020/R030 for table mode to skip globals requirements/replay and updated R040 table-name format.
 - 2026-04-21: Refined R025 to allow restore into existing teller schema when `--table` is provided.
 - 2026-04-21: Added R040 and R045 for optional `--table` restore scope and `--from` composition.

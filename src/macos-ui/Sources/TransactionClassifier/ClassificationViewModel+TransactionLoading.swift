@@ -11,14 +11,7 @@ extension ClassificationViewModel {
         do {
             async let cats = api.fetchCategories()
             async let txs = api.fetchTransactions(
-                search: searchText,
-                onlyUnclassified: onlyUnclassified,
-                matchState: matchReviewStateFilter,
-                onlyUnmovedMatch: matchReviewOnlyUnmoved,
-                limit: pageSize,
-                offset: 0,
-                includeTotal: false,
-                countOnly: false
+                transactionFetchOptions(limit: pageSize, offset: 0, includeTotal: false, countOnly: false)
             )
             let fetchedCategories = try await cats
             setCategories(fetchedCategories)
@@ -74,14 +67,7 @@ extension ClassificationViewModel {
     func refreshTransactionTotal() async {
         do {
             let response = try await api.fetchTransactions(
-                search: searchText,
-                onlyUnclassified: onlyUnclassified,
-                matchState: matchReviewStateFilter,
-                onlyUnmovedMatch: matchReviewOnlyUnmoved,
-                limit: 1,
-                offset: 0,
-                includeTotal: true,
-                countOnly: true
+                transactionFetchOptions(limit: 1, offset: 0, includeTotal: true, countOnly: true)
             )
             totalTransactions = response.total
             statusText = loadStatusText(for: transactions)
@@ -97,14 +83,12 @@ extension ClassificationViewModel {
         defer { busy = false }
         do {
             let response = try await api.fetchTransactions(
-                search: searchText,
-                onlyUnclassified: onlyUnclassified,
-                matchState: matchReviewStateFilter,
-                onlyUnmovedMatch: matchReviewOnlyUnmoved,
-                limit: pageSize,
-                offset: transactions.count,
-                includeTotal: true,
-                countOnly: false
+                transactionFetchOptions(
+                    limit: pageSize,
+                    offset: transactions.count,
+                    includeTotal: true,
+                    countOnly: false
+                )
             )
             totalTransactions = response.total
             mergeTransactions(response.items)

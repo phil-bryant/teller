@@ -35,6 +35,9 @@
 		A10000010000000000000028 /* ClassificationViewModel+ClassificationActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000028 /* ClassificationViewModel+ClassificationActions.swift */; };
 		A10000010000000000000029 /* ClassificationViewModel+MatchReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000029 /* ClassificationViewModel+MatchReview.swift */; };
 		A10000010000000000000030 /* ClassificationViewModel+CategoryEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000030 /* ClassificationViewModel+CategoryEditor.swift */; };
+		A10000010000000000000031 /* ConnectWebFlowHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000031 /* ConnectWebFlowHTML.swift */; };
+		A10000010000000000000032 /* ConnectWebFlowScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000032 /* ConnectWebFlowScript.swift */; };
+		A10000010000000000000033 /* ConnectWebFlowStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10001010000000000000033 /* ConnectWebFlowStyles.swift */; };
 		A10000010000000000000015 /* CrashReporter in Frameworks */ = {isa = PBXBuildFile; productRef = A1000B010000000000000001 /* CrashReporter */; };
 /* End PBXBuildFile section */
 
@@ -79,6 +82,9 @@
 		A10001010000000000000028 /* ClassificationViewModel+ClassificationActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClassificationViewModel+ClassificationActions.swift"; sourceTree = "<group>"; };
 		A10001010000000000000029 /* ClassificationViewModel+MatchReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClassificationViewModel+MatchReview.swift"; sourceTree = "<group>"; };
 		A10001010000000000000030 /* ClassificationViewModel+CategoryEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClassificationViewModel+CategoryEditor.swift"; sourceTree = "<group>"; };
+		A10001010000000000000031 /* ConnectWebFlowHTML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectWebFlowHTML.swift; sourceTree = "<group>"; };
+		A10001010000000000000032 /* ConnectWebFlowScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectWebFlowScript.swift; sourceTree = "<group>"; };
+		A10001010000000000000033 /* ConnectWebFlowStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectWebFlowStyles.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,6 +132,9 @@
 				A10001010000000000000012 /* ConnectAPIClient.swift */,
 				A10001010000000000000013 /* ConnectModels.swift */,
 				A10001010000000000000014 /* ConnectView.swift */,
+				A10001010000000000000031 /* ConnectWebFlowHTML.swift */,
+				A10001010000000000000032 /* ConnectWebFlowScript.swift */,
+				A10001010000000000000033 /* ConnectWebFlowStyles.swift */,
 				A10001010000000000000015 /* ConnectViewModel.swift */,
 				A10001010000000000000016 /* CrashReporterService.swift */,
 				A10001010000000000000017 /* TellerSetupService.swift */,
@@ -253,6 +262,9 @@
 				A10000010000000000000010 /* ConnectAPIClient.swift in Sources */,
 				A10000010000000000000011 /* ConnectModels.swift in Sources */,
 				A10000010000000000000012 /* ConnectView.swift in Sources */,
+				A10000010000000000000031 /* ConnectWebFlowHTML.swift in Sources */,
+				A10000010000000000000032 /* ConnectWebFlowScript.swift in Sources */,
+				A10000010000000000000033 /* ConnectWebFlowStyles.swift in Sources */,
 				A10000010000000000000013 /* ConnectViewModel.swift in Sources */,
 				A10000010000000000000014 /* CrashReporterService.swift in Sources */,
 				A10000010000000000000016 /* TellerSetupService.swift in Sources */,

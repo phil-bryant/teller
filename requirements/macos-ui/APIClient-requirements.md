@@ -48,9 +48,19 @@ Tests:
 - R050-T01: Call both clear methods and verify PUT targets the expected paths and decodes the response.
 
 R062  Statement: Proxy email search from the Match & Classify candidates pane.
-Design: `ClassificationAPI` declares `searchMessages(query:limit:)`; `APIClient` issues GET `/v1/matchy/messages/search?query=...&limit=...` and decodes `{query, items: [EmailSearchHit]}`.
+Design: `ClassificationAPI` declares `searchMessages(criteria:limit:)`; `APIClient` issues GET `/v1/matchy/messages/search` with `limit` plus optional structured criteria query parameters and decodes `{query, items: [EmailSearchHit]}`.
 Tests:
 - R062-T01: Call `searchMessages` and verify the request targets `/v1/matchy/messages/search` with query parameters and decodes the search envelope.
+
+R063  Statement: Encode advanced transaction filter query parameters on transaction list fetches.
+Design: `fetchTransactions` sends optional `start_date`, `end_date`, `institution_id`, `min_amount`, and `max_amount` query parameters when the corresponding `TransactionFetchOptions` fields are non-empty.
+Tests:
+- R063-T01: Call `fetchTransactions` with advanced filter options and verify all five parameters appear on the request URL.
+
+R064  Statement: Encode structured email search criteria on Mailcart search requests.
+Design: `searchMessages(criteria:limit:)` sends optional `subject`, `sender`, `body`, `start_date`, and `end_date` query parameters from `EmailSearchCriteria` when non-empty, in addition to `limit`.
+Tests:
+- R064-T01: Call `searchMessages` with populated criteria and verify all structured search parameters appear on the request URL.
 
 ## Changelog
 
@@ -61,4 +71,5 @@ Tests:
 - 2026-05-19: Added R062 (email search client method for Match & Classify).
 - 2026-05-23: Added `R010-T02` test traceability mapping.
 - 2026-05-26: Added R020 for loopback HTTPS pinning against the local classifier TLS cert.
+- 2026-05-26: Added R063 (advanced transaction filter query params) and R064 (structured email search query params); updated R062 for criteria-based search.
 - 2026-05-26: Extended R001 for `include_total` / `count_only` query parameters (API R072).

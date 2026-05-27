@@ -6,10 +6,63 @@ setup() {
   create_repo_fixture
   copy_script_to_fixture "99_restore_database.sh"
   mkdir -p "${FIXTURE_ROOT}/backups"
+  mkdir -p "${FIXTURE_ROOT}/src/scripts"
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "PROFILE_NAME=local"
+echo "PROFILE_TARGET=local"
+echo "PG_HOST=localhost"
+echo "PG_PORT=5432"
+echo "PG_DBNAME=prod"
+echo "PG_USER=teller"
+echo "PG_SSLMODE=disable"
+echo "PG_SEARCH_PATH=teller"
+echo "PG_RUNTIME_ROLE=teller_write"
+echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 }
 
 teardown() {
   teardown_shell_test
+}
+
+stub_managed_profile_helper() {
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+#R090: Stub helper mirrors a managed Supabase profile resolution for restore tests.
+profile="default"
+while (($#)); do
+  case "$1" in
+    --profile) shift; profile="${1:-}";;
+  esac
+  shift
+done
+if [[ "$profile" == "supabase_direct" ]]; then
+  echo "PROFILE_NAME=supabase_direct"
+  echo "PROFILE_TARGET=managed"
+  echo "PG_HOST=db.example.supabase.co"
+  echo "PG_PORT=5432"
+  echo "PG_DBNAME=postgres"
+  echo "PG_USER=postgres.ref"
+  echo "PG_SSLMODE=require"
+  echo "PG_SEARCH_PATH=teller"
+  echo "PG_RUNTIME_ROLE="
+  echo "PG_ONEPSA_ITEM=EGGNEST_SUPABASE_DIRECT"
+else
+  echo "PROFILE_NAME=supabase"
+  echo "PROFILE_TARGET=managed"
+  echo "PG_HOST=aws-0-us-east-1.pooler.supabase.com"
+  echo "PG_PORT=5432"
+  echo "PG_DBNAME=postgres"
+  echo "PG_USER=postgres.ref"
+  echo "PG_SSLMODE=require"
+  echo "PG_SEARCH_PATH=teller"
+  echo "PG_RUNTIME_ROLE="
+  echo "PG_ONEPSA_ITEM=EGGNEST_SUPABASE"
+fi
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 }
 
 @test "fails when pg_restore is missing" {
@@ -23,7 +76,7 @@ teardown() {
 }
 
 @test "defaults to latest dump and reports completion path" {
-  #R005-T01 #R005-T02 #R020-T01 #R020-T02 #R030-T01 #R030-T02 #R035-T01 #R035-T02
+  #R005-T01 #R005-T02 #R020-T01 #R020-T02 #R030-T01 #R030-T02 #R035-T01 #R035-T02 #R095-T01
   old="${FIXTURE_ROOT}/backups/prod_20250101_000000.dump"
   new="${FIXTURE_ROOT}/backups/prod_20250102_000000.dump"
   touch "$old" "$new" "${FIXTURE_ROOT}/backups/prod_20250102_000000_globals.sql"
@@ -116,7 +169,7 @@ EOF
 }
 
 @test "full restore re-syncs teller password and verifies teller auth" {
-  #R075-T01 #R080-T01
+  #R075-T01 #R080-T01 #R085-T01
   dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
   globals_path="${FIXTURE_ROOT}/backups/snapshot_globals.sql"
   touch "$dump_path" "$globals_path"
@@ -150,4 +203,43 @@ EOF
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"ALTER USER teller WITH PASSWORD"* ]]
   [[ "$calls" == *"-U teller -d prod -tAc SELECT 1;"* ]]
+}
+
+@test "managed target refuses full restore" {
+  #R090-T01
+  stub_managed_profile_helper
+  dump_path="${FIXTURE_ROOT}/backups/managed-snapshot.dump"
+  touch "$dump_path"
+  stub_cmd 1psa "echo managed-pass"
+  stub_cmd psql "exit 0"
+  stub_cmd pg_restore "exit 0"
+
+  run bash "${FIXTURE_ROOT}/99_restore_database.sh" --from "$dump_path"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Refusing full restore against managed target"* ]]
+  [[ "$output" == *"--table schema.table_name"* ]]
+}
+
+@test "managed target table-scoped restore uses profile credentials" {
+  #R090-T02 #R090-T03
+  stub_managed_profile_helper
+  dump_path="${FIXTURE_ROOT}/backups/managed-snapshot.dump"
+  touch "$dump_path"
+  stub_cmd 1psa "echo managed-pass"
+  stub_cmd psql "exit 0"
+  cat > "${STUB_BIN}/pg_restore" <<EOF
+#!/usr/bin/env bash
+echo pg_restore "\$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/pg_restore"
+
+  run bash "${FIXTURE_ROOT}/99_restore_database.sh" --from "$dump_path" --table teller.transaction
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Restore complete from: ${dump_path}"* ]]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"-h db.example.supabase.co"* ]]
+  [[ "$calls" == *"-U postgres.ref"* ]]
+  [[ "$calls" == *"-d postgres"* ]]
+  [[ "$calls" == *"--schema teller --table transaction"* ]]
 }

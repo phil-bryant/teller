@@ -76,17 +76,21 @@ actor UITestingFixtureConnectAPI: ConnectAPI {
             return ConnectStartSession(
                 action: action,
                 targetKey: selectedContext.key,
-                applicationId: "app_fixture",
-                environment: "development",
-                enrollmentId: selectedContext.enrollment_id
+                credentials: ConnectCredentials(
+                    applicationId: "app_fixture",
+                    environment: "development",
+                    enrollmentId: selectedContext.enrollment_id
+                )
             )
         }
         return ConnectStartSession(
             action: action,
             targetKey: "",
-            applicationId: "app_fixture",
-            environment: "development",
-            enrollmentId: ""
+            credentials: ConnectCredentials(
+                applicationId: "app_fixture",
+                environment: "development",
+                enrollmentId: ""
+            )
         )
     }
 }

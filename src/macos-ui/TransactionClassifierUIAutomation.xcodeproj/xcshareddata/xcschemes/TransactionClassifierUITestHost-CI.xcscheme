@@ -26,7 +26,7 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = ""
       selectedLauncherIdentifier = "Xcode.IDEFoundation.Launcher.PosixSpawn"
-      shouldUseLaunchSchemeArgsEnv = "NO">
+      shouldUseLaunchSchemeArgsEnv = "YES">
       <CommandLineArguments>
          <CommandLineArgument
             argument = "--ui-testing"
@@ -42,6 +42,11 @@
          <EnvironmentVariable
             key = "TELLER_UI_TEST_PAGE_SIZE"
             value = "20"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "XCUITEST_STEPS"
+            value = "$(XCUITEST_STEPS)"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>

@@ -6,7 +6,17 @@ struct FetchTransactionsCall: Sendable {
     let includeTotal: Bool
     let countOnly: Bool
     let limit: Int
-    let offset: Int
+}
+
+struct MockAPIConfig {
+    var categories: [CategoryOption]
+    var response: TransactionListResponse
+    var pagedResponses: [Int: TransactionListResponse] = [:]
+    var candidatesByTransactionId: [String: [MatchCandidateRow]] = [:]
+    var candidatesDelayNanoseconds: UInt64 = 0
+    var searchResponse: EmailSearchResponse = EmailSearchResponse(query: "", items: [])
+    var searchError: Error?
+    var saveError: Error?
 }
 
 actor MockAPI: ClassificationAPI {
@@ -14,6 +24,7 @@ actor MockAPI: ClassificationAPI {
     var response: TransactionListResponse
     var pagedResponses: [Int: TransactionListResponse]
     var fetchOffsets: [Int] = []
+    var lastFetchOptions: TransactionFetchOptions?
     var fetchTransactionsCalls: [FetchTransactionsCall] = []
     var candidatesFetchCount = 0
     var candidatesByTransactionId: [String: [MatchCandidateRow]] = [:]
@@ -24,34 +35,36 @@ actor MockAPI: ClassificationAPI {
     var updatedCategoryRequests: [(id: Int, request: CategoryMutationRequest)] = []
     var clearedMatchIds: [Int] = []
     var clearedTransactionIds: [String] = []
-    var searchCalls: [(query: String, limit: Int)] = []
+    var searchCalls: [(criteria: EmailSearchCriteria, limit: Int)] = []
     var searchResponse: EmailSearchResponse
     var searchError: Error?
     var saveError: Error?
-    init(categories: [CategoryOption], response: TransactionListResponse, pagedResponses: [Int: TransactionListResponse] = [:],
-         candidatesByTransactionId: [String: [MatchCandidateRow]] = [:],
-         candidatesDelayNanoseconds: UInt64 = 0,
-         searchResponse: EmailSearchResponse = .init(query: "", items: []), searchError: Error? = nil, saveError: Error? = nil) {
-        self.categories = categories
-        self.response = response
-        var merged = pagedResponses
-        merged[0] = response
+
+    init(_ config: MockAPIConfig) {
+        self.categories = config.categories
+        self.response = config.response
+        var merged = config.pagedResponses
+        merged[0] = config.response
         self.pagedResponses = merged
-        self.candidatesByTransactionId = candidatesByTransactionId
-        self.candidatesDelayNanoseconds = candidatesDelayNanoseconds
-        self.searchResponse = searchResponse
-        self.searchError = searchError
-        self.saveError = saveError
+        self.candidatesByTransactionId = config.candidatesByTransactionId
+        self.candidatesDelayNanoseconds = config.candidatesDelayNanoseconds
+        self.searchResponse = config.searchResponse
+        self.searchError = config.searchError
+        self.saveError = config.saveError
+    }
+
+    init(categories: [CategoryOption], response: TransactionListResponse) {
+        self.init(MockAPIConfig(categories: categories, response: response))
     }
     func fetchCategories() async throws -> [CategoryOption] { categories }
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool, countOnly: Bool) async throws -> TransactionListResponse {
-        _ = search; _ = onlyUnclassified; _ = matchState; _ = onlyUnmovedMatch
+    func fetchTransactions(_ options: TransactionFetchOptions) async throws -> TransactionListResponse {
+        lastFetchOptions = options
         fetchTransactionsCalls.append(
-            FetchTransactionsCall(includeTotal: includeTotal, countOnly: countOnly, limit: limit, offset: offset)
+            FetchTransactionsCall(includeTotal: options.includeTotal, countOnly: options.countOnly, limit: options.limit)
         )
-        if countOnly { return .init(total: response.total, items: []) }
-        fetchOffsets.append(offset)
-        return pagedResponses[offset] ?? response
+        if options.countOnly { return .init(total: response.total, items: []) }
+        fetchOffsets.append(options.offset)
+        return pagedResponses[options.offset] ?? response
     }
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
         candidatesFetchCount += 1
@@ -122,32 +135,41 @@ actor MockAPI: ClassificationAPI {
         return .init(match_id: 0, transaction_id: transactionId, state: "human_confirmed_ai_match", selected_by: "human", updated_at: "now")
     }
     func recordedClearedMatchIds() -> [Int] { clearedMatchIds }
-    func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse {
-        searchCalls.append((query, limit))
+    func searchMessages(criteria: EmailSearchCriteria, limit: Int) async throws -> EmailSearchResponse {
+        searchCalls.append((criteria, limit))
         if let searchError { throw searchError }
-        return EmailSearchResponse(query: query, items: searchResponse.items)
+        return EmailSearchResponse(query: criteria.querySummary, items: searchResponse.items)
     }
-    func recordedSearchCalls() -> [(query: String, limit: Int)] { searchCalls }
+    func recordedSearchCalls() -> [(criteria: EmailSearchCriteria, limit: Int)] { searchCalls }
+    func recordedLastFetchOptions() -> TransactionFetchOptions? { lastFetchOptions }
     func recordedCreatedCategoryRequests() -> [CategoryMutationRequest] { createdCategoryRequests }
 }
 
 private func sampleCategory(_ id: Int, _ name: String, applicability: String? = nil) -> CategoryOption {
-    .init(nys_snw_category_id: id, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil,
-          level_4: nil, categorization: name, applicability: applicability, display_label: name)
+    CategoryOption(nys_snw_category_id: id, level_1: nil, level_1_name: nil, level_2: nil, level_2_name: nil, level_3: nil, level_4: nil, categorization: name, applicability: applicability, display_label: name)
 }
 
 private func sampleTransaction(_ id: String, date: String = "2026-04-18", classification: TransactionCategory?) -> TransactionRow {
-    .init(transaction_id: id, account_id: "acc", date: date, amount: Decimal(10), description: id, status: "posted",
-          transaction_type_code: "card_payment", teller_category: "food", classification: classification)
+    TransactionRow(transaction_id: id, account_id: "acc", institution_id: "inst_alpha", account_last_four: "1111", date: date, amount: Decimal(10), description: id, status: "posted", transaction_type_code: "card_payment", teller_category: "food", classification: classification)
 }
 
-private func sampleTransactionWithMatch(id: String, matchId: Int, emailId: String, confidence: Double, count: Int,
-                                        state: String = "ai_match_confident", classification: TransactionCategory? = nil) -> TransactionRow {
-    let match = TransactionMatchInfo(match_id: matchId, email_message_id: emailId, state: state,
-                                     ai_confidence: confidence, selected_by: "ai", moved_to_matchy_at: nil, match_count: count)
-    return TransactionRow(transaction_id: id, account_id: "acc", date: "2026-05-06", amount: Decimal(200),
-                          description: id, status: "posted", transaction_type_code: "card_payment",
-                          teller_category: nil, classification: classification, match: match)
+private struct SampleMatchSpec {
+    let id: String
+    let matchId: Int
+    let emailId: String
+    let confidence: Double
+    let count: Int
+    var state: String = "ai_match_confident"
+    var classification: TransactionCategory?
+}
+
+private func sampleTransactionWithMatch(_ spec: SampleMatchSpec) -> TransactionRow {
+    let match = TransactionMatchInfo(match_id: spec.matchId, email_message_id: spec.emailId, state: spec.state, ai_confidence: spec.confidence, selected_by: "ai", moved_to_matchy_at: nil, match_count: spec.count)
+    return TransactionRow(transaction_id: spec.id, account_id: "acc", institution_id: "inst_alpha", account_last_four: "1111", date: "2026-05-06", amount: Decimal(200), description: spec.id, status: "posted", transaction_type_code: "card_payment", teller_category: nil, classification: spec.classification, match: match)
+}
+
+private func sampleTransactionWithMatch(id: String, matchId: Int, emailId: String, confidence: Double, count: Int) -> TransactionRow {
+    sampleTransactionWithMatch(SampleMatchSpec(id: id, matchId: matchId, emailId: emailId, confidence: confidence, count: count))
 }
 
 private func sampleCandidate(emailId: String, isSelectedByAi: Bool) -> MatchCandidateRow {
@@ -194,11 +216,9 @@ final class ClassificationViewModelTests: XCTestCase {
     func testReselectingTransactionReloadsCandidatesWhenPaneWasCleared() async {
         let txn = sampleTransactionWithMatch(id: "txn_1", matchId: 1, emailId: "msg_a", confidence: 0.9, count: 1)
         let candidate = sampleCandidate(emailId: "msg_a", isSelectedByAi: true)
-        let api = MockAPI(
-            categories: [],
-            response: .init(total: 1, items: [txn]),
-            candidatesByTransactionId: ["txn_1": [candidate]]
-        )
+        var config = MockAPIConfig(categories: [], response: .init(total: 1, items: [txn]))
+        config.candidatesByTransactionId = ["txn_1": [candidate]]
+        let api = MockAPI(config)
         let vm = ClassificationViewModel(api: api)
         vm.transactions = [txn]
         vm.selection = ["txn_1"]
@@ -216,11 +236,9 @@ final class ClassificationViewModelTests: XCTestCase {
     func testLoadAllReloadsCandidatesForCurrentSelection() async {
         let txn = sampleTransactionWithMatch(id: "txn_1", matchId: 1, emailId: "msg_a", confidence: 0.9, count: 1)
         let candidate = sampleCandidate(emailId: "msg_a", isSelectedByAi: true)
-        let api = MockAPI(
-            categories: [sampleCategory(1, "Dining")],
-            response: .init(total: 1, items: [txn]),
-            candidatesByTransactionId: ["txn_1": [candidate]]
-        )
+        var config = MockAPIConfig(categories: [sampleCategory(1, "Dining")], response: .init(total: 1, items: [txn]))
+        config.candidatesByTransactionId = ["txn_1": [candidate]]
+        let api = MockAPI(config)
         let vm = ClassificationViewModel(api: api)
         vm.selection = ["txn_1"]
         await vm.loadAll()
@@ -233,11 +251,13 @@ final class ClassificationViewModelTests: XCTestCase {
     @MainActor
     func testLoadAllClearsBusyBeforeCandidatesFetchCompletes() async throws {
         // #R001-T03
-        let api = MockAPI(
+        let matchTxn = sampleTransactionWithMatch(id: "txn_1", matchId: 1, emailId: "msg", confidence: 0.9, count: 1)
+        var config = MockAPIConfig(
             categories: [sampleCategory(1, "Dining")],
-            response: .init(total: 1, items: [sampleTransactionWithMatch(id: "txn_1", matchId: 1, emailId: "msg", confidence: 0.9, count: 1)]),
-            candidatesDelayNanoseconds: 200_000_000
+            response: .init(total: 1, items: [matchTxn])
         )
+        config.candidatesDelayNanoseconds = 200_000_000
+        let api = MockAPI(config)
         let vm = ClassificationViewModel(api: api)
         vm.selection = ["txn_1"]
         await vm.loadAll()
@@ -347,7 +367,9 @@ final class ClassificationViewModelTests: XCTestCase {
             sampleTransaction("txn_3", date: "2026-04-18", classification: nil),
             sampleTransaction("txn_4", date: "2026-04-17", classification: nil),
         ])
-        let api = MockAPI(categories: [cat], response: firstPage, pagedResponses: [2: secondPage])
+        var config = MockAPIConfig(categories: [cat], response: firstPage)
+        config.pagedResponses = [2: secondPage]
+        let api = MockAPI(config)
         let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
         await vm.loadMore()
@@ -466,10 +488,9 @@ final class ClassificationViewModelTests: XCTestCase {
     @MainActor
     func testClearSelectedMatchCallsApiAndReloads() async {
         // #R035-T01
-        let matched = sampleTransactionWithMatch(
-            id: "txn_matched", matchId: 42, emailId: "msg_a", confidence: 0.9, count: 1,
-            state: "human_confirmed_ai_match"
-        )
+        var matchedSpec = SampleMatchSpec(id: "txn_matched", matchId: 42, emailId: "msg_a", confidence: 0.9, count: 1)
+        matchedSpec.state = "human_confirmed_ai_match"
+        let matched = sampleTransactionWithMatch(matchedSpec)
         let api = MockAPI(categories: [], response: .init(total: 1, items: [matched]))
         let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
@@ -540,42 +561,64 @@ final class ClassificationViewModelTests: XCTestCase {
 
     @MainActor
     func testSearchMailcartPopulatesResultsFromApi() async {
-        // #R040-T01
+        // #R040-T01 #R095-T01
         let hit = EmailSearchHit(email_message_id: "msg_phil", subject: "Hello Phil", from: "phil@example.com",
                                  received_at: "2026-05-17T12:00:00+00:00", snippet: "preview")
-        let api = MockAPI(categories: [], response: .init(total: 0, items: []),
-                          searchResponse: .init(query: "phil", items: [hit]))
+        var config = MockAPIConfig(categories: [], response: .init(total: 0, items: []))
+        config.searchResponse = .init(query: "subject:phil", items: [hit])
+        let api = MockAPI(config)
         let vm = ClassificationViewModel(api: api)
-        vm.mailcartSearchQuery = "phil"
+        vm.mailcartSearchSubject = "phil"
         await vm.searchMailcartIfNeeded()
         XCTAssertEqual(vm.mailcartSearchResults.map(\.email_message_id), ["msg_phil"])
         XCTAssertTrue(vm.mailcartSearchErrorText.isEmpty)
         let calls = await api.recordedSearchCalls()
         XCTAssertEqual(calls.count, 1)
-        XCTAssertEqual(calls.first?.query, "phil")
+        XCTAssertEqual(calls.first?.criteria.subject, "phil")
     }
 
     @MainActor
     func testSearchMailcartSurfacesApiFailure() async {
-        // #R040-T02
-        let api = MockAPI(categories: [], response: .init(total: 0, items: []),
-                          searchError: APIError.requestFailed("search failed"))
+        // #R040-T02 #R095-T02
+        var config = MockAPIConfig(categories: [], response: .init(total: 0, items: []))
+        config.searchError = APIError.requestFailed("search failed")
+        let api = MockAPI(config)
         let vm = ClassificationViewModel(api: api)
-        vm.mailcartSearchQuery = "phil"
+        vm.mailcartSearchBody = "phil"
         await vm.searchMailcartIfNeeded()
         XCTAssertTrue(vm.mailcartSearchResults.isEmpty)
         XCTAssertTrue(vm.mailcartSearchErrorText.contains("search failed"))
     }
 
     @MainActor
+    func testAdvancedTransactionFiltersForwardToFetchOptions() async {
+        // #R090-T01
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        vm.transactionStartDate = "2026-04-01"
+        vm.transactionEndDate = "2026-04-30"
+        vm.transactionInstitutionId = "inst_alpha"
+        vm.transactionMinAmount = "10"
+        vm.transactionMaxAmount = "100"
+        await vm.loadAll()
+        let options = await api.recordedLastFetchOptions()
+        XCTAssertEqual(options?.startDate, "2026-04-01")
+        XCTAssertEqual(options?.endDate, "2026-04-30")
+        XCTAssertEqual(options?.institutionId, "inst_alpha")
+        XCTAssertEqual(options?.minAmount, "10")
+        XCTAssertEqual(options?.maxAmount, "100")
+    }
+
+    @MainActor
     func testSaveSelectionRollsBackOnApiFailure() async {
         // #R010-T01
         let cat = sampleCategory(22, "Dining")
-        let api = MockAPI(
+        var config = MockAPIConfig(
             categories: [cat],
-            response: .init(total: 1, items: [sampleTransaction("txn_2", classification: nil)]),
-            saveError: APIError.requestFailed("save failed")
+            response: .init(total: 1, items: [sampleTransaction("txn_2", classification: nil)])
         )
+        config.saveError = APIError.requestFailed("save failed")
+        let api = MockAPI(config)
         let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
         vm.selection = ["txn_2"]

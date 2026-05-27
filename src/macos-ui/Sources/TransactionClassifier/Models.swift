@@ -71,46 +71,63 @@ struct TransactionRow: Codable, Identifiable, Hashable {
         case transaction_id, account_id, institution_id, account_last_four, date, amount, description, status
         case transaction_type_code, teller_category, classification, match
     }
+}
 
-    init(transaction_id: String, account_id: String, institution_id: String? = nil, account_last_four: String? = nil,
-         date: String, amount: Decimal, description: String, status: String, transaction_type_code: String?,
-         teller_category: String?, classification: TransactionCategory?, match: TransactionMatchInfo? = nil) {
-        self.transaction_id = transaction_id
-        self.account_id = account_id
-        self.institution_id = institution_id
-        self.account_last_four = account_last_four
-        self.date = date
-        self.amount = amount
-        self.description = description
-        self.status = status
-        self.transaction_type_code = transaction_type_code
-        self.teller_category = teller_category
-        self.classification = classification
-        self.match = match
-    }
-
+extension TransactionRow {
+    /// Custom decoding lives in an extension so the struct keeps Swift's synthesized
+    /// memberwise initializer for tests/fixtures while satisfying Lizard's parameter
+    /// threshold (direct property assignment avoids the 12-arg `self.init` call).
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        transaction_id = try c.decode(String.self, forKey: .transaction_id)
-        account_id = try c.decode(String.self, forKey: .account_id)
-        institution_id = try c.decodeIfPresent(String.self, forKey: .institution_id)
-        account_last_four = try c.decodeIfPresent(String.self, forKey: .account_last_four)
-        date = try c.decode(String.self, forKey: .date)
-        description = try c.decode(String.self, forKey: .description)
-        status = try c.decode(String.self, forKey: .status)
-        transaction_type_code = try c.decodeIfPresent(String.self, forKey: .transaction_type_code)
-        teller_category = try c.decodeIfPresent(String.self, forKey: .teller_category)
-        classification = try c.decodeIfPresent(TransactionCategory.self, forKey: .classification)
-        match = try c.decodeIfPresent(TransactionMatchInfo.self, forKey: .match)
-        if let value = try? c.decode(Decimal.self, forKey: .amount) { amount = value; return }
-        if let text = try? c.decode(String.self, forKey: .amount), let value = Decimal(string: text) { amount = value; return }
-        throw DecodingError.dataCorruptedError(forKey: .amount, in: c, debugDescription: "amount must be decimal string/number")
+        self.transaction_id = try c.decode(String.self, forKey: .transaction_id)
+        self.account_id = try c.decode(String.self, forKey: .account_id)
+        self.institution_id = try c.decodeIfPresent(String.self, forKey: .institution_id)
+        self.account_last_four = try c.decodeIfPresent(String.self, forKey: .account_last_four)
+        self.date = try c.decode(String.self, forKey: .date)
+        self.description = try c.decode(String.self, forKey: .description)
+        self.status = try c.decode(String.self, forKey: .status)
+        self.transaction_type_code = try c.decodeIfPresent(String.self, forKey: .transaction_type_code)
+        self.teller_category = try c.decodeIfPresent(String.self, forKey: .teller_category)
+        self.classification = try c.decodeIfPresent(TransactionCategory.self, forKey: .classification)
+        self.match = try c.decodeIfPresent(TransactionMatchInfo.self, forKey: .match)
+        self.amount = try TransactionRow.decodeAmount(from: c)
+    }
+
+    private static func decodeAmount(from container: KeyedDecodingContainer<CodingKeys>) throws -> Decimal {
+        if let value = try? container.decode(Decimal.self, forKey: .amount) { return value }
+        if let text = try? container.decode(String.self, forKey: .amount), let value = Decimal(string: text) { return value }
+        throw DecodingError.dataCorruptedError(
+            forKey: .amount,
+            in: container,
+            debugDescription: "amount must be decimal string/number"
+        )
     }
 }
 
 struct TransactionListResponse: Codable {
     let total: Int
     let items: [TransactionRow]
+}
+
+/// Query parameters for `ClassificationAPI.fetchTransactions`.
+///
+/// Bundled into a single struct so the API surface stays readable and call sites
+/// (UI loaders, fixtures, tests) can name only the fields they care about. Defaults
+/// match the most common UI list-load query.
+struct TransactionFetchOptions: Sendable, Equatable {
+    var search: String = ""
+    var onlyUnclassified: Bool = false
+    var matchState: String = ""
+    var onlyUnmovedMatch: Bool = false
+    var startDate: String = ""
+    var endDate: String = ""
+    var institutionId: String = ""
+    var minAmount: String = ""
+    var maxAmount: String = ""
+    var limit: Int = 150
+    var offset: Int = 0
+    var includeTotal: Bool = true
+    var countOnly: Bool = false
 }
 
 struct ClassificationMutation: Codable, Hashable {
@@ -127,55 +144,6 @@ struct ClassificationWriteResponse: Codable, Hashable {
     let nys_snw_category_id: Int?
     let type: String
     let updated_at: String
-}
-
-struct MatchReviewRow: Codable, Hashable, Identifiable {
-    let match_id: Int
-    let transaction_id: String
-    let email_message_id: String?
-    let state: String
-    let ai_confidence: Double?
-    let selected_by: String
-    let selected_at: String
-    let moved_to_matchy_at: String?
-    let description: String
-    let amount: Decimal
-    let date: String
-
-    var id: Int { match_id }
-
-    enum CodingKeys: String, CodingKey {
-        case match_id, transaction_id, email_message_id, state, ai_confidence, selected_by
-        case selected_at, moved_to_matchy_at, description, amount, date
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        match_id = try c.decode(Int.self, forKey: .match_id)
-        transaction_id = try c.decode(String.self, forKey: .transaction_id)
-        email_message_id = try c.decodeIfPresent(String.self, forKey: .email_message_id)
-        state = try c.decode(String.self, forKey: .state)
-        ai_confidence = try c.decodeIfPresent(Double.self, forKey: .ai_confidence)
-        selected_by = try c.decode(String.self, forKey: .selected_by)
-        selected_at = try c.decode(String.self, forKey: .selected_at)
-        moved_to_matchy_at = try c.decodeIfPresent(String.self, forKey: .moved_to_matchy_at)
-        description = try c.decode(String.self, forKey: .description)
-        date = try c.decode(String.self, forKey: .date)
-        if let value = try? c.decode(Decimal.self, forKey: .amount) {
-            amount = value
-            return
-        }
-        if let text = try? c.decode(String.self, forKey: .amount), let value = Decimal(string: text) {
-            amount = value
-            return
-        }
-        throw DecodingError.dataCorruptedError(forKey: .amount, in: c, debugDescription: "amount must be decimal string/number")
-    }
-}
-
-struct MatchReviewListResponse: Codable, Hashable {
-    let total: Int
-    let items: [MatchReviewRow]
 }
 
 struct MatchOverrideRequest: Codable, Hashable {
@@ -270,6 +238,45 @@ struct EmailSearchHit: Codable, Hashable, Identifiable {
     let snippet: String?
 
     var id: String { email_message_id }
+}
+
+/// Structured Mailcart search criteria for the Match & Classify candidates pane.
+struct EmailSearchCriteria: Sendable, Equatable {
+    var subject: String = ""
+    var sender: String = ""
+    var body: String = ""
+    var receivedStartDate: String = ""
+    var receivedEndDate: String = ""
+
+    var hasActiveFilter: Bool {
+        !subject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !sender.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !receivedStartDate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !receivedEndDate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func normalized() -> EmailSearchCriteria {
+        EmailSearchCriteria(
+            subject: subject.trimmingCharacters(in: .whitespacesAndNewlines),
+            sender: sender.trimmingCharacters(in: .whitespacesAndNewlines),
+            body: body.trimmingCharacters(in: .whitespacesAndNewlines),
+            receivedStartDate: receivedStartDate.trimmingCharacters(in: .whitespacesAndNewlines),
+            receivedEndDate: receivedEndDate.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+
+    /// Summary string returned by the classifier search API and echoed in UI status.
+    var querySummary: String {
+        let parts = [
+            subject.isEmpty ? nil : "subject:\(subject)",
+            sender.isEmpty ? nil : "sender:\(sender)",
+            body.isEmpty ? nil : "body:\(body)",
+            receivedStartDate.isEmpty ? nil : "from:\(receivedStartDate)",
+            receivedEndDate.isEmpty ? nil : "to:\(receivedEndDate)",
+        ].compactMap { $0 }
+        return parts.joined(separator: " ")
+    }
 }
 
 struct EmailSearchResponse: Codable, Hashable {

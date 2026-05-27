@@ -74,7 +74,7 @@ macOS UI action
   -> shared auth guard enforces X-Teller-Write-Token on all /v1 routes
   -> Pydantic validates payload
   -> SQLAlchemy persists to teller.transaction_nys_snw_category
-  -> 21_classification_persistence_verification_test.sh confirms API->DB write/read
+  -> tests/t16_classification_persistence_verification_test.sh confirms API->DB write/read
 ```
 
 #### Local Runtime Topology (processes, ports, configs)
@@ -183,13 +183,29 @@ AUTOMATION AND OPERATIONS
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Numbered workflow scripts (project root)                                 │
 ├──────────────────────────────────────────────────────────────────────────┤
-│ 01-03 setup (prereqs, venv, dependencies)                                │
-│ 04-06 quality/security prereqs (freshness, AV, SAST)                     │
-│ 07-08 DB deploy + verification                                           │
-│ 09-13 unit/regression test lanes                                         │
-│ 14-21 integration, API smoke, crash verification, app run                │
-│ 22 parallel aggregate runner                                             │
+│ 01-04 setup (prereqs, venv, dependencies, classifier TLS)                │
+│ 05    DB deploy                                                          │
+│ 06-07 ingest + bank-statement backfill                                   │
+│ 08-09 classification API + macOS UI launcher                             │
+│ 10    parallel aggregate test runner                                     │
+│ 11-13 quality trends / target / telemetry pruning                        │
 │ 97-99 backup / destroy / restore database                                │
+│                                                                          │
+│ Numbered test lanes (tests/t*.sh, t00-t16)                               │
+├──────────────────────────────────────────────────────────────────────────┤
+│ t00          code-quality analyzers                                      │
+│ t01          antivirus (ClamAV)                                          │
+│ t02          dependency + Postgres + Teller API freshness                │
+│ t03          static security (SAST)                                      │
+│ t04          requirements traceability                                   │
+│ t05          deploy database verification                                │
+│ t06-t08, t10 unit-test lanes (SQL / shell / Python / Swift)              │
+│ t09          mutation testing                                            │
+│ t11          property + stateful fuzz                                    │
+│ t12          dynamic security (DAST, ZAP)                                │
+│ t13          Teller API smoke                                            │
+│ t14-t15      macOS UI regression + crash verify                          │
+│ t16          classification persistence E2E                              │
 └──────────────────────────────────────────────────────────────────────────┘
 
 
@@ -226,7 +242,7 @@ SECURITY RUNBOOK (LOCAL COMPROMISE RESPONSE)
 
 1. Rotate `TELLER_CLASSIFIER_WRITE_TOKEN` in 1psa and restart classifier services.
 2. Rotate Teller dashboard credentials/tokens in `~/.teller` contexts as needed.
-3. Re-run `22_run_dynamic_security_tests.sh` and `06_run_static_security_tests.sh`.
+3. Re-run `tests/t12_run_dynamic_security_tests.sh` and `tests/t03_run_static_security_tests.sh`.
 4. Confirm clean artifacts under `artifacts/security` and `artifacts/security-dast`.
 5. Require green CI (`security-pr`) before merging any recovery changes.
 
@@ -324,7 +340,7 @@ Token and credential lifecycle notes:
 - Disconnected enrollment recovery: when Teller returns `enrollment.disconnected`, script triggers the macOS Connect repair flow and retries once.
 - Cert/key rotation boundary: certificate/private key issuance and revocation happen in Teller dashboard; local app/scripts only read local `certificate.pem` / `private_key.pem`.
 
-1. INGEST + NORMALIZATION + PERSISTENCE SEQUENCE
+2) INGEST + NORMALIZATION + PERSISTENCE SEQUENCE
 
 ---
 
@@ -346,7 +362,7 @@ PostgreSQL (teller schema)
       |
       +--> views/triggers/audit paths
 
-1. CLASSIFICATION WRITE PATH + AUTHZ BOUNDARY
+3) CLASSIFICATION WRITE PATH + AUTHZ BOUNDARY
 
 ---
 
@@ -388,7 +404,7 @@ Trust/authz boundaries:
           `tests/t16_classification_persistence_verification_test.sh`
 ```
 
-1. DATA MODEL ER DIAGRAM (CORE TABLES + RELATIONSHIPS)
+4) DATA MODEL ER DIAGRAM (CORE TABLES + RELATIONSHIPS)
 
 ---
 
@@ -485,7 +501,7 @@ Notes:
 - `transaction_classification` is implemented as `teller.transaction_nys_snw_category`.
 - Matchy tables (`transaction_email_match_run`, `transaction_email_candidate`, `transaction_email_match`, `transaction_email_match_audit`) are in active use by the classification API.
 
-1. LOCAL RUNTIME TOPOLOGY (PROCESSES, PORTS, FILES, ENV)
+5) LOCAL RUNTIME TOPOLOGY (PROCESSES, PORTS, FILES, ENV)
 
 ---
 
@@ -539,7 +555,7 @@ Local runtime debugging checklist:
 - If DB connect fails, inspect the resolved profile (`TELLER_DB_PROFILE`, profile file path precedence, and `1psa_or_env_item`).
 - If match-review email fetch fails, verify optional Mailcart process on `127.0.0.1:8788` or override `MAILCART_SERVICE_BASE_URL`.
 
-1. TEST STRATEGY MAP (LANES -> SCOPE -> GATES)
+6) TEST STRATEGY MAP (LANES -> SCOPE -> GATES)
 
 ---
 
@@ -547,28 +563,40 @@ Why: Explains why there are many numbered scripts and what each gate protects.
 
 Gate map (left = execution lane, right = protection intent):
 
-- 01-08 setup/deploy checks  -> env/bootstrap/deploy preconditions before deeper validation
-- 09 shell tests             -> script behavior/contracts (flags, outputs, failure semantics)
-- 10 python tests            -> package/unit behavior for Python ingestion/API helpers
-- 11 sql tests               -> schema invariants and DB contract checks (pgTAP)
-- 12 swift tests             -> app unit behavior in the macOS client
-- 13 ui regression           -> snapshot + XCUITest flow stability
-- 14 crash verify            -> crash reporter path and expected crash-handling telemetry
-- 15 smoke                   -> external API assumptions and minimal end-to-end liveliness
-- 19 persistence e2e         -> API -> DB correctness for write/read persistence paths
-- 20 dynamic security        -> runtime attack surface checks (DAST-style probes)
-- 22 parallel                -> aggregate readiness signal across gates
+- 01-05 setup/deploy scripts        -> env/bootstrap/deploy preconditions before deeper validation
+- t00 code quality                  -> dead code (Vulture/Periphery) + complexity (Radon/Xenon, Lizard)
+- t01 antivirus                     -> ClamAV signature freshness + repo scan
+- t02 dependency freshness          -> Python deps + Postgres + Teller API version drift
+- t03 static security (SAST)        -> Semgrep, Bandit, pip-audit, detect-secrets, gitleaks, ShellCheck, SwiftLint
+- t04 requirements traceability     -> `#R...` tag <-> requirements doc mapping
+- t05 deploy database verification  -> schema/role/constraint invariants on the deployed DB
+- t06 sql unit tests                -> pgTAP schema/contract checks
+- t07 shell unit tests              -> bats coverage of script flags/outputs/failure semantics
+- t08 python unit tests             -> package/unit behavior for Python ingestion/API helpers
+- t09 mutation testing              -> mutmut score + coverage gate
+- t10 swift unit tests              -> macOS client unit behavior
+- t11 fuzz                          -> Hypothesis property + stateful fuzz with budget gating
+- t12 dynamic security (DAST)       -> Schemathesis + ZAP runtime probes
+- t13 Teller API smoke              -> external API assumptions + minimal end-to-end liveliness
+- t14 macOS UI regression           -> snapshot + XCUITest flow stability
+- t15 macOS crash verify            -> crash reporter path + recovery metadata
+- t16 classification persistence    -> API -> DB write/read correctness
+- 10 parallel runner                -> aggregate readiness signal across the t00-t16 gates
 
 How to interpret failures:
 
-- 01-08 fail: stop early; developer/runtime prerequisites are not trustworthy yet.
-- 09-14 fail: lane-specific regression in shell/python/sql/swift/ui/crash behavior.
-- 15 fail: likely upstream/external contract drift or availability issue.
-- 19 fail: persistence contract break between API and database layers.
-- 20 fail: potential exploitable runtime behavior; treat as security triage.
-- 22 fail: composite readiness not met; inspect failing child lanes.
+- 01-05 fail: stop early; developer/runtime prerequisites are not trustworthy yet.
+- t00-t04 fail: code quality / freshness / security / traceability hygiene regression.
+- t05-t08, t10 fail: lane-specific regression in SQL/shell/python/swift unit behavior.
+- t09 fail: mutation score regression — review surviving mutants.
+- t11 fail: property/stateful fuzz found a counterexample; capture the example and add a unit test.
+- t12 fail: potential exploitable runtime behavior; treat as security triage.
+- t13 fail: likely upstream/external contract drift or availability issue.
+- t14-t15 fail: macOS UI regression or crash-handling path break.
+- t16 fail: persistence contract break between API and database layers.
+- 10 (parallel runner) fail: composite readiness not met; inspect failing child lanes.
 
-1. SECURITY THREAT MODEL (TRUST BOUNDARIES + DATA FLOWS)
+7) SECURITY THREAT MODEL (TRUST BOUNDARIES + DATA FLOWS)
 
 ---
 
@@ -648,7 +676,7 @@ Threat ownership map (who mitigates what):
 - DB integrity escalation (B4): schema/API owners enforce authz on `/v1/*` endpoints, parameterized ORM usage, and verification/audit tests.
 - Supply-chain compromise (AS): platform owners enforce freshness/security lanes (`tests/t02`, `tests/t03`, `tests/t12`) and fail-gates on high/critical findings.
 
-1. OPERATIONS / RECOVERY FLOW (BACKUP, RESTORE, DESTROY)
+8) OPERATIONS / RECOVERY FLOW (BACKUP, RESTORE, DESTROY)
 
 ---
 
@@ -660,9 +688,18 @@ Normal operations running
       v
 Run 97_backup_database.sh
       |
-      +--> Resolves postgres credential via:
-      |      POSTGRES_PSA_ITEM/POSTGRES_PSA_FIELD (defaults localhost_postgres_postgres/password)
-      |      -> writes <db>_<timestamp>.dump + matching _globals.sql
+      +--> profile selection (via db_profile_export.sh):
+      |      TELLER_DB_PROFILE env override -> else db_profiles default_profile
+      |
+      +--> if local target:
+      |      pg_dump via postgres admin (POSTGRES_PSA_ITEM/POSTGRES_PSA_FIELD via 1psa)
+      |      writes <profile>_<db>_<timestamp>.dump + matching _globals.sql
+      |
+      +--> if managed target:
+      |      re-resolves via supabase_direct profile
+      |      schema-scoped pg_dump using PG_ONEPSA_ITEM via 1psa (or TELLER_DB_PASSWORD)
+      |      writes <profile>_<db>_<timestamp>.dump (no globals; managed targets
+      |      do not expose role/grant state)
       |
       v
 Verify backup artifacts exist and are readable
@@ -690,37 +727,46 @@ Verify backup artifacts exist and are readable
       |          |      password resolution: POSTGRES_PSA_ITEM/POSTGRES_PSA_FIELD via 1psa
       |          |
       |          +--> requires explicit "destroy" confirmation
-      |          
-      |
       |
       v
 Run 99_restore_database.sh
       |
-      +--> restore credential resolution order:
-      |      1) POSTGRES_PSA_ITEM/POSTGRES_PSA_FIELD (admin restore actions)
-      |      2) TELLER_PSA_ITEM/TELLER_PSA_FIELD (post-restore teller login reset/verification)
+      +--> profile selection (via db_profile_export.sh):
+      |      TELLER_DB_PROFILE env override -> else db_profiles default_profile
       |
-      +--> schema exists? (full restore mode)
-      |      - yes and no --table: refuse restore (safety stop)
-      |      - no: continue full restore
-      |      - scoped --table restore: allowed into existing schema
+      +--> if managed target:
+      |      full restore is REFUSED (cannot CREATE DATABASE / restore globals)
+      |      require --table schema.table_name for scoped restore
+      |      managed --table restore uses PG_ONEPSA_ITEM via 1psa (or TELLER_DB_PASSWORD)
       |
-      +--> full restore order:
-      |      restore matching globals first -> restore dump with --create
-      |      -> ALTER USER teller to current 1psa secret
-      |      -> verify teller can authenticate
+      +--> if local target:
+      |      restore credential resolution order:
+      |        1) POSTGRES_PSA_ITEM/POSTGRES_PSA_FIELD (admin restore actions)
+      |        2) TELLER_PSA_ITEM/TELLER_PSA_FIELD (post-restore teller login reset/verification)
+      |
+      |      schema exists? (full restore mode)
+      |        - yes and no --table: refuse restore (safety stop)
+      |        - no: continue full restore
+      |        - scoped --table restore: allowed into existing schema
+      |
+      |      full restore order:
+      |        restore matching globals first -> restore dump with --create
+      |        -> ALTER USER teller to current 1psa secret
+      |        -> verify teller can authenticate
       |
       v
 Post-restore verification
       |
-      +--> ./08_deploy_database_verification_test.sh
-      +--> ./21_classification_persistence_verification_test.sh
+      +--> ./tests/t05_deploy_database_verification_test.sh
+      +--> ./tests/t16_classification_persistence_verification_test.sh
 ```
 
 Operational notes:
 
 - Treat `97` as mandatory before any destructive `98` action.
-- `99` requires a matching `_globals.sql` companion file for full restore mode.
+- For local-target restores, `99` requires a matching `_globals.sql` companion file in full-restore mode.
+- For managed-target restores, `99` always requires `--table schema.table` (full restore is refused because
+  managed targets cannot accept a CREATE-DATABASE-style restore or replay globals).
 - Use `--table schema.table` in `99` for targeted repair when full schema replacement is not desired.
 
 ```

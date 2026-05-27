@@ -37,10 +37,6 @@ struct ConnectContext: Codable, Hashable, Identifiable, Sendable {
     var displayEnrollmentId: String { enrollment_id.isEmpty ? "<missing>" : enrollment_id }
 }
 
-struct ConnectContextsResponse: Codable, Hashable, Sendable {
-    let contexts: [ConnectContext]
-}
-
 struct ConnectStoreTokenRequest: Codable, Hashable, Sendable {
     let token: String
     let enrollmentId: String
@@ -55,10 +51,6 @@ struct ConnectStoreTokenResponse: Codable, Hashable, Sendable {
     let enrollment_id_path: String
 }
 
-struct ConnectDeleteContextRequest: Codable, Hashable, Sendable {
-    let targetKey: String
-}
-
 struct ConnectDeleteContextResponse: Codable, Hashable, Sendable {
     let ok: Bool
     let moved_token: String?
@@ -66,27 +58,34 @@ struct ConnectDeleteContextResponse: Codable, Hashable, Sendable {
     let remaining: [ConnectContext]
 }
 
+/// Teller Connect SDK credentials carried with each `ConnectStartSession`.
+/// Bundled together so callers pass one parameter instead of three, which keeps
+/// `ConnectStartSession.init` under the strict parameter-count quality gate.
+struct ConnectCredentials: Hashable, Sendable {
+    let applicationId: String
+    let environment: String
+    let enrollmentId: String
+}
+
 struct ConnectStartSession: Hashable, Sendable, Identifiable {
     let id: UUID
     let action: ConnectAction
     let targetKey: String
-    let applicationId: String
-    let environment: String
-    let enrollmentId: String
+    let credentials: ConnectCredentials
+
+    var applicationId: String { credentials.applicationId }
+    var environment: String { credentials.environment }
+    var enrollmentId: String { credentials.enrollmentId }
 
     init(
         id: UUID = UUID(),
         action: ConnectAction,
         targetKey: String,
-        applicationId: String,
-        environment: String,
-        enrollmentId: String
+        credentials: ConnectCredentials
     ) {
         self.id = id
         self.action = action
         self.targetKey = targetKey
-        self.applicationId = applicationId
-        self.environment = environment
-        self.enrollmentId = enrollmentId
+        self.credentials = credentials
     }
 }

@@ -55,9 +55,8 @@ Before `./05_deploy_database.sh`, ensure PostgreSQL is installed and running for
 - `src/teller/` - Python package (ORM models, DB profile/engine, ingest persistence, FastAPI classification API, Mailcart proxy client).
 - `src/macos-ui/` - SwiftUI desktop app (`TransactionClassifier`) for Match Review, category management, and Connect enrollment flows.
 - `src/sql/postgres/` - canonical schema objects, triggers, and views for the `teller` schema.
-- `tests/` - `py/` (`unittest`), `sh/` (`bats`), `sql/` (`pgTAP`) plus `macos-ui` snapshot/XCUITest lanes.
+- `tests/` - `py/` (`unittest`), `sh/` (`bats`), `sql/` (`pgTAP`), plus `swift/` and `swift-ui/` symlinks into `src/macos-ui/Tests` and `src/macos-ui/UITests` for snapshot + XCUITest lanes.
 - `requirements/` - requirements traceability docs mapped to source `#R...` tags.
-- `archive/legacy/` - archived legacy/demo assets (including the retired Teller Connect demo HTML and `teller-connect-ui` sample project).
 
 ## Testing and Verification
 
@@ -102,7 +101,7 @@ Quality trend / target checks:
 
 All primary lanes live under `tests/t*.sh`:
 
-- `./tests/t00_run_code_quality_tests.sh` - code-quality analyzers (Vulture, Radon, Xenon)
+- `./tests/t00_run_code_quality_tests.sh` - code-quality analyzers (Python: Vulture, Radon, Xenon; Swift: Periphery, Lizard)
 - `./tests/t01_run_av_test.sh` - antivirus scan (ClamAV)
 - `./tests/t02_run_dependency_freshness_tests.sh` - dependency + PostgreSQL + Teller API freshness
 - `./tests/t03_run_static_security_tests.sh` - static security scanning (SAST)
@@ -138,8 +137,6 @@ python3 -m unittest discover tests/py
 Local Teller API reference notes now live under `docs/teller-api-reference/`.
 
 ## Secret Sources
-
-`archive/legacy/secrets.txt` is archival context only and is not read by scripts.
 
 Active secret and credential sources are:
 
@@ -188,7 +185,7 @@ Active secret and credential sources are:
 Core lane scripts under `tests/`:
 
 - `tests/t00_run_code_quality_tests.sh`
-  - Runs static code-quality analyzers (Vulture/Radon/Xenon) and writes reports to `artifacts/quality/reports`.
+  - Runs static code-quality analyzers and writes reports to `artifacts/quality/reports`. Python lane: Vulture (dead code), Radon (complexity metrics), Xenon (complexity gate). Swift lane: Periphery (dead code; Vulture analog) and Lizard (complexity report + threshold gate; Radon+Xenon analog).
 - `tests/t01_run_av_test.sh`
   - Runs ClamAV lane (signature freshness + scan + optional freshclam recovery).
 - `tests/t02_run_dependency_freshness_tests.sh`
@@ -241,7 +238,10 @@ normal operations
       v
 97_backup_database.sh
       |
-      +--> verify <db>_<timestamp>.dump + matching _globals.sql exist
+      +--> resolve active profile (TELLER_DB_PROFILE -> db-profiles.json default)
+      +--> local target  : pg_dump prod via postgres admin + pg_dumpall globals
+      +--> managed target: switch to supabase_direct, schema-scoped pg_dump (no globals)
+      +--> verify <profile>_<db>_<timestamp>.dump (+ _globals.sql for local) exist
       |
       v
 optional destructive teardown?
@@ -258,9 +258,11 @@ optional destructive teardown?
       v
 99_restore_database.sh
       |
-      +--> full restore preflight: if teller schema exists, restore is refused
-      +--> table-scoped restore: pass --table schema.table_name to restore specific tables
-      +--> restore order: globals first -> dump -> teller password reset/verification
+      +--> resolve active profile (TELLER_DB_PROFILE -> db-profiles.json default)
+      +--> local target  : full restore allowed; preflight refuses if teller schema exists
+      |                    restore order: globals first -> dump -> teller password reset/verification
+      +--> managed target: full restore refused (cannot CREATE DATABASE / restore globals)
+      |                    require --table schema.table_name for scoped restore
       |
       v
 post-restore verification
@@ -272,14 +274,18 @@ post-restore verification
 Credential source resolution order used by recovery scripts:
 
 - `97_backup_database.sh`:
-  - `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD` (defaults: `localhost_postgres_postgres` / `password`)
+  - profile resolution: `TELLER_DB_PROFILE` env override, otherwise profile file `default_profile`
+  - managed target: re-resolves via `supabase_direct` profile; password from env override or profile `PG_ONEPSA_ITEM` via `1psa`
+  - local target: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD` via `1psa` (defaults `localhost_postgres_postgres` / `password`)
 - `98_destroy_database.sh`:
   - profile resolution: `TELLER_DB_PROFILE` env override, otherwise profile file `default_profile`
   - managed target credential source: env override first, then profile `PG_ONEPSA_ITEM` via `1psa`
   - local target credential source: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD` via `1psa`
 - `99_restore_database.sh`:
-  - admin restore actions: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD`
-  - teller post-restore credential check/reset: `TELLER_PSA_ITEM`/`TELLER_PSA_FIELD`
+  - profile resolution: `TELLER_DB_PROFILE` env override, otherwise profile file `default_profile`
+  - managed target: full restore refused; `--table` scoped restore uses profile `PG_ONEPSA_ITEM` via `1psa`
+  - local target admin actions: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD`
+  - teller post-restore credential check/reset (local only): `TELLER_PSA_ITEM`/`TELLER_PSA_FIELD`
 
 ## Ingest + Normalization + Persistence
 

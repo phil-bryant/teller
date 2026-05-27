@@ -250,6 +250,11 @@ if [[ "$RUN_XCUITESTS" == "true" ]]; then
   rm -rf "$XCUITEST_RESULT_BUNDLE_PATH"
   xattr -dr com.apple.quarantine "$XCUITEST_DERIVED_DATA_PATH" >/dev/null 2>&1 || true
 
+  XCUITEST_STEPS_FILE="$REPO_ROOT/artifacts/macos-ui-regression/xcuitest-steps.env"
+  mkdir -p "$(dirname "$XCUITEST_STEPS_FILE")"
+  printf '%s' "${XCUITEST_SELECTED_NUMBERS:-$XCUITEST_SMOKE_DEFAULT_STEPS}" > "$XCUITEST_STEPS_FILE"
+  export XCUITEST_STEPS_FILE
+
   if [[ -n "$XCUITEST_SELECTED_NUMBERS" ]]; then
     echo "ℹ️  Using XCUITest profile '${XCUITEST_PROFILE}' with scenarios: ${XCUITEST_SELECTOR_RAW}"
     export XCUITEST_STEPS="$XCUITEST_SELECTED_NUMBERS"
