@@ -32,7 +32,7 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `08_run_classification_api.py` (compatibility alias)
 - `tests/t16_classification_persistence_verification_test.sh`
 - `tests/t12_run_dynamic_security_tests.sh`
-- `09_run_classification_macos-ui.sh`
+- `09_run_classification_macos_ui.sh`
 - `10_run_all_tests_parallel.sh`
 - `11_report_quality_trends.sh`
 - `12_validate_quality_target.sh`
@@ -75,7 +75,7 @@ cp config/db-profiles-EXAMPLE.json config/db-profiles.json
 ./08_run_classification_api.py
 ./tests/t16_classification_persistence_verification_test.sh
 ./tests/t12_run_dynamic_security_tests.sh
-./09_run_classification_macos-ui.sh
+./09_run_classification_macos_ui.sh
 ./10_run_all_tests_parallel.sh
 ```
 
@@ -99,7 +99,7 @@ External systems
   - Mailcart local service (optional)
 
 Python backend layer
-  - Runtime: Python 3.8+ (setup prefers 3.12)
+  - Runtime: Python 3.10+ (setup prefers 3.12)
   - Frameworks/libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,
     psycopg2-binary, requests, structlog, python-dotenv
   - Main flows:
@@ -306,7 +306,7 @@ Mutation endpoints require a write token from the `1psa` item `TELLER_CLASSIFIER
 
 These checks run as part of existing app/setup workflows:
 
-- `./09_run_classification_macos-ui.sh`
+- `./09_run_classification_macos_ui.sh`
   - Builds and launches the native macOS app; Connect tab owns enrollment add/reconnect/delete and token persistence.
   - Connect setup smoke checks are handled in-app by `TellerSetupService` (`GET /institutions`, and optionally `GET /accounts` when token is present).
 
@@ -519,7 +519,7 @@ Active secret and credential sources are:
   - Smart default auto-selects `TXN_ID` and `CATEGORY_ID`; use `--require-env-ids` for strict CI mode.
 - `22_run_dynamic_security_tests.sh`
   - Runs DAST checks (Schemathesis + OWASP ZAP quick scan and related hardening checks) against running/local API targets.
-- `09_run_classification_macos-ui.sh`
+- `09_run_classification_macos_ui.sh`
   - Builds and launches `src/macos-ui/.build/debug/TransactionClassifier` from the repo root.
   - Connect tab hosts native Teller Connect enrollment/reconnect/add/delete (WebView-backed, no standalone localhost server).
 - `24_run_all_tests_parallel.sh`
@@ -644,7 +644,7 @@ Local app-based enrollment and token refresh:
 After completing Teller Connect in the native app, the returned token is saved under `~/.teller`:
 
 ```bash
-./09_run_classification_macos-ui.sh
+./09_run_classification_macos_ui.sh
 ```
 
 Connect behavior:
@@ -785,7 +785,7 @@ macOS UI action
 #### Local Runtime Topology (processes, ports, configs)
 
 ```text
-TransactionClassifier (SwiftUI app, launched by 09_run_classification_macos-ui.sh)
+TransactionClassifier (SwiftUI app, launched by 09_run_classification_macos_ui.sh)
   -> talks to FastAPI at TELLER_CLASSIFIER_API_URL (default https://127.0.0.1:8787)
 
 08_run_classification_api.py (FastAPI)
@@ -851,7 +851,7 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  ┌──────────────────────────────────────────────────────────────────────────────┐
  │                              PYTHON BACKEND LAYER                            │
  ├──────────────────────────────────────────────────────────────────────────────┤
- │ Runtime: Python 3.8+ (venv; prefers 3.12 in setup script)                    │
+│ Runtime: Python 3.10+ (venv; prefers 3.12 in setup script)                   │
  │ Frameworks/Libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,          │
  │                  psycopg2-binary, requests, structlog, python-dotenv         │
  │ Main flows:                                                                  │
@@ -924,7 +924,7 @@ SECURITY SCORECARD (10/10 EXIT GATE)
 - DAST coverage: Schemathesis (`SCHEMATHESIS_MODE=all` by default) plus ZAP quick scan with machine-readable severity summary.
 - ZAP gate policy: threshold-driven fail behavior via `SECURITY_ZAP_FAIL_THRESHOLD` (`high` default; `none|high|medium|low|informational`).
 - CI enforcement: required PR security workflow at `.github/workflows/security-pr.yml`; scheduled deep security workflow at `.github/workflows/security-nightly.yml`.
-- Dependency hygiene: `requirements.txt` is fully pinned (including `psycopg2-binary==2.9.12`).
+- Dependency hygiene: `requirements.txt` is pinned for runtime dependencies (including `psycopg2-binary==2.9.12`), with a bounded compatibility range for test tooling (`pytest>=8.1,<10`).
 
 SECURITY RUNBOOK (LOCAL COMPROMISE RESPONSE)
 ============================================
@@ -1017,7 +1017,7 @@ Trust boundaries:
                          └───────────────┬───────────────┘                       │
                                          │ enrollment.disconnected               │
                                          └───────────────────────────────────────┘
-                                                        launches 09_run_classification_macos-ui.sh
+                                                        launches 09_run_classification_macos_ui.sh
 ```
 
 Token and credential lifecycle notes:
@@ -1203,7 +1203,7 @@ Why: Helpful for debugging "what should be running" and "where config comes from
 │  App/UI process                                                                            │
 │  ┌──────────────────────────────────────────────────────────┐                              │
 │  │ SwiftUI app: TransactionClassifier                       │                              │
-│  │ launcher: 09_run_classification_macos-ui.sh              │                              │
+│  │ launcher: 09_run_classification_macos_ui.sh              │                              │
 │  │ Connect runs in-process (no localhost Connect server)    │                              │
 │  └───────────────────────────────┬──────────────────────────┘                              │
 │                                  │ HTTP: TELLER_CLASSIFIER_API_URL                         │
