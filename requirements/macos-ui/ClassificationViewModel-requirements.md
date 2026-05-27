@@ -2,7 +2,12 @@
 
 ## Scope
 
-Applies to `src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift`.
+Applies to:
+- `src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift`
+- `src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift`
+- `src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+ClassificationActions.swift`
+- `src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+CategoryEditor.swift`
+- `src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift`
 
 R001  Statement: Load categories and initial transaction page together.
 Design: `loadAll()` concurrently fetches categories and the first transaction page (`pageSize` 150), requests the list with `includeTotal: false` (API R072), assigns rows, updates picker/status, then clears `busy` before kicking off background work. Accurate totals arrive via `refreshTransactionTotal()` (`countOnly: true`). Candidate/email side-pane loads run in a detached task after `busy` is cleared so the transaction-list spinner does not wait on match/message fetches.
@@ -63,6 +68,11 @@ Design: When `TELLER_UI_PROFILE_TRANSACTION_LIST=true`, `TransactionListProfiler
 Tests:
 - R080-T01: Verify profiling is disabled unless the environment variable is set to `true`.
 
+R085  Statement: Keep view-model behavior stable while splitting concerns into focused files.
+Design: `ClassificationViewModel` remains the observable state surface, while transaction loading, classification mutation, category-editor actions, and match-review actions are implemented in separate `ClassificationViewModel+*.swift` extensions to reduce single-file complexity without changing call-site behavior.
+Tests:
+- R085-T01: Save a category draft and verify the category list reloads, editor selection updates to the saved id, and status text reflects the save result.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ClassificationViewModel.swift` to replace prior plan-only coverage.
@@ -71,3 +81,4 @@ Tests:
 - 2026-05-19: Added R035 (clear human-reviewed match back to unmatched).
 - 2026-05-19: Added R040 (debounced email search in candidates pane).
 - 2026-05-26: Expanded R001 for fast first load (R072 client, busy cleared before side pane); added R075 and R080.
+- 2026-05-26: Split `ClassificationViewModel` concerns into extension files and added R085 traceability for behavior-preserving decomposition.

@@ -20,6 +20,8 @@ actor MockAPI: ClassificationAPI {
     var candidatesDelayNanoseconds: UInt64 = 0
     var lastSaved: [ClassificationMutation] = []
     var deletedCategoryIds: [Int] = []
+    var createdCategoryRequests: [CategoryMutationRequest] = []
+    var updatedCategoryRequests: [(id: Int, request: CategoryMutationRequest)] = []
     var clearedMatchIds: [Int] = []
     var clearedTransactionIds: [String] = []
     var searchCalls: [(query: String, limit: Int)] = []
@@ -70,6 +72,46 @@ actor MockAPI: ClassificationAPI {
         categories.removeAll { $0.nys_snw_category_id == id }
         return .init(nys_snw_category_id: id, deleted: true)
     }
+    func createCategory(_ category: CategoryMutationRequest) async throws -> CategoryOption {
+        createdCategoryRequests.append(category)
+        let newId = (categories.map(\.nys_snw_category_id).max() ?? 0) + 1
+        let display = category.categorization ?? category.level_4 ?? category.level_3 ?? category.level_2_name ?? category.level_1_name ?? "New Category"
+        let saved = CategoryOption(
+            nys_snw_category_id: newId,
+            level_1: category.level_1,
+            level_1_name: category.level_1_name,
+            level_2: category.level_2,
+            level_2_name: category.level_2_name,
+            level_3: category.level_3,
+            level_4: category.level_4,
+            categorization: category.categorization,
+            applicability: category.applicability,
+            display_label: display
+        )
+        categories.append(saved)
+        return saved
+    }
+    func updateCategory(id: Int, category: CategoryMutationRequest) async throws -> CategoryOption {
+        updatedCategoryRequests.append((id, category))
+        guard let idx = categories.firstIndex(where: { $0.nys_snw_category_id == id }) else {
+            throw APIError.requestFailed("category \(id) not found")
+        }
+        let existing = categories[idx]
+        let saved = CategoryOption(
+            nys_snw_category_id: id,
+            level_1: category.level_1 ?? existing.level_1,
+            level_1_name: category.level_1_name ?? existing.level_1_name,
+            level_2: category.level_2 ?? existing.level_2,
+            level_2_name: category.level_2_name ?? existing.level_2_name,
+            level_3: category.level_3 ?? existing.level_3,
+            level_4: category.level_4 ?? existing.level_4,
+            categorization: category.categorization ?? existing.categorization,
+            applicability: category.applicability ?? existing.applicability,
+            display_label: category.categorization ?? existing.display_label
+        )
+        categories[idx] = saved
+        return saved
+    }
     func recordedDeletedCategoryIds() -> [Int] { deletedCategoryIds }
     func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse {
         clearedMatchIds.append(matchId)
@@ -86,6 +128,7 @@ actor MockAPI: ClassificationAPI {
         return EmailSearchResponse(query: query, items: searchResponse.items)
     }
     func recordedSearchCalls() -> [(query: String, limit: Int)] { searchCalls }
+    func recordedCreatedCategoryRequests() -> [CategoryMutationRequest] { createdCategoryRequests }
 }
 
 private func sampleCategory(_ id: Int, _ name: String, applicability: String? = nil) -> CategoryOption {
@@ -470,6 +513,29 @@ final class ClassificationViewModelTests: XCTestCase {
         XCTAssertTrue(vm.categoryEditorSelection.isEmpty)
         XCTAssertEqual(vm.allCategories.map(\.nys_snw_category_id), [13])
         XCTAssertEqual(vm.categoryEditorStatusText, "Deleted 2 categories.")
+    }
+
+    @MainActor
+    func testSaveCategoryDraftCreatesCategoryAndSyncsEditorSelection() async {
+        // #R085-T01
+        let categories = [sampleCategory(11, "Utilities"), sampleCategory(12, "Dining")]
+        let api = MockAPI(categories: categories, response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        await vm.reloadCategories()
+        vm.beginNewCategoryDraft()
+        vm.categoryEditorDraft.categorization = "Streaming"
+        vm.categoryEditorDraft.applicability = "CARD"
+        await vm.saveCategoryDraft()
+
+        let created = await api.recordedCreatedCategoryRequests()
+        XCTAssertEqual(created.count, 1)
+        XCTAssertEqual(created.first?.categorization, "Streaming")
+        XCTAssertFalse(vm.categoryEditorSelection.isEmpty)
+        let savedId = try? XCTUnwrap(vm.categoryEditorSelection.first)
+        XCTAssertEqual(vm.categoryEditorPrimarySelectionId, savedId)
+        XCTAssertTrue(vm.allCategories.contains(where: { $0.nys_snw_category_id == savedId }))
+        XCTAssertEqual(vm.categoryEditorStatusText, "Saved category \(savedId ?? -1).")
+        XCTAssertTrue(vm.categoryEditorErrorText.isEmpty)
     }
 
     @MainActor
