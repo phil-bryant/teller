@@ -50,11 +50,12 @@ Tests:
 - R035-T02: Submit multiple updates and verify response cardinality and per-item write results.
 
 R040  Statement: Require authenticated token for all classifier API endpoints.
-Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, require `X-Teller-Write-Token` for all `/v1/*` routes (read and write), compare supplied token using constant-time equality, and return 401 for missing or invalid tokens.
+Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, cache the resolved value in-process for runtime auth checks, require `X-Teller-Write-Token` for all `/v1/*` routes (read and write), compare supplied token using constant-time equality, and return 401 for missing or invalid tokens. Rotating the 1psa token requires classifier process restart to refresh the cached value.
 Tests:
 - R040-T01: Submit write requests without `X-Teller-Write-Token` and verify 401 response.
 - R040-T02: Submit write requests with mismatched token and verify 401 response.
 - R040-T03: Submit read requests without `X-Teller-Write-Token` and verify 401 response.
+- R040-T04: Invoke token resolution twice in one process and verify 1psa is called only once (cache semantics).
 
 R045  Statement: Reject malformed mutation payloads before database persistence.
 Design: Category mutation fields reject explicit `null` field values, normalize by stripping control/non-printable characters before persistence, and reject all-empty normalized hierarchy writes with HTTP 409 conflict semantics in `_write_category`; OpenAPI publishes `minProperties` plus per-field/non-empty guards so empty or null-only objects are schema-invalid; batch classification mutations constrain `transaction_id` format/length and cap `updates` list length.
@@ -119,6 +120,7 @@ Tests:
 ## Changelog
 
 - 2026-05-26: Added R072 (`include_total`, `count_only`) and optimized active-match lateral + `match_count` window aggregation for `/v1/transactions`.
+- 2026-05-27: Clarified R040 runtime token cache semantics and explicit restart requirement after write-token rotation.
 
 - 2026-05-25: Expanded R040 authz boundary to all `/v1/*` endpoints (read and write) with shared token enforcement.
 - 2026-04-22: Initial reverse-engineered requirements for `src/teller/teller_classification_api.py`.

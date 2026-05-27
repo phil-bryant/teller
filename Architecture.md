@@ -70,7 +70,8 @@ Token lifecycle notes:
 ```text
 macOS UI action
   -> POST /v1/transactions/classifications
-  -> FastAPI app startup resolves TELLER_CLASSIFIER_WRITE_TOKEN from 1psa
+  -> FastAPI app validates TELLER_CLASSIFIER_WRITE_TOKEN availability at startup
+  -> first authenticated /v1 request resolves token from 1psa and caches it in-process
   -> shared auth guard enforces X-Teller-Write-Token on all /v1 routes
   -> Pydantic validates payload
   -> SQLAlchemy persists to teller.transaction_nys_snw_category
@@ -426,10 +427,12 @@ Trust/authz boundaries:
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │ FastAPI app (`08_run_classification_api.py` -> `create_app`) │  │
 │  │                                                              │  │
-│  │ 1) Startup preflight resolves `TELLER_CLASSIFIER_WRITE_TOKEN`│  │
-│  │    from 1psa before serving `/v1/*` traffic.                 │  │
+│  │ 1) Startup preflight verifies `TELLER_CLASSIFIER_WRITE_TOKEN` │  │
+│  │    can be resolved from 1psa before serving `/v1/*` traffic. │  │
 │  │ 2) Request authz enforces `X-Teller-Write-Token` on `/v1/*`; │  │
-│  │    `/health` remains unauthenticated.                        │  │
+│  │    runtime token resolution is cached in-process (restart to  │  │
+│  │    pick up rotated 1psa values).                              │  │
+│  │    `/health` remains unauthenticated.                         │  │
 │  │ 3) Pydantic validation rejects malformed payloads.           │  │
 │  │ 4) `_write_one` persists classification mutations via        │  │
 │  │    SQLAlchemy into `teller.transaction_nys_snw_category`.    │  │

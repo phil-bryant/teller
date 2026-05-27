@@ -12,6 +12,7 @@ except RuntimeError:
     TestClient = None
 
 from teller.teller_classification_api import (
+    _configured_write_token,
     _estimate_transaction_total,
     _category_params,
     _create_transaction_match,
@@ -21,6 +22,7 @@ from teller.teller_classification_api import (
     _write_category,
     _write_one,
     create_app,
+    reset_configured_write_token_cache,
     CategoryCreateMutation,
     CategoryUpdateMutation,
     ClassificationMutation,
@@ -94,6 +96,7 @@ class ClassificationApiTests(unittest.TestCase):
 
     def tearDown(self):
         self._token_patch.stop()
+        reset_configured_write_token_cache()
 
     def _route_endpoint(self, app, path, method):
         for route in app.routes:
@@ -136,6 +139,23 @@ class ClassificationApiTests(unittest.TestCase):
         response = client.post("/v1/categories/counts")
         self.assertEqual(response.status_code, 405)
         self.assertEqual(response.headers.get("allow"), "GET")
+
+    @patch("teller.teller_classification_api.run_process")
+    @patch("teller.teller_classification_api.shutil.which", return_value="/usr/local/bin/1psa")
+    def test_configured_write_token_is_cached_per_process(self, _which_mock, run_process_mock):
+        #R040-T04
+        run_process_mock.return_value = SimpleNamespace(stdout="cached-write-token\n")
+        self._token_patch.stop()
+        try:
+            reset_configured_write_token_cache()
+            first = _configured_write_token()
+            second = _configured_write_token()
+        finally:
+            self._token_patch.start()
+
+        self.assertEqual(first, "cached-write-token")
+        self.assertEqual(second, "cached-write-token")
+        self.assertEqual(run_process_mock.call_count, 1)
 
     def test_display_label_joins_hierarchy(self):
         #R005-T01

@@ -6,6 +6,7 @@ import shutil
 import unicodedata
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from functools import lru_cache
 from subprocess import CalledProcessError, run as run_process  # nosec B404
 from typing import Annotated, Any, Dict, List, Literal, Optional
 from fastapi import FastAPI, HTTPException, Query, Request, Response
@@ -153,8 +154,8 @@ def _estimate_transaction_total(*, offset: int, limit: int, row_count: int) -> i
     return offset + row_count + 1
 
 
-_WRITE_TOKEN_PSA_ITEM = "_".join(("TELLER", "CLASSIFIER", "WRITE", "TOKEN"))
-_WRITE_TOKEN_HEADER = "-".join(("x", "teller", "write", "token"))
+_WRITE_TOKEN_PSA_ITEM = "TELLER_CLASSIFIER_WRITE_TOKEN"
+_WRITE_TOKEN_HEADER = "x-teller-write-token"
 _CATEGORY_TEXT_FIELDS = (
     "level_1",
     "level_1_name",
@@ -282,7 +283,10 @@ def _normalize_text(value: Optional[str]) -> Optional[str]:
     return normalized if normalized else None
 
 
+@lru_cache(maxsize=1)
 def _configured_write_token() -> str:
+    #R040: Cache the resolved write token for process lifetime. Rotating the 1psa item
+    #R040: requires restarting the classifier API process so auth checks use the new value.
     one_psa_path = shutil.which("1psa")
     if not one_psa_path or not os.path.isabs(one_psa_path):
         raise HTTPException(status_code=500, detail="1psa is required to resolve classifier write token")
@@ -307,6 +311,10 @@ def _configured_write_token() -> str:
             detail=f"1psa item {_WRITE_TOKEN_PSA_ITEM} returned an empty classifier write token",
         )
     return token
+
+
+def reset_configured_write_token_cache() -> None:
+    _configured_write_token.cache_clear()
 
 
 def _require_write_access(request: Request) -> None:
