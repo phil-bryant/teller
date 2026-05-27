@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #R001: Use strict mode and temp files for deterministic comparisons.
 umask 007
 set -euo pipefail

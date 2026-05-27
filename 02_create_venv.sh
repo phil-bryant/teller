@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 umask 007
 
 #R001: Fail fast on unrecoverable errors.
-set -e
+set -euo pipefail
 
 # Read Python version from prerequisites script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,7 +34,7 @@ CURRENT_DIRECTORY_NAME=$(basename "$(pwd)")
 VENV_DIR="${CURRENT_DIRECTORY_NAME}-venv"
 
 #R025: Refuse creation while another virtual environment is active.
-if [ -n "$VIRTUAL_ENV" ]; then
+if [ -n "${VIRTUAL_ENV:-}" ]; then
     echo "❌ ERROR: A virtual environment is currently active!"
     echo ""
     echo "Please deactivate first by running:"

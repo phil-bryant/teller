@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #R001: Fail fast on unrecoverable teardown errors.
-set -e
+umask 007
+set -euo pipefail
 
 SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
@@ -66,6 +67,7 @@ if ! load_profile_exports_from_file "$profile_exports_file"; then
 fi
 rm -f "$profile_exports_file"
 require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET PG_DBNAME
+PG_SSLMODE="${PG_SSLMODE:-}"
 
 # Ensure psql stops immediately on SQL errors.
 PSQL_OPTS=(-v ON_ERROR_STOP=1)

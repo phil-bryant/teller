@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 umask 007
 
 #R001: Run with bash and fail fast on unrecoverable errors.
-set -e
+set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -305,6 +305,8 @@ ensure_brew_formula "perl"
 ensure_brew_formula "cpanminus" "cpanm"
 #R110: Ensure mkcert is available for local classifier API TLS installation.
 ensure_brew_formula "mkcert"
+#R115: Ensure Periphery Swift dead-code analyzer is available for code-quality lane.
+ensure_brew_formula "peripheryapp/periphery/periphery" "periphery"
 ensure_zap_cli
 
 ensure_1psa

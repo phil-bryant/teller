@@ -19,7 +19,7 @@ teardown() {
 }
 
 @test "idempotent path skips installs when dependencies already exist" {
-  #R010-T01 #R035-T01 #R040-T01 #R050-T01 #R050-T02 #R079-T02 #R080-T02 #R085-T02 #R090-T02 #R095-T02 #R100-T02 #R105-T02 #R110-T02
+  #R010-T01 #R035-T01 #R040-T01 #R050-T01 #R050-T02 #R079-T02 #R080-T02 #R085-T02 #R090-T02 #R095-T02 #R100-T02 #R105-T02 #R110-T02 #R115-T02
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd brew "exit 0"
   stub_cmd go "exit 0"
@@ -33,6 +33,7 @@ teardown() {
   stub_cmd perl "exit 0"
   stub_cmd pg_prove "exit 0"
   stub_cmd mkcert "exit 0"
+  stub_cmd periphery "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
 
   run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
@@ -56,6 +57,7 @@ teardown() {
   stub_cmd perl "exit 0"
   stub_cmd pg_prove "exit 0"
   stub_cmd mkcert "exit 0"
+  stub_cmd periphery "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
 echo git "\$*" >> "${CALLS_LOG}"
@@ -85,6 +87,7 @@ EOF
   stub_cmd perl "exit 0"
   stub_cmd pg_prove "exit 0"
   stub_cmd mkcert "exit 0"
+  stub_cmd periphery "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
 echo git "\$*" >> "${CALLS_LOG}"
@@ -131,7 +134,7 @@ EOF
 }
 
 @test "installs bats-core perl cpanminus and mkcert when tooling is missing" {
-  #R055-T01 #R055-T02 #R060-T01 #R060-T02 #R070-T01 #R070-T02 #R075-T01 #R075-T02 #R110-T01
+  #R055-T01 #R055-T02 #R060-T01 #R060-T02 #R070-T01 #R070-T02 #R075-T01 #R075-T02 #R110-T01 #R115-T01
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"
@@ -190,6 +193,13 @@ exit 0
 MKCERT
   chmod +x "${STUB_BIN}/mkcert"
 fi
+if [[ "\$1" == "install" && "\$2" == "peripheryapp/periphery/periphery" ]]; then
+  cat > "${STUB_BIN}/periphery" <<'PERIPHERY'
+#!/usr/bin/env bash
+exit 0
+PERIPHERY
+  chmod +x "${STUB_BIN}/periphery"
+fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/brew"
@@ -204,6 +214,7 @@ EOF
   [[ "$calls" == *"brew install shellcheck"* ]]
   [[ "$calls" == *"brew install gitleaks"* ]]
   [[ "$calls" == *"brew install mkcert"* ]]
+  [[ "$calls" == *"brew install peripheryapp/periphery/periphery"* ]]
 }
 
 @test "builds and installs pgtap from theory source when pg_prove is missing" {
@@ -215,6 +226,7 @@ EOF
   stub_cmd bats "exit 0"
   stub_cmd perl "exit 0"
   stub_cmd mkcert "exit 0"
+  stub_cmd periphery "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
@@ -302,6 +314,7 @@ MAKE
   stub_cmd make "exit 0"
   stub_cmd perl "exit 0"
   stub_cmd mkcert "exit 0"
+  stub_cmd periphery "exit 0"
 
   run env PSA_INSTALL_SUDO_ITEM="custom_item" bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   [ "$status" -eq 0 ]

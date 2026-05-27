@@ -20,14 +20,13 @@ enum APIError: Error, LocalizedError {
 protocol ClassificationAPI: Sendable {
     // #R001: Fetch categories and transaction listings from the local classifier API.
     func fetchCategories() async throws -> [CategoryOption]
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool, countOnly: Bool) async throws -> TransactionListResponse
+    func fetchTransactions(_ options: TransactionFetchOptions) async throws -> TransactionListResponse
     // #R005: Persist one or more classification mutations in a single batch request.
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse]
     // #R040: Manage nys_snw_category definitions from the UI.
     func createCategory(_ category: CategoryMutationRequest) async throws -> CategoryOption
     func updateCategory(id: Int, category: CategoryMutationRequest) async throws -> CategoryOption
     func deleteCategory(id: Int) async throws -> CategoryDeleteResponse
-    func fetchMatchReview(state: String, onlyUnmoved: Bool, limit: Int, offset: Int) async throws -> MatchReviewListResponse
     func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse
     func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse
@@ -40,7 +39,8 @@ protocol ClassificationAPI: Sendable {
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow]
     func fetchMessage(emailMessageId: String) async throws -> EmailMessage
     // #R062: Search Mailcart messages for Match & Classify candidate discovery.
-    func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse
+    // #R064: Support both keyword and structured Mailcart search criteria.
+    func searchMessages(criteria: EmailSearchCriteria, limit: Int) async throws -> EmailSearchResponse
 }
 
 extension ClassificationAPI {
@@ -58,14 +58,6 @@ extension ClassificationAPI {
     func deleteCategory(id: Int) async throws -> CategoryDeleteResponse {
         _ = id
         throw APIError.unsupportedOperation("Category deletion")
-    }
-
-    func fetchMatchReview(state: String, onlyUnmoved: Bool, limit: Int, offset: Int) async throws -> MatchReviewListResponse {
-        _ = state
-        _ = onlyUnmoved
-        _ = limit
-        _ = offset
-        throw APIError.unsupportedOperation("Match review listing")
     }
 
     func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
@@ -124,8 +116,8 @@ extension ClassificationAPI {
         throw APIError.unsupportedOperation("Email message fetch")
     }
 
-    func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse {
-        _ = query
+    func searchMessages(criteria: EmailSearchCriteria, limit: Int) async throws -> EmailSearchResponse {
+        _ = criteria
         _ = limit
         throw APIError.unsupportedOperation("Mailcart search")
     }
@@ -148,29 +140,42 @@ actor APIClient: ClassificationAPI {
     }
 
     // #R001: Paginated transaction fetch with optional include_total/count_only (API R072).
-    func fetchTransactions(search: String, onlyUnclassified: Bool, matchState: String, onlyUnmovedMatch: Bool, limit: Int, offset: Int, includeTotal: Bool = true, countOnly: Bool = false) async throws -> TransactionListResponse {
+    func fetchTransactions(_ options: TransactionFetchOptions) async throws -> TransactionListResponse {
         guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/transactions"), resolvingAgainstBaseURL: false) else {
             throw APIError.invalidResponse
         }
-        var queryItems: [URLQueryItem] = [
-            URLQueryItem(name: "search", value: search),
-            URLQueryItem(name: "only_unclassified", value: onlyUnclassified ? "true" : "false"),
-            URLQueryItem(name: "limit", value: String(limit)),
-            URLQueryItem(name: "offset", value: String(offset)),
-            URLQueryItem(name: "include_total", value: includeTotal ? "true" : "false"),
-            URLQueryItem(name: "count_only", value: countOnly ? "true" : "false"),
-        ]
-        if !matchState.isEmpty {
-            queryItems.append(URLQueryItem(name: "match_state", value: matchState))
-        }
-        if onlyUnmovedMatch {
-            queryItems.append(URLQueryItem(name: "only_unmoved_match", value: "true"))
-        }
-        comp.queryItems = queryItems
+        comp.queryItems = APIClient.transactionQueryItems(for: options)
         guard let transactionsURL = comp.url else {
             throw APIError.invalidResponse
         }
         return try await send(url: transactionsURL)
+    }
+
+    private static func transactionQueryItems(for options: TransactionFetchOptions) -> [URLQueryItem] {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "search", value: options.search),
+            URLQueryItem(name: "only_unclassified", value: options.onlyUnclassified ? "true" : "false"),
+            URLQueryItem(name: "limit", value: String(options.limit)),
+            URLQueryItem(name: "offset", value: String(options.offset)),
+            URLQueryItem(name: "include_total", value: options.includeTotal ? "true" : "false"),
+            URLQueryItem(name: "count_only", value: options.countOnly ? "true" : "false"),
+        ]
+        if options.onlyUnmovedMatch {
+            items.append(URLQueryItem(name: "only_unmoved_match", value: "true"))
+        }
+        // #R063: Optional advanced transaction filter query parameters.
+        let optionalPairs: [(String, String)] = [
+            ("match_state", options.matchState),
+            ("start_date", options.startDate),
+            ("end_date", options.endDate),
+            ("institution_id", options.institutionId),
+            ("min_amount", options.minAmount),
+            ("max_amount", options.maxAmount),
+        ]
+        for (name, value) in optionalPairs where !value.isEmpty {
+            items.append(URLQueryItem(name: name, value: value))
+        }
+        return items
     }
 
     func saveClassifications(_ updates: [ClassificationMutation]) async throws -> [ClassificationWriteResponse] {
@@ -191,20 +196,6 @@ actor APIClient: ClassificationAPI {
 
     func deleteCategory(id: Int) async throws -> CategoryDeleteResponse {
         try await send(path: "/v1/categories/\(id)", method: "DELETE")
-    }
-
-    func fetchMatchReview(state: String, onlyUnmoved: Bool, limit: Int, offset: Int) async throws -> MatchReviewListResponse {
-        guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/matchy/review"), resolvingAgainstBaseURL: false) else {
-            throw APIError.invalidResponse
-        }
-        comp.queryItems = [
-            URLQueryItem(name: "state", value: state),
-            URLQueryItem(name: "only_unmoved", value: onlyUnmoved ? "true" : "false"),
-            URLQueryItem(name: "limit", value: String(limit)),
-            URLQueryItem(name: "offset", value: String(offset)),
-        ]
-        guard let url = comp.url else { throw APIError.invalidResponse }
-        return try await send(url: url)
     }
 
     func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
@@ -261,15 +252,32 @@ actor APIClient: ClassificationAPI {
         return try await send(path: "/v1/matchy/messages/\(encoded)")
     }
 
-    // #R062: GET /v1/matchy/messages/search with query and limit parameters.
-    func searchMessages(query: String, limit: Int) async throws -> EmailSearchResponse {
+    // #R062: GET /v1/matchy/messages/search for Match & Classify candidate discovery.
+    // #R064: Include structured criteria and limit parameters in Mailcart search requests.
+    func searchMessages(criteria: EmailSearchCriteria, limit: Int) async throws -> EmailSearchResponse {
         guard var comp = URLComponents(url: baseURL.appendingPathComponent("/v1/matchy/messages/search"), resolvingAgainstBaseURL: false) else {
             throw APIError.invalidResponse
         }
-        comp.queryItems = [
-            URLQueryItem(name: "query", value: query),
+        let normalized = criteria.normalized()
+        var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "limit", value: String(limit)),
         ]
+        if !normalized.subject.isEmpty {
+            queryItems.append(URLQueryItem(name: "subject", value: normalized.subject))
+        }
+        if !normalized.sender.isEmpty {
+            queryItems.append(URLQueryItem(name: "sender", value: normalized.sender))
+        }
+        if !normalized.body.isEmpty {
+            queryItems.append(URLQueryItem(name: "body", value: normalized.body))
+        }
+        if !normalized.receivedStartDate.isEmpty {
+            queryItems.append(URLQueryItem(name: "start_date", value: normalized.receivedStartDate))
+        }
+        if !normalized.receivedEndDate.isEmpty {
+            queryItems.append(URLQueryItem(name: "end_date", value: normalized.receivedEndDate))
+        }
+        comp.queryItems = queryItems
         guard let url = comp.url else { throw APIError.invalidResponse }
         return try await send(url: url)
     }

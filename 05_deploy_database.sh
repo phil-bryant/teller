@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #R001: Fail fast on unrecoverable SQL/bootstrap errors.
-set -e
+umask 007
+set -euo pipefail
 
 SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
@@ -70,6 +71,7 @@ if ! load_profile_exports_from_file "$profile_exports_file"; then
 fi
 rm -f "$profile_exports_file"
 require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET PG_DBNAME PG_USER
+PG_SSLMODE="${PG_SSLMODE:-}"
 
 #R060: Print the resolved deploy target so the operator sees where deploy is running.
 echo "ℹ️  Deploying database via profile=${PROFILE_NAME} target=${PROFILE_TARGET}${PG_HOST:+ host=${PG_HOST}}${PG_PORT:+ port=${PG_PORT}}${PG_DBNAME:+ db=${PG_DBNAME}}${PG_USER:+ user=${PG_USER}}"

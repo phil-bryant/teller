@@ -6,6 +6,18 @@ struct MatchAndClassifyView: View {
     @Binding var scrollTargetId: String?
 
     var body: some View {
+        MatchAndClassifyMainContent(viewModel: viewModel, scrollTargetId: $scrollTargetId)
+            .modifier(MatchAndClassifyFilterReloadObserver(viewModel: viewModel))
+            .modifier(MatchAndClassifySelectionObserver(viewModel: viewModel))
+            .modifier(MatchAndClassifyMailcartSearchObserver(viewModel: viewModel))
+    }
+}
+
+private struct MatchAndClassifyMainContent: View {
+    @Bindable var viewModel: ClassificationViewModel
+    @Binding var scrollTargetId: String?
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             MatchAndClassifyToolbar(viewModel: viewModel)
             HSplitView {
@@ -17,40 +29,78 @@ struct MatchAndClassifyView: View {
                     .frame(minWidth: 320, idealWidth: 420)
             }
             .accessibilityIdentifier("match-and-classify-split")
-            HStack(spacing: 8) {
-                if !viewModel.errorText.isEmpty {
-                    Text(viewModel.errorText)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("error-banner")
-                } else if !viewModel.matchReviewErrorText.isEmpty {
-                    Text(viewModel.matchReviewErrorText)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("match-review-error")
-                } else if !viewModel.matchReviewStatusText.isEmpty && viewModel.matchReviewStatusText != "Ready" {
-                    Text(viewModel.matchReviewStatusText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("match-review-status")
-                } else {
-                    Text(viewModel.statusText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("status-text")
-                }
-                Spacer()
-                Button("Load more") { Task { await viewModel.loadMore() } }
-                    .disabled(!viewModel.canLoadMore || viewModel.busy)
-                    .accessibilityIdentifier("load-more-button")
-            }
+            MatchAndClassifyStatusBar(viewModel: viewModel)
         }
-        .onChange(of: viewModel.matchReviewStateFilter) { _, _ in Task { await viewModel.loadAll() } }
-        .onChange(of: viewModel.matchReviewOnlyUnmoved) { _, _ in Task { await viewModel.loadAll() } }
-        // #R020: Toggling the Unclassified filter in either direction automatically reloads the list.
-        .onChange(of: viewModel.onlyUnclassified) { _, _ in Task { await viewModel.loadAll() } }
-        .onChange(of: viewModel.selectedCandidateId) { _, _ in Task { await viewModel.selectedCandidateDidChange() } }
-        .onChange(of: viewModel.mailcartSearchQuery) { _, _ in Task { await viewModel.searchMailcartIfNeeded() } }
+    }
+}
+
+private struct MatchAndClassifyStatusBar: View {
+    @Bindable var viewModel: ClassificationViewModel
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if !viewModel.errorText.isEmpty {
+                Text(viewModel.errorText)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("error-banner")
+            } else if !viewModel.matchReviewErrorText.isEmpty {
+                Text(viewModel.matchReviewErrorText)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("match-review-error")
+            } else if !viewModel.matchReviewStatusText.isEmpty && viewModel.matchReviewStatusText != "Ready" {
+                Text(viewModel.matchReviewStatusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("match-review-status")
+            } else {
+                Text(viewModel.statusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("status-text")
+            }
+            Spacer()
+        }
+    }
+}
+
+private struct MatchAndClassifyFilterReloadObserver: ViewModifier {
+    @Bindable var viewModel: ClassificationViewModel
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: viewModel.matchReviewStateFilter) { _, _ in Task { await viewModel.loadAll() } }
+            .onChange(of: viewModel.matchReviewOnlyUnmoved) { _, _ in Task { await viewModel.loadAll() } }
+        // #R020: Filter changes automatically reload the transaction list.
+            .onChange(of: viewModel.onlyUnclassified) { _, _ in Task { await viewModel.loadAll() } }
+            .onChange(of: viewModel.transactionStartDate) { _, _ in Task { await viewModel.loadAll() } }
+            .onChange(of: viewModel.transactionEndDate) { _, _ in Task { await viewModel.loadAll() } }
+            .onChange(of: viewModel.transactionInstitutionId) { _, _ in Task { await viewModel.loadAll() } }
+            .onChange(of: viewModel.transactionMinAmount) { _, _ in Task { await viewModel.loadAll() } }
+            .onChange(of: viewModel.transactionMaxAmount) { _, _ in Task { await viewModel.loadAll() } }
+    }
+}
+
+private struct MatchAndClassifySelectionObserver: ViewModifier {
+    @Bindable var viewModel: ClassificationViewModel
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: viewModel.selectedCandidateId) { _, _ in Task { await viewModel.selectedCandidateDidChange() } }
+    }
+}
+
+private struct MatchAndClassifyMailcartSearchObserver: ViewModifier {
+    @Bindable var viewModel: ClassificationViewModel
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: viewModel.mailcartSearchSubject) { _, _ in Task { await viewModel.searchMailcartIfNeeded() } }
+            .onChange(of: viewModel.mailcartSearchSender) { _, _ in Task { await viewModel.searchMailcartIfNeeded() } }
+            .onChange(of: viewModel.mailcartSearchBody) { _, _ in Task { await viewModel.searchMailcartIfNeeded() } }
+            .onChange(of: viewModel.mailcartSearchStartDate) { _, _ in Task { await viewModel.searchMailcartIfNeeded() } }
+            .onChange(of: viewModel.mailcartSearchEndDate) { _, _ in Task { await viewModel.searchMailcartIfNeeded() } }
     }
 }
 
@@ -58,31 +108,58 @@ private struct MatchAndClassifyToolbar: View {
     @Bindable var viewModel: ClassificationViewModel
 
     var body: some View {
-        // #R005: Provide search/filter controls (text search, unclassified toggle, match-state picker,
-        // #R005: only-unmoved match toggle) plus a manual Refresh action in the list header.
-        HStack(spacing: 8) {
-            TextField("Search description / transaction id", text: $viewModel.searchText)
-                .textFieldStyle(.roundedBorder)
-                .onSubmit { Task { await viewModel.loadAll() } }
-                .accessibilityIdentifier("search-field")
-            Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
-                .accessibilityIdentifier("only-unclassified-toggle")
-            Picker("Match", selection: $viewModel.matchReviewStateFilter) {
-                Text("All matches").tag("")
-                Text("Unmatched").tag("unmatched")
-                Text("No email").tag("no_email")
-                Text("Needs review").tag("ai_candidate_uncertain")
-                Text("AI confident").tag("ai_match_confident")
-                Text("Confirmed").tag("human_confirmed_ai_match")
-                Text("Overridden").tag("human_overrode_ai_match")
+        // #R005: Provide search/filter controls on toolbar rows so transaction actions can
+        // #R005: live beside the transaction list without crowding the filter controls.
+        // #R070: Advanced transaction filters stay in the same toolbar surface.
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                TextField("Search description / transaction id", text: $viewModel.searchText)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { Task { await viewModel.loadAll() } }
+                    .accessibilityIdentifier("search-field")
+                Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
+                    .accessibilityIdentifier("only-unclassified-toggle")
+                Spacer(minLength: 0)
             }
-            .frame(width: 240)
-            .accessibilityIdentifier("match-review-state-picker")
-            Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
-                .accessibilityIdentifier("match-review-only-unmoved-toggle")
-            Spacer()
-            Button("Refresh") { Task { await viewModel.loadAll() } }
-                .accessibilityIdentifier("refresh-button")
+            HStack(spacing: 8) {
+                Picker("Match", selection: $viewModel.matchReviewStateFilter) {
+                    Text("All matches").tag("")
+                    Text("Unmatched").tag("unmatched")
+                    Text("No email").tag("no_email")
+                    Text("Needs review").tag("ai_candidate_uncertain")
+                    Text("AI confident").tag("ai_match_confident")
+                    Text("Confirmed").tag("human_confirmed_ai_match")
+                    Text("Overridden").tag("human_overrode_ai_match")
+                }
+                .frame(width: 240)
+                .accessibilityIdentifier("match-review-state-picker")
+                Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
+                    .accessibilityIdentifier("match-review-only-unmoved-toggle")
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 8) {
+                TextField("Start date", text: $viewModel.transactionStartDate)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("transaction-start-date-field")
+                TextField("End date", text: $viewModel.transactionEndDate)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("transaction-end-date-field")
+                Picker("Institution", selection: $viewModel.transactionInstitutionId) {
+                    Text("All institutions").tag("")
+                    ForEach(viewModel.transactionInstitutionOptions, id: \.self) { institutionId in
+                        Text(institutionId).tag(institutionId)
+                    }
+                }
+                .frame(width: 160)
+                .accessibilityIdentifier("transaction-institution-picker")
+                TextField("Min amount", text: $viewModel.transactionMinAmount)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("transaction-min-amount-field")
+                TextField("Max amount", text: $viewModel.transactionMaxAmount)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("transaction-max-amount-field")
+                Spacer(minLength: 0)
+            }
         }
     }
 }
@@ -103,6 +180,15 @@ private struct MatchAndClassifyTransactionsPane: View {
                 Text("\(viewModel.transactions.count) / \(viewModel.totalTransactions)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            // #R068: Transaction pagination and reload actions belong beside the transaction list.
+            HStack(spacing: 8) {
+                Spacer()
+                Button("Refresh") { Task { await viewModel.loadAll() } }
+                    .accessibilityIdentifier("refresh-button")
+                Button("Load more") { Task { await viewModel.loadMore() } }
+                    .disabled(!viewModel.canLoadMore || viewModel.busy)
+                    .accessibilityIdentifier("load-more-button")
             }
             // SwiftUI's ScrollViewReader does not reliably scroll `List` on macOS 14
             // (Apple Developer Forum #758880), so the transaction list is a
@@ -376,11 +462,26 @@ private struct CandidatesPane: View {
                         }
                     }
                 }
-                // #R065: Use user-facing copy "Search Email" for candidate search section title.
+                // #R065: Use user-facing copy "Search Email" for the search section title.
+                // #R071: Keep structured search fields under the Search Email section.
                 Section("Search Email") {
-                    TextField("Subject, sender, or keyword", text: $viewModel.mailcartSearchQuery)
+                    TextField("Subject", text: $viewModel.mailcartSearchSubject)
                         .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("mailcart-search-field")
+                        .accessibilityIdentifier("mailcart-search-subject-field")
+                    TextField("Sender", text: $viewModel.mailcartSearchSender)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("mailcart-search-sender-field")
+                    TextField("Body keyword", text: $viewModel.mailcartSearchBody)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("mailcart-search-body-field")
+                    HStack(spacing: 8) {
+                        TextField("Received from", text: $viewModel.mailcartSearchStartDate)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("mailcart-search-start-date-field")
+                        TextField("Received to", text: $viewModel.mailcartSearchEndDate)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityIdentifier("mailcart-search-end-date-field")
+                    }
                     if !viewModel.mailcartSearchErrorText.isEmpty {
                         Text(viewModel.mailcartSearchErrorText)
                             .font(.caption)

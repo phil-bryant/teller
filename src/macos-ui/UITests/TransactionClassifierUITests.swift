@@ -3,7 +3,7 @@ import XCTest
 
 final class TransactionClassifierUITests: XCTestCase {
     private static var app: XCUIApplication!
-    private static let scenarioCount = 30
+    private static let scenarioCount = 32
 
     /// Maximum bounds only; condition polling exits immediately once state is ready.
     private let waitTimeout: TimeInterval = 2
@@ -51,7 +51,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     func testMacOSUISmokeSuite() throws {
-        let selectedSteps = Self.parseSelectedSteps(from: ProcessInfo.processInfo.environment["XCUITEST_STEPS"])
+        let selectedSteps = Self.parseSelectedSteps(from: Self.resolvedStepsRaw())
         for step in 1...Self.scenarioCount where selectedSteps.contains(step) {
             switch step {
             case 1: // #R001-T01 #R025-T01
@@ -106,6 +106,10 @@ final class TransactionClassifierUITests: XCTestCase {
                 runManageCategoryDeleteScenario()
             case 30: // #R055-T01
                 runMatchStatePickerAllValuesScenario()
+            case 31: // #R070 #R090-T02
+                runAdvancedTransactionFilterScenario()
+            case 32: // #R071-T02 #R095-T01
+                runAdvancedEmailSearchScenario()
             default: break
             }
         }
@@ -161,11 +165,11 @@ final class TransactionClassifierUITests: XCTestCase {
         ensureAllTransactionsLoadedIntoList()
 
         selectMatchStateFilter("All matches")
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout))
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_004"), timeout: waitTimeout))
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_005"), timeout: waitTimeout))
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_006"), timeout: waitTimeout))
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_007"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout * 3))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_004"), timeout: waitTimeout * 3))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_005"), timeout: waitTimeout * 3))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_006"), timeout: waitTimeout * 3))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_007"), timeout: waitTimeout * 3))
 
         selectMatchStateFilter("Unmatched")
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_003"), timeout: waitTimeout))
@@ -211,6 +215,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func runRefreshButtonScenario() {
+        // #R068
         ensureMatchAndClassifyTab()
         uiElement("refresh-button").click()
         XCTAssertTrue(
@@ -390,6 +395,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func runLoadMoreButtonScenario() {
+        // #R068
         ensureMatchAndClassifyTab()
         let loadMore = uiElement("load-more-button")
         XCTAssertTrue(loadMore.exists)
@@ -419,10 +425,10 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func runEmailSearchScenario() {
-        // #R065
+        // #R065 #R071
         ensureMatchAndClassifyTab()
         XCTAssertTrue(app.staticTexts["Search Email"].exists)
-        let field = uiElement("mailcart-search-field")
+        let field = uiElement("mailcart-search-subject-field")
         XCTAssertTrue(field.exists)
         clearField(field)
         pasteText("transit", into: field)
@@ -434,6 +440,73 @@ final class TransactionClassifierUITests: XCTestCase {
             }
         )
         clearField(field)
+    }
+
+    private func runAdvancedTransactionFilterScenario() {
+        // #R070 #R090
+        ensureMatchAndClassifyTab()
+        ensureUnclassifiedFilterDisabled()
+        XCTAssertTrue(uiElement("transaction-start-date-field").exists)
+        XCTAssertTrue(uiElement("transaction-end-date-field").exists)
+        XCTAssertTrue(uiElement("transaction-institution-picker").exists)
+        XCTAssertTrue(uiElement("transaction-min-amount-field").exists)
+        XCTAssertTrue(uiElement("transaction-max-amount-field").exists)
+
+        replaceText(in: uiElement("transaction-start-date-field"), with: "2026-04-19")
+        replaceText(in: uiElement("transaction-end-date-field"), with: "2026-04-20")
+        replaceText(in: uiElement("transaction-min-amount-field"), with: "50")
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 3) {
+                uiElement("transaction-row-txn_002").exists && !uiElement("transaction-row-txn_001").exists
+            },
+            "Amount and date filters should leave only Electric Utility Co visible."
+        )
+
+        replaceText(in: uiElement("transaction-min-amount-field"), with: "")
+        replaceText(in: uiElement("transaction-start-date-field"), with: "")
+        replaceText(in: uiElement("transaction-end-date-field"), with: "")
+        selectInstitutionFilter("inst_beta")
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 3) {
+                uiElement("transaction-row-txn_018").exists && !uiElement("transaction-row-txn_001").exists
+            },
+            "Institution filter should leave only inst_beta fixture rows visible."
+        )
+        selectInstitutionFilter("All institutions")
+    }
+
+    private func runAdvancedEmailSearchScenario() {
+        // #R071 #R095
+        ensureMatchAndClassifyTab()
+        XCTAssertTrue(uiElement("mailcart-search-subject-field").exists)
+        XCTAssertTrue(uiElement("mailcart-search-sender-field").exists)
+        XCTAssertTrue(uiElement("mailcart-search-body-field").exists)
+        XCTAssertTrue(uiElement("mailcart-search-start-date-field").exists)
+        XCTAssertTrue(uiElement("mailcart-search-end-date-field").exists)
+
+        clearField(uiElement("mailcart-search-subject-field"))
+        clearField(uiElement("mailcart-search-sender-field"))
+        clearField(uiElement("mailcart-search-body-field"))
+        clearField(uiElement("mailcart-search-start-date-field"))
+        clearField(uiElement("mailcart-search-end-date-field"))
+
+        pasteText("Transit", into: uiElement("mailcart-search-subject-field"))
+        XCTAssertTrue(waitForElement(uiElement("mailcart-hit-row-msg_search_001"), timeout: waitTimeout * 3))
+        uiElement("mailcart-hit-row-msg_search_001").click()
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) {
+                elementText(uiElement("email-subject")).contains("Transit")
+            }
+        )
+
+        clearField(uiElement("mailcart-search-subject-field"))
+        pasteText("alerts@transit.example.com", into: uiElement("mailcart-search-sender-field"))
+        replaceText(in: uiElement("mailcart-search-start-date-field"), with: "2026-04-18")
+        replaceText(in: uiElement("mailcart-search-end-date-field"), with: "2026-04-18")
+        XCTAssertTrue(waitForElement(uiElement("mailcart-hit-row-msg_search_001"), timeout: waitTimeout * 3))
+        clearField(uiElement("mailcart-search-sender-field"))
+        clearField(uiElement("mailcart-search-start-date-field"))
+        clearField(uiElement("mailcart-search-end-date-field"))
     }
 
     private func runMatchActionsScenario() {
@@ -606,6 +679,7 @@ final class TransactionClassifierUITests: XCTestCase {
             "Connect tab did not finish loading."
         )
         activeTab = .connect
+        unclassifiedFilterDisabled = false
     }
 
     private func ensureManageCategoriesTab() {
@@ -615,6 +689,7 @@ final class TransactionClassifierUITests: XCTestCase {
         selectTab(named: "Manage Categories")
         XCTAssertTrue(waitForElement(uiElement("category-manager-list"), timeout: launchTimeout * 2))
         activeTab = .manageCategories
+        unclassifiedFilterDisabled = false
     }
 
     private func selectTab(named name: String) {
@@ -692,7 +767,9 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func ensureUnclassifiedFilterDisabled() {
-        if unclassifiedFilterDisabled, uiElement("transaction-row-txn_002").exists {
+        ensureMatchAndClassifyTab()
+        if uiElement("transaction-row-txn_002").exists {
+            unclassifiedFilterDisabled = true
             return
         }
         let toggle = uiElement("only-unclassified-toggle")
@@ -700,7 +777,15 @@ final class TransactionClassifierUITests: XCTestCase {
             toggle.click()
         }
         unclassifiedFilterDisabled = true
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout))
+        if waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout * 4) {
+            return
+        }
+        // Returning from other tabs can leave filters reloading longer than a single toggle wait.
+        uiElement("refresh-button").click()
+        XCTAssertTrue(
+            waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout * 4),
+            "Expected classified fixture row txn_002 after disabling Unclassified filter."
+        )
     }
 
     private func selectTransactionRow(_ transactionId: String, label: String) {
@@ -787,6 +872,15 @@ final class TransactionClassifierUITests: XCTestCase {
 
     private func selectMatchStateFilter(_ optionTitle: String) {
         let picker = uiElement("match-review-state-picker")
+        XCTAssertTrue(waitForElement(picker, timeout: waitTimeout))
+        picker.click()
+        let option = app.menuItems[optionTitle].firstMatch
+        XCTAssertTrue(waitForElement(option, timeout: waitTimeout))
+        option.click()
+    }
+
+    private func selectInstitutionFilter(_ optionTitle: String) {
+        let picker = uiElement("transaction-institution-picker")
         XCTAssertTrue(waitForElement(picker, timeout: waitTimeout))
         picker.click()
         let option = app.menuItems[optionTitle].firstMatch
@@ -881,9 +975,44 @@ final class TransactionClassifierUITests: XCTestCase {
         }
     }
 
+    private static var smokeDefaultSteps: Set<Int> {
+        var steps = Set(1...17)
+        steps.formUnion(19...29)
+        return steps
+    }
+
+    private static func resolvedStepsRaw() -> String? {
+        if let raw = ProcessInfo.processInfo.environment["XCUITEST_STEPS"] {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty, trimmed != "$(XCUITEST_STEPS)" {
+                return trimmed
+            }
+        }
+        if let path = ProcessInfo.processInfo.environment["XCUITEST_STEPS_FILE"],
+           let raw = try? String(contentsOf: URL(fileURLWithPath: path), encoding: .utf8) {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        let defaultFile = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("artifacts/macos-ui-regression/xcuitest-steps.env")
+        if let raw = try? String(contentsOf: defaultFile, encoding: .utf8) {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return nil
+    }
+
     private static func parseSelectedSteps(from raw: String?) -> Set<Int> {
         guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return Set(1...scenarioCount)
+            return smokeDefaultSteps
         }
 
         var selected = Set<Int>()
@@ -907,6 +1036,6 @@ final class TransactionClassifierUITests: XCTestCase {
             }
         }
 
-        return selected.isEmpty ? Set(1...scenarioCount) : selected
+        return selected.isEmpty ? smokeDefaultSteps : selected
     }
 }

@@ -10,11 +10,13 @@ import Observation
 // #R030: Shared category editor selection supports bulk delete workflows.
 // #R035: Shared selected-match state supports clear-to-unmatched actions.
 // #R040: Shared Mailcart query/result state supports debounced search UX.
+// #R095: Shared structured Mailcart query/result state supports debounced search UX.
+// #R090: Shared advanced transaction filter state supports date/institution/amount filtering.
 // #R075: Shared total/status state supports background count-only refresh.
 // #R080: Shared loading/status state supports optional transaction-load profiling.
 // #R085: Keep this file as the observable surface while behavior lives in focused extensions.
 
-struct UndoAction { let prior: [String: TransactionCategory?]; let next: [String: TransactionCategory?] }
+struct UndoAction { let prior: [String: TransactionCategory?] }
 struct CategoryDraft: Equatable {
     var level_1 = ""
     var level_1_name = ""
@@ -36,11 +38,6 @@ struct CategoryDraft: Equatable {
         level_4 = category.level_4 ?? ""
         categorization = category.categorization ?? ""
         applicability = category.applicability ?? ""
-    }
-
-    var isEmpty: Bool {
-        [level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability]
-            .allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
     var payload: CategoryMutationRequest {
@@ -75,6 +72,11 @@ final class ClassificationViewModel {
     var totalTransactions = 0
     var selection: Set<String> = []
     var searchText = ""
+    var transactionStartDate = ""
+    var transactionEndDate = ""
+    var transactionInstitutionId = ""
+    var transactionMinAmount = ""
+    var transactionMaxAmount = ""
     var onlyUnclassified = true // #R025: Default to filtering unclassified transactions.
     var focusedSearch = false
     var selectedCategoryId: Int?
@@ -106,7 +108,11 @@ final class ClassificationViewModel {
     var selectedEmail: EmailMessage?
     var emailBusy = false
     var emailErrorText = ""
-    var mailcartSearchQuery = ""
+    var mailcartSearchSubject = ""
+    var mailcartSearchSender = ""
+    var mailcartSearchBody = ""
+    var mailcartSearchStartDate = ""
+    var mailcartSearchEndDate = ""
     var mailcartSearchResults: [EmailSearchHit] = []
     var mailcartSearchBusy = false
     var mailcartSearchErrorText = ""
@@ -130,9 +136,32 @@ final class ClassificationViewModel {
 
     init(api: any ClassificationAPI = APIClient()) { self.api = api }
 
+    // #R090: Bundle current list query state for transaction fetches.
+    func transactionFetchOptions(
+        limit: Int,
+        offset: Int,
+        includeTotal: Bool,
+        countOnly: Bool
+    ) -> TransactionFetchOptions {
+        TransactionFetchOptions(
+            search: searchText,
+            onlyUnclassified: onlyUnclassified,
+            matchState: matchReviewStateFilter,
+            onlyUnmovedMatch: matchReviewOnlyUnmoved,
+            startDate: transactionStartDate,
+            endDate: transactionEndDate,
+            institutionId: transactionInstitutionId,
+            minAmount: transactionMinAmount,
+            maxAmount: transactionMaxAmount,
+            limit: limit,
+            offset: offset,
+            includeTotal: includeTotal,
+            countOnly: countOnly
+        )
+    }
+
     // MARK: - Derived view state
 
-    var selectedCategory: CategoryOption? { categories.first { $0.nys_snw_category_id == selectedCategoryId } }
     var selectedRows: [TransactionRow] { transactions.filter { selection.contains($0.transaction_id) } }
     var selectionHasMixedCategories: Bool {
         let rows = selectedRows
@@ -140,6 +169,18 @@ final class ClassificationViewModel {
         return rows.contains { $0.classification?.nys_snw_category_id != first }
     }
     var canLoadMore: Bool { transactions.count < totalTransactions }
+    var transactionInstitutionOptions: [String] {
+        Array(Set(transactions.compactMap(\.institution_id))).sorted()
+    }
+    var mailcartSearchCriteria: EmailSearchCriteria {
+        EmailSearchCriteria(
+            subject: mailcartSearchSubject,
+            sender: mailcartSearchSender,
+            body: mailcartSearchBody,
+            receivedStartDate: mailcartSearchStartDate,
+            receivedEndDate: mailcartSearchEndDate
+        )
+    }
     var categoryEditorPrimarySelectionId: Int? {
         guard categoryEditorSelection.count == 1 else { return nil }
         return categoryEditorSelection.first
@@ -154,9 +195,8 @@ final class ClassificationViewModel {
 
     var selectedTransactionMatch: TransactionMatchInfo? { primaryTransaction?.match }
 
-    /// Compatibility shim: the old viewmodel exposed `selectedMatchRow` as a `MatchReviewRow`.
-    /// The unified pipeline keys off transactions, but the actions that update a match still need
-    /// a match_id, so expose it here for backward compatibility with the existing call sites.
+    /// The unified pipeline keys off transactions, but the actions that update a match still
+    /// need a match_id, so expose it here for the existing call sites.
     var selectedMatchId: Int? { selectedTransactionMatch?.match_id }
     var selectedMatchEmailMessageId: String? { selectedTransactionMatch?.email_message_id }
 
