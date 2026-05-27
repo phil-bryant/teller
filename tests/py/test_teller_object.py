@@ -1,5 +1,6 @@
 import unittest
 from dataclasses import dataclass, field
+from datetime import timezone
 from typing import Optional
 
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,8 +26,21 @@ class TellerObjectTests(unittest.TestCase):
         row = TellerTransactionDetails()
         self.assertTrue(hasattr(row, "created_at"))
         self.assertTrue(hasattr(row, "updated_at"))
-        self.assertIsNotNone(TellerTransactionDetails.__table__.c.created_at.default)
-        self.assertIsNotNone(TellerTransactionDetails.__table__.c.updated_at.default)
+        created_default = TellerTransactionDetails.__table__.c.created_at.default
+        updated_default = TellerTransactionDetails.__table__.c.updated_at.default
+        updated_onupdate = TellerTransactionDetails.__table__.c.updated_at.onupdate
+        self.assertIsNotNone(created_default)
+        self.assertIsNotNone(updated_default)
+        self.assertIsNotNone(updated_onupdate)
+        created_value = created_default.arg() if callable(created_default.arg) else created_default.arg
+        updated_value = updated_default.arg() if callable(updated_default.arg) else updated_default.arg
+        onupdate_value = updated_onupdate.arg() if callable(updated_onupdate.arg) else updated_onupdate.arg
+        self.assertIsNotNone(created_value.tzinfo)
+        self.assertIsNotNone(updated_value.tzinfo)
+        self.assertIsNotNone(onupdate_value.tzinfo)
+        self.assertEqual(created_value.tzinfo, timezone.utc)
+        self.assertEqual(updated_value.tzinfo, timezone.utc)
+        self.assertEqual(onupdate_value.tzinfo, timezone.utc)
         self.assertEqual(TellerTransactionDetails.__table__.schema, "teller")
 
     def test_tablename_is_derived_from_class_name(self):

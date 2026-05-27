@@ -2,7 +2,7 @@ from dataclasses import dataclass, fields
 from sqlalchemy.orm import declared_attr, mapped_column, Mapped
 from sqlalchemy import DateTime
 from typing import ClassVar
-from datetime import datetime
+from datetime import datetime, timezone
 import typing
 import structlog
 import re
@@ -12,8 +12,14 @@ log = structlog.get_logger()
 
 class TimestampMixin:
     # #R001: Shared timestamp columns for Teller ORM models.
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 @dataclass
 class TellerObject(Base, TimestampMixin):
