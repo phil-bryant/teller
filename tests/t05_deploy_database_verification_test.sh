@@ -20,15 +20,42 @@ if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
   echo "❌ FAIL: DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}"
   exit 1
 fi
+load_profile_exports_from_file() {
+  local exports_file="$1"
+  local invalid_lines=""
+  invalid_lines="$(awk '
+    !/^(export )?[A-Za-z_][A-Za-z0-9_]*=.*/ { print; next }
+    {
+      key=$0
+      sub(/^export[[:space:]]+/, "", key)
+      sub(/=.*/, "", key)
+      if (key !~ /^(PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM)$/) {
+        print
+      }
+    }
+  ' "$exports_file")"
+  if [[ -n "$invalid_lines" ]]; then
+    echo "❌ FAIL: refusing to load unexpected profile export lines:"
+    printf '%s\n' "$invalid_lines"
+    return 1
+  fi
+  set -a
+  # shellcheck disable=SC1090
+  source "$exports_file"
+  set +a
+}
+
 profile_exports_file="$(mktemp)"
 if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
   #R065: Refuse verification when DB profile setup is missing.
   rm -f "$profile_exports_file"
   exit 1
 fi
-PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
+if ! load_profile_exports_from_file "$profile_exports_file"; then
+  rm -f "$profile_exports_file"
+  exit 1
+fi
 rm -f "$profile_exports_file"
-eval "$PROFILE_EXPORTS"
 
 #R005: Use connection settings exclusively from the resolved profile (1psa or ~/.env via the helper).
 #R005: Env vars TELLER_DB_* still override for CI/test fixtures.

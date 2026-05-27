@@ -35,15 +35,42 @@ if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
   echo "❌ DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}" >&2
   exit 1
 fi
+load_profile_exports_from_file() {
+  local exports_file="$1"
+  local invalid_lines=""
+  invalid_lines="$(awk '
+    !/^(export )?[A-Za-z_][A-Za-z0-9_]*=.*/ { print; next }
+    {
+      key=$0
+      sub(/^export[[:space:]]+/, "", key)
+      sub(/=.*/, "", key)
+      if (key !~ /^(PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM)$/) {
+        print
+      }
+    }
+  ' "$exports_file")"
+  if [[ -n "$invalid_lines" ]]; then
+    echo "❌ Refusing to load unexpected profile export lines:" >&2
+    printf '%s\n' "$invalid_lines" >&2
+    return 1
+  fi
+  set -a
+  # shellcheck disable=SC1090
+  source "$exports_file"
+  set +a
+}
+
 profile_exports_file="$(mktemp)"
 if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
   #R040: Refuse persistence verification when DB profile setup is missing.
   rm -f "$profile_exports_file"
   exit 1
 fi
-PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
+if ! load_profile_exports_from_file "$profile_exports_file"; then
+  rm -f "$profile_exports_file"
+  exit 1
+fi
 rm -f "$profile_exports_file"
-eval "$PROFILE_EXPORTS"
 
 API_URL="${TELLER_CLASSIFIER_API_URL:-http://127.0.0.1:8787}"
 API_SCHEME="$(python3 - <<'PY' "$API_URL"

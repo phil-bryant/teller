@@ -22,14 +22,54 @@ if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
     echo "DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}"
     exit 1
 fi
+load_profile_exports_from_file() {
+    local exports_file="$1"
+    local invalid_lines=""
+    invalid_lines="$(awk '
+        !/^(export )?[A-Za-z_][A-Za-z0-9_]*=.*/ { print; next }
+        {
+            key=$0
+            sub(/^export[[:space:]]+/, "", key)
+            sub(/=.*/, "", key)
+            if (key !~ /^(PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM)$/) {
+                print
+            }
+        }
+    ' "$exports_file")"
+    if [[ -n "$invalid_lines" ]]; then
+        echo "Refusing to load unexpected profile export lines:"
+        printf '%s\n' "$invalid_lines"
+        return 1
+    fi
+    set -a
+    # shellcheck disable=SC1090
+    source "$exports_file"
+    set +a
+}
+
+require_nonempty_env() {
+    local scope="$1"
+    shift
+    local var_name
+    for var_name in "$@"; do
+        if [[ -z "${!var_name:-}" ]]; then
+            echo "${scope} requires non-empty ${var_name}; check config/db-profiles.json or the profile 1psa item."
+            exit 1
+        fi
+    done
+}
+
 profile_exports_file="$(mktemp)"
 if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
     rm -f "$profile_exports_file"
     exit 1
 fi
-PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
+if ! load_profile_exports_from_file "$profile_exports_file"; then
+    rm -f "$profile_exports_file"
+    exit 1
+fi
 rm -f "$profile_exports_file"
-eval "$PROFILE_EXPORTS"
+require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET PG_DBNAME PG_USER
 
 #R060: Print the resolved deploy target so the operator sees where deploy is running.
 echo "ℹ️  Deploying database via profile=${PROFILE_NAME} target=${PROFILE_TARGET}${PG_HOST:+ host=${PG_HOST}}${PG_PORT:+ port=${PG_PORT}}${PG_DBNAME:+ db=${PG_DBNAME}}${PG_USER:+ user=${PG_USER}}"
@@ -45,9 +85,12 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
             rm -f "$profile_exports_file"
             exit 1
         fi
-        PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
+        if ! load_profile_exports_from_file "$profile_exports_file"; then
+            rm -f "$profile_exports_file"
+            exit 1
+        fi
         rm -f "$profile_exports_file"
-        eval "$PROFILE_EXPORTS"
+        require_nonempty_env "Managed direct deploy profile" PROFILE_NAME PG_HOST PG_PORT PG_DBNAME PG_USER
         echo "ℹ️  Switched to direct DDL profile=${PROFILE_NAME} host=${PG_HOST} port=${PG_PORT} db=${PG_DBNAME} user=${PG_USER}"
     fi
 

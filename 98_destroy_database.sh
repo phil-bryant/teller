@@ -6,7 +6,6 @@ SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 # Resolve the active DB profile so we know whether to tear down a local DB or a managed schema.
 DB_PROFILE_HELPER="${SCRIPT_DIR}/src/scripts/db_profile_export.sh"
-
 #R005: Require 1psa before any credential lookup.
 if ! command -v 1psa >/dev/null 2>&1; then
     echo "1psa is required but was not found on PATH."
@@ -19,14 +18,54 @@ if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
     echo "DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}"
     exit 1
 fi
+load_profile_exports_from_file() {
+    local exports_file="$1"
+    local invalid_lines=""
+    invalid_lines="$(awk '
+        !/^(export )?[A-Za-z_][A-Za-z0-9_]*=.*/ { print; next }
+        {
+            key=$0
+            sub(/^export[[:space:]]+/, "", key)
+            sub(/=.*/, "", key)
+            if (key !~ /^(PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM)$/) {
+                print
+            }
+        }
+    ' "$exports_file")"
+    if [[ -n "$invalid_lines" ]]; then
+        echo "Refusing to load unexpected profile export lines:"
+        printf '%s\n' "$invalid_lines"
+        return 1
+    fi
+    set -a
+    # shellcheck disable=SC1090
+    source "$exports_file"
+    set +a
+}
+
+require_nonempty_env() {
+    local scope="$1"
+    shift
+    local var_name
+    for var_name in "$@"; do
+        if [[ -z "${!var_name:-}" ]]; then
+            echo "${scope} requires non-empty ${var_name}; check config/db-profiles.json or the profile 1psa item."
+            exit 1
+        fi
+    done
+}
+
 profile_exports_file="$(mktemp)"
 if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
     rm -f "$profile_exports_file"
     exit 1
 fi
-PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
+if ! load_profile_exports_from_file "$profile_exports_file"; then
+    rm -f "$profile_exports_file"
+    exit 1
+fi
 rm -f "$profile_exports_file"
-eval "$PROFILE_EXPORTS"
+require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET PG_DBNAME
 
 # Ensure psql stops immediately on SQL errors.
 PSQL_OPTS=(-v ON_ERROR_STOP=1)
@@ -39,9 +78,16 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
             rm -f "$profile_exports_file"
             exit 1
         fi
-        PROFILE_EXPORTS="$(awk '/^(export )?[A-Za-z_][A-Za-z0-9_]*=/{sub(/^export /, ""); print}' "$profile_exports_file")"
+        if ! load_profile_exports_from_file "$profile_exports_file"; then
+            rm -f "$profile_exports_file"
+            exit 1
+        fi
         rm -f "$profile_exports_file"
-        eval "$PROFILE_EXPORTS"
+    fi
+    require_nonempty_env "Managed destroy profile" PROFILE_NAME PG_HOST PG_PORT PG_DBNAME PG_USER PG_SEARCH_PATH
+    if [[ "$PG_SEARCH_PATH" == "public" || "$PG_SEARCH_PATH" == "pg_catalog" || "$PG_SEARCH_PATH" == "information_schema" ]]; then
+        echo "Refusing to destroy managed schema '${PG_SEARCH_PATH}'. Choose an explicit app schema."
+        exit 1
     fi
 
     echo "ℹ️  Destroying managed schema via profile=${PROFILE_NAME} host=${PG_HOST} port=${PG_PORT} db=${PG_DBNAME} user=${PG_USER} schema=${PG_SEARCH_PATH}"
@@ -124,7 +170,8 @@ if [ -z "$POSTGRES_PASSWORD" ]; then
 fi
 
 # Use the resolved profile's DB name when available so a non-default local DB still works.
-LOCAL_DBNAME="${PG_DBNAME:-prod}"
+require_nonempty_env "Local destroy profile" PG_DBNAME
+LOCAL_DBNAME="$PG_DBNAME"
 
 echo "ℹ️  Destroying local database via profile=${PROFILE_NAME:-local} db=${LOCAL_DBNAME}"
 
