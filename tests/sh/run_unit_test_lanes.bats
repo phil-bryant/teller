@@ -39,7 +39,7 @@ echo "PG_DBNAME=prod"
 echo "PG_USER=teller"
 echo "PG_SSLMODE=disable"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
-echo "PWD_CAPTURE=$(pwd)"
+echo "PROFILE_TARGET=$(pwd)"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 

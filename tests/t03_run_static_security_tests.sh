@@ -326,7 +326,7 @@ run_shellcheck_sast() {
     "Runs JSON-reporting checks across numbered shell automation scripts." \
     "https://www.shellcheck.net/"
   shopt -s nullglob
-  shellcheck_targets=(./[0-9][0-9]_*.sh)
+  shellcheck_targets=(./[0-9][0-9]_*.sh ./t[0-9][0-9]_*.sh)
   shopt -u nullglob
 
   if [[ "${#shellcheck_targets[@]}" -eq 0 ]]; then
