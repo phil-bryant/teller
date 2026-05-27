@@ -111,6 +111,43 @@ EOF
   [[ "$calls" == *"swift test --package-path ./src/macos-ui"* ]]
 }
 
+@test "swift lane skips gracefully when sandbox_apply is denied" {
+  #R020-T02
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "PROFILE_NAME=local"
+echo "PG_HOST=localhost"
+echo "PG_PORT=5432"
+echo "PG_DBNAME=prod"
+echo "PG_USER=teller"
+echo "PG_SSLMODE=disable"
+echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+
+  cat > "${FIXTURE_ROOT}/src/scripts/macos_ui_swift_lock.sh" <<'EOF'
+#!/usr/bin/env bash
+macos_ui_with_swiftpm_lock() {
+  shift 3
+  "$@"
+}
+EOF
+
+  cat > "${STUB_BIN}/swift" <<'EOF'
+#!/usr/bin/env bash
+echo "sandbox_apply: Operation not permitted" >&2
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/swift"
+
+  run bash -c "
+    cd '${FIXTURE_ROOT}'
+    RUN_SHELL_TESTS=false RUN_PYTHON_TESTS=false RUN_SQL_TESTS=false RUN_SWIFT_TESTS=true \
+      '${FIXTURE_ROOT}/src/scripts/run_unit_test_lanes.sh'
+  "
+  [ "$status" -eq 0 ]
+}
+
 @test "strips invalid --cache-dir from inherited PYTEST_ADDOPTS" {
   run bash -c "
     export PYTEST_ADDOPTS='--cache-dir=./artifacts/cache/pytest -q'

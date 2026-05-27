@@ -23,7 +23,7 @@ Tests:
 R015  Statement: Deletion must move only selected local context files to local Trash.
 Design: `deleteContext(targetKey:)` resolves one context, moves token and enrollment files into `~/.Trash/teller-enrollment-removals` with timestamped names, and returns remaining contexts.
 Tests:
-- R015-T01: Delete one suffixed context and verify source files are removed, trash destinations are returned, and non-target contexts remain.
+- R015-T01: Delete one suffixed context and verify source files are removed, trash destinations are under `~/.Trash/teller-enrollment-removals`, and non-target contexts remain.
 
 R020  Statement: Connect start sessions must validate prerequisites and action-specific context requirements.
 Design: `startSession(...)` requires a non-empty `~/.teller/application_id.txt`, requires selected context with `enrollment_id` for reconnect, and supplies app/environment/enrollment fields for WebView launch.
@@ -34,7 +34,7 @@ Tests:
 R025  Statement: Token capture writes must enforce restrictive file permissions.
 Design: Writes create `~/.teller` with mode `700`, atomically write token/enrollment payloads through temp files, and set destination files to mode `400`.
 Tests:
-- R025-T01: Store a token and verify directory/file permission bits are restricted as specified.
+- R025-T01: Store a token and verify `~/.teller` mode is `700` and both token and enrollment files are written with mode `400`.
 
 R030  Statement: Institution inference must remain best-effort and non-fatal.
 Design: `inferInstitutionID(...)` attempts Teller identity lookup only when cert/key files exist and returns empty string on command failures, malformed payloads, or missing institution fields.
@@ -45,3 +45,4 @@ Tests:
 
 - 2026-05-02: Added Swift replacement requirements for connect context/session/storage behavior previously documented for shell/token-server flows.
 - 2026-05-23: Added reconnect enrollment-ID refresh requirement to prevent stale disconnected enrollment reuse.
+- 2026-05-27: Tightened R015/R025 test traceability for trash destination prefix and enrollment file permission checks.

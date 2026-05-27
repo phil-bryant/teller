@@ -75,6 +75,16 @@ class MailcartClientTests(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 502)
         self.assertIn("upstream returned 500", ctx.exception.message)
 
+    def test_request_maps_upstream_429_to_502_with_context(self):
+        session = MagicMock()
+        session.request.return_value = _Response(429, payload={"error": True}, text="slow down")
+        client = MailcartClient(base_url="http://mailcart.internal", session=session)
+        with self.assertRaises(MailcartError) as ctx:
+            client.search("receipt", 5)
+        self.assertEqual(ctx.exception.status_code, 502)
+        self.assertIn("upstream returned 429", ctx.exception.message)
+        self.assertIn("slow down", ctx.exception.message)
+
     def test_request_raises_502_on_request_exception(self):
         session = MagicMock()
         session.request.side_effect = requests.RequestException("boom")

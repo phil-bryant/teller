@@ -377,6 +377,39 @@ final class APIClientTests: XCTestCase {
         }
     }
 
+    func testDefaultWriteTokenFailurePathProducesMissingWriteTokenError() async {
+        // #R045-T03
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("api-client-tests-path-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tempPath, withIntermediateDirectories: true, attributes: nil)
+
+        let originalPath = ProcessInfo.processInfo.environment["PATH"] ?? ""
+        setenv("PATH", tempPath.path, 1)
+        defer {
+            setenv("PATH", originalPath, 1)
+            try? FileManager.default.removeItem(at: tempPath)
+        }
+
+        URLProtocolStub.requestHandler = { _ in
+            XCTFail("Expected request to fail before any network call")
+            throw APIError.invalidResponse
+        }
+
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [URLProtocolStub.self]
+        let session = URLSession(configuration: config)
+        let client = APIClient(baseURL: Self.testBaseURL, session: session)
+
+        do {
+            _ = try await client.fetchCategories()
+            XCTFail("Expected APIError.missingWriteToken")
+        } catch APIError.missingWriteToken {
+            XCTAssertTrue(true)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testSaveClassificationsNon2xxReturnsServerMessage() async {
         // #R010-T02
         URLProtocolStub.requestHandler = { request in

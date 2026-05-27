@@ -109,6 +109,7 @@ Tests:
 - R062-T01: Provide a fake Mailcart payload and verify each hit is proxied to the response; verify a malformed upstream response surfaces 502.
 - R062-T02: Provide Mailcart's real `{messages: [...]}` envelope and verify each hit is mapped to the UI-facing `{email_message_id, from, snippet}` shape.
 - R062-T03: Resolve `/v1/matchy/messages/search` through the app router and verify it matches the search route (not `/{email_message_id}`) and that route registration order keeps `/search` ahead of `/{email_message_id}`.
+- R062-T04: Simulate a Mailcart throttling error wrapped as `MailcartError(status_code=502, message contains upstream 429)` and verify the search route preserves the 502 response contract.
 
 R071  Statement: Clear a human-reviewed match and return the transaction to unmatched.
 Design: Match-review mutation endpoints include `/v1/matchy/matches/{match_id}/clear` and `/v1/matchy/transactions/{transaction_id}/clear`. Each deactivates the transaction's active `transaction_email_match` row (`active = FALSE`), records an audit row, and returns `MatchReviewActionResponse`. After clear, `/v1/transactions` no longer exposes a `match` field for that transaction (it qualifies for `match_state=unmatched`). Unknown `match_id` returns 404; clearing when no active match exists returns 404. OpenAPI documents `404` on both endpoints.
@@ -134,3 +135,4 @@ Tests:
 - 2026-05-19: Extended `match_state` with `unmatched` and `no_email` filters aligned with Match & Classify left-pane badges.
 - 2026-05-19: Added R071 (clear match mutation endpoints to return transactions to unmatched).
 - 2026-05-19: Extended R062 with route-registration ordering so `/v1/matchy/messages/search` is not shadowed by `/{email_message_id}`.
+- 2026-05-27: Extended R062 with throttling-proxy traceability (`R062-T04`) for wrapped upstream 429 behavior.

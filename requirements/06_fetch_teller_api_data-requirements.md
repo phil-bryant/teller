@@ -63,6 +63,12 @@ Tests:
 - R035-T01: Delete stale transactions and verify unreferenced link/detail/counterparty rows are removed in the same persistence run.
 - R035-T02: Verify referenced relation rows are preserved.
 
+R040  Statement: Handle rate-limit and disconnected enrollment errors with deterministic control flow.
+Design: `TellerAPIClient.get(...)` must fail fast for non-disconnected errors (including 429), retry exactly once only for `enrollment.disconnected*` after successful repair, and preserve pagination/isolation behavior when a later page fails.
+Tests:
+- R040-T01: Simulate a 429 response and verify `TellerAPIError` propagates status/code/message without invoking repair retry.
+- R040-T02: Simulate a mid-pagination 429 failure and verify pagination aborts with the raised API error.
+
 ## Changelog
 
 - 2026-04-19: Initial reverse-engineered requirements for `06_fetch_teller_api_data.py`.
@@ -71,3 +77,4 @@ Tests:
 - 2026-04-22: Added R035 to prune unreferenced transaction relation rows after stale pending cleanup.
 - 2026-05-23: Added explicit missing/invalid auth-token error handling requirement for default-token loads.
 - 2026-05-25: Extended R005 to require explicit HTTP timeout propagation for Teller API requests.
+- 2026-05-27: Added R040 coverage for deterministic handling of 429 failures and disconnected-repair retry boundaries.

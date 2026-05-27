@@ -1319,6 +1319,18 @@ class MatchCandidateProxyTests(unittest.TestCase):
             endpoint(request=self._authorized_request(), query="q", limit=5)
         self.assertEqual(ctx.exception.status_code, 502)
 
+    def test_search_messages_preserves_upstream_429_wrapped_as_502(self):
+        #R062-T04
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
+        self._install_mailcart_client(
+            _FakeMailcartClient(search_error=MailcartError(status_code=502, message="mailcart: upstream returned 429: slow down"))
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(request=self._authorized_request(), query="receipt", limit=5)
+        self.assertEqual(ctx.exception.status_code, 502)
+        self.assertIn("upstream returned 429", ctx.exception.detail)
+
     def test_search_messages_accepts_real_mailcart_messages_envelope(self):
         #R062-T02
         app = create_app()

@@ -213,6 +213,37 @@ class TellerApiClientRequestTimeoutTests(unittest.TestCase):
         self.assertEqual(captured["timeout"], self.module.REQUEST_TIMEOUT_SECONDS)
         self.assertEqual(captured["params"], {"from_id": "txn_1"})
 
+    def test_get_raises_teller_api_error_for_429_without_repair_retry(self) -> None:
+        #R040-T01
+        class _Response:
+            status_code = 429
+            text = "rate-limited"
+
+            @staticmethod
+            def json():
+                return {"error": {"code": "rate_limited", "message": "slow down"}}
+
+        calls = []
+
+        def _fake_get(url, params=None, timeout=None, **kwargs):
+            calls.append((url, params, timeout, kwargs))
+            return _Response()
+
+        self.module.requests.get = _fake_get
+        client = self.module.TellerAPIClient.__new__(self.module.TellerAPIClient)
+        client.kwargs = {"auth": ("token-value", ""), "headers": {}, "verify": True}
+        repair_calls = []
+        client._repair_enrollment = lambda: repair_calls.append("called") or True
+
+        with self.assertRaises(self.module.TellerAPIError) as exc:
+            self.module.TellerAPIClient.get(client, "https://api.teller.io/test", {"from_id": "txn_1"})
+
+        self.assertEqual(exc.exception.status_code, 429)
+        self.assertEqual(exc.exception.code, "rate_limited")
+        self.assertEqual(exc.exception.message, "slow down")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(repair_calls, [])
+
     def test_fetch_all_transactions_uses_from_id_pagination(self) -> None:
         class _FakeClient:
             def __init__(self):
@@ -230,6 +261,66 @@ class TellerApiClientRequestTimeoutTests(unittest.TestCase):
         txns = self.module._fetch_all_transactions(client, "https://api.teller.io/txns")
         self.assertEqual([txn["id"] for txn in txns], ["txn_1", "txn_2", "txn_3"])
         self.assertEqual(client.calls, [{}, {"from_id": "txn_2"}, {"from_id": "txn_3"}])
+
+    def test_fetch_all_transactions_raises_on_mid_pagination_rate_limit(self) -> None:
+        #R040-T02
+        class _FakeClient:
+            def __init__(self, module):
+                self.module = module
+                self.calls = []
+
+            def get(self, _url, params=None):
+                self.calls.append(params or {})
+                if params is None:
+                    return [{"id": "txn_1", "date": "2026-01-03"}, {"id": "txn_2", "date": "2026-01-02"}]
+                if params.get("from_id") == "txn_2":
+                    raise self.module.TellerAPIError(
+                        message="slow down",
+                        code="rate_limited",
+                        status_code=429,
+                    )
+                return []
+
+        client = _FakeClient(self.module)
+        with self.assertRaises(self.module.TellerAPIError) as exc:
+            self.module._fetch_all_transactions(client, "https://api.teller.io/txns")
+        self.assertEqual(exc.exception.status_code, 429)
+        self.assertEqual(exc.exception.code, "rate_limited")
+        self.assertEqual(client.calls, [{}, {"from_id": "txn_2"}])
+
+    def test_get_retries_once_for_disconnected_enrollment_code(self) -> None:
+        #R010-T01
+        class _Response:
+            def __init__(self, status_code, payload, text):
+                self.status_code = status_code
+                self._payload = payload
+                self.text = text
+
+            def json(self):
+                return self._payload
+
+        calls = []
+
+        def _fake_get(url, params=None, timeout=None, **kwargs):
+            calls.append((url, params, timeout, kwargs))
+            if len(calls) == 1:
+                return _Response(
+                    404,
+                    {"error": {"code": "enrollment.disconnected", "message": "reconnect required"}},
+                    "reconnect required",
+                )
+            return _Response(200, {"ok": True}, "")
+
+        self.module.requests.get = _fake_get
+        client = self.module.TellerAPIClient.__new__(self.module.TellerAPIClient)
+        client.kwargs = {"auth": ("token-value", ""), "headers": {}, "verify": True}
+        repair_calls = []
+        client._repair_enrollment = lambda: repair_calls.append("called") or True
+
+        payload = self.module.TellerAPIClient.get(client, "https://api.teller.io/test", {"from_id": "txn_1"})
+        self.assertEqual(payload, {"ok": True})
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(repair_calls, ["called"])
 
     def test_fetch_all_transactions_raises_on_repeated_cursor(self) -> None:
         class _FakeClient:
@@ -344,6 +435,97 @@ class TellerApiClientRequestTimeoutTests(unittest.TestCase):
         self.assertEqual(len(popen_calls), 1)
         self.assertEqual(len(input_calls), 1)
         self.assertEqual(len(load_auth_calls), 1)
+
+
+class TellerApiMainIsolationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.module = load_module()
+
+    def test_main_continues_after_single_context_rate_limited_failure(self) -> None:
+        #R025-T02
+        contexts = [
+            {"institution_id": "bank_a", "enrollment_id": "enr_a", "token": "token-a", "source": "suffix"},
+            {"institution_id": "bank_b", "enrollment_id": "enr_b", "token": "token-b", "source": "suffix"},
+        ]
+        fetch_calls = []
+        persisted = {}
+
+        class _Args:
+            debug = False
+            dry_run = False
+            institution_id = ""
+
+        original_argv = list(self.module.sys.argv)
+        original_build_contexts = self.module._build_enrollment_contexts
+        original_fetch_context_data = self.module._fetch_context_data
+        original_client = self.module.TellerAPIClient
+        original_parse_args = self.module.argparse.ArgumentParser.parse_args
+        original_db_module = sys.modules.get("teller.teller_db")
+        original_persist_module = sys.modules.get("teller.teller_persist")
+        self.addCleanup(lambda: setattr(self.module, "_build_enrollment_contexts", original_build_contexts))
+        self.addCleanup(lambda: setattr(self.module, "_fetch_context_data", original_fetch_context_data))
+        self.addCleanup(lambda: setattr(self.module, "TellerAPIClient", original_client))
+        self.addCleanup(
+            lambda: setattr(self.module.argparse.ArgumentParser, "parse_args", original_parse_args)
+        )
+        self.addCleanup(lambda: setattr(self.module.sys, "argv", original_argv))
+
+        def _restore_module(name, original):
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
+
+        self.addCleanup(lambda: _restore_module("teller.teller_db", original_db_module))
+        self.addCleanup(lambda: _restore_module("teller.teller_persist", original_persist_module))
+
+        def _fake_build_contexts(_institution_id):
+            return contexts
+
+        def _fake_fetch_context_data(client, _institution_id):
+            fetch_calls.append(client._enrollment_id)
+            if client._enrollment_id == "enr_a":
+                raise self.module.TellerAPIError(message="slow down", code="rate_limited", status_code=429)
+            identities = [{"account": {"id": "acct_1", "institution": {"id": "bank_b", "name": "Bank B"}}}]
+            return identities, {"acct_1": [{"id": "txn_1", "date": "2026-01-01"}]}, {}
+
+        class _FakeClient:
+            def __init__(self, auth_token="", enrollment_id=""):
+                self._auth_token = auth_token
+                self._enrollment_id = enrollment_id
+
+        class _FakeSession:
+            def rollback(self):
+                return None
+
+            def close(self):
+                return None
+
+        fake_db_module = types.ModuleType("teller.teller_db")
+        fake_persist_module = types.ModuleType("teller.teller_persist")
+        fake_db_module.get_session = lambda: _FakeSession()
+
+        def _persist_all(_session, raw_identities, raw_transactions_by_account, raw_balances_by_account):
+            persisted["identities"] = raw_identities
+            persisted["tx"] = raw_transactions_by_account
+            persisted["bal"] = raw_balances_by_account
+
+        fake_persist_module.persist_all = _persist_all
+        sys.modules["teller.teller_db"] = fake_db_module
+        sys.modules["teller.teller_persist"] = fake_persist_module
+
+        self.module._build_enrollment_contexts = _fake_build_contexts
+        self.module._fetch_context_data = _fake_fetch_context_data
+        self.module.TellerAPIClient = _FakeClient
+        self.module.argparse.ArgumentParser.parse_args = lambda _parser: _Args()
+        self.module.sys.argv = ["06_fetch_teller_api_data.py"]
+
+        self.module.main()
+
+        self.assertEqual(fetch_calls, ["enr_a", "enr_b"])
+        self.assertEqual(len(persisted["identities"]), 1)
+        self.assertEqual(persisted["identities"][0]["account"]["id"], "acct_1")
+        self.assertEqual(persisted["tx"]["acct_1"][0]["id"], "txn_1")
 
 
 if __name__ == "__main__":

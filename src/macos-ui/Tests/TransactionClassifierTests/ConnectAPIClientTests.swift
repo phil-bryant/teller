@@ -109,6 +109,7 @@ final class ConnectAPIClientTests: XCTestCase {
         XCTAssertTrue(String(decoding: saved, as: UTF8.self).contains("token_abc"))
         XCTAssertEqual(try fileMode(at: home.appendingPathComponent(".teller").path), "700")
         XCTAssertEqual(try fileMode(at: first.path), "400")
+        XCTAssertEqual(try fileMode(at: first.enrollment_id_path), "400")
     }
 
     func testDeleteContextMovesFilesToTrashFolder() async throws {
@@ -128,6 +129,16 @@ final class ConnectAPIClientTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: enrollmentPath.path))
         XCTAssertNotNil(response.moved_token)
         XCTAssertNotNil(response.moved_enrollment)
+        if let movedToken = response.moved_token, let movedEnrollment = response.moved_enrollment {
+            let expectedPrefix = home
+                .appendingPathComponent(".Trash", isDirectory: true)
+                .appendingPathComponent("teller-enrollment-removals", isDirectory: true)
+                .path + "/"
+            XCTAssertTrue(movedToken.hasPrefix(expectedPrefix))
+            XCTAssertTrue(movedEnrollment.hasPrefix(expectedPrefix))
+            XCTAssertTrue(FileManager.default.fileExists(atPath: movedToken))
+            XCTAssertTrue(FileManager.default.fileExists(atPath: movedEnrollment))
+        }
     }
 
     func testReconnectWithoutEnrollmentIDClearsStaleEnrollmentFile() async throws {

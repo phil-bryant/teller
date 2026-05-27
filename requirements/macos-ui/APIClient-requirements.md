@@ -41,6 +41,7 @@ Design: `APIClient` resolves write token using `1psa -p TELLER_CLASSIFIER_WRITE_
 Tests:
 - R045-T01: Trigger GET and non-GET calls and verify `X-Teller-Write-Token` header is attached.
 - R045-T02: Simulate missing token and verify explicit missing-token client error.
+- R045-T03: Simulate default 1psa token resolution failure and verify API calls fail with `APIError.missingWriteToken`.
 
 R050  Statement: Support clearing a human-reviewed match from the macOS Match & Classify UI.
 Design: `ClassificationAPI` declares `clearMatch(matchId:)` and `clearTransactionMatch(transactionId:)`; `APIClient` issues PUT requests to `/v1/matchy/matches/{match_id}/clear` and `/v1/matchy/transactions/{transaction_id}/clear` and decodes `MatchReviewActionResponse`.
@@ -73,3 +74,4 @@ Tests:
 - 2026-05-26: Added R020 for loopback HTTPS pinning against the local classifier TLS cert.
 - 2026-05-26: Added R063 (advanced transaction filter query params) and R064 (structured email search query params); updated R062 for criteria-based search.
 - 2026-05-26: Extended R001 for `include_total` / `count_only` query parameters (API R072).
+- 2026-05-27: Added R045-T03 traceability for default write-token resolution failure behavior.
