@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -19,8 +20,8 @@ from dotenv import load_dotenv  # noqa: E402
 from teller.teller_object import TellerObject  # noqa: E402
 from teller.teller_account import TellerAccount  # noqa: E402
 from teller.teller_account_identities import TellerAccountIdentities  # noqa: F401,E402 — registers class with SQLAlchemy mapper
-from teller.teller_identity import TellerIdentity  # noqa: E402
-from teller.teller_transaction import TellerTransaction  # noqa: E402
+from teller.teller_identity import TellerIdentity  # noqa: F401,E402
+from teller.teller_transaction import TellerTransaction  # noqa: F401,E402
 
 log = structlog.get_logger()
 TELLER_DIR = Path.home() / ".teller"
@@ -94,7 +95,7 @@ class TellerAPIClient:
         repaired = False
         if enrollment_id:
             try:
-                launcher = Path(__file__).resolve().parent / "09_run_classification_macos-ui.sh"
+                launcher = Path(__file__).resolve().parent / "09_run_classification_macos_ui.sh"
                 if not launcher.is_file():
                     raise OSError(f"Missing launcher: {launcher}")
                 if not os.access(launcher, os.X_OK):
@@ -117,7 +118,7 @@ class TellerAPIClient:
         return repaired
 
     def get(self, url: str, params: Dict = None) -> dict:
-        log.info("Connecting to Teller API", url=url, params=params, auth_token=self.kwargs['auth'][0][:5])
+        log.info("Connecting to Teller API", url=url, params=params, has_auth=bool(self.kwargs.get("auth", ("", ""))[0]))
         response = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS, **self.kwargs)
         code = self._parse_error(response)[0] if response.status_code != 200 else ""
         #R010: Retry once after successful enrollment repair.
@@ -209,7 +210,8 @@ def _dedupe_contexts(contexts: List[dict]) -> List[dict]:
         institution_id = row.get("institution_id", "")
         token = row.get("token", "")
         source = row.get("source", "")
-        key = enrollment_id or f"{institution_id}:{token[:12]}"
+        token_fingerprint = hashlib.sha256(token.encode("utf-8")).hexdigest()[:12] if token else ""
+        key = enrollment_id or f"{institution_id}:{token_fingerprint}"
         if key:
             deduped[key] = {
                 "enrollment_id": enrollment_id,
@@ -227,20 +229,15 @@ def _fetch_context_data(client: TellerAPIClient, institution_id: str) -> tuple:
     for item in filtered_identities:
         account_data = item["account"]
         account = TellerAccount(account_data)
-        print(f"Account: {account.name} ({account.id}) — {account.institution.name}")
+        print(f"Account fetched: id={account.id} institution={account.institution.name}")
         raw_txns = _fetch_all_transactions(client, account.links.transactions)
         raw_transactions_by_account[account_data["id"]] = raw_txns
-        print(json.dumps(raw_txns, indent=2))
-        for td in raw_txns:
-            txn = TellerTransaction(td)
-            print(f"  {txn.date} {txn.amount:>10} {txn.description}")
+        print(f"  Transactions fetched: {len(raw_txns)}")
         if account.links.balances:
             raw_bal = client.get(account.links.balances)
             raw_balances_by_account[account_data["id"]] = raw_bal
-            print(f"  Balances: ledger={raw_bal.get('ledger')} available={raw_bal.get('available')}")
-        for owner_data in item["owners"]:
-            owner = TellerIdentity(owner_data)
-            print(f"  Owner: {owner.type.value} — {', '.join(n.data for n in owner.names)}")
+            print("  Balances fetched.")
+        print(f"  Owners fetched: {len(item.get('owners', []))}")
     return filtered_identities, raw_transactions_by_account, raw_balances_by_account
 
 def _build_enrollment_contexts(institution_id: str) -> List[dict]:
@@ -285,7 +282,7 @@ def main():
             try:
                 client = TellerAPIClient(auth_token=context["token"], enrollment_id=context["enrollment_id"])
                 ids, tx_by_account, bals_by_account = _fetch_context_data(client, args.institution_id)
-                print(json.dumps(ids, indent=2))
+                print(f"Fetched identity records: {len(ids)}")
                 raw_identities.extend(ids)
                 raw_transactions_by_account.update(tx_by_account)
                 raw_balances_by_account.update(bals_by_account)
@@ -335,7 +332,7 @@ def main():
         if exc.code:
             print(f"Error code: {exc.code}")
         if exc.code.startswith("enrollment.disconnected"):
-            print("Auto-repair failed. Run ./09_run_classification_macos-ui.sh and use the Connect tab to repair.")
+            print("Auto-repair failed. Run ./09_run_classification_macos_ui.sh and use the Connect tab to repair.")
         sys.exit(1)
 
 if __name__ == "__main__":
