@@ -16,7 +16,6 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `06_fetch_teller_api_data.py`
 - `07_backfill_bank_statements.py`
 - `08_run_classification_api.py`
-- `08_run_classification_api.py` (compatibility alias)
 - `09_run_classification_macos_ui.sh`
 - `10_run_all_tests_parallel.sh`
 - `11_report_quality_trends.sh`
@@ -155,7 +154,7 @@ Active secret and credential sources are:
   - `localhost_postgres_postgres` / `localhost_postgres_teller` by default for DB scripts
   - `TELLER_CLASSIFIER_WRITE_TOKEN` for classification API writes
 - Environment variables passed to scripts (for example `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`, `TELLER_DB_PROFILE`, `TELLER_DB_PROFILE_FILE`)
-- `~/.env` for local runtime settings loaded by `18_fetch_teller_api_data.py`
+- `~/.env` for local runtime settings loaded by `06_fetch_teller_api_data.py`
 
 ## What Each Core Script Does
 
@@ -284,7 +283,7 @@ Credential source resolution order used by recovery scripts:
 
 ## Ingest + Normalization + Persistence
 
-### Sequence (`18_fetch_teller_api_data.py`)
+### Sequence (`06_fetch_teller_api_data.py`)
 
 Why this flow matters: it makes reruns safe and clarifies where idempotency is enforced before data lands in Postgres.
 
@@ -292,7 +291,7 @@ Why this flow matters: it makes reruns safe and clarifies where idempotency is e
 [scheduler/manual]
       |
       v
-18_fetch_teller_api_data.py
+06_fetch_teller_api_data.py
       |
       +--> fetch institutions/accounts/transactions (+ balances/identity per account)
       |
@@ -348,7 +347,7 @@ Connect behavior:
 - Open the **Connect** tab to add, reconnect, or delete local enrollment contexts.
 - Successful Connect writes `auth_token*.json` and `enrollment_id*.txt` with restrictive permissions.
 - Local setup checks for Teller connectivity are available via in-app setup/smoke actions backed by `TellerSetupService`.
-- `18_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
+- `06_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
 
 Quality/security aggregate checks are available through:
 
@@ -358,7 +357,7 @@ Quality/security aggregate checks are available through:
 
 ## 1psa Items Used by Database Scripts
 
-`07_deploy_database.sh`, `97_backup_database.sh`, `98_destroy_database.sh`, and `99_restore_database.sh` read credentials from `1psa`.
+`05_deploy_database.sh`, `97_backup_database.sh`, `98_destroy_database.sh`, and `99_restore_database.sh` read credentials from `1psa`.
 
 Default items/fields:
 
@@ -379,7 +378,7 @@ Optional overrides:
 Example:
 
 ```bash
-POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./07_deploy_database.sh
+POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./05_deploy_database.sh
 ```
 
 ## Troubleshooting
@@ -398,7 +397,7 @@ POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./07_deploy_d
   - Fix: verify with `1psa -l localhost_postgres_teller` and `1psa -p localhost_postgres_teller`.
 - `psql: ... password authentication failed for user ...`
   - Cause: stored credential does not match the database user password.
-  - Fix: update the corresponding `1psa` item, then rerun `./07_deploy_database.sh`.
+  - Fix: update the corresponding `1psa` item, then rerun `./05_deploy_database.sh`.
 - `could not connect to server on socket ...`
   - Cause: PostgreSQL is not running or listening on expected host/socket.
   - Fix: start PostgreSQL (for example via Homebrew service) and retry.

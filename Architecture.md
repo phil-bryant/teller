@@ -150,8 +150,8 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │ Frameworks/Libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,          │
  │                  psycopg2-binary, requests, structlog, python-dotenv         │
  │ Main flows:                                                                  │
- │   - Ingest: 18_fetch_teller_api_data.py                                      │
- │   - Backfill: 19_backfill_bank_statements.py                                 │
+ │   - Ingest: 06_fetch_teller_api_data.py                                      │
+ │   - Backfill: 07_backfill_bank_statements.py                                 │
  │   - API: 08_run_classification_api.py ->                                     │
  │          src/teller/teller_classification_api.py                             │
  └───────────────────────────────────────┬──────────────────────────────────────┘
@@ -240,13 +240,13 @@ HIGH-LEVEL FLOW
                         1psa secrets         SQL schema + tests
 
 
-INGEST + NORMALIZATION + PERSISTENCE (SCRIPT 16)
+INGEST + NORMALIZATION + PERSISTENCE (SCRIPT 06)
 ================================================
 
 [scheduler/manual]
       |
       v
-18_fetch_teller_api_data.py
+06_fetch_teller_api_data.py
       |
       +--> fetch institutions/accounts/transactions
       +--> normalize/transform (pagination + duplicate transaction canonicalization)
@@ -298,7 +298,7 @@ Trust boundaries:
 │                                  v                                                 │
 │  3) API usage path                                                 4) disconnected │
 │  ┌──────────────────────────────────────────────────────────────┐     enrollment   │
-│  │ 18_fetch_teller_api_data.py                                  │                  │
+│  │ 06_fetch_teller_api_data.py                                  │                  │
 │  │ - builds contexts from default/suffix/metadata files         │-----repair---┐   │
 │  │ - sends cert/key (mTLS) + token (basic user token:blank)     │              │   │
 │  │ - retries once after local repair workflow                   │              │   │
@@ -320,7 +320,7 @@ Token and credential lifecycle notes:
 - Initial connect/add: token returned by Connect is written to `auth_token*.json`; enrollment id is written to matching `enrollment_id*.txt`.
 - Reconnect/rotate token: reconnect action updates the selected existing context files in place.
 - Multi-context support: add action allocates unique suffixed file pairs so multiple enrollments can coexist.
-- Runtime consumption: `18_fetch_teller_api_data.py` reads local contexts, then calls Teller with local cert/key plus per-context token.
+- Runtime consumption: `06_fetch_teller_api_data.py` reads local contexts, then calls Teller with local cert/key plus per-context token.
 - Disconnected enrollment recovery: when Teller returns `enrollment.disconnected`, script triggers the macOS Connect repair flow and retries once.
 - Cert/key rotation boundary: certificate/private key issuance and revocation happen in Teller dashboard; local app/scripts only read local `certificate.pem` / `private_key.pem`.
 
@@ -333,7 +333,7 @@ Why: Shows exact order and idempotency points for data movement into Postgres.
 [scheduler/manual]
       |
       v
-18_fetch_teller_api_data.py
+06_fetch_teller_api_data.py
       |
       +--> fetch institutions/accounts/transactions
       |
