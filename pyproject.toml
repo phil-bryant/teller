@@ -51,5 +51,5 @@ tests_dir = [
   "tests/py/test_teller_base.py",
   "tests/py/test_teller_enums.py",
   "tests/py/test_teller_properties.py",
-  "tests/py/test_18_fetch_teller_api_data.py",
+  "tests/py/test_06_fetch_teller_api_data.py",
 ]

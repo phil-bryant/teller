@@ -145,12 +145,11 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func runMatchStatePickerScenario() {
-        // Fast default coverage: verify the primary match-state control path.
+        // Keep first-pass smoke lightweight; exhaustive match-state coverage lives in scenario 30.
         ensureMatchAndClassifyTab()
         ensureUnclassifiedFilterDisabled()
-        selectMatchStateFilter("Confirmed")
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout))
-        selectMatchStateFilter("All matches")
+        XCTAssertTrue(uiElement("match-review-state-picker").exists)
+        XCTAssertTrue(uiElement("transaction-list").exists)
     }
 
     private func runMatchStatePickerAllValuesScenario() {

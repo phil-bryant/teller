@@ -1,0 +1,17 @@
+ERROR:xenon:block "src/teller/teller_classification_api.py:1571 _enrich_candidates_with_mailcart" has a rank of D
+ERROR:xenon:block "src/teller/teller_classification_api.py:639 _write_category" has a rank of C
+ERROR:xenon:block "src/teller/teller_persist.py:72 _upsert_identity" has a rank of C
+ERROR:xenon:block "src/teller/teller_db_profile.py:159 _build_record" has a rank of C
+ERROR:xenon:block "src/scripts/check_teller_api_drift.py:51 resolve_credentials" has a rank of D
+ERROR:xenon:block "src/scripts/check_teller_api_drift.py:118 run_live_canary" has a rank of C
+ERROR:xenon:block "src/scripts/check_teller_api_drift.py:186 run_fallback_checks" has a rank of C
+ERROR:xenon:block "src/scripts/check_dependency_freshness.py:125 make_report" has a rank of C
+ERROR:xenon:block "src/scripts/check_postgres_freshness.py:301 evaluate_cves" has a rank of E
+ERROR:xenon:block "src/scripts/check_postgres_freshness.py:508 build_report" has a rank of E
+ERROR:xenon:block "src/scripts/check_postgres_freshness.py:632 format_text_report" has a rank of C
+ERROR:xenon:block "src/scripts/check_teller_api_version_freshness.py:191 discover_dashboard_version" has a rank of C
+ERROR:xenon:block "src/scripts/check_teller_api_version_freshness.py:125 resolve_otp_code" has a rank of C
+ERROR:xenon:block "src/scripts/check_teller_api_version_freshness.py:340 build_report" has a rank of C
+ERROR:xenon:block "src/scripts/check_teller_api_version_freshness.py:170 parse_dashboard_versions" has a rank of C
+ERROR:xenon:block "src/scripts/dast_cleanup.py:55 main" has a rank of D
+ERROR:xenon:block "src/scripts/mutmut_darwin.py:121 _execute" has a rank of C

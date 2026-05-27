@@ -1,0 +1,8 @@
+{
+  "vulture_exit": 3,
+  "radon_exit": 0,
+  "xenon_exit": 1,
+  "vulture_gate_failed": true,
+  "xenon_gate_failed": true,
+  "gate_failed": true
+}
