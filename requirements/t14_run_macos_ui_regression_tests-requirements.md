@@ -81,8 +81,14 @@ Design: Smoke coverage must validate that selecting an already-visible deep-list
 Tests:
 - R070-T01: Load a long fixture list, verify it requires scrolling to span top-to-bottom rows, scroll to middle-list rows, select one or more visible middle rows, and verify row frame position remains effectively unchanged after each selection.
 
+R075  Statement: Default smoke profile must include advanced filter regression scenarios.
+Design: `XCUITEST_SMOKE_DEFAULT_STEPS` must include scenarios 31 and 32 so standard `t14` runs always exercise advanced transaction scalar filters (`start`, `end`, `min`, `max`) and advanced email search filters (`body keyword`, `received from`, `received to`).
+Tests:
+- R075-T01: Run script with default smoke profile and verify `XCUITEST_STEPS` includes `31-32`.
+
 ## Changelog
 
+- 2026-05-27: Added R075 to require smoke defaults include scenarios 31-32 for advanced transaction and email filter regressions.
 - 2026-05-25: Added R055/R060/R065/R070 for full Match filter option coverage, tab-specific toolbar visibility, and long-list manual selection scroll stability.
 - 2026-05-20: Reworked XCUITest lane to a single-session `testMacOSUISmokeSuite` with 12 requirement-driven scenarios; R040/R045 now target scenario-step selection via `XCUITEST_STEPS`.
 - 2026-05-12: Replaced optional crash-reporter lane with R050 isolation requirement; verification is standalone `17_verify_macos_crash_test.sh`.

@@ -28,6 +28,9 @@ struct ContentView: View {
     var body: some View {
         // #R001: Render transaction triage UI as an HSplitView with 3 panes (Transactions /
         // #R001: Candidates / Classification + Email) inside the unified Match & Classify tab.
+        // #R010: Keyboard shortcuts are owned by pane-local controls in MatchAndClassifyView.
+        // #R055: Next Unclassified is scoped to Match & Classify by living in that tab's pane.
+        // #R060: Undo is scoped to Match & Classify by living in that tab's pane.
         TabView(selection: $selectedTab) {
             MatchAndClassifyView(viewModel: viewModel, scrollTargetId: $scrollTargetId)
                 .padding(12)
@@ -46,21 +49,6 @@ struct ContentView: View {
         }
         .navigationTitle("Transaction Classifier")
         .navigationSplitViewStyle(.balanced)
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                // #R010: Expose keyboard-first shortcuts for next-unclassified and undo.
-                // #R055: Next Unclassified control is scoped to Match & Classify tab only.
-                if selectedTab == .matchAndClassify {
-                    Button("Next Unclassified") { viewModel.nextUnclassified() }.keyboardShortcut("]", modifiers: .command)
-                        .accessibilityIdentifier("next-unclassified-button")
-                }
-                // #R060: Undo control is scoped to Match & Classify tab only.
-                if selectedTab == .matchAndClassify {
-                    Button("Undo") { Task { await viewModel.undoLast() } }.keyboardShortcut("z", modifiers: .command)
-                        .accessibilityIdentifier("undo-button")
-                }
-            }
-        }
         .task {
             guard autoLoadOnAppear else { return }
             await viewModel.loadAll()

@@ -136,7 +136,7 @@ EOF
 }
 
 @test "defaults run snapshot and xcodebuild when env vars unset" {
-  #R030-T01
+  #R030-T01 #R075-T01
   touch "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj/placeholder" 2>/dev/null || \
     mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
   cat > "${STUB_BIN}/swift" <<EOF
@@ -158,6 +158,7 @@ EOF
   [ "$status" -eq 0 ]
   grep "swift" "${CALLS_LOG}"
   grep "xcodebuild" "${CALLS_LOG}"
+  [[ "$output" == *"1-17,19-29,31-32"* ]]
 }
 
 @test "passes xcodebuild project scheme destination and derived data overrides" {

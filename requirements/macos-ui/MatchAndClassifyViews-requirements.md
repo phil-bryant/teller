@@ -4,16 +4,20 @@
 
 Applies to `src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift`.
 
-R005  Statement: Provide inline search and filtering controls.
-Design: A three-row filter toolbar includes `TextField` search and `onlyUnclassified` toggle on the first row, match-state picker and only-unmoved toggle on the second row, and advanced transaction filters (date range, institution, amount) on the third row (R070).
+R005  Statement: Transaction discovery controls belong inside the Transactions pane.
+Design: `MatchAndClassifyTransactionsPane` owns transaction-scoped controls: `TextField` search, `onlyUnclassified` toggle, and the advanced transaction filters (date range, institution, amount from R070). To avoid overcrowding, these controls render on four rows inside the pane: (1) search only, (2) start date + min amount + institution picker (label hidden), (3) end date + max amount + unclassified toggle, (4) refresh/load-more actions. The date fields use a shared width token (`Start date` and `End date` equal width), and the amount fields use a shared width token (`Min amount` and `Max amount` equal width).
 Tests:
 - R005-T01: Enter search text and enable unclassified filter; verify view model reload path is invoked and list narrows accordingly.
-- R005-T02: Open Match & Classify and verify filter controls render on two toolbar rows (search/unclassified above match filters).
+- R005-T02: Open Match & Classify and verify search/unclassified plus advanced transaction filter controls render from the Transactions pane container.
+- R005-T03: Open Match & Classify and verify the Transactions-pane controls are split across four rows so min/max amount fields are not on the same row as date/institution controls.
+- R005-T04: Verify `Start date` and `End date` use the same explicit width token and `Min amount`/`Max amount` use the same explicit width token.
 
 R015  Statement: Support detail-pane classification edits for current selection.
-Design: Detail pane provides apply and clear actions bound to selected rows and currently chosen category.
+Design: `ClassifySection` in the Classification pane provides category selection plus Apply/Clear/Undo actions bound to selected rows and currently chosen category. Undo is rendered immediately to the right of Clear and remains scoped to Match & Classify interactions. Classification controls are not rendered in the Transactions or Match panes.
 Tests:
 - R015-T01: Select one or more rows, apply a category, then clear classification and verify row-level status updates.
+- R015-T02: Open Match & Classify and verify classification controls (`CategoryTypeaheadField`, Apply to Selected, Clear) are defined in `ClassifySection`.
+- R015-T03: Open Match & Classify and verify `undo-button` is rendered in `ClassifySection` to the right of `clear-selection-button`.
 
 R020  Statement: Toggling the Unclassified filter in either direction automatically reloads the transaction list.
 Design: `MatchAndClassifyView` observes `viewModel.onlyUnclassified` via `.onChange` and invokes `loadAll()` whenever the switch flips so users do not have to press Refresh.
@@ -62,25 +66,44 @@ Tests:
 - R067-T01: Open Match & Classify and verify the right pane renders a visible `Transaction Classification` heading above the category typeahead.
 
 R068  Statement: Transaction list actions belong beside the Transactions pane.
-Design: `MatchAndClassifyTransactionsPane` renders Refresh (bound to `loadAll()`) and Load more (bound to `loadMore()`, disabled when `!canLoadMore || busy`) in the pane header below the Transactions title and count, not in the global filter toolbar or bottom status bar.
+Design: `MatchAndClassifyTransactionsPane` renders Next Unclassified, Refresh (bound to `loadAll()`), and Load more (bound to `loadMore()`, disabled when `!canLoadMore || busy`) in the pane header below the Transactions title and count, not in the global filter toolbar or bottom status bar. Next Unclassified is placed to the left of Refresh.
 Tests:
-- R068-T01: Open Match & Classify and verify `refresh-button` and `load-more-button` are exposed from the transactions pane header.
+- R068-T01: Open Match & Classify and verify `next-unclassified-button`, `refresh-button`, and `load-more-button` are exposed from the transactions pane header.
 - R068-T02: Tap Refresh and verify status text reports a loaded transaction count; tap Load more when enabled and verify additional rows append.
+- R068-T03: Verify `next-unclassified-button` is declared before `refresh-button` in the Transactions actions row.
 
 R070  Statement: Expose advanced transaction filters for date range, institution, and amount.
-Design: `MatchAndClassifyToolbar` renders a third row with start/end date fields (`YYYY-MM-DD`), an institution picker (`All institutions` plus distinct `institution_id` values), and min/max amount fields. Each control uses a stable accessibility identifier (`transaction-start-date-field`, `transaction-end-date-field`, `transaction-institution-picker`, `transaction-min-amount-field`, `transaction-max-amount-field`). Changing any advanced filter automatically reloads the transaction list (same UX as the Unclassified toggle).
+Design: `MatchAndClassifyTransactionsPane` renders start/end date fields (`YYYY-MM-DD`), an institution picker (`All institutions` plus distinct `institution_id` values), and min/max amount fields beside the transaction list controls. Each control uses a stable accessibility identifier (`transaction-start-date-field`, `transaction-end-date-field`, `transaction-institution-picker`, `transaction-min-amount-field`, `transaction-max-amount-field`). Changing any advanced filter automatically reloads the transaction list (same UX as the Unclassified toggle).
 Tests:
-- R070-T01: Open Match & Classify and verify all five advanced transaction filter controls render in the filter toolbar.
+- R070-T01: Open Match & Classify and verify all five advanced transaction filter controls render in the Transactions pane.
 - R070-T02: Set a date range and amount bounds that exclude fixture rows, then verify the transaction list narrows without pressing Refresh.
+- R070-T03: Exercise each scalar transaction filter independently (`start date`, `end date`, `min amount`, `max amount`) and verify each one changes fixture results as expected.
 
-R071  Statement: Expose advanced email search fields for subject, sender, body, and received date range.
-Design: The candidates pane `Search Email` section replaces the single keyword field with subject, sender, body, and received start/end date fields (`YYYY-MM-DD`), each with stable accessibility identifiers (`mailcart-search-subject-field`, `mailcart-search-sender-field`, `mailcart-search-body-field`, `mailcart-search-start-date-field`, `mailcart-search-end-date-field`). Any field change debounces into the existing Mailcart search path.
+R072  Statement: Match controls belong in the Match pane.
+Design: `CandidatesPane` owns match-scoped controls (`match-review-state-picker` and `match-review-only-unmoved-toggle`) so filtering by match state stays colocated with the candidate list and search controls it governs.
 Tests:
-- R071-T01: Open Match & Classify and verify all five advanced email search fields render under the `Search Email` section heading.
+- R072-T01: Open Match & Classify and verify the match-state picker and only-unmoved toggle are defined in `CandidatesPane` and omitted from `MatchAndClassifyTransactionsPane`.
+
+R071  Statement: Expose advanced email search fields for subject, body, sender, and date range.
+Design: The candidates pane `Search Email` section provides subject, body, sender, and date start/end fields (`YYYY-MM-DD`) with stable accessibility identifiers (`mailcart-search-subject-field`, `mailcart-search-body-field`, `mailcart-search-sender-field`, `mailcart-search-start-date-field`, `mailcart-search-end-date-field`). Date labels use user-facing copy `Start date` and `End date`. Any field change debounces into the existing Mailcart search path.
+Tests:
+- R071-T01: Open Match & Classify and verify subject/body/sender/start-date/end-date fields render under `Search Email`.
 - R071-T02: Enter a subject filter that matches one fixture search hit and verify the hit row appears and can be selected to load the email body.
+- R071-T03: Exercise sender search with a fixture sender value and verify the expected hit row appears.
+- R071-T04: Exercise sender search with a non-matching sender value and verify no fixture hit rows remain visible.
+- R071-T05: Exercise email search by `Body keyword`, `Start date`, and `End date` and verify each filter changes fixture hits as expected.
 
 ## Changelog
 
+- 2026-05-27: Added explicit positive/negative sender regression requirements (R071-T03/R071-T04) and split remaining body/date checks into R071-T05.
+- 2026-05-27: Moved Next Unclassified into the Transactions actions row (left of Refresh) and moved Undo into the Classification action row (right of Clear); added R015-T03 and R068-T03.
+- 2026-05-27: Restored sender search control, relabeled email date fields to `Start date`/`End date`, and expanded R071-T03 coverage to include sender + date bounds.
+- 2026-05-27: Updated R071 to remove sender search control from the Match pane; added coverage for body/from/to email search and independent scalar transaction filter checks (R070-T03, R071-T03).
+- 2026-05-27: Updated R005 to require equal paired widths for date and amount fields in Transactions-pane rows 2 and 3; added R005-T04.
+- 2026-05-27: Adjusted R005 row ordering so row 2 is start/min/institution (label hidden) and row 3 is end/max/unclassified.
+- 2026-05-27: Adjusted R005 Transactions-pane row layout to search-only row 1, date+amount row 2, unclassified+institution row 3, actions row 4.
+- 2026-05-27: Updated R005 layout guidance to require four Transactions-pane control rows to prevent overcrowding; added R005-T03.
+- 2026-05-27: Updated pane ownership requirements so transaction controls live in `MatchAndClassifyTransactionsPane`, match controls live in `CandidatesPane`, and classification controls remain in `ClassifySection`; added R072 and R015-T02.
 - 2026-05-26: Added R070 (advanced transaction filters: date range, institution, amount) and R071 (advanced email search: subject, sender, body, date range).
 - 2026-05-26: Added R068 (Refresh/Load more beside Transactions pane) and updated R005 for two-row filter toolbar layout.
 - 2026-05-26: Added R066 (middle pane title `Transaction - Email Match Candidates`) and R067 (classification section title `Transaction Classification`).

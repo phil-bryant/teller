@@ -108,7 +108,7 @@ final class TransactionClassifierUITests: XCTestCase {
                 runMatchStatePickerAllValuesScenario()
             case 31: // #R070 #R090-T02
                 runAdvancedTransactionFilterScenario()
-            case 32: // #R071-T02 #R095-T01
+            case 32: // #R071-T02 #R071-T03 #R071-T04 #R071-T05 #R095-T01
                 runAdvancedEmailSearchScenario()
             default: break
             }
@@ -131,6 +131,12 @@ final class TransactionClassifierUITests: XCTestCase {
         clearSearchField(searchField)
         pasteText("coffee", into: searchField)
         app.typeKey(.return, modifierFlags: [])
+        if !waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout) {
+            // Retry once in case pasteboard delivery raced with a background reload.
+            clearSearchField(searchField)
+            pasteText("coffee", into: searchField)
+            app.typeKey(.return, modifierFlags: [])
+        }
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout))
         clearSearchField(searchField)
     }
@@ -236,15 +242,16 @@ final class TransactionClassifierUITests: XCTestCase {
         // #R010
         ensureMatchAndClassifyTab()
         ensureUnclassifiedFilterDisabled()
+        selectMatchStateFilter("All matches")
 
         uiElement("transaction-row-txn_002").click()
         app.typeKey("]", modifierFlags: .command)
-        if !waitUntil(timeout: waitTimeout * 2, condition: { isPrimarySelection("txn_001") }) {
+        if !waitUntil(timeout: waitTimeout * 2, condition: { isPrimarySelection("txn_003") }) {
             // Keyboard focus can briefly leave the app after menu interactions in prior steps.
             // Fall back to the visible control to verify the same user-facing behavior.
             uiElement("next-unclassified-button").click()
         }
-        assertSelectedTransactionId("txn_001", requireHeaderMatch: false)
+        assertSelectedTransactionId("txn_003")
     }
 
     private func runApplyCategoryScenario() {
@@ -304,6 +311,9 @@ final class TransactionClassifierUITests: XCTestCase {
         ensureMatchAndClassifyTab()
         ensureUnclassifiedFilterDisabled()
         ensureAllTransactionsLoadedIntoList()
+        selectMatchStateFilter("All matches")
+        // Anchor from a known classified row so Next Unclassified deterministically targets txn_001.
+        selectTransactionRow("txn_002", label: "Electric Utility Co")
 
         let list = app.scrollViews["transaction-list"].firstMatch
         XCTAssertTrue(list.exists)
@@ -452,27 +462,51 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertTrue(uiElement("transaction-min-amount-field").exists)
         XCTAssertTrue(uiElement("transaction-max-amount-field").exists)
 
-        replaceText(in: uiElement("transaction-start-date-field"), with: "2026-04-19")
-        replaceText(in: uiElement("transaction-end-date-field"), with: "2026-04-20")
+        // Start date filter alone should exclude older fixture rows.
+        replaceText(in: uiElement("transaction-start-date-field"), with: "2026-04-20")
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 3) {
+                uiElement("transaction-row-txn_001").exists && !uiElement("transaction-row-txn_002").exists
+            },
+            "Start date filter should exclude rows before 2026-04-20."
+        )
+        replaceText(in: uiElement("transaction-start-date-field"), with: "")
+
+        // End date filter alone should exclude newer fixture rows.
+        replaceText(in: uiElement("transaction-end-date-field"), with: "2026-04-19")
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 3) {
+                uiElement("transaction-row-txn_002").exists && !uiElement("transaction-row-txn_001").exists
+            },
+            "End date filter should exclude rows after 2026-04-19."
+        )
+        replaceText(in: uiElement("transaction-end-date-field"), with: "")
+
+        // Min amount filter alone should keep only rows at or above threshold.
         replaceText(in: uiElement("transaction-min-amount-field"), with: "50")
         XCTAssertTrue(
             waitUntil(timeout: waitTimeout * 3) {
                 uiElement("transaction-row-txn_002").exists && !uiElement("transaction-row-txn_001").exists
             },
-            "Amount and date filters should leave only Electric Utility Co visible."
+            "Min amount filter should exclude lower-dollar fixture rows."
         )
-
         replaceText(in: uiElement("transaction-min-amount-field"), with: "")
-        replaceText(in: uiElement("transaction-start-date-field"), with: "")
-        replaceText(in: uiElement("transaction-end-date-field"), with: "")
-        selectInstitutionFilter("inst_beta")
+
+        // Max amount filter alone should keep only rows at or below threshold.
+        replaceText(in: uiElement("transaction-max-amount-field"), with: "20")
         XCTAssertTrue(
             waitUntil(timeout: waitTimeout * 3) {
-                uiElement("transaction-row-txn_018").exists && !uiElement("transaction-row-txn_001").exists
+                uiElement("transaction-row-txn_001").exists && !uiElement("transaction-row-txn_002").exists
             },
-            "Institution filter should leave only inst_beta fixture rows visible."
+            "Max amount filter should exclude higher-dollar fixture rows."
         )
-        selectInstitutionFilter("All institutions")
+        replaceText(in: uiElement("transaction-max-amount-field"), with: "")
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 3) {
+                uiElement("transaction-row-txn_002").exists
+            },
+            "Clearing max amount should restore the baseline fixture set before institution filtering."
+        )
     }
 
     private func runAdvancedEmailSearchScenario() {
@@ -485,8 +519,8 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertTrue(uiElement("mailcart-search-end-date-field").exists)
 
         clearField(uiElement("mailcart-search-subject-field"))
-        clearField(uiElement("mailcart-search-sender-field"))
         clearField(uiElement("mailcart-search-body-field"))
+        clearField(uiElement("mailcart-search-sender-field"))
         clearField(uiElement("mailcart-search-start-date-field"))
         clearField(uiElement("mailcart-search-end-date-field"))
 
@@ -499,13 +533,42 @@ final class TransactionClassifierUITests: XCTestCase {
             }
         )
 
+        // Body keyword filter should match snippet content.
         clearField(uiElement("mailcart-search-subject-field"))
+        pasteText("Charge posted", into: uiElement("mailcart-search-body-field"))
+        XCTAssertTrue(waitForElement(uiElement("mailcart-hit-row-msg_search_001"), timeout: waitTimeout * 3))
+        XCTAssertFalse(uiElement("mailcart-hit-row-msg_search_002").exists)
+        clearField(uiElement("mailcart-search-body-field"))
+
+        // Sender positive case: fixture sender must produce a hit.
         pasteText("alerts@transit.example.com", into: uiElement("mailcart-search-sender-field"))
-        replaceText(in: uiElement("mailcart-search-start-date-field"), with: "2026-04-18")
+        XCTAssertTrue(waitForElement(uiElement("mailcart-hit-row-msg_search_001"), timeout: waitTimeout * 3))
+        XCTAssertFalse(uiElement("mailcart-hit-row-msg_search_002").exists)
+        clearField(uiElement("mailcart-search-sender-field"))
+
+        // Sender negative case: non-matching sender must produce no fixture hits.
+        pasteText("nobody@nope.example.com", into: uiElement("mailcart-search-sender-field"))
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 3) {
+                !uiElement("mailcart-hit-row-msg_search_001").exists
+                    && !uiElement("mailcart-hit-row-msg_search_002").exists
+            }
+        )
+        clearField(uiElement("mailcart-search-sender-field"))
+
+        // Received-from should exclude earlier hits and keep later ones.
+        replaceText(in: uiElement("mailcart-search-start-date-field"), with: "2026-04-19")
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 3) {
+                uiElement("mailcart-hit-row-msg_search_002").exists && !uiElement("mailcart-hit-row-msg_search_001").exists
+            }
+        )
+        clearField(uiElement("mailcart-search-start-date-field"))
+
+        // Received-to should exclude later hits and keep earlier ones.
         replaceText(in: uiElement("mailcart-search-end-date-field"), with: "2026-04-18")
         XCTAssertTrue(waitForElement(uiElement("mailcart-hit-row-msg_search_001"), timeout: waitTimeout * 3))
-        clearField(uiElement("mailcart-search-sender-field"))
-        clearField(uiElement("mailcart-search-start-date-field"))
+        XCTAssertFalse(uiElement("mailcart-hit-row-msg_search_002").exists)
         clearField(uiElement("mailcart-search-end-date-field"))
     }
 

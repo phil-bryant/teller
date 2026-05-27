@@ -19,7 +19,6 @@ private struct MatchAndClassifyMainContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            MatchAndClassifyToolbar(viewModel: viewModel)
             HSplitView {
                 MatchAndClassifyTransactionsPane(viewModel: viewModel, scrollTargetId: $scrollTargetId)
                     .frame(minWidth: 240, idealWidth: 320)
@@ -104,71 +103,14 @@ private struct MatchAndClassifyMailcartSearchObserver: ViewModifier {
     }
 }
 
-private struct MatchAndClassifyToolbar: View {
-    @Bindable var viewModel: ClassificationViewModel
-
-    var body: some View {
-        // #R005: Provide search/filter controls on toolbar rows so transaction actions can
-        // #R005: live beside the transaction list without crowding the filter controls.
-        // #R070: Advanced transaction filters stay in the same toolbar surface.
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                TextField("Search description / transaction id", text: $viewModel.searchText)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit { Task { await viewModel.loadAll() } }
-                    .accessibilityIdentifier("search-field")
-                Toggle("Unclassified", isOn: $viewModel.onlyUnclassified).toggleStyle(.switch)
-                    .accessibilityIdentifier("only-unclassified-toggle")
-                Spacer(minLength: 0)
-            }
-            HStack(spacing: 8) {
-                Picker("Match", selection: $viewModel.matchReviewStateFilter) {
-                    Text("All matches").tag("")
-                    Text("Unmatched").tag("unmatched")
-                    Text("No email").tag("no_email")
-                    Text("Needs review").tag("ai_candidate_uncertain")
-                    Text("AI confident").tag("ai_match_confident")
-                    Text("Confirmed").tag("human_confirmed_ai_match")
-                    Text("Overridden").tag("human_overrode_ai_match")
-                }
-                .frame(width: 240)
-                .accessibilityIdentifier("match-review-state-picker")
-                Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
-                    .accessibilityIdentifier("match-review-only-unmoved-toggle")
-                Spacer(minLength: 0)
-            }
-            HStack(spacing: 8) {
-                TextField("Start date", text: $viewModel.transactionStartDate)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("transaction-start-date-field")
-                TextField("End date", text: $viewModel.transactionEndDate)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("transaction-end-date-field")
-                Picker("Institution", selection: $viewModel.transactionInstitutionId) {
-                    Text("All institutions").tag("")
-                    ForEach(viewModel.transactionInstitutionOptions, id: \.self) { institutionId in
-                        Text(institutionId).tag(institutionId)
-                    }
-                }
-                .frame(width: 160)
-                .accessibilityIdentifier("transaction-institution-picker")
-                TextField("Min amount", text: $viewModel.transactionMinAmount)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("transaction-min-amount-field")
-                TextField("Max amount", text: $viewModel.transactionMaxAmount)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("transaction-max-amount-field")
-                Spacer(minLength: 0)
-            }
-        }
-    }
-}
-
 private struct MatchAndClassifyTransactionsPane: View {
     @Bindable var viewModel: ClassificationViewModel
     @Binding var scrollTargetId: String?
 
     var body: some View {
+        let dateFieldWidth: CGFloat = 92
+        let amountFieldWidth: CGFloat = 92
+        let institutionPickerWidth: CGFloat = 120
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Text("Transactions")
@@ -181,15 +123,65 @@ private struct MatchAndClassifyTransactionsPane: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            // #R005: Keep transaction discovery controls in the Transactions pane.
+            HStack(spacing: 8) {
+                TextField("Search description / transaction id", text: $viewModel.searchText)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { Task { await viewModel.loadAll() } }
+                    .accessibilityIdentifier("search-field")
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // #R070: Advanced transaction filters stay with the transaction list they affect.
+            HStack(spacing: 8) {
+                TextField("Start date", text: $viewModel.transactionStartDate)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: dateFieldWidth)
+                    .accessibilityIdentifier("transaction-start-date-field")
+                TextField("Min amount", text: $viewModel.transactionMinAmount)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: amountFieldWidth)
+                    .accessibilityIdentifier("transaction-min-amount-field")
+                Picker("", selection: $viewModel.transactionInstitutionId) {
+                    Text("All institutions").tag("")
+                    ForEach(viewModel.transactionInstitutionOptions, id: \.self) { institutionId in
+                        Text(institutionId).tag(institutionId)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: institutionPickerWidth)
+                .accessibilityIdentifier("transaction-institution-picker")
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 8) {
+                TextField("End date", text: $viewModel.transactionEndDate)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: dateFieldWidth)
+                    .accessibilityIdentifier("transaction-end-date-field")
+                TextField("Max amount", text: $viewModel.transactionMaxAmount)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: amountFieldWidth)
+                    .accessibilityIdentifier("transaction-max-amount-field")
+                Toggle("Unclassified", isOn: $viewModel.onlyUnclassified)
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier("only-unclassified-toggle")
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             // #R068: Transaction pagination and reload actions belong beside the transaction list.
             HStack(spacing: 8) {
                 Spacer()
+                Button("Next Unclassified") { viewModel.nextUnclassified() }
+                    .keyboardShortcut("]", modifiers: .command)
+                    .accessibilityIdentifier("next-unclassified-button")
                 Button("Refresh") { Task { await viewModel.loadAll() } }
                     .accessibilityIdentifier("refresh-button")
                 Button("Load more") { Task { await viewModel.loadMore() } }
                     .disabled(!viewModel.canLoadMore || viewModel.busy)
                     .accessibilityIdentifier("load-more-button")
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             // SwiftUI's ScrollViewReader does not reliably scroll `List` on macOS 14
             // (Apple Developer Forum #758880), so the transaction list is a
             // ScrollView + LazyVStack bound to `.scrollPosition(id:anchor:)` which gives
@@ -444,6 +436,21 @@ private struct CandidatesPane: View {
                     .foregroundStyle(.red)
                     .accessibilityIdentifier("candidates-error")
             }
+            // #R072: Keep match-state controls in the Match candidates pane.
+            HStack(spacing: 8) {
+                Picker("Match", selection: $viewModel.matchReviewStateFilter) {
+                    Text("All matches").tag("")
+                    Text("Unmatched").tag("unmatched")
+                    Text("No email").tag("no_email")
+                    Text("Needs review").tag("ai_candidate_uncertain")
+                    Text("AI confident").tag("ai_match_confident")
+                    Text("Confirmed").tag("human_confirmed_ai_match")
+                    Text("Overridden").tag("human_overrode_ai_match")
+                }
+                .accessibilityIdentifier("match-review-state-picker")
+                Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
+                    .accessibilityIdentifier("match-review-only-unmoved-toggle")
+            }
             List(selection: $viewModel.selectedCandidateId) {
                 Section {
                     if viewModel.candidates.isEmpty && !viewModel.candidatesBusy {
@@ -468,17 +475,17 @@ private struct CandidatesPane: View {
                     TextField("Subject", text: $viewModel.mailcartSearchSubject)
                         .textFieldStyle(.roundedBorder)
                         .accessibilityIdentifier("mailcart-search-subject-field")
-                    TextField("Sender", text: $viewModel.mailcartSearchSender)
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("mailcart-search-sender-field")
                     TextField("Body keyword", text: $viewModel.mailcartSearchBody)
                         .textFieldStyle(.roundedBorder)
                         .accessibilityIdentifier("mailcart-search-body-field")
+                    TextField("Sender", text: $viewModel.mailcartSearchSender)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("mailcart-search-sender-field")
                     HStack(spacing: 8) {
-                        TextField("Received from", text: $viewModel.mailcartSearchStartDate)
+                        TextField("Start date", text: $viewModel.mailcartSearchStartDate)
                             .textFieldStyle(.roundedBorder)
                             .accessibilityIdentifier("mailcart-search-start-date-field")
-                        TextField("Received to", text: $viewModel.mailcartSearchEndDate)
+                        TextField("End date", text: $viewModel.mailcartSearchEndDate)
                             .textFieldStyle(.roundedBorder)
                             .accessibilityIdentifier("mailcart-search-end-date-field")
                     }
@@ -658,6 +665,10 @@ private struct ClassifySection: View {
                     Button("Clear") { Task { await viewModel.clearSelectionClassification() } }
                         .disabled(viewModel.selection.isEmpty)
                         .accessibilityIdentifier("clear-selection-button")
+                    Button("Undo") { Task { await viewModel.undoLast() } }
+                        .keyboardShortcut("z", modifiers: .command)
+                        .disabled(viewModel.undoStack.isEmpty)
+                        .accessibilityIdentifier("undo-button")
                     Spacer()
                     if let selected = viewModel.primaryTransaction {
                         if let klass = selected.classification {

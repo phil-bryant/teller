@@ -66,10 +66,14 @@ XCUITEST_SCENARIOS=(
   "manageCategoryDelete"
   #R055: Extended all-values match-state sweep for deep coverage.
   "matchStatePickerAllValuesExtended"
+  #R075: Exercise advanced transaction scalar filters in smoke coverage.
+  "advancedTransactionFilter"
+  #R075: Exercise advanced email body/received-date filters in smoke coverage.
+  "advancedEmailSearch"
 )
 XCUITEST_SMOKE_SUITE="TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite"
-XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-17,19-29}"
-XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-30}"
+XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-17,19-29,31-32}"
+XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-32}"
 
 if [[ $# -gt 1 ]]; then
   echo "❌ Usage: $0 [scenario-selector]"

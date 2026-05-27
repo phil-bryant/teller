@@ -10,9 +10,9 @@ Tests:
 - R001-T01: Launch app and verify list/detail panes both render and respond to selection changes.
 
 R010  Statement: Support keyboard-first interaction shortcuts.
-Design: Toolbar exposes command shortcuts for next unclassified (`Cmd+]`) and undo (`Cmd+Z`).
+Design: Match & Classify pane-local controls expose command shortcuts for next unclassified (`Cmd+]`) and undo (`Cmd+Z`) without relying on global toolbar placement.
 Tests:
-- R010-T01: Trigger each shortcut and verify the corresponding view-model action executes.
+- R010-T01: Trigger each shortcut and verify the corresponding view-model action executes; specifically for `Cmd+]`, selecting fixture row `txn_002` must advance primary selection to the next unclassified fixture row (`txn_003`) without stalling.
 
 R055  Statement: Match & Classify toolbar controls must be tab-scoped.
 Design: `Next Unclassified` only renders on the Match & Classify tab to avoid presenting workflow actions in unrelated tabs (such as Manage Categories).
@@ -27,6 +27,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-27: Expanded R010-T01 to lock deterministic Next Unclassified keyboard progression from `txn_002` to `txn_003`.
 - 2026-04-23: Added Swift-side requirements for `ContentView.swift` from macOS classifier implementation.
 - 2026-04-23: Added R020 (auto-refresh on Unclassified toggle), R025 (scroll-to-selection), and R030 (detail header includes transaction id).
 - 2026-05-19: Added R035 (auto-scroll email body to transaction amount).

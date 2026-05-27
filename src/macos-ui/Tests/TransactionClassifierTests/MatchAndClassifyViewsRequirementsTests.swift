@@ -53,36 +53,46 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
         )
     }
 
-    func testFilterToolbarUsesTwoRows() throws {
-        // #R005-T02
+    func testTransactionsPaneOwnsTransactionFilterControls() throws {
+        // #R005-T02 #R005-T03 #R005-T04
         let source = try Self.loadViewSource()
+        assertNoSharedToolbar(in: source)
+        let paneSource = try transactionsPaneSource(from: source)
+        assertTransactionsPaneContainsFilterControls(in: paneSource)
+        try assertTransactionsPaneFilterControlOrdering(in: paneSource)
+        assertTransactionsPaneUsesSharedFieldWidths(in: paneSource)
+    }
+
+    func testCandidatesPaneOwnsMatchControls() throws {
+        // #R072-T01
+        let source = try Self.loadViewSource()
+        let candidatesStart = try XCTUnwrap(source.range(of: "private struct CandidatesPane"))
+        let candidatesEnd = try XCTUnwrap(source.range(of: "private struct CandidateRowView")).lowerBound
+        let candidatesSource = String(source[candidatesStart.lowerBound..<candidatesEnd])
         XCTAssertTrue(
-            source.contains("MatchAndClassifyToolbar"),
-            "Filter toolbar must remain a dedicated view."
+            candidatesSource.contains(#".accessibilityIdentifier("match-review-state-picker")"#),
+            "Candidates pane must own the match state picker."
         )
-        let toolbarStart = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyToolbar"))
-        let toolbarEnd = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyTransactionsPane")).lowerBound
-        let toolbarSource = String(source[toolbarStart.lowerBound..<toolbarEnd])
         XCTAssertTrue(
-            toolbarSource.contains("VStack(alignment: .leading, spacing: 6)"),
-            "Filter toolbar must use a two-row VStack layout."
+            candidatesSource.contains(#".accessibilityIdentifier("match-review-only-unmoved-toggle")"#),
+            "Candidates pane must own the only-unmoved toggle."
         )
-        XCTAssertTrue(
-            toolbarSource.components(separatedBy: "HStack(spacing: 8)").count >= 4,
-            "Filter toolbar must render controls on three HStack rows."
+
+        let transactionsStart = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyTransactionsPane"))
+        let transactionsEnd = try XCTUnwrap(source.range(of: "/// Each transaction row in the unified Match & Classify left pane")).lowerBound
+        let transactionsSource = String(source[transactionsStart.lowerBound..<transactionsEnd])
+        XCTAssertFalse(
+            transactionsSource.contains("match-review-state-picker"),
+            "Transactions pane must not host match-state controls."
         )
         XCTAssertFalse(
-            toolbarSource.contains(#"Button("Refresh")"#),
-            "Refresh must not live in the global filter toolbar."
-        )
-        XCTAssertFalse(
-            toolbarSource.contains(#"Button("Load more")"#),
-            "Load more must not live in the global filter toolbar."
+            transactionsSource.contains("match-review-only-unmoved-toggle"),
+            "Transactions pane must not host only-unmoved controls."
         )
     }
 
     func testTransactionPaneExposesRefreshAndLoadMoreActions() throws {
-        // #R068-T01
+        // #R068-T01 #R068-T03
         let source = try Self.loadViewSource()
         let paneStart = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyTransactionsPane"))
         let paneEnd = try XCTUnwrap(source.range(of: "/// Each transaction row in the unified Match & Classify left pane")).lowerBound
@@ -90,6 +100,10 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
         XCTAssertTrue(
             paneSource.contains(#"Text("Transactions")"#),
             "Transactions pane must keep its heading."
+        )
+        XCTAssertTrue(
+            paneSource.contains(#"Button("Next Unclassified") { viewModel.nextUnclassified() }"#),
+            "Transactions pane must expose Next Unclassified beside list actions."
         )
         XCTAssertTrue(
             paneSource.contains(#"Button("Refresh") { Task { await viewModel.loadAll() } }"#),
@@ -104,8 +118,19 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
             "Transactions pane Refresh must keep refresh-button identifier."
         )
         XCTAssertTrue(
+            paneSource.contains(#".accessibilityIdentifier("next-unclassified-button")"#),
+            "Transactions pane Next Unclassified must keep next-unclassified-button identifier."
+        )
+        XCTAssertTrue(
             paneSource.contains(#".accessibilityIdentifier("load-more-button")"#),
             "Transactions pane Load more must keep load-more-button identifier."
+        )
+        let nextIndex = try XCTUnwrap(paneSource.range(of: #".accessibilityIdentifier("next-unclassified-button")"#)?.lowerBound)
+        let refreshIndex = try XCTUnwrap(paneSource.range(of: #".accessibilityIdentifier("refresh-button")"#)?.lowerBound)
+        XCTAssertLessThan(
+            nextIndex,
+            refreshIndex,
+            "Next Unclassified must be declared to the left of Refresh in transactions actions row."
         )
     }
 
@@ -133,9 +158,9 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
     func testAdvancedTransactionFilterControlsExposeAccessibilityIdentifiers() throws {
         // #R070-T01
         let source = try Self.loadViewSource()
-        let toolbarStart = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyToolbar"))
-        let toolbarEnd = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyTransactionsPane")).lowerBound
-        let toolbarSource = String(source[toolbarStart.lowerBound..<toolbarEnd])
+        let paneStart = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyTransactionsPane"))
+        let paneEnd = try XCTUnwrap(source.range(of: "/// Each transaction row in the unified Match & Classify left pane")).lowerBound
+        let paneSource = String(source[paneStart.lowerBound..<paneEnd])
         for identifier in [
             "transaction-start-date-field",
             "transaction-end-date-field",
@@ -144,10 +169,41 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
             "transaction-max-amount-field",
         ] {
             XCTAssertTrue(
-                toolbarSource.contains("accessibilityIdentifier(\"\(identifier)\")"),
-                "Advanced transaction filter toolbar must expose \(identifier)."
+                paneSource.contains("accessibilityIdentifier(\"\(identifier)\")"),
+                "Advanced transaction filters in Transactions pane must expose \(identifier)."
             )
         }
+    }
+
+    func testClassificationControlsLiveInClassifySection() throws {
+        // #R015-T02 #R015-T03
+        let source = try Self.loadViewSource()
+        let classifyStart = try XCTUnwrap(source.range(of: "private struct ClassifySection"))
+        let classifyEnd = try XCTUnwrap(source.range(of: "private struct EmailSection")).lowerBound
+        let classifySource = String(source[classifyStart.lowerBound..<classifyEnd])
+        XCTAssertTrue(
+            classifySource.contains("CategoryTypeaheadField"),
+            "ClassifySection must host the category typeahead."
+        )
+        XCTAssertTrue(
+            classifySource.contains(#".accessibilityIdentifier("apply-selected-button")"#),
+            "ClassifySection must host Apply to Selected."
+        )
+        XCTAssertTrue(
+            classifySource.contains(#".accessibilityIdentifier("clear-selection-button")"#),
+            "ClassifySection must host Clear."
+        )
+        XCTAssertTrue(
+            classifySource.contains(#".accessibilityIdentifier("undo-button")"#),
+            "ClassifySection must host Undo."
+        )
+        let clearIndex = try XCTUnwrap(classifySource.range(of: #".accessibilityIdentifier("clear-selection-button")"#)?.lowerBound)
+        let undoIndex = try XCTUnwrap(classifySource.range(of: #".accessibilityIdentifier("undo-button")"#)?.lowerBound)
+        XCTAssertLessThan(
+            clearIndex,
+            undoIndex,
+            "Undo must be declared to the right of Clear in classification actions row."
+        )
     }
 
     func testAdvancedEmailSearchFieldsExposeAccessibilityIdentifiers() throws {
@@ -165,6 +221,14 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
                 "Advanced email search must expose \(identifier)."
             )
         }
+        XCTAssertTrue(
+            source.contains(#"TextField("Start date", text: $viewModel.mailcartSearchStartDate)"#),
+            "Search Email section must label received-start as Start date."
+        )
+        XCTAssertTrue(
+            source.contains(#"TextField("End date", text: $viewModel.mailcartSearchEndDate)"#),
+            "Search Email section must label received-end as End date."
+        )
     }
 
     func testAdvancedFilterScenariosAreInSmokeSuite() throws {
@@ -172,6 +236,27 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
         let source = try Self.loadUITestSource()
         XCTAssertTrue(source.contains("runAdvancedTransactionFilterScenario"))
         XCTAssertTrue(source.contains("runAdvancedEmailSearchScenario"))
+    }
+
+    func testAdvancedTransactionFilterScenarioExercisesEachScalarControl() throws {
+        // #R070-T03
+        let source = try Self.loadUITestSource()
+        XCTAssertTrue(source.contains(#"replaceText(in: uiElement("transaction-start-date-field"), with: "2026-04-20")"#))
+        XCTAssertTrue(source.contains(#"replaceText(in: uiElement("transaction-end-date-field"), with: "2026-04-19")"#))
+        XCTAssertTrue(source.contains(#"replaceText(in: uiElement("transaction-min-amount-field"), with: "50")"#))
+        XCTAssertTrue(source.contains(#"replaceText(in: uiElement("transaction-max-amount-field"), with: "20")"#))
+    }
+
+    func testAdvancedEmailSearchScenarioExercisesSenderBodyAndDateFilters() throws {
+        // #R071-T03 #R071-T04 #R071-T05
+        let source = try Self.loadUITestSource()
+        XCTAssertTrue(source.contains(#"pasteText("alerts@transit.example.com", into: uiElement("mailcart-search-sender-field"))"#))
+        XCTAssertTrue(source.contains(#"pasteText("nobody@nope.example.com", into: uiElement("mailcart-search-sender-field"))"#))
+        XCTAssertTrue(source.contains(#"!uiElement("mailcart-hit-row-msg_search_001").exists"#))
+        XCTAssertTrue(source.contains(#"!uiElement("mailcart-hit-row-msg_search_002").exists"#))
+        XCTAssertTrue(source.contains(#"pasteText("Charge posted", into: uiElement("mailcart-search-body-field"))"#))
+        XCTAssertTrue(source.contains(#"replaceText(in: uiElement("mailcart-search-start-date-field"), with: "2026-04-19")"#))
+        XCTAssertTrue(source.contains(#"replaceText(in: uiElement("mailcart-search-end-date-field"), with: "2026-04-18")"#))
     }
 }
 
@@ -199,5 +284,135 @@ private extension MatchAndClassifyViewsRequirementsTests {
             .appendingPathComponent("UITests")
             .appendingPathComponent("TransactionClassifierUITests.swift")
         return try String(contentsOf: uiTestFile, encoding: .utf8)
+    }
+}
+
+private extension MatchAndClassifyViewsRequirementsTests {
+    func assertNoSharedToolbar(in source: String) {
+        XCTAssertFalse(
+            source.contains("private struct MatchAndClassifyToolbar"),
+            "Transaction and match controls must not be grouped into a shared toolbar."
+        )
+        XCTAssertFalse(
+            source.contains("MatchAndClassifyToolbar(viewModel: viewModel)"),
+            "Main content must not render a shared toolbar above panes."
+        )
+    }
+
+    func transactionsPaneSource(from source: String) throws -> String {
+        let paneStart = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyTransactionsPane"))
+        let paneEnd = try XCTUnwrap(source.range(of: "/// Each transaction row in the unified Match & Classify left pane")).lowerBound
+        return String(source[paneStart.lowerBound..<paneEnd])
+    }
+
+    func assertTransactionsPaneContainsFilterControls(in paneSource: String) {
+        XCTAssertTrue(
+            paneSource.contains(#".accessibilityIdentifier("search-field")"#),
+            "Transactions pane must own the search field."
+        )
+        XCTAssertTrue(
+            paneSource.contains(#".accessibilityIdentifier("only-unclassified-toggle")"#),
+            "Transactions pane must own the unclassified toggle."
+        )
+        for identifier in [
+            "transaction-start-date-field",
+            "transaction-end-date-field",
+            "transaction-institution-picker",
+            "transaction-min-amount-field",
+            "transaction-max-amount-field",
+        ] {
+            XCTAssertTrue(
+                paneSource.contains("accessibilityIdentifier(\"\(identifier)\")"),
+                "Transactions pane must expose \(identifier)."
+            )
+        }
+        XCTAssertTrue(
+            paneSource.contains(#"Picker("", selection: $viewModel.transactionInstitutionId)"#),
+            "Institution picker must hide its visible label text."
+        )
+        XCTAssertTrue(
+            paneSource.contains(".labelsHidden()"),
+            "Institution picker should use labelsHidden to keep row 2 compact."
+        )
+    }
+
+    func assertTransactionsPaneFilterControlOrdering(in paneSource: String) throws {
+        let institutionIdentifier = #".accessibilityIdentifier("transaction-institution-picker")"#
+        let minAmountIdentifier = #".accessibilityIdentifier("transaction-min-amount-field")"#
+        let maxAmountIdentifier = #".accessibilityIdentifier("transaction-max-amount-field")"#
+        let searchIdentifier = #".accessibilityIdentifier("search-field")"#
+        let startDateIdentifier = #".accessibilityIdentifier("transaction-start-date-field")"#
+        let endDateIdentifier = #".accessibilityIdentifier("transaction-end-date-field")"#
+        let unclassifiedIdentifier = #".accessibilityIdentifier("only-unclassified-toggle")"#
+
+        let searchIndex = try lowerBound(of: searchIdentifier, in: paneSource)
+        let startDateIndex = try lowerBound(of: startDateIdentifier, in: paneSource)
+        let endDateIndex = try lowerBound(of: endDateIdentifier, in: paneSource)
+        let institutionIndex = try lowerBound(of: institutionIdentifier, in: paneSource)
+        let minAmountIndex = try lowerBound(of: minAmountIdentifier, in: paneSource)
+        let maxAmountIndex = try lowerBound(of: maxAmountIdentifier, in: paneSource)
+        let unclassifiedIndex = try lowerBound(of: unclassifiedIdentifier, in: paneSource)
+
+        XCTAssertLessThan(
+            searchIndex,
+            startDateIndex,
+            "Transactions pane must place search on the first row above date+amount controls."
+        )
+        XCTAssertLessThan(
+            minAmountIndex,
+            institutionIndex,
+            "Transactions pane row 2 must place Institution after Min amount."
+        )
+        XCTAssertLessThan(
+            institutionIndex,
+            endDateIndex,
+            "Transactions pane must keep row 3 controls below row 2."
+        )
+        XCTAssertLessThan(
+            endDateIndex,
+            maxAmountIndex,
+            "Transactions pane row 3 must place Max amount after End date."
+        )
+        XCTAssertLessThan(
+            maxAmountIndex,
+            unclassifiedIndex,
+            "Transactions pane must keep Unclassified toggle on a row below amount controls."
+        )
+
+        let betweenSearchAndStart = String(paneSource[searchIndex..<startDateIndex])
+        XCTAssertTrue(
+            betweenSearchAndStart.contains("HStack(spacing: 8) {"),
+            "A new row boundary must separate search row from date+amount row."
+        )
+        let betweenInstitutionAndEnd = String(paneSource[institutionIndex..<endDateIndex])
+        XCTAssertTrue(
+            betweenInstitutionAndEnd.contains("HStack(spacing: 8) {"),
+            "A new row boundary must separate row 2 controls from row 3 controls."
+        )
+    }
+
+    func assertTransactionsPaneUsesSharedFieldWidths(in paneSource: String) {
+        XCTAssertTrue(
+            paneSource.contains("let dateFieldWidth: CGFloat ="),
+            "Transactions pane must define a shared width token for Start/End date fields."
+        )
+        XCTAssertTrue(
+            paneSource.contains("let amountFieldWidth: CGFloat ="),
+            "Transactions pane must define a shared width token for Min/Max amount fields."
+        )
+        XCTAssertGreaterThanOrEqual(
+            paneSource.components(separatedBy: ".frame(width: dateFieldWidth)").count - 1,
+            2,
+            "Start date and End date must both use dateFieldWidth."
+        )
+        XCTAssertGreaterThanOrEqual(
+            paneSource.components(separatedBy: ".frame(width: amountFieldWidth)").count - 1,
+            2,
+            "Min amount and Max amount must both use amountFieldWidth."
+        )
+    }
+
+    func lowerBound(of needle: String, in source: String) throws -> String.Index {
+        try XCTUnwrap(source.range(of: needle)?.lowerBound, "Expected snippet in transactions pane: \(needle)")
     }
 }
