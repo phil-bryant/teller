@@ -8,10 +8,7 @@ from .teller_enums import TellerAccountType, TellerAccountSubtype, TellerAccount
 from .teller_account_details import TellerAccountDetails
 from .teller_account_balances import TellerAccountBalances
 from .teller_transaction import TellerTransaction
-from typing import TYPE_CHECKING, List, Optional
-
-if TYPE_CHECKING:
-    from .teller_account_identities import TellerAccountIdentities
+from typing import List, Optional
 
 @dataclass
 class TellerAccount(TellerObject):
@@ -31,7 +28,7 @@ class TellerAccount(TellerObject):
     balances: Mapped[Optional[TellerAccountBalances]] = relationship(back_populates="account")
     transactions: Mapped[List[TellerTransaction]] = relationship(back_populates="account")
     account_links_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("teller.account_links.account_links_id"))
-    identities: Mapped[List["TellerAccountIdentities"]] = relationship(back_populates="account")
+    identities: Mapped[List["TellerAccountIdentities"]] = relationship(back_populates="account")  # noqa: F821
 
     def institution_name(self) -> str:
         return self.institution.name if self.institution else ""
