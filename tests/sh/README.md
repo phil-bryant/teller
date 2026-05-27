@@ -4,7 +4,7 @@ This directory contains `bats-core` unit tests for repository shell scripts.
 
 ## Tier 1 (implemented first)
 
-- `00_run_requirements_traceability_tests.bats` -> `00_run_requirements_traceability_tests.sh`
+- `t04_run_requirements_traceability_tests.bats` -> `t04_run_requirements_traceability_tests.sh`
   - Requirement IDs: `R001`, `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R035`
 - `01_install_prerequisites.bats` -> `01_install_prerequisites.sh`
   - Requirement IDs: `R005`, `R010`, `R012`, `R020`, `R025`, `R035`, `R040`, `R050`
@@ -19,9 +19,9 @@ This directory contains `bats-core` unit tests for repository shell scripts.
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R035`
 - `98_destroy_database.bats` -> `98_destroy_database.sh`
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`
-- `10_run_shell_unit_tests.bats` -> `10_run_shell_unit_tests.sh`
+- `t07_run_shell_unit_tests.bats` -> `t07_run_shell_unit_tests.sh`
   - Requirement IDs: `R001`, `R005`, `R010`, `R015`, `R020`
-- `09_run_classification_macos-ui.bats` -> `09_run_classification_macos_ui.sh`
+- `09_run_classification_macos_ui.bats` -> `09_run_classification_macos_ui.sh`
   - Wrapper contract test (forwarding and package-path composition)
 
 ## Notes

@@ -4,7 +4,7 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "18_run_teller_api_smoke_tests.sh"
+  copy_script_to_fixture "t13_run_teller_api_smoke_tests.sh"
   mkdir -p "${FIXTURE_ROOT}/src/scripts"
 }
 
@@ -36,7 +36,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${TEST_TMPDIR}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' '${FIXTURE_ROOT}/18_run_teller_api_smoke_tests.sh'"
+  run bash -c "cd '${TEST_TMPDIR}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' '${FIXTURE_ROOT}/t13_run_teller_api_smoke_tests.sh'"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/security/teller-api-smoke.json" ]
   [ -f "${FIXTURE_ROOT}/artifacts/security/teller-api-smoke.txt" ]
@@ -68,14 +68,14 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' TELLER_SMOKE_INSTITUTION_ID='chase' ./18_run_teller_api_smoke_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' TELLER_SMOKE_INSTITUTION_ID='chase' ./t13_run_teller_api_smoke_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"--institution-id chase"* ]]
 }
 
 @test "fails fast for non-executable explicit interpreter path" {
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON=./missing-python ./18_run_teller_api_smoke_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON=./missing-python ./t13_run_teller_api_smoke_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Project python not executable"* ]]
 }

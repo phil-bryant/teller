@@ -3,7 +3,7 @@ load "helpers/common.bash"
 
 copy_av_project_files() {
   create_repo_fixture
-  copy_script_to_fixture "06_run_av_test.sh"
+  copy_script_to_fixture "t01_run_av_test.sh"
   mkdir -p "${FIXTURE_ROOT}/src/teller"
   echo "safe" > "${FIXTURE_ROOT}/src/teller/safe.txt"
 }
@@ -148,7 +148,7 @@ teardown() {
   copy_av_project_files
   stub_clamscan_clean
   mkdir -p "${TEST_TMPDIR}/elsewhere"
-  run bash -c "cd '${TEST_TMPDIR}/elsewhere' && exec bash '${FIXTURE_ROOT}/06_run_av_test.sh'"
+  run bash -c "cd '${TEST_TMPDIR}/elsewhere' && exec bash '${FIXTURE_ROOT}/t01_run_av_test.sh'"
   [ "$status" -eq 0 ]
   [ -d "${FIXTURE_ROOT}/artifacts/security/reports" ]
   [[ "$output" == *"Antivirus (AV) checks completed"* ]]
@@ -159,7 +159,7 @@ teardown() {
   setup_shell_test
   copy_av_project_files
   run env RUN_CLAMAV=false SECURITY_REPORT_DIR="${FIXTURE_ROOT}/.custom-av-reports" \
-    bash "${FIXTURE_ROOT}/06_run_av_test.sh"
+    bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/.custom-av-reports/clamav-summary.json" ]
   [ -f "${FIXTURE_ROOT}/.custom-av-reports/clamav.log" ]
@@ -171,7 +171,7 @@ teardown() {
   setup_shell_test
   copy_av_project_files
   stub_clamscan_clean
-  run bash "${FIXTURE_ROOT}/06_run_av_test.sh"
+  run bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/security/reports/clamav.log" ]
   [ -f "${FIXTURE_ROOT}/artifacts/security/reports/clamav-summary.json" ]
@@ -186,7 +186,7 @@ teardown() {
   copy_av_project_files
   stub_clamscan_slow_clean
   run env CLAMAV_HEARTBEAT_SECONDS=1 CLAMAV_SCAN_TARGET="./src/teller" \
-    bash "${FIXTURE_ROOT}/06_run_av_test.sh"
+    bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"ClamAV signature freshness"* ]]
   [[ "$output" == *"ClamAV scan target:"*"/src/teller"* ]]
@@ -199,7 +199,7 @@ teardown() {
   mkdir -p "${FIXTURE_ROOT}/artifacts/macos-ui-regression/xcuitest-results.xcresult/Data"
   ln -sf "./missing-data-blob" "${FIXTURE_ROOT}/artifacts/macos-ui-regression/xcuitest-results.xcresult/Data/refs.0~broken"
   stub_clamscan_requires_ui_artifact_exclude
-  run bash "${FIXTURE_ROOT}/06_run_av_test.sh"
+  run bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Antivirus (AV) checks completed"* ]]
 }
@@ -210,7 +210,7 @@ teardown() {
   copy_av_project_files
   stub_clamscan_missing_db_then_clean
   stub_freshclam_ok
-  run bash "${FIXTURE_ROOT}/06_run_av_test.sh"
+  run bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"attempting one-time database refresh with freshclam"* ]]
   [[ "$output" == *"Retrying ClamAV repository scan after signature refresh"* ]]
@@ -223,12 +223,12 @@ teardown() {
   setup_shell_test
   copy_av_project_files
   stub_clamscan_infected
-  run bash "${FIXTURE_ROOT}/06_run_av_test.sh"
+  run bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Antivirus (AV) gate failed"* ]]
 
   run env AV_FAIL_ON_INFECTED=false \
-    bash "${FIXTURE_ROOT}/06_run_av_test.sh"
+    bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Antivirus (AV) checks completed"* ]]
 }
@@ -237,7 +237,7 @@ teardown() {
   setup_shell_test
   copy_av_project_files
   stub_clamscan_exit_2
-  run bash "${FIXTURE_ROOT}/06_run_av_test.sh"
+  run bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"ClamAV failed to execute."* ]]
 }

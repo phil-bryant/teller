@@ -49,9 +49,9 @@ Tests:
 - R035-T01: Verify success output includes both artifact path lines.
 
 R040  Statement: Remain a standalone numbered entrypoint.
-Design: This script is invoked directly (or from ad-hoc automation), not from other repository-numbered control-plane scripts such as `10_run_shell_unit_tests.sh` or `16_run_macos_ui_regression_tests.sh`. Those runners must not reference or execute crash-reporter verification.
+Design: This script is invoked directly (or from ad-hoc automation), not from other repository-numbered control-plane scripts such as `t07_run_shell_unit_tests.sh` or `t14_run_macos_ui_regression_tests.sh`. Those runners must not reference or execute crash-reporter verification.
 Tests:
-- R040-T01: Covered by static grep tests in `tests/sh/10_run_shell_unit_tests.bats` and `tests/sh/16_run_macos_ui_regression_tests.bats`.
+- R040-T01: Covered by static grep tests in `tests/sh/t07_run_shell_unit_tests.bats` and `tests/sh/t14_run_macos_ui_regression_tests.bats`.
 
 R045  Statement: Recover once from stale SwiftPM checkout metadata during relaunch.
 Design: When relaunch fails with missing `.build/checkouts/...` dependency paths, repair SwiftPM state with `rm -rf .build && swift package resolve` under the macOS UI lock and retry relaunch exactly once.
@@ -79,4 +79,4 @@ Tests:
 - 2026-05-25: Added R060 requiring prewarm build before forced-crash/relaunch verification timing.
 - 2026-05-25: Added R045/R050 for stale SwiftPM recovery and bounded relaunch timeout behavior.
 - 2026-05-12: Added R040 documenting standalone use and forbidding chained invocation from `06_`/`07_` runners.
-- 2026-05-07: Initial requirements for `17_verify_macos_crash_test.sh`.
+- 2026-05-07: Initial requirements for `t15_verify_macos_crash_test.sh`.

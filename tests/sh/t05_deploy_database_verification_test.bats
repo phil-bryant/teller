@@ -80,7 +80,7 @@ PY
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "09_deploy_database_verification_test.sh"
+  copy_script_to_fixture "t05_deploy_database_verification_test.sh"
   export PSQL_LOG="${TEST_TMPDIR}/psql.log"
   : > "${PSQL_LOG}"
   make_psql_happy
@@ -115,7 +115,7 @@ teardown() {
 exit 1
 EOF
   chmod +x "${STUB_BIN}/psql"
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -ne 0 ]
 }
 
@@ -124,7 +124,7 @@ EOF
   : > "${PSQL_LOG}"
   make_psql_happy
   run env TELLER_DB_HOST=custom.local TELLER_DB_PORT=15432 TELLER_DB_PASSWORD=pw TELLER_DB_NAME=d TELLER_DB_USER=u \
-    zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+    zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -eq 0 ]
   grep -F "custom.local" "${PSQL_LOG}"
   grep -F "15432" "${PSQL_LOG}"
@@ -134,7 +134,7 @@ EOF
   #R010-T01
   : > "${PSQL_LOG}"
   make_psql_happy
-  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -eq 0 ]
   [[ "$(cat "${PSQL_LOG}")" == *"psql "* ]]
 }
@@ -149,7 +149,7 @@ echo ""
 exit 0
 EOF
   chmod +x "${STUB_BIN}/1psa"
-  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"❌ FAIL:"* ]]
 }
@@ -158,7 +158,7 @@ EOF
   #R020-T01 #R025-T01
   : > "${PSQL_LOG}"
   make_psql_happy
-  run env TELLER_DB_PASSWORD=pw FK_BROKEN=1 zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env TELLER_DB_PASSWORD=pw FK_BROKEN=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"❌ FAIL:"* ]]
   [[ "$output" == *"CASCADE"* || "$output" == *"cascade"* ]]
@@ -168,7 +168,7 @@ EOF
   #R030-T01 #R035-T01 #R040-T01 #R045-T01
   : > "${PSQL_LOG}"
   make_psql_happy
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | grep -c "✅ PASS:")" -eq 1 ]
 }
@@ -176,7 +176,7 @@ EOF
 @test "fails when updated_at coverage has gaps" {
   : > "${PSQL_LOG}"
   make_psql_happy
-  run env TELLER_DB_PASSWORD=pw TRIGGER_GAPS=1 zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env TELLER_DB_PASSWORD=pw TRIGGER_GAPS=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"missing updated_at trigger coverage: transaction"* ]]
   [[ "$output" == *"❌ FAIL:"* ]]
@@ -205,7 +205,7 @@ EOF
   : > "${PSQL_LOG}"
   make_psql_happy
   stub_managed_verify_helper
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -eq 0 ]
   ! grep -F "WITH expected(role_name)" "${PSQL_LOG}"
 }
@@ -222,7 +222,7 @@ echo "1psa \$*" >> "${TEST_TMPDIR}/1psa.log"
 echo "from1psa"
 EOF
   chmod +x "${STUB_BIN}/1psa"
-  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -eq 0 ]
   grep -F "1psa -p eggnest_supabase" "${TEST_TMPDIR}/1psa.log"
 }
@@ -250,7 +250,7 @@ EOF
   : > "${PSQL_LOG}"
   make_psql_happy
   stub_require_ssl_helper
-  run env TELLER_DB_PASSWORD=pw SSL_INACTIVE=1 zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env TELLER_DB_PASSWORD=pw SSL_INACTIVE=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"sslmode=require"* ]]
   [[ "$output" == *"pg_stat_ssl"* ]]
@@ -259,7 +259,7 @@ EOF
 @test "ssl probe is skipped when sslmode is disable" {
   : > "${PSQL_LOG}"
   make_psql_happy
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -eq 0 ]
   ! grep -F "pg_stat_ssl" "${PSQL_LOG}"
 }
@@ -272,7 +272,7 @@ echo "No DB profile file found. Create one with: cp config/db-profiles-EXAMPLE.j
 exit 1
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/09_deploy_database_verification_test.sh"
+  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"cp config/db-profiles-EXAMPLE.json config/db-profiles.json"* ]]
 }

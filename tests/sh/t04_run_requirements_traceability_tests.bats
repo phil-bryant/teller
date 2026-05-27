@@ -6,8 +6,8 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "00_run_requirements_traceability_tests.sh"
-  mv "${FIXTURE_ROOT}/00_run_requirements_traceability_tests.sh" "${FIXTURE_ROOT}/verify_requirements_traceability.sh"
+  copy_script_to_fixture "t04_run_requirements_traceability_tests.sh"
+  mv "${FIXTURE_ROOT}/t04_run_requirements_traceability_tests.sh" "${FIXTURE_ROOT}/verify_requirements_traceability.sh"
 }
 
 teardown() {

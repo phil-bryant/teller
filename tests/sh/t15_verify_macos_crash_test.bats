@@ -4,9 +4,9 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "17_verify_macos_crash_test.sh"
-  copy_script_to_fixture "10_run_shell_unit_tests.sh"
-  copy_script_to_fixture "16_run_macos_ui_regression_tests.sh"
+  copy_script_to_fixture "t15_verify_macos_crash_test.sh"
+  copy_script_to_fixture "t07_run_shell_unit_tests.sh"
+  copy_script_to_fixture "t14_run_macos_ui_regression_tests.sh"
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui"
   mkdir -p "${FIXTURE_ROOT}/src/scripts"
   copy_script_to_fixture "src/scripts/macos_ui_swift_lock.sh"
@@ -37,7 +37,7 @@ exit 0
 EOF
   chmod +x "${STUB_BIN}/swift"
 
-  run bash -c "cd '${TEST_TMPDIR}' && MACOS_UI_DIR='${FIXTURE_ROOT}/src/macos-ui' CRASH_REPORT_DIR='${report_dir}' STARTUP_WAIT_SECONDS=2 '${FIXTURE_ROOT}/17_verify_macos_crash_test.sh'"
+  run bash -c "cd '${TEST_TMPDIR}' && MACOS_UI_DIR='${FIXTURE_ROOT}/src/macos-ui' CRASH_REPORT_DIR='${report_dir}' STARTUP_WAIT_SECONDS=2 '${FIXTURE_ROOT}/t15_verify_macos_crash_test.sh'"
   [ "$status" -eq 0 ]
   [[ "$output" == *"PLCrashReporter verification passed"* ]]
   [[ "$output" == *"${report_dir}/crash-smoke.plcrash"* ]]
@@ -67,7 +67,7 @@ EOF
   run env MACOS_UI_DIR="${FIXTURE_ROOT}/src/macos-ui" \
     CRASH_REPORT_DIR="${report_dir}" \
     STARTUP_WAIT_SECONDS=1 \
-    bash "${FIXTURE_ROOT}/17_verify_macos_crash_test.sh"
+    bash "${FIXTURE_ROOT}/t15_verify_macos_crash_test.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"PLCrashReporter verification passed"* ]]
 }
@@ -108,7 +108,7 @@ EOF
   run env MACOS_UI_DIR="${FIXTURE_ROOT}/src/macos-ui" \
     CRASH_REPORT_DIR="${report_dir}" \
     STARTUP_WAIT_SECONDS=2 \
-    bash "${FIXTURE_ROOT}/17_verify_macos_crash_test.sh"
+    bash "${FIXTURE_ROOT}/t15_verify_macos_crash_test.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Detected stale SwiftPM checkout state; repairing and retrying relaunch once"* ]]
   [[ "$output" == *"PLCrashReporter verification passed"* ]]
@@ -128,7 +128,7 @@ EOF
 
   run env MACOS_UI_DIR="${FIXTURE_ROOT}/src/macos-ui" \
     STARTUP_WAIT_SECONDS=1 \
-    bash "${FIXTURE_ROOT}/17_verify_macos_crash_test.sh"
+    bash "${FIXTURE_ROOT}/t15_verify_macos_crash_test.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"relaunch timed out before crash persistence log was observed"* ]]
 }
@@ -160,7 +160,7 @@ EOF
   run env MACOS_UI_DIR="${FIXTURE_ROOT}/src/macos-ui" \
     CRASH_REPORT_DIR="${report_dir}" \
     STARTUP_WAIT_SECONDS=2 \
-    bash "${FIXTURE_ROOT}/17_verify_macos_crash_test.sh"
+    bash "${FIXTURE_ROOT}/t15_verify_macos_crash_test.sh"
   [ "$status" -eq 0 ]
 
   first_call="$(sed -n '1p' "${CALLS_LOG}")"
@@ -191,7 +191,7 @@ EOF
   run env MACOS_UI_DIR="${FIXTURE_ROOT}/src/macos-ui" \
     CRASH_REPORT_DIR="${report_dir}" \
     STARTUP_WAIT_SECONDS=1 \
-    bash "${FIXTURE_ROOT}/17_verify_macos_crash_test.sh"
+    bash "${FIXTURE_ROOT}/t15_verify_macos_crash_test.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"unclean-marker relaunch"* ]]
 }
@@ -204,7 +204,7 @@ exit 0
 EOF
   chmod +x "${STUB_BIN}/swift"
 
-  run env MACOS_UI_DIR="${FIXTURE_ROOT}/src/macos-ui" bash "${FIXTURE_ROOT}/17_verify_macos_crash_test.sh"
+  run env MACOS_UI_DIR="${FIXTURE_ROOT}/src/macos-ui" bash "${FIXTURE_ROOT}/t15_verify_macos_crash_test.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"expected forced crash run to exit non-zero"* ]]
 }
@@ -217,16 +217,16 @@ exit 0
 EOF
   chmod +x "${STUB_BIN}/swift"
 
-  run env MACOS_UI_DIR="${FIXTURE_ROOT}/missing-ui" bash "${FIXTURE_ROOT}/17_verify_macos_crash_test.sh"
+  run env MACOS_UI_DIR="${FIXTURE_ROOT}/missing-ui" bash "${FIXTURE_ROOT}/t15_verify_macos_crash_test.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"macOS UI package path not found"* ]]
 }
 
 @test "remains standalone and is not chained by numbered runners" {
   #R040-T01
-  run grep -E 'verify_macos_crash_test|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/10_run_shell_unit_tests.sh"
+  run grep -E 'verify_macos_crash_test|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/t07_run_shell_unit_tests.sh"
   [ "$status" -ne 0 ]
 
-  run grep -E 'verify_macos_crash_test|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/16_run_macos_ui_regression_tests.sh"
+  run grep -E 'verify_macos_crash_test|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/t14_run_macos_ui_regression_tests.sh"
   [ "$status" -ne 0 ]
 }

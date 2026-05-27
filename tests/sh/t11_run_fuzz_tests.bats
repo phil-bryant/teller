@@ -4,7 +4,7 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "14_run_fuzz_tests.sh"
+  copy_script_to_fixture "t11_run_fuzz_tests.sh"
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin" "${FIXTURE_ROOT}/tests/py/properties"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python3" <<'EOF'
 #!/usr/bin/env bash
@@ -57,37 +57,37 @@ teardown() {
 
 @test "runs from non-repo cwd" {
   #R001-T01 #R005-T01 #R010-T01 #R015-T01 #R020-T01 #R025-T01 #R030-T01
-  run env FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_PER_TEST_RATIO_PERCENT=80 bash -c "cd '${TEST_TMPDIR}' && bash '${FIXTURE_ROOT}/14_run_fuzz_tests.sh'"
+  run env FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_PER_TEST_RATIO_PERCENT=80 bash -c "cd '${TEST_TMPDIR}' && bash '${FIXTURE_ROOT}/t11_run_fuzz_tests.sh'"
   [ "$status" -eq 0 ]
 }
 
 @test "fails when teller-venv python is unavailable" {
   rm -rf "${FIXTURE_ROOT}/teller-venv"
-  run bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
+  run bash "${FIXTURE_ROOT}/t11_run_fuzz_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"teller-venv python is required"* ]]
 }
 
 @test "fails when hypothesis import check fails" {
-  run env STUB_HAS_HYPOTHESIS=0 bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
+  run env STUB_HAS_HYPOTHESIS=0 bash "${FIXTURE_ROOT}/t11_run_fuzz_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"hypothesis is required in teller-venv but was not found"* ]]
 }
 
 @test "fails on pytest timeout" {
-  run env STUB_PYTEST_TIMEOUT=1 FUZZ_TIMEOUT_SECONDS=1 bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
+  run env STUB_PYTEST_TIMEOUT=1 FUZZ_TIMEOUT_SECONDS=1 bash "${FIXTURE_ROOT}/t11_run_fuzz_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"timed out after"* ]]
 }
 
 @test "fails when passing example budget is under configured floor" {
-  run env STUB_TEST_ONE_PASSING=10 STUB_TEST_TWO_PASSING=10 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_TOTAL_EXAMPLES=160 bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
+  run env STUB_TEST_ONE_PASSING=10 STUB_TEST_TWO_PASSING=10 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_TOTAL_EXAMPLES=160 bash "${FIXTURE_ROOT}/t11_run_fuzz_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"Total passing examples 20 is below budget 160"* ]]
 }
 
 @test "fails when pytest exits non-zero and writes replay log" {
-  run env STUB_PYTEST_EXIT=1 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_TOTAL_EXAMPLES=100 bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
+  run env STUB_PYTEST_EXIT=1 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_TOTAL_EXAMPLES=100 bash "${FIXTURE_ROOT}/t11_run_fuzz_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"Property-based fuzz tests reported pytest failures"* ]]
   [[ "$output" == *"Failure replay log:"* ]]
@@ -95,7 +95,7 @@ teardown() {
 }
 
 @test "writes fuzz summary report and passes with non-zero default gates" {
-  run env STUB_TEST_ONE_PASSING=80 STUB_TEST_TWO_PASSING=80 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_PER_TEST_RATIO_PERCENT=80 bash "${FIXTURE_ROOT}/14_run_fuzz_tests.sh"
+  run env STUB_TEST_ONE_PASSING=80 STUB_TEST_TWO_PASSING=80 FUZZ_MAX_EXAMPLES=100 FUZZ_MIN_PROPERTY_TESTS=2 FUZZ_MIN_PER_TEST_RATIO_PERCENT=80 bash "${FIXTURE_ROOT}/t11_run_fuzz_tests.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/fuzz/fuzz-summary.json" ]
   [ -d "${FIXTURE_ROOT}/artifacts/cache/hypothesis" ]

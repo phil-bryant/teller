@@ -4,7 +4,7 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "05_run_dependency_freshness_tests.sh"
+  copy_script_to_fixture "t02_run_dependency_freshness_tests.sh"
   mkdir -p "${FIXTURE_ROOT}/src/scripts"
 }
 
@@ -36,7 +36,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${TEST_TMPDIR}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' '${FIXTURE_ROOT}/05_run_dependency_freshness_tests.sh'"
+  run bash -c "cd '${TEST_TMPDIR}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' '${FIXTURE_ROOT}/t02_run_dependency_freshness_tests.sh'"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/security/dependency-freshness.json" ]
   [ -f "${FIXTURE_ROOT}/artifacts/security/dependency-freshness.txt" ]
@@ -78,7 +78,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=false ./05_run_dependency_freshness_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=false ./t02_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"./src/scripts/check_dependency_freshness.py"* ]]
@@ -108,14 +108,14 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false DEPENDENCY_FAIL_ON_MAJOR=true ./05_run_dependency_freshness_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false DEPENDENCY_FAIL_ON_MAJOR=true ./t02_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"--fail-on-major"* ]]
 }
 
 @test "fails fast for non-executable explicit interpreter path" {
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON=./missing-python ./05_run_dependency_freshness_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON=./missing-python ./t02_run_dependency_freshness_tests.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"Project python not executable"* ]]
 }
@@ -144,7 +144,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false ./05_run_dependency_freshness_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false ./t02_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   [ ! -f "${FIXTURE_ROOT}/artifacts/security/postgres-freshness.json" ]
   [ ! -f "${FIXTURE_ROOT}/artifacts/security/postgres-freshness.txt" ]
@@ -176,7 +176,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_TELLER_VERSION_FRESHNESS=false RUN_POSTGRES_FRESHNESS=false ./05_run_dependency_freshness_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_TELLER_VERSION_FRESHNESS=false RUN_POSTGRES_FRESHNESS=false ./t02_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" != *"./src/scripts/check_teller_api_version_freshness.py"* ]]
@@ -205,7 +205,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' POSTGRES_SERVER_PSQL_ARGS='-h dbhost -U teller -d prod' ./05_run_dependency_freshness_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' POSTGRES_SERVER_PSQL_ARGS='-h dbhost -U teller -d prod' ./t02_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"PostgreSQL server check target: psql args (explicit)"* ]]
 }
@@ -233,7 +233,7 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' POSTGRES_CHECK_CVES=false ./05_run_dependency_freshness_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' POSTGRES_CHECK_CVES=false ./t02_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"./src/scripts/check_postgres_freshness.py"* ]]

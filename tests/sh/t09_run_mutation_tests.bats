@@ -4,7 +4,7 @@ load "helpers/common.bash"
 setup() {
   setup_shell_test
   create_repo_fixture
-  copy_script_to_fixture "12_run_mutation_tests.sh"
+  copy_script_to_fixture "t09_run_mutation_tests.sh"
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin" "${FIXTURE_ROOT}/src/scripts" "${FIXTURE_ROOT}/tests/py"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python3" <<'EOF'
 #!/usr/bin/env bash
@@ -85,13 +85,13 @@ teardown() {
 
 @test "runs from repository root regardless of caller cwd" {
   #R001-T01 #R005-T01 #R010-T01 #R015-T01 #R020-T01 #R022-T01 #R025-T01 #R030-T01 #R035-T01 #R040-T01 #R045-T01 #R050-T01 #R055-T01
-  run bash -c "cd '${TEST_TMPDIR}' && '${FIXTURE_ROOT}/12_run_mutation_tests.sh'"
+  run bash -c "cd '${TEST_TMPDIR}' && '${FIXTURE_ROOT}/t09_run_mutation_tests.sh'"
   [ "$status" -eq 0 ]
 }
 
 @test "fails when teller-venv python is unavailable" {
   rm -rf "${FIXTURE_ROOT}/teller-venv"
-  run bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
+  run bash "${FIXTURE_ROOT}/t09_run_mutation_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"teller-venv python is required"* ]]
 }
@@ -108,20 +108,20 @@ fi
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python3"
-  run env MUTATION_SKIP_PREFLIGHT=false bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
+  run env MUTATION_SKIP_PREFLIGHT=false bash "${FIXTURE_ROOT}/t09_run_mutation_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"./tests/t08_run_python_unit_tests.sh"* ]]
 }
 
 @test "writes mutation summary and stats on success" {
-  run bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
+  run bash "${FIXTURE_ROOT}/t09_run_mutation_tests.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutation-summary.json" ]
   [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutmut-cicd-stats.json" ]
 }
 
 @test "writes run metadata and strict thresholds in mutation summary" {
-  run bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
+  run bash "${FIXTURE_ROOT}/t09_run_mutation_tests.sh"
   [ "$status" -eq 0 ]
   run python3 - "${FIXTURE_ROOT}/artifacts/mutation/mutation-summary.json" <<'PY'
 import json
@@ -137,7 +137,7 @@ PY
 }
 
 @test "persists mutation history and trend artifacts" {
-  run bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
+  run bash "${FIXTURE_ROOT}/t09_run_mutation_tests.sh"
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutation-history.ndjson" ]
   [ -f "${FIXTURE_ROOT}/artifacts/mutation/mutation-trend.json" ]
@@ -162,7 +162,7 @@ fi
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python3"
-  run env CI=true MUTATION_USE_SUBPROCESS=false bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
+  run env CI=true MUTATION_USE_SUBPROCESS=false bash "${FIXTURE_ROOT}/t09_run_mutation_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"CI strict mode"* ]]
 }
@@ -186,13 +186,13 @@ fi
 exit 0
 EOF
   chmod +x "${FIXTURE_ROOT}/teller-venv/bin/python3"
-  run env MUTATION_USE_SUBPROCESS=false bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
+  run env MUTATION_USE_SUBPROCESS=false bash "${FIXTURE_ROOT}/t09_run_mutation_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"SKIP: Mutation testing skipped"* ]]
 }
 
 @test "survivor budget gate fails when survived exceeds budget" {
-  run env MUTATION_SURVIVOR_BUDGET=0 bash "${FIXTURE_ROOT}/12_run_mutation_tests.sh"
+  run env MUTATION_SURVIVOR_BUDGET=0 bash "${FIXTURE_ROOT}/t09_run_mutation_tests.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"Survived mutants 5 exceed survivor budget 0"* ]]
 }

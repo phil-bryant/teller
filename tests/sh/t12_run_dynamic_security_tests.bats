@@ -33,7 +33,7 @@ PYS
 
 copy_dast_project_files() {
   create_repo_fixture
-  copy_script_to_fixture "23_run_dynamic_security_tests.sh"
+  copy_script_to_fixture "t12_run_dynamic_security_tests.sh"
   mkdir -p "${FIXTURE_ROOT}/requirements/security"
   cp "$(repo_root)/requirements/security/requirements-security.txt" "${FIXTURE_ROOT}/requirements/security/requirements-security.txt"
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security"
@@ -81,7 +81,7 @@ src() {
   echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
   run env RUN_DAST=false \
-    bash "${FIXTURE_ROOT}/23_run_dynamic_security_tests.sh"
+    bash "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"running DAST (Dynamic Application Security Testing)"* ]]
 }
@@ -98,7 +98,7 @@ src() {
     DAST_CATEGORY_INTEGRITY_STRICT=false \
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=19787 \
     DAST_APP_PYTHON=/usr/bin/python3 \
-    bash "${FIXTURE_ROOT}/23_run_dynamic_security_tests.sh"
+    bash "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"running DAST (Dynamic Application Security Testing)"* ]]
   [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
@@ -177,7 +177,7 @@ EOF
     DAST_APP_PYTHON=/usr/bin/python3 \
     ZAP_CLI_CMD="$failing_zap" \
     SECURITY_REPORT_DIR="${FIXTURE_ROOT}/artifacts/security-dast" \
-    bash "${FIXTURE_ROOT}/23_run_dynamic_security_tests.sh"
+    bash "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
 
   [ "$status" -ne 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.sentinel" ]
@@ -202,7 +202,7 @@ EOF
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=19789 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     SECURITY_REPORT_DIR="${FIXTURE_ROOT}/artifacts/security-dast" \
-    bash "${FIXTURE_ROOT}/23_run_dynamic_security_tests.sh"
+    bash "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
 
   [ "$status" -eq 0 ]
   [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.sentinel" ]
@@ -225,7 +225,7 @@ EOF
     DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=19790 \
     DAST_APP_PYTHON=/usr/bin/python3 \
     SECURITY_REPORT_DIR="${FIXTURE_ROOT}/artifacts/security-dast" \
-    bash "${FIXTURE_ROOT}/23_run_dynamic_security_tests.sh"
+    bash "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
 
   [ "$status" -eq 0 ]
   [ ! -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.sentinel" ]
@@ -235,7 +235,7 @@ EOF
 @test "category integrity gate asserts seed protection invariants" {
   setup_shell_test
   copy_dast_project_files
-  run /usr/bin/python3 - <<'PY' "${FIXTURE_ROOT}/23_run_dynamic_security_tests.sh"
+  run /usr/bin/python3 - <<'PY' "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
 import pathlib
 import sys
 
