@@ -120,7 +120,18 @@ def get_engine():
         @event.listens_for(_engine, "connect")
         def _on_connect(dbapi_conn, connection_record):  # noqa: ARG001
             cursor = dbapi_conn.cursor()
-            cursor.execute(f"SET search_path TO {profile.search_path}")
+            cursor.execute(
+                """
+                SELECT string_agg(quote_ident(trim(schema_name)), ',')
+                FROM unnest(string_to_array(%s, ',')) AS schema_name
+                WHERE trim(schema_name) <> ''
+                """,
+                (profile.search_path,),
+            )
+            quoted_search_path = cursor.fetchone()[0]
+            if not quoted_search_path:
+                raise RuntimeError("DB profile search_path resolved to no schema identifiers")
+            cursor.execute(f"SET search_path TO {quoted_search_path}")
             if profile.runtime_role:
                 cursor.execute("SELECT quote_ident(%s)", (profile.runtime_role,))
                 quoted_role = cursor.fetchone()[0]
