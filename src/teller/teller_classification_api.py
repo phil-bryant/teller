@@ -1043,14 +1043,14 @@ def _create_transaction_match(
     )
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(title="Teller Classification API", version="0.1.0")
-
+def _register_health_routes(app: FastAPI) -> None:
     #R001: Health endpoint exposed by app factory.
     @app.get("/health")
     def health():
         return {"ok": True}
 
+
+def _register_category_routes(app: FastAPI) -> None:
     #R010: List category options with computed display labels.
     @app.get("/v1/categories", response_model=List[CategoryOption])
     def list_categories(request: Request):
@@ -1146,6 +1146,8 @@ def create_app() -> FastAPI:
     def category_counts_method_not_allowed():
         return Response(status_code=405, headers={"Allow": "GET"})
 
+
+def _register_transaction_routes(app: FastAPI) -> None:
     #R020: Posted transaction listing with filters and latest classification context.
     @app.get("/v1/transactions", response_model=TransactionListResponse, responses={
         400: {"model": ApiError, "description": "Invalid query parameter value"},
@@ -1258,6 +1260,8 @@ def create_app() -> FastAPI:
             responses = [_write_one(session, item.transaction_id, item.nys_snw_category_id) for item in body.updates]
         return responses
 
+
+def _register_matchy_routes(app: FastAPI) -> None:
     @app.get("/v1/matchy/review", response_model=MatchReviewListResponse)
     def list_matchy_review(
         request: Request,
@@ -1542,6 +1546,13 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=exc.status_code, detail=exc.message)
         return _email_message_from_payload(email_message_id, payload)
 
+
+def create_app() -> FastAPI:
+    app = FastAPI(title="Teller Classification API", version="0.1.0")
+    _register_health_routes(app)
+    _register_category_routes(app)
+    _register_transaction_routes(app)
+    _register_matchy_routes(app)
     return app
 
 
