@@ -65,4 +65,5 @@ EOF
   run bash -c "cd '${FIXTURE_ROOT}' && ./02_create_venv.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Virtual environment already exists"* ]]
+  grep -Fq '# >>> teller test cache env >>>' "${FIXTURE_ROOT}/fixture-venv/bin/activate"
 }
