@@ -137,6 +137,8 @@ class TellerAPIClient:
         if code.startswith("enrollment.disconnected") and self._repair_enrollment():
             log.info("Retrying after enrollment repair", url=url)
             response = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS, **self.kwargs)
+        #R040: Non-disconnected API failures (including rate limit responses) fail fast without
+        #R040: repair retry and propagate the upstream status/code/message deterministically.
         if response.status_code != 200:
             code, message = self._parse_error(response)
             raise TellerAPIError(message=message, code=code, status_code=response.status_code)

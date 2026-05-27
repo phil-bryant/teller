@@ -104,7 +104,7 @@ Config and secrets:
 Canonical upstream contract lives in the Mailcart repo (`mailcart/scripts/matchy_mailcart_api.py`,
 R035 for per-message; R020 for search) and matchy's `matchy/mailcart_client.py`. Teller
 implements the client in `src/teller/teller_mailcart_client.py` and the classifier API proxy in
-`src/teller/teller_classification_api.py`. Field mappings and error semantics below are the
+`src/teller/teller_classification_api.py` (facade over `src/teller/classification/`). Field mappings and error semantics below are the
 single source of truth for R060/R061/R062.
 
 #### Mailcart upstream endpoints
@@ -198,7 +198,7 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │   - Ingest: 06_fetch_teller_api_data.py                                      │
  │   - Backfill: 07_backfill_bank_statements.py                                 │
  │   - API: 08_run_classification_api.py ->                                     │
- │          src/teller/teller_classification_api.py                             │
+ │          src/teller/teller_classification_api.py -> src/teller/classification │
  └───────────────────────────────────────┬──────────────────────────────────────┘
                                          |
                                          v
@@ -279,7 +279,7 @@ SECURITY SCORECARD (10/10 EXIT GATE)
 - SAST coverage: Semgrep, Bandit (scoped to `src/teller`, `tests/py`, and core entry scripts), pip-audit, detect-secrets, gitleaks, ShellCheck, SwiftLint.
 - DAST coverage: Schemathesis (`SCHEMATHESIS_MODE=all` by default) plus ZAP quick scan with machine-readable severity summary.
 - ZAP gate policy: threshold-driven fail behavior via `SECURITY_ZAP_FAIL_THRESHOLD` (`high` default; `none|high|medium|low|informational`).
-- CI enforcement: required PR security workflow at `.github/workflows/security-pr.yml`; scheduled deep security workflow at `.github/workflows/security-nightly.yml`.
+- Local gate enforcement: static SAST gate via `tests/t03_run_static_security_tests.sh`; dynamic DAST gate via `tests/t12_run_dynamic_security_tests.sh` (no GitHub Actions workflows).
 - Dependency hygiene: `requirements.txt` is pinned for runtime dependencies (including `psycopg2-binary==2.9.12`), with a bounded compatibility range for test tooling (`pytest>=8.1,<10`).
 
 SECURITY RUNBOOK (LOCAL COMPROMISE RESPONSE)
@@ -289,7 +289,7 @@ SECURITY RUNBOOK (LOCAL COMPROMISE RESPONSE)
 2. Rotate Teller dashboard credentials/tokens in `~/.teller` contexts as needed.
 3. Re-run `tests/t12_run_dynamic_security_tests.sh` and `tests/t03_run_static_security_tests.sh`.
 4. Confirm clean artifacts under `artifacts/security` and `artifacts/security-dast`.
-5. Require green CI (`security-pr`) before merging any recovery changes.
+5. Require green local security lanes (`t03` static, `t12` dynamic) before merging any recovery changes.
 
 
 HIGH-LEVEL FLOW

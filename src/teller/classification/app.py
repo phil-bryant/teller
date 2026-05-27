@@ -1,0 +1,618 @@
+from __future__ import annotations
+
+from types import SimpleNamespace
+from typing import Dict, List, Literal
+
+from fastapi import FastAPI, HTTPException, Query, Request, Response
+from sqlalchemy import String, bindparam, cast, func, select, text
+from sqlalchemy.exc import DataError
+
+from teller.classification import auth, mailcart, services
+from teller.classification.constants import (
+    _EMAIL_SEARCH_QUERY_PATTERN,
+    _LATEST_MATCH_RUN_SQL,
+    _LATEST_RUN_CANDIDATES_SQL,
+    _MATCH_REVIEW_TABLE,
+    _TRANSACTION_COUNT_SQL,
+    _TRANSACTION_LIST_SQL,
+    _TRANSACTION_TABLE,
+)
+from teller.classification.schemas import (
+    ApiError,
+    CategoryCountsRow,
+    CategoryCreateMutation,
+    CategoryDeleteResponse,
+    CategoryOption,
+    CategoryUpdateMutation,
+    ClassificationBatchRequest,
+    ClassificationWriteResponse,
+    EmailMessage,
+    EmailSearchResponse,
+    MatchCandidateRow,
+    MatchOverrideMutation,
+    MatchReviewActionResponse,
+    MatchReviewListResponse,
+    MatchReviewRow,
+    SingleClassificationMutation,
+    TransactionCategory,
+    TransactionListResponse,
+    TransactionMatchInfo,
+    TransactionRow,
+)
+from teller.classification.text import _display_label
+from teller.teller_db import get_session
+from teller.teller_mailcart_client import MailcartError, get_mailcart_client
+
+
+def _resolve_bindings(bindings=None):
+    if bindings is not None:
+        return bindings
+    return SimpleNamespace(
+        get_session=get_session,
+        get_mailcart_client=get_mailcart_client,
+        _require_authenticated_access=auth._require_authenticated_access,
+        _require_write_access=auth._require_write_access,
+        _estimate_transaction_total=services._estimate_transaction_total,
+        _write_category=services._write_category,
+        _write_one=services._write_one,
+        _ensure_exists=services._ensure_exists,
+        _fetch_category=services._fetch_category,
+        _match_review_filters=services._match_review_filters,
+        _transition_match_state=services._transition_match_state,
+        _deactivate_match=services._deactivate_match,
+        _create_transaction_match=services._create_transaction_match,
+        _ensure_posted_transaction=services._ensure_posted_transaction,
+        _read_active_match_for_transaction=services._read_active_match_for_transaction,
+        _enrich_candidates_with_mailcart=mailcart._enrich_candidates_with_mailcart,
+        _email_search_hit_from_payload=mailcart._email_search_hit_from_payload,
+        _email_message_from_payload=mailcart._email_message_from_payload,
+        _validate_email_message_id=services._validate_email_message_id,
+    )
+
+
+def _register_health_routes(app: FastAPI) -> None:
+    @app.get("/health")
+    def health():
+        return {"ok": True}
+
+
+def _register_category_routes(app: FastAPI, bindings) -> None:
+    @app.get("/v1/categories", response_model=List[CategoryOption])
+    def list_categories(request: Request):
+        bindings._require_authenticated_access(request)
+        with bindings.get_session() as session:
+            rows = session.execute(
+                text(
+                    """
+                SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name, level_3, level_4,
+                       categorization, applicability
+                  FROM teller.nys_snw_category
+                 ORDER BY level_1, level_2, level_3, level_4, categorization, nys_snw_category_id
+            """
+                )
+            ).mappings().all()
+        return [CategoryOption(**row, display_label=_display_label(row)) for row in rows]
+
+    @app.post(
+        "/v1/categories",
+        response_model=CategoryOption,
+        responses={
+            400: {"model": ApiError, "description": "Invalid category payload"},
+            422: {"model": ApiError, "description": "Malformed category payload"},
+            409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
+        },
+    )
+    def create_category(request: Request, body: CategoryCreateMutation):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._write_category(session, body)
+
+    @app.put(
+        "/v1/categories/{nys_snw_category_id:int}",
+        response_model=CategoryOption,
+        responses={
+            400: {"model": ApiError, "description": "Invalid category payload"},
+            422: {"model": ApiError, "description": "Malformed category payload"},
+            409: {"model": ApiError, "description": "Category hierarchy conflicts with existing row"},
+            404: {"model": ApiError, "description": "Unknown category id"},
+        },
+    )
+    def update_category(request: Request, nys_snw_category_id: int, body: CategoryUpdateMutation):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._write_category(session, body, category_id=nys_snw_category_id)
+
+    @app.delete(
+        "/v1/categories/{nys_snw_category_id:int}",
+        response_model=CategoryDeleteResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown category id"},
+            409: {"model": ApiError, "description": "Category still referenced by transactions"},
+        },
+    )
+    def delete_category(request: Request, nys_snw_category_id: int):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            bindings._ensure_exists(session, "nys_snw_category", "nys_snw_category_id", nys_snw_category_id, f"Unknown nys_snw_category_id: {nys_snw_category_id}")
+            category_row = bindings._fetch_category(session, nys_snw_category_id)
+            if category_row.get("is_seed"):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Category {nys_snw_category_id} is seed-protected and cannot be deleted.",
+                )
+            assignment_count = session.execute(
+                text(
+                    """
+                SELECT COUNT(*)::INT
+                  FROM teller.transaction_nys_snw_category
+                 WHERE nys_snw_category_id = :nys_snw_category_id
+            """
+                ),
+                {"nys_snw_category_id": nys_snw_category_id},
+            ).scalar_one()
+            if assignment_count > 0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Cannot delete category {nys_snw_category_id}; {assignment_count} transaction(s) still reference it.",
+                )
+            session.execute(
+                text(
+                    """
+                DELETE FROM teller.nys_snw_category
+                 WHERE nys_snw_category_id = :nys_snw_category_id
+            """
+                ),
+                {"nys_snw_category_id": nys_snw_category_id},
+            )
+            session.commit()
+        return CategoryDeleteResponse(nys_snw_category_id=nys_snw_category_id)
+
+    @app.get("/v1/categories/counts", response_model=List[CategoryCountsRow])
+    def category_counts(request: Request):
+        bindings._require_authenticated_access(request)
+        with bindings.get_session() as session:
+            rows = session.execute(
+                text(
+                    """
+                SELECT c.nys_snw_category_id, c.level_1, c.level_1_name, c.level_2, c.level_2_name, c.level_3, c.level_4,
+                       c.categorization, COUNT(tc.transaction_id)::INT AS assigned_transactions
+                  FROM teller.nys_snw_category c
+             LEFT JOIN teller.transaction_nys_snw_category tc USING (nys_snw_category_id)
+              GROUP BY c.nys_snw_category_id, c.level_1, c.level_1_name, c.level_2, c.level_2_name, c.level_3, c.level_4,
+                       c.categorization
+              ORDER BY assigned_transactions DESC, c.level_1, c.level_2, c.level_3
+            """
+                )
+            ).mappings().all()
+        return [
+            CategoryCountsRow(
+                nys_snw_category_id=row["nys_snw_category_id"],
+                display_label=_display_label(row),
+                assigned_transactions=row["assigned_transactions"],
+            )
+            for row in rows
+        ]
+
+    @app.api_route("/v1/categories/counts", methods=["POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)
+    def category_counts_method_not_allowed():
+        return Response(status_code=405, headers={"Allow": "GET"})
+
+
+def _register_transaction_routes(app: FastAPI, bindings) -> None:
+    @app.get(
+        "/v1/transactions",
+        response_model=TransactionListResponse,
+        responses={
+            400: {"model": ApiError, "description": "Invalid query parameter value"},
+            500: {"model": ApiError, "description": "Unexpected server error"},
+        },
+    )
+    def list_transactions(
+        request: Request,
+        search: str = Query(default="", min_length=0, max_length=120, pattern=r"^[\x20-\x7E]*$"),
+        status: Literal["", "posted", "pending"] = Query(default=""),
+        only_unclassified: bool = Query(default=False),
+        match_state: Literal["", "unmatched", "no_email", "ai_no_match_found", "ai_candidate_uncertain", "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
+        only_unmoved_match: bool = Query(default=False),
+        include_total: bool = Query(default=True),
+        count_only: bool = Query(default=False),
+        limit: int = Query(default=150, ge=1, le=500),
+        offset: int = Query(default=0, ge=0, le=1_000_000),
+    ):
+        bindings._require_authenticated_access(request)
+        allowed_query_params = {
+            "search",
+            "status",
+            "only_unclassified",
+            "match_state",
+            "only_unmoved_match",
+            "include_total",
+            "count_only",
+            "limit",
+            "offset",
+        }
+        unknown_params = sorted(set(request.query_params.keys()) - allowed_query_params)
+        if unknown_params:
+            raise HTTPException(status_code=400, detail=f"Unknown query parameters: {', '.join(unknown_params)}")
+        only_unclassified_raw = request.query_params.get("only_unclassified")
+        if only_unclassified_raw is not None and only_unclassified_raw.lower() not in {"true", "false"}:
+            raise HTTPException(
+                status_code=422,
+                detail=[
+                    {
+                        "loc": ["query", "only_unclassified"],
+                        "msg": "Input should be a valid boolean, unable to interpret input",
+                        "type": "bool_parsing",
+                    }
+                ],
+            )
+        params = {
+            "search": search,
+            "search_pattern": f"%{search}%" if search else "",
+            "status": status,
+            "only_unclassified": only_unclassified,
+            "match_state": match_state,
+            "only_unmoved_match": only_unmoved_match,
+            "limit": limit,
+            "offset": offset,
+        }
+        try:
+            with bindings.get_session() as session:
+                if count_only:
+                    total = session.execute(_TRANSACTION_COUNT_SQL, params).scalar_one()
+                    return TransactionListResponse(total=total, items=[])
+                rows = session.execute(_TRANSACTION_LIST_SQL, params).mappings().all()
+                if include_total:
+                    total = session.execute(_TRANSACTION_COUNT_SQL, params).scalar_one()
+                else:
+                    total = bindings._estimate_transaction_total(offset=offset, limit=limit, row_count=len(rows))
+        except HTTPException:
+            raise
+        except (DataError, UnicodeEncodeError):
+            raise HTTPException(status_code=400, detail="Invalid query parameter value")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid query parameter value")
+
+        items = []
+        for row in rows:
+            classification = None
+            if row["nys_snw_category_id"]:
+                classification = TransactionCategory(
+                    nys_snw_category_id=row["nys_snw_category_id"],
+                    display_label=_display_label(row),
+                )
+            match_info = None
+            if row.get("match_id") is not None:
+                match_info = TransactionMatchInfo(
+                    match_id=int(row["match_id"]),
+                    email_message_id=row.get("match_email_message_id"),
+                    state=str(row["match_state"]),
+                    ai_confidence=float(row["match_ai_confidence"]) if row.get("match_ai_confidence") is not None else None,
+                    selected_by=str(row["match_selected_by"]),
+                    moved_to_matchy_at=row.get("moved_to_matchy_at"),
+                    match_count=int(row.get("match_count") or 1),
+                )
+            items.append(
+                TransactionRow(
+                    transaction_id=row["transaction_id"],
+                    account_id=row["account_id"],
+                    institution_id=row["institution_id"],
+                    account_last_four=row["account_last_four"],
+                    date=row["date"],
+                    amount=row["amount"],
+                    description=row["description"],
+                    status=row["status"],
+                    transaction_type_code=row["transaction_type_code"],
+                    teller_category=row["teller_category"],
+                    classification=classification,
+                    match=match_info,
+                )
+            )
+        return TransactionListResponse(total=total, items=items)
+
+    @app.put(
+        "/v1/transactions/{transaction_id}/classification",
+        response_model=ClassificationWriteResponse,
+        responses={
+            400: {"model": ApiError, "description": "Malformed request body"},
+            404: {"model": ApiError, "description": "Unknown transaction or category id"},
+        },
+    )
+    def set_classification(request: Request, transaction_id: str, body: SingleClassificationMutation):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._write_one(session, transaction_id, body.nys_snw_category_id)
+
+    @app.post(
+        "/v1/transactions/classifications",
+        response_model=List[ClassificationWriteResponse],
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction or category id"},
+        },
+    )
+    def set_classifications(request: Request, body: ClassificationBatchRequest):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            responses = [bindings._write_one(session, item.transaction_id, item.nys_snw_category_id) for item in body.updates]
+        return responses
+
+
+def _register_matchy_routes(app: FastAPI, bindings) -> None:
+    @app.get("/v1/matchy/review", response_model=MatchReviewListResponse)
+    def list_matchy_review(
+        request: Request,
+        state: Literal["", "ai_no_match_found", "ai_candidate_uncertain", "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
+        only_unmoved: bool = Query(default=False),
+        limit: int = Query(default=100, ge=1, le=500),
+        offset: int = Query(default=0, ge=0, le=1_000_000),
+    ):
+        bindings._require_authenticated_access(request)
+        filters = bindings._match_review_filters(state=state, only_unmoved=only_unmoved)
+        params: Dict[str, object] = {"limit": limit, "offset": offset}
+        if state:
+            params["state"] = state
+        total_stmt = select(func.count()).select_from(_MATCH_REVIEW_TABLE).where(*filters)
+        rows_stmt = (
+            select(
+                _MATCH_REVIEW_TABLE.c.match_id,
+                _MATCH_REVIEW_TABLE.c.transaction_id,
+                _MATCH_REVIEW_TABLE.c.email_message_id,
+                cast(_MATCH_REVIEW_TABLE.c.state, String).label("state"),
+                _MATCH_REVIEW_TABLE.c.ai_confidence,
+                cast(_MATCH_REVIEW_TABLE.c.selected_by, String).label("selected_by"),
+                _MATCH_REVIEW_TABLE.c.selected_at,
+                _MATCH_REVIEW_TABLE.c.moved_to_matchy_at,
+                _TRANSACTION_TABLE.c.description,
+                _TRANSACTION_TABLE.c.amount,
+                _TRANSACTION_TABLE.c.date,
+            )
+            .select_from(
+                _MATCH_REVIEW_TABLE.join(
+                    _TRANSACTION_TABLE,
+                    _TRANSACTION_TABLE.c.transaction_id == _MATCH_REVIEW_TABLE.c.transaction_id,
+                )
+            )
+            .where(*filters)
+            .order_by(_MATCH_REVIEW_TABLE.c.selected_at.desc(), _MATCH_REVIEW_TABLE.c.match_id.desc())
+            .limit(bindparam("limit"))
+            .offset(bindparam("offset"))
+        )
+        with bindings.get_session() as session:
+            total = session.execute(total_stmt, params).scalar_one()
+            rows = session.execute(rows_stmt, params).mappings().all()
+        items = [MatchReviewRow(**row) for row in rows]
+        return MatchReviewListResponse(total=total, items=items)
+
+    @app.put(
+        "/v1/matchy/matches/{match_id:int}/confirm",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown match id"},
+            409: {"model": ApiError, "description": "Match state transition conflicts with current state"},
+        },
+    )
+    def confirm_match(request: Request, match_id: int):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._transition_match_state(
+                session=session,
+                match_id=match_id,
+                to_state="human_confirmed_ai_match",
+                actor="human",
+                note="Confirmed from Teller review UI",
+            )
+
+    @app.put(
+        "/v1/matchy/matches/{match_id:int}/override",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown match id"},
+            409: {"model": ApiError, "description": "Match state transition conflicts with current state"},
+        },
+    )
+    def override_match(request: Request, match_id: int, body: MatchOverrideMutation):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._transition_match_state(
+                session=session,
+                match_id=match_id,
+                to_state="human_overrode_ai_match",
+                actor="human",
+                note=body.note or "Overridden from Teller review UI",
+                email_message_id=body.email_message_id,
+            )
+
+    @app.put(
+        "/v1/matchy/matches/{match_id:int}/no-email",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown match id"},
+            409: {"model": ApiError, "description": "Match state transition conflicts with current state"},
+        },
+    )
+    def mark_match_as_no_email(request: Request, match_id: int):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._transition_match_state(
+                session=session,
+                match_id=match_id,
+                to_state="ai_no_match_found",
+                actor="human",
+                note="Marked no-email from Teller review UI",
+                clear_email_message_id=True,
+            )
+
+    @app.put(
+        "/v1/matchy/matches/{match_id:int}/clear",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown match id or no active match"},
+            409: {"model": ApiError, "description": "Match deactivation conflicts with current state"},
+        },
+    )
+    def clear_match(request: Request, match_id: int):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._deactivate_match(session=session, match_id=match_id, note="Cleared from Teller review UI")
+
+    @app.put(
+        "/v1/matchy/transactions/{transaction_id}/confirm-candidate",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction or no match runs recorded"},
+            409: {"model": ApiError, "description": "Transaction already has an active match or email link conflict"},
+            422: {"model": ApiError, "description": "Selected email is not a candidate for this transaction"},
+        },
+    )
+    def confirm_transaction_candidate(request: Request, transaction_id: str, body: MatchOverrideMutation):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._create_transaction_match(
+                session=session,
+                transaction_id=transaction_id,
+                email_message_id=body.email_message_id,
+                to_state="human_confirmed_ai_match",
+                actor="human",
+                note=body.note or "Confirmed candidate from Teller review UI",
+            )
+
+    @app.put(
+        "/v1/matchy/transactions/{transaction_id}/override-candidate",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction or no match runs recorded"},
+            409: {"model": ApiError, "description": "Transaction already has an active match or email link conflict"},
+            422: {"model": ApiError, "description": "Selected email is not a candidate for this transaction"},
+        },
+    )
+    def override_transaction_candidate(request: Request, transaction_id: str, body: MatchOverrideMutation):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._create_transaction_match(
+                session=session,
+                transaction_id=transaction_id,
+                email_message_id=body.email_message_id,
+                to_state="human_overrode_ai_match",
+                actor="human",
+                note=body.note or "Overridden from Teller review UI",
+            )
+
+    @app.put(
+        "/v1/matchy/transactions/{transaction_id}/no-email",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction"},
+            409: {"model": ApiError, "description": "Transaction already has an active match"},
+        },
+    )
+    def mark_transaction_no_email(request: Request, transaction_id: str):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            return bindings._create_transaction_match(
+                session=session,
+                transaction_id=transaction_id,
+                to_state="ai_no_match_found",
+                actor="human",
+                note="Marked no-email from Teller review UI",
+            )
+
+    @app.put(
+        "/v1/matchy/transactions/{transaction_id}/clear",
+        response_model=MatchReviewActionResponse,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction or no active match"},
+            409: {"model": ApiError, "description": "Match deactivation conflicts with current state"},
+        },
+    )
+    def clear_transaction_match(request: Request, transaction_id: str):
+        bindings._require_write_access(request)
+        with bindings.get_session() as session:
+            bindings._ensure_posted_transaction(session, transaction_id)
+            row = bindings._read_active_match_for_transaction(session, transaction_id)
+            return bindings._deactivate_match(
+                session=session,
+                match_id=int(row["match_id"]),
+                note="Cleared from Teller review UI",
+            )
+
+    @app.get(
+        "/v1/matchy/transactions/{transaction_id}/candidates",
+        response_model=List[MatchCandidateRow],
+        response_model_by_alias=True,
+        responses={
+            404: {"model": ApiError, "description": "Unknown transaction or no match runs recorded"},
+            503: {"model": ApiError, "description": "Mailcart is not configured"},
+        },
+    )
+    def list_match_candidates(request: Request, transaction_id: str):
+        bindings._require_authenticated_access(request)
+        with bindings.get_session() as session:
+            latest = session.execute(_LATEST_MATCH_RUN_SQL, {"transaction_id": transaction_id}).fetchone()
+            if not latest:
+                raise HTTPException(status_code=404, detail=f"No match runs recorded for transaction_id: {transaction_id}")
+            candidate_rows = session.execute(_LATEST_RUN_CANDIDATES_SQL, {"match_run_id": latest[0]}).mappings().all()
+            if not candidate_rows:
+                return []
+            return bindings._enrich_candidates_with_mailcart(session, candidate_rows)
+
+    @app.get(
+        "/v1/matchy/messages/search",
+        response_model=EmailSearchResponse,
+        response_model_by_alias=True,
+        responses={
+            400: {"model": ApiError, "description": "Invalid query parameter"},
+            502: {"model": ApiError, "description": "Mailcart upstream returned an unexpected response"},
+            503: {"model": ApiError, "description": "Mailcart is not configured"},
+        },
+    )
+    def search_match_messages(
+        request: Request,
+        query: str = Query(..., min_length=1, max_length=200, pattern=_EMAIL_SEARCH_QUERY_PATTERN),
+        limit: int = Query(default=25, ge=1, le=100),
+    ):
+        bindings._require_authenticated_access(request)
+        client = bindings.get_mailcart_client()
+        try:
+            payload = client.search(query=query, limit=limit)
+        except MailcartError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message)
+        hits_raw = None
+        if isinstance(payload, dict):
+            hits_raw = payload.get("messages")
+            if not isinstance(hits_raw, list):
+                hits_raw = payload.get("items")
+        if not isinstance(hits_raw, list):
+            raise HTTPException(status_code=502, detail="mailcart: search response missing 'messages' array")
+        hits = [bindings._email_search_hit_from_payload(item) for item in hits_raw if isinstance(item, dict)]
+        return EmailSearchResponse(query=query, items=hits)
+
+    @app.get(
+        "/v1/matchy/messages/{email_message_id}",
+        response_model=EmailMessage,
+        response_model_by_alias=True,
+        responses={
+            400: {"model": ApiError, "description": "Invalid email message identifier"},
+            404: {"model": ApiError, "description": "Unknown email message identifier"},
+            502: {"model": ApiError, "description": "Mailcart upstream returned an unexpected response"},
+            503: {"model": ApiError, "description": "Mailcart is not configured"},
+        },
+    )
+    def get_match_message(request: Request, email_message_id: str):
+        bindings._require_authenticated_access(request)
+        bindings._validate_email_message_id(email_message_id)
+        client = bindings.get_mailcart_client()
+        try:
+            payload = client.get_message(email_message_id)
+        except MailcartError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message)
+        return bindings._email_message_from_payload(email_message_id, payload)
+
+
+def create_app(bindings=None) -> FastAPI:
+    resolved_bindings = _resolve_bindings(bindings)
+    app = FastAPI(title="Teller Classification API", version="0.1.0")
+    _register_health_routes(app)
+    _register_category_routes(app, resolved_bindings)
+    _register_transaction_routes(app, resolved_bindings)
+    _register_matchy_routes(app, resolved_bindings)
+    return app

@@ -12,7 +12,7 @@ description = "Teller API Integration"
 requires-python = ">=3.10"
 
 [tool.setuptools]
-packages = ["teller"]
+packages = { find = { where = ["src"], include = ["teller", "teller.*"] } }
 
 [tool.setuptools.package-dir]
 "" = "src"
@@ -29,6 +29,13 @@ cache-dir = "artifacts/cache/ruff"
 paths_to_mutate = ["src/teller/"]
 only_mutate = [
   "src/teller/teller_classification_api.py",
+  "src/teller/classification/constants.py",
+  "src/teller/classification/text.py",
+  "src/teller/classification/auth.py",
+  "src/teller/classification/schemas.py",
+  "src/teller/classification/services.py",
+  "src/teller/classification/mailcart.py",
+  "src/teller/classification/app.py",
   "src/teller/teller_db_profile.py",
   "src/teller/teller_db.py",
   "src/teller/teller_persist.py",

@@ -1,6 +1,20 @@
 import Foundation
 
 extension ClassificationViewModel {
+    // #R001: Category-editor extension participates in the shared ClassificationViewModel load/save flow.
+    // #R005: Category-editor actions preserve classification mutation semantics owned by the view model.
+    // #R010: Category-editor save path surfaces optimistic-save failures via shared error state.
+    // #R015: Category-editor updates preserve keyboard-triage state and undo compatibility.
+    // #R020: Category-editor operations keep transaction pagination state behavior unchanged.
+    // #R025: Category-editor interactions preserve initial unclassified-filter behavior.
+    // #R030: Category-editor owns bulk category delete behavior and partial failure reporting.
+    // #R035: Category-editor composition preserves clear-match behavior exposed by the view model.
+    // #R040: Category-editor composition preserves debounced Mailcart search behavior.
+    // #R075: Category-editor composition preserves background accurate-total refresh behavior.
+    // #R080: Category-editor composition preserves optional transaction-list profiling behavior.
+    // #R085: Category-editor logic is split into this focused extension without behavior changes.
+    // #R090: Category-editor composition preserves advanced transaction filter forwarding behavior.
+    // #R095: Category-editor composition preserves structured debounced Mailcart search behavior.
     func beginNewCategoryDraft() {
         categoryEditorSelection = []
         categoryEditorDraft = CategoryDraft()

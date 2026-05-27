@@ -1,6 +1,20 @@
 import Foundation
 
 extension ClassificationViewModel {
+    // #R001: Transaction-loading extension owns the concurrent first-load flow for categories + rows.
+    // #R005: Transaction-loading composition preserves redundant-write filtering behavior downstream.
+    // #R010: Transaction-loading composition preserves optimistic-save rollback behavior downstream.
+    // #R015: Transaction-loading composition preserves keyboard progression and undo behavior downstream.
+    // #R020: Transaction-loading extension owns append-page merge behavior without duplicate rows.
+    // #R025: Transaction-loading extension preserves default unclassified-filter startup behavior.
+    // #R030: Transaction-loading composition preserves category-editor delete behavior contracts.
+    // #R035: Transaction-loading composition preserves clear-match behavior exposed by the view model.
+    // #R040: Transaction-loading composition preserves debounced Mailcart search behavior.
+    // #R075: Transaction-loading extension owns background accurate-total refresh behavior.
+    // #R080: Transaction-loading extension owns optional transaction-list profiling behavior.
+    // #R085: Transaction-loading logic is split into this focused extension without behavior changes.
+    // #R090: Transaction-loading extension forwards advanced filters on every fetch call.
+    // #R095: Transaction-loading composition preserves structured debounced Mailcart search behavior.
     // #R001: Load categories and first-page transactions; clear busy before side-pane fetches (R075/R080).
     // #R080: Optional stderr profiling when TELLER_UI_PROFILE_TRANSACTION_LIST=true.
     func loadAll() async {

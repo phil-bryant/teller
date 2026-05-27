@@ -1,6 +1,20 @@
 import Foundation
 
 extension ClassificationViewModel {
+    // #R001: Match-review extension participates in shared load behavior after selection changes.
+    // #R005: Match-review interactions preserve selected-row classification mutation semantics.
+    // #R010: Match-review flows preserve optimistic-save rollback semantics in shared state.
+    // #R015: Match-review composition preserves keyboard-triage and undo behaviors.
+    // #R020: Match-review composition preserves paged transaction merge behavior.
+    // #R025: Match-review composition preserves default unclassified-filter startup behavior.
+    // #R030: Match-review composition preserves category-editor delete behavior contracts.
+    // #R035: Match-review extension owns clear-selected-match behavior and unmatched transitions.
+    // #R040: Match-review extension owns debounced Mailcart search + error/result surface behavior.
+    // #R075: Match-review composition preserves background accurate-total refresh behavior.
+    // #R080: Match-review composition preserves optional transaction-list profiling behavior.
+    // #R085: Match-review logic is split into this focused extension without behavior changes.
+    // #R090: Match-review composition preserves advanced transaction filter forwarding behavior.
+    // #R095: Match-review extension owns structured debounced Mailcart search criteria behavior.
     /// Triggered whenever the primary selected transaction changes. Loads the candidate set + email
     /// for the primary transaction so the right pane stays in sync with the left pane.
     func selectedTransactionDidChange() async {

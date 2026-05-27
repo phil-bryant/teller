@@ -9,6 +9,16 @@ from teller.teller_account_identities import TellerAccountIdentities  # noqa: F4
 from teller.teller_object import TellerObject
 
 
+def _resolve_column_default(default_obj):
+    arg = default_obj.arg
+    if not callable(arg):
+        return arg
+    try:
+        return arg()
+    except TypeError:
+        return arg(None)
+
+
 @dataclass(init=False)
 class TellerTransactionDetails(TellerObject):
     __table_args__ = {"schema": "teller", "extend_existing": True}
@@ -32,9 +42,9 @@ class TellerObjectTests(unittest.TestCase):
         self.assertIsNotNone(created_default)
         self.assertIsNotNone(updated_default)
         self.assertIsNotNone(updated_onupdate)
-        created_value = created_default.arg() if callable(created_default.arg) else created_default.arg
-        updated_value = updated_default.arg() if callable(updated_default.arg) else updated_default.arg
-        onupdate_value = updated_onupdate.arg() if callable(updated_onupdate.arg) else updated_onupdate.arg
+        created_value = _resolve_column_default(created_default)
+        updated_value = _resolve_column_default(updated_default)
+        onupdate_value = _resolve_column_default(updated_onupdate)
         self.assertIsNotNone(created_value.tzinfo)
         self.assertIsNotNone(updated_value.tzinfo)
         self.assertIsNotNone(onupdate_value.tzinfo)

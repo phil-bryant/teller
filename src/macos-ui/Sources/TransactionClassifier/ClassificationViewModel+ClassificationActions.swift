@@ -1,6 +1,20 @@
 import Foundation
 
 extension ClassificationViewModel {
+    // #R001: Classification-actions extension participates in the shared ClassificationViewModel load flow.
+    // #R005: Classification-actions logic filters redundant writes for already-matching selections.
+    // #R010: Classification-actions apply path performs optimistic state + rollback on save errors.
+    // #R015: Classification-actions implement keyboard progression and undo behavior.
+    // #R020: Classification-actions composition preserves paged transaction merge behavior.
+    // #R025: Classification-actions composition preserves default unclassified-filter startup behavior.
+    // #R030: Classification-actions composition preserves category-editor delete semantics.
+    // #R035: Classification-actions composition preserves clear-match behavior exposed by the view model.
+    // #R040: Classification-actions composition preserves debounced Mailcart search behavior.
+    // #R075: Classification-actions composition preserves background accurate-total refresh behavior.
+    // #R080: Classification-actions composition preserves optional transaction-list profiling behavior.
+    // #R085: Classification mutation logic is split into this focused extension without behavior changes.
+    // #R090: Classification-actions composition preserves advanced transaction filter forwarding behavior.
+    // #R095: Classification-actions composition preserves structured debounced Mailcart search behavior.
     // #R005: Only send updates for rows whose selected category actually changes.
     func selectedCategoryDidChange(committedCategoryId: Int? = nil) async {
         if suppressAutoApply || selection.isEmpty { return }

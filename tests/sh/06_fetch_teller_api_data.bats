@@ -25,7 +25,8 @@ teardown() {
 }
 
 @test "api client forwards timeout and paginates with from_id" {
-  #R005-T01 #R005-T02 #R005-T03 #R005-T04 #R015-T01 #R015-T02 #R035-T02
+  #R005-T01 #R005-T02 #R005-T03 #R005-T04 #R015-T01 #R015-T02 #R035-T02 #R040-T01 #R040-T02
+  #R040
   run ./teller-venv/bin/python3 -m unittest \
     tests.py.test_06_fetch_teller_api_data.TellerApiClientRequestTimeoutTests.test_get_passes_explicit_timeout_to_requests \
     tests.py.test_06_fetch_teller_api_data.TellerApiClientRequestTimeoutTests.test_fetch_all_transactions_uses_from_id_pagination

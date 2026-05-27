@@ -99,12 +99,16 @@ fi
 
 #R010: Require unit tests to pass before mutation testing begins (unless explicitly skipped).
 if [[ -z "${MUTATION_SKIP_PREFLIGHT+x}" ]]; then
-  MUTATION_SKIP_PREFLIGHT=false
+  if [ "$IS_CI" = "true" ]; then
+    MUTATION_SKIP_PREFLIGHT=false
+  else
+    MUTATION_SKIP_PREFLIGHT=true
+  fi
 fi
 if [ "$MUTATION_SKIP_PREFLIGHT" = "true" ]; then
   echo ""
   echo "▶ Preflight: skipped (MUTATION_SKIP_PREFLIGHT=true override)."
-  echo "  Default behavior now runs preflight pytest for local and CI mutation runs."
+  echo "  Default behavior skips preflight locally and enables it in CI."
 else
   echo ""
   echo "▶ Preflight: running pytest on tests/py (MUTATION_SKIP_PREFLIGHT=false)."

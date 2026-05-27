@@ -2,7 +2,10 @@
 
 ## Scope
 
-Applies to `tests/t03_run_static_security_tests.sh`.
+Applies to:
+- `tests/t03_run_static_security_tests.sh`
+- `src/scripts/security/run_static_security_lane.sh`
+- `src/scripts/security/common.sh`
 
 R001  Statement: Print an explicit SAST startup banner.
 Design: Emit `running SAST (Static Application Security Testing)` at script startup before scanner orchestration begins.

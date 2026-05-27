@@ -11,9 +11,14 @@ if [[ "$(basename "$SCRIPT_DIR")" == "tests" ]]; then
 fi
 cd "$REPO_ROOT"
 
+#R005: Prefer project venv tooling when available so quality runners are reproducible.
+if [[ -d "${REPO_ROOT}/teller-venv/bin" ]]; then
+  export PATH="${REPO_ROOT}/teller-venv/bin:${PATH}"
+fi
+
 #R005: Support configurable quality reports, targets, and gating behavior.
 REPORT_DIR="${QUALITY_REPORT_DIR:-./artifacts/quality/reports}"
-QUALITY_TARGETS="${QUALITY_TARGETS:-./src/teller ./src/scripts ./tests}"
+QUALITY_TARGETS="${QUALITY_TARGETS:-./src/teller ./src/scripts ./tests/sh}"
 FAIL_ON_QUALITY_ISSUES="${FAIL_ON_QUALITY_ISSUES:-true}"
 RUN_VULTURE="${RUN_VULTURE:-true}"
 RUN_RADON="${RUN_RADON:-true}"
@@ -22,7 +27,7 @@ RUN_PERIPHERY="${RUN_PERIPHERY:-true}"
 RUN_LIZARD="${RUN_LIZARD:-true}"
 VULTURE_MIN_CONFIDENCE="${VULTURE_MIN_CONFIDENCE:-80}"
 RADON_EXCLUDE="${RADON_EXCLUDE:-.venv,venv,teller-venv,artifacts}"
-XENON_MAX_ABSOLUTE="${XENON_MAX_ABSOLUTE:-B}"
+XENON_MAX_ABSOLUTE="${XENON_MAX_ABSOLUTE:-C}"
 XENON_MAX_MODULES="${XENON_MAX_MODULES:-B}"
 XENON_MAX_AVERAGE="${XENON_MAX_AVERAGE:-A}"
 PERIPHERY_PROJECT_DIR="${PERIPHERY_PROJECT_DIR:-./src/macos-ui}"

@@ -36,6 +36,34 @@ copy_test_cache_env_scripts_to_fixture() {
   chmod +x "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh"
 }
 
+copy_security_lane_assets_to_fixture() {
+  mkdir -p "${FIXTURE_ROOT}/src/scripts/security"
+  cp "$(repo_root)/src/scripts/security/common.sh" "${FIXTURE_ROOT}/src/scripts/security/common.sh"
+  cp "$(repo_root)/src/scripts/security/run_static_security_lane.sh" "${FIXTURE_ROOT}/src/scripts/security/run_static_security_lane.sh"
+  cp "$(repo_root)/src/scripts/security/run_dynamic_security_lane.sh" "${FIXTURE_ROOT}/src/scripts/security/run_dynamic_security_lane.sh"
+  chmod +x \
+    "${FIXTURE_ROOT}/src/scripts/security/common.sh" \
+    "${FIXTURE_ROOT}/src/scripts/security/run_static_security_lane.sh" \
+    "${FIXTURE_ROOT}/src/scripts/security/run_dynamic_security_lane.sh"
+
+  mkdir -p "${FIXTURE_ROOT}/tests/py/security"
+  cp "$(repo_root)/tests/py/security/__init__.py" "${FIXTURE_ROOT}/tests/py/security/__init__.py"
+  cp "$(repo_root)/tests/py/security/category_integrity_check.py" "${FIXTURE_ROOT}/tests/py/security/category_integrity_check.py"
+  cp "$(repo_root)/tests/py/security/delete_category_contract_check.py" "${FIXTURE_ROOT}/tests/py/security/delete_category_contract_check.py"
+  cp "$(repo_root)/tests/py/security/sast_summary_gate.py" "${FIXTURE_ROOT}/tests/py/security/sast_summary_gate.py"
+  cp "$(repo_root)/tests/py/security/schemathesis_fixture_prep.py" "${FIXTURE_ROOT}/tests/py/security/schemathesis_fixture_prep.py"
+  cp "$(repo_root)/tests/py/security/zap_summary_parser.py" "${FIXTURE_ROOT}/tests/py/security/zap_summary_parser.py"
+}
+
+copy_traceability_assets_to_fixture() {
+  mkdir -p "${FIXTURE_ROOT}/tests/py/traceability"
+  cp "$(repo_root)/tests/py/traceability/__init__.py" "${FIXTURE_ROOT}/tests/py/traceability/__init__.py"
+  cp "$(repo_root)/tests/py/traceability/cli.py" "${FIXTURE_ROOT}/tests/py/traceability/cli.py"
+  cp "$(repo_root)/tests/py/traceability/discovery.py" "${FIXTURE_ROOT}/tests/py/traceability/discovery.py"
+  cp "$(repo_root)/tests/py/traceability/parsing.py" "${FIXTURE_ROOT}/tests/py/traceability/parsing.py"
+  cp "$(repo_root)/tests/py/traceability/verification.py" "${FIXTURE_ROOT}/tests/py/traceability/verification.py"
+}
+
 copy_script_to_fixture() {
   local script_name="$1"
   local source_path
@@ -48,6 +76,16 @@ copy_script_to_fixture() {
   case "$script_name" in
     t03_run_static_security_tests.sh|t09_run_mutation_tests.sh|t11_run_fuzz_tests.sh|t12_run_dynamic_security_tests.sh)
       copy_test_cache_env_scripts_to_fixture
+      ;;
+  esac
+  case "$script_name" in
+    t03_run_static_security_tests.sh|t12_run_dynamic_security_tests.sh)
+      copy_security_lane_assets_to_fixture
+      ;;
+  esac
+  case "$script_name" in
+    t04_run_requirements_traceability_tests.sh)
+      copy_traceability_assets_to_fixture
       ;;
   esac
 }

@@ -2,7 +2,9 @@
 
 ## Scope
 
-Applies to `tests/t12_run_dynamic_security_tests.sh`.
+Applies to:
+- `tests/t12_run_dynamic_security_tests.sh`
+- `src/scripts/security/run_dynamic_security_lane.sh`
 
 ## Ownership Boundaries
 

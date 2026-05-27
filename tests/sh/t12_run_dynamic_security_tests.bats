@@ -34,6 +34,18 @@ PYS
 copy_dast_project_files() {
   create_repo_fixture
   copy_script_to_fixture "t12_run_dynamic_security_tests.sh"
+  mkdir -p "${FIXTURE_ROOT}/src/scripts/security"
+  cp "$(repo_root)/src/scripts/security/common.sh" "${FIXTURE_ROOT}/src/scripts/security/common.sh"
+  cp "$(repo_root)/src/scripts/security/run_dynamic_security_lane.sh" "${FIXTURE_ROOT}/src/scripts/security/run_dynamic_security_lane.sh"
+  cp "$(repo_root)/src/scripts/export_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh"
+  cp "$(repo_root)/src/scripts/normalize_pytest_addopts.sh" "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh"
+  cp "$(repo_root)/src/scripts/dast_baseline.py" "${FIXTURE_ROOT}/src/scripts/dast_baseline.py"
+  cp "$(repo_root)/src/scripts/dast_cleanup.py" "${FIXTURE_ROOT}/src/scripts/dast_cleanup.py"
+  chmod +x "${FIXTURE_ROOT}/src/scripts/security/run_dynamic_security_lane.sh" "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh"
+  mkdir -p "${FIXTURE_ROOT}/tests/py/security"
+  cp "$(repo_root)/tests/py/security/"*.py "${FIXTURE_ROOT}/tests/py/security/"
+  mkdir -p "${FIXTURE_ROOT}/src/sql/postgres"
+  cp "$(repo_root)/src/sql/postgres/teller_nys_snw_category.sql" "${FIXTURE_ROOT}/src/sql/postgres/teller_nys_snw_category.sql"
   mkdir -p "${FIXTURE_ROOT}/requirements/security"
   cp "$(repo_root)/requirements/security/requirements-security.txt" "${FIXTURE_ROOT}/requirements/security/requirements-security.txt"
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security"
@@ -71,6 +83,10 @@ teardown() {
 
 src() {
   printf '%s' "$(repo_root)/tests/t12_run_dynamic_security_tests.sh"
+}
+
+src_lane() {
+  printf '%s' "$(repo_root)/src/scripts/security/run_dynamic_security_lane.sh"
 }
 
 @test "prints DAST startup banner" {
@@ -180,8 +196,8 @@ EOF
     bash "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
 
   [ "$status" -ne 0 ]
-  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.sentinel" ]
-  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-cleanup.sentinel" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-cleanup.log" ]
   [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-run-id.txt" ]
   local run_id_content
   run_id_content="$(cat "${FIXTURE_ROOT}/artifacts/security-dast/dast-run-id.txt")"
@@ -205,8 +221,8 @@ EOF
     bash "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
 
   [ "$status" -eq 0 ]
-  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.sentinel" ]
-  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-cleanup.sentinel" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-baseline.json" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/dast-cleanup.log" ]
   [[ "$output" == *"Restoring database to pre-DAST baseline"* ]]
 }
 
@@ -235,7 +251,7 @@ EOF
 @test "category integrity gate asserts seed protection invariants" {
   setup_shell_test
   copy_dast_project_files
-  run /usr/bin/python3 - <<'PY' "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
+  run /usr/bin/python3 - <<'PY' "${FIXTURE_ROOT}/tests/py/security/category_integrity_check.py"
 import pathlib
 import sys
 
@@ -265,19 +281,19 @@ PY
 
 @test "parses ZAP summary into machine-readable severity counts" {
   #R030-T01 #R030-T02
-  run grep "summarize_zap_html_report" "$(src)"
+  run grep "summarize_zap_html_report" "$(src_lane)"
   [ "$status" -eq 0 ]
-  run grep "zap-classification-summary.json" "$(src)"
+  run grep "zap-classification-summary.json" "$(src_lane)"
   [ "$status" -eq 0 ]
-  run grep 'payload.get("high", 0)' "$(src)"
+  run grep "zap_summary_parser.py" "$(src_lane)"
   [ "$status" -eq 0 ]
 }
 
 @test "fails gate when threshold is medium and findings exist" {
-  run grep "SECURITY_ZAP_FAIL_THRESHOLD" "$(src)"
+  run grep "SECURITY_ZAP_FAIL_THRESHOLD" "$(src_lane)"
   [ "$status" -eq 0 ]
-  run grep "zap_fail_threshold_normalized" "$(src)"
+  run grep "zap_fail_threshold_normalized" "$(src_lane)"
   [ "$status" -eq 0 ]
-  run grep "threshold_count > 0" "$(src)"
+  run grep "threshold_count > 0" "$(src_lane)"
   [ "$status" -eq 0 ]
 }

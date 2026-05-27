@@ -28,6 +28,7 @@ R020  Statement: Perform stale-cache retry only for recognized Swift checkout-ac
 Design: Trigger one retry after clearing `.build` only when output indicates stale checkout access errors; do not retry unrelated failures.
 Tests:
 - R020-T01: Verify stale-checkout signal triggers single retry and unrelated failures do not.
+- R020-T02: Verify sandbox-denied Swift test startup is treated as a graceful skip path instead of a stale-cache retry loop.
 
 R025  Statement: Resolve DB profile exports before SQL lane preflight and execution.
 Design: Require executable `db_profile_export.sh`, evaluate exported variables, and use profile-derived DB settings for SQL preflight checks.
