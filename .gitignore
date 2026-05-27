@@ -35,6 +35,7 @@ artifacts/telemetry/quality-trend.json
 artifacts/telemetry/lane-summary-*.json
 .ruff_cache/
 .hypothesis/
+.schemathesis/
 .10_run_all_tests_parallel.lock
 src/macos-ui/.swiftpm-run.lock
 src/macos-ui/.swiftpm-run.lock.d/
