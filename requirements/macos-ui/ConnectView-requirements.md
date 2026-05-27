@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `src/macos-ui/Sources/TransactionClassifier/ConnectView.swift` and `src/macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift`.
+Applies to `src/macos-ui/Sources/TransactionClassifier/ConnectView.swift`.
 
 R001  Statement: Connect tab must present a plain-language connections list.
 Design: `ConnectView` renders a single `Financial Institution Connections` list with institution and connection ID rows bound to `selectedContextKey`.
@@ -43,7 +43,6 @@ Design: `ConnectWebFlowHTML` renders `Press ESC to go back.` in the in-app launc
 Tests:
 - R030-T01: Render Add-session Connect HTML and verify the ESC hint text is present.
 - R030-T02: Render Edit-session Connect HTML and verify the ESC hint text is present.
-- R030-T03: Run Connect Add/Edit XCUITest scenario and verify the sheet shows the ESC hint for both entry points.
 
 ## Changelog
 

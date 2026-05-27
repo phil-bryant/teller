@@ -92,16 +92,23 @@ EOF
   [ "$status" -ne 0 ]
 }
 
-@test "sends request to api url and database host from env" {
+@test "sends request to https api url and database host from env" {
   #R010-T01
   : > "${PSQL_16}"; : > "${CURL_LOG16}"
   write_psql16
-  run env TELLER_CLASSIFIER_API_URL="http://h.example:12" TELLER_DB_HOST=fromenv TELLER_DB_PORT=33 \
+  run env TELLER_CLASSIFIER_API_URL="https://h.example:12" TELLER_DB_HOST=fromenv TELLER_DB_PORT=33 \
     TELLER_DB_USER=u TELLER_DB_NAME=prod TELLER_DB_PASSWORD=sec TXN_ID=txn1 CATEGORY_ID=7 \
     zsh "${FIXTURE_ROOT}/t16_classification_persistence_verification_test.sh" --require-env-ids
   [ "$status" -eq 0 ]
   grep "h.example:12" "${CURL_LOG16}"
   grep "fromenv" "${PSQL_16}"
+}
+
+@test "rejects http api url override" {
+  run env TELLER_CLASSIFIER_API_URL="http://h.example:12" TELLER_DB_PASSWORD=pw TXN_ID=txn1 CATEGORY_ID=7 \
+    zsh "${FIXTURE_ROOT}/t16_classification_persistence_verification_test.sh" --require-env-ids
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"must use https://"* ]]
 }
 
 @test "resolves empty password with 1psa" {

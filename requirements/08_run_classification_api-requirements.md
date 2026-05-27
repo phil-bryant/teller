@@ -20,11 +20,11 @@ Tests:
 - R010-T01: Run entrypoint with missing `1psa` and verify startup fails with explicit token-resolution error.
 - R010-T02: Stub failed/empty 1psa lookup and verify startup exits before `uvicorn.run`.
 
-R015  Statement: Run HTTPS by default with explicit insecure override.
-Design: Default launch uses TLS cert/key files (`TELLER_CLASSIFIER_TLS_CERT_FILE`, `TELLER_CLASSIFIER_TLS_KEY_FILE`) and starts uvicorn in HTTPS mode; missing cert/key fails startup unless `TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true`.
+R015  Statement: Run HTTPS only for local classifier transport.
+Design: Launch requires TLS cert/key files (`TELLER_CLASSIFIER_TLS_CERT_FILE`, `TELLER_CLASSIFIER_TLS_KEY_FILE`) and always starts uvicorn in HTTPS mode; missing cert/key fails startup with explicit remediation guidance.
 Tests:
 - R015-T01: Run without TLS files and verify startup fails with explicit HTTPS configuration error.
-- R015-T02: Set `TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true` and verify HTTP launch path is allowed.
+- R015-T02: Verify launcher source contains no insecure HTTP override path.
 
 ## Changelog
 

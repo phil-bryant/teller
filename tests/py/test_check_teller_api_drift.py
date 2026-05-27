@@ -2,9 +2,11 @@
 
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 def load_module():
@@ -96,6 +98,50 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertIn("Status: warn", text)
         self.assertIn("token missing", text)
         self.assertIn("[pass] doc:accounts.md", text)
+
+
+class MainExitPolicyTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.module = load_module()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.report_dir = Path(self.temp_dir.name)
+
+    def test_require_live_fails_when_fallback_mode_is_used(self) -> None:
+        #R015-T01
+        args = [
+            "check_teller_api_drift.py",
+            "--output-json",
+            str(self.report_dir / "out.json"),
+            "--output-text",
+            str(self.report_dir / "out.txt"),
+            "--require-live",
+        ]
+        with patch.object(self.module, "run_live_canary", return_value={"mode": "fallback", "status": "warn", "checks": [], "warnings": ["no creds"]}), patch.object(
+            self.module,
+            "run_fallback_checks",
+            return_value={"status": "pass", "checks": [], "warnings": []},
+        ), patch.object(os, "umask", return_value=0):
+            with patch("sys.argv", args):
+                exit_code = self.module.main()
+        self.assertEqual(exit_code, 1)
+
+    def test_fail_on_warn_promotes_warning_to_failure(self) -> None:
+        #R015-T02
+        args = [
+            "check_teller_api_drift.py",
+            "--output-json",
+            str(self.report_dir / "warn.json"),
+            "--output-text",
+            str(self.report_dir / "warn.txt"),
+            "--fail-on-warn",
+        ]
+        with patch.object(self.module, "run_live_canary", return_value={"mode": "live", "status": "warn", "checks": [], "warnings": ["token missing"]}), patch.object(
+            os, "umask", return_value=0
+        ):
+            with patch("sys.argv", args):
+                exit_code = self.module.main()
+        self.assertEqual(exit_code, 1)
 
 
 if __name__ == "__main__":

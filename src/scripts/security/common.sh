@@ -74,10 +74,14 @@ print_tool_header() {
 wait_for_http() {
   local url="$1"
   local timeout_seconds="${2:-30}"
+  local curl_args=(-fsS)
+  if [[ "$url" == https://* ]]; then
+    curl_args+=(-k)
+  fi
   local start_ts
   start_ts="$(date +%s)"
   while true; do
-    if curl -fsS "$url" >/dev/null 2>&1; then
+    if curl "${curl_args[@]}" "$url" >/dev/null 2>&1; then
       return 0
     fi
     if (( "$(date +%s)" - start_ts >= timeout_seconds )); then

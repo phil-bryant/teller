@@ -1,0 +1,47 @@
+{
+  "classificationApi": {
+    "transactions": {
+      "advancedFilters": {
+        "query": {
+          "start_date": "2026-04-01",
+          "end_date": "2026-04-30",
+          "institution_id": "inst_alpha",
+          "min_amount": "10",
+          "max_amount": "100"
+        }
+      }
+    },
+    "messageSearch": {
+      "dateOnlyEnd": {
+        "query": {
+          "end_date": "2026-04-18",
+          "limit": "25"
+        },
+        "effective_query": "to:2026-04-18"
+      },
+      "dateOnlyStart": {
+        "query": {
+          "start_date": "2026-04-01",
+          "limit": "25"
+        },
+        "effective_query": "from:2026-04-01"
+      }
+    }
+  },
+  "mailcartProxy": {
+    "searchRequest": {
+      "path": "/v1/messages/search",
+      "params": {
+        "query": "to:2026-04-18",
+        "limit": 25
+      }
+    }
+  },
+  "tellerUpstream": {
+    "requiredMarkers": [
+      "/institutions",
+      "/accounts",
+      "/identity"
+    ]
+  }
+}

@@ -72,13 +72,17 @@ if ! load_profile_exports_from_file "$profile_exports_file"; then
 fi
 rm -f "$profile_exports_file"
 
-API_URL="${TELLER_CLASSIFIER_API_URL:-http://127.0.0.1:8787}"
+API_URL="${TELLER_CLASSIFIER_API_URL:-https://127.0.0.1:8787}"
 API_SCHEME="$(python3 - <<'PY' "$API_URL"
 import sys
 from urllib.parse import urlparse
-print((urlparse(sys.argv[1]).scheme or "http").lower())
+print((urlparse(sys.argv[1]).scheme or "https").lower())
 PY
 )"
+if [[ "$API_SCHEME" != "https" ]]; then
+  echo "❌ TELLER_CLASSIFIER_API_URL must use https:// (received: ${API_URL})" >&2
+  exit 1
+fi
 DB_HOST="${TELLER_DB_HOST:-${PG_HOST:-localhost}}"
 DB_PORT="${TELLER_DB_PORT:-${PG_PORT:-5432}}"
 DB_NAME="${TELLER_DB_NAME:-${PG_DBNAME:-}}"
@@ -222,13 +226,8 @@ PY
   fi
   echo "▶ Starting classification API for persistence verification at ${API_URL}"
   classifier_api_log="${CLASSIFICATION_PERSISTENCE_REPORT_DIR}/classification-api-startup.log"
-  local insecure_http_flag="false"
-  if [[ "$API_SCHEME" == "http" ]]; then
-    insecure_http_flag="true"
-  fi
   echo "  classifier startup log: ${classifier_api_log}"
   TELLER_CLASSIFIER_API_HOST="$api_host" TELLER_CLASSIFIER_API_PORT="$api_port" \
-    TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP="$insecure_http_flag" \
     "$CLASSIFICATION_PERSISTENCE_API_PYTHON" "./08_run_classification_api.py" >"$classifier_api_log" 2>&1 &
   classifier_api_pid="$!"
   classifier_api_started="true"

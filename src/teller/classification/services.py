@@ -168,9 +168,9 @@ def _write_category(session, body: CategoryMutationBase, category_id: Optional[i
     except IntegrityError:
         raise HTTPException(status_code=409, detail="Category mutation conflicts with an existing hierarchy row")
     except (DataError, UnicodeEncodeError):
-        raise HTTPException(status_code=422, detail="Category payload violates database constraints")
+        raise HTTPException(status_code=409, detail="Category payload violates database constraints")
     except Exception:
-        raise HTTPException(status_code=422, detail="Category payload violates database constraints")
+        raise HTTPException(status_code=409, detail="Category payload violates database constraints")
 
 
 def _write_one(session, transaction_id: str, nys_snw_category_id: Optional[int]) -> ClassificationWriteResponse:
@@ -501,7 +501,7 @@ def _ensure_candidate_for_transaction(session, transaction_id: str, email_messag
     ).fetchone()
     if not candidate:
         raise HTTPException(
-            status_code=422,
+            status_code=409,
             detail="email_message_id is not a candidate for the latest match run of this transaction",
         )
 

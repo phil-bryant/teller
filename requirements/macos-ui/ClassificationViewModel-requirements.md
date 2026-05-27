@@ -85,6 +85,12 @@ Tests:
 - R095-T01: Set non-empty structured email search fields, await search, and verify results populate from the API response.
 - R095-T02: Simulate a structured search API failure and verify `mailcartSearchErrorText` is set and results clear.
 
+R100  Statement: Recover from stale transaction-match snapshots during confirm/override/no-email actions.
+Design: `confirmSelectedMatch()`, `overrideSelectedMatch()`, and `markSelectedMatchNoEmail()` first use transaction-level mutation endpoints when `selectedMatchId` is unavailable; if the API responds that the transaction already has an active match, the view model reloads transactions and retries with the match-id endpoint so stale `unmatched` rows do not block user actions.
+Tests:
+- R100-T01: Start from a stale row with no match metadata, make confirm return "already has an active match", and verify the view model reloads then confirms by refreshed `match_id`.
+- R100-T02: Start from a stale row with no match metadata, make override return "already has an active match", and verify the view model reloads then overrides by refreshed `match_id`.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ClassificationViewModel.swift` to replace prior plan-only coverage.
@@ -95,3 +101,4 @@ Tests:
 - 2026-05-26: Expanded R001 for fast first load (R072 client, busy cleared before side pane); added R075 and R080.
 - 2026-05-26: Added R090 (advanced transaction filter state on fetch) and R095 (structured debounced email search).
 - 2026-05-26: Split `ClassificationViewModel` concerns into extension files and added R085 traceability for behavior-preserving decomposition.
+- 2026-05-27: Added R100 for stale match-snapshot recovery (reload + retry by `match_id`) on confirm/override/no-email actions.

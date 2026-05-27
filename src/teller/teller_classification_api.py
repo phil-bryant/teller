@@ -122,6 +122,7 @@ from teller.teller_mailcart_client import get_mailcart_client
 #R070: Compatibility facade re-exports active-match transaction list helpers/filters.
 #R071: Compatibility facade re-exports clear/deactivate match helper bindings.
 #R072: Compatibility facade re-exports include_total/count_only pagination helper.
+#R075: Compatibility facade re-exports advanced transaction scalar filter support.
 def _transition_match_state(*args, **kwargs):
     kwargs.setdefault("read_match_row_fn", _read_match_row)
     kwargs.setdefault("insert_match_audit_fn", _insert_match_audit)

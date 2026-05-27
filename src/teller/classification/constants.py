@@ -70,6 +70,12 @@ _TRANSACTION_COUNT_SQL = text(
             OR (:match_state = 'no_email' AND tem.match_state = 'ai_no_match_found' AND tem.match_selected_by = 'human')
             OR (tem.match_state = :match_state))
        AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
+       --R075: Advanced date/institution/amount filters must be enforced at SQL boundary for API parity.
+       AND (:start_date IS NULL OR tt.date >= :start_date)
+       AND (:end_date IS NULL OR tt.date <= :end_date)
+       AND (:institution_id = '' OR ta.institution_id = :institution_id)
+       AND (:min_amount IS NULL OR tt.amount >= :min_amount)
+       AND (:max_amount IS NULL OR tt.amount <= :max_amount)
 """
 )
 
@@ -126,6 +132,12 @@ _TRANSACTION_LIST_SQL = text(
             OR (:match_state = 'no_email' AND tem.match_state = 'ai_no_match_found' AND tem.match_selected_by = 'human')
             OR (tem.match_state = :match_state))
        AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
+       --R075: Advanced date/institution/amount filters must be enforced at SQL boundary for API parity.
+       AND (:start_date IS NULL OR tt.date >= :start_date)
+       AND (:end_date IS NULL OR tt.date <= :end_date)
+       AND (:institution_id = '' OR ta.institution_id = :institution_id)
+       AND (:min_amount IS NULL OR tt.amount >= :min_amount)
+       AND (:max_amount IS NULL OR tt.amount <= :max_amount)
     ORDER BY tt.date DESC, tt.transaction_id DESC
     LIMIT :limit OFFSET :offset
 """
@@ -241,6 +253,7 @@ _UPDATE_CANDIDATE_CACHE_SQL = text(
 
 _EMAIL_MESSAGE_ID_PATTERN = r"^[A-Za-z0-9_\-=]+$"
 _EMAIL_MESSAGE_ID_MAX_LENGTH = 4096
-_EMAIL_SEARCH_QUERY_PATTERN = r"^[\x20-\x7E]+$"
+#R062: Structured search fields are optional, so empty strings must validate.
+_EMAIL_SEARCH_QUERY_PATTERN = r"^[\x20-\x7E]*$"
 
 _MAILCART_ENRICHMENT_WORKERS = 16

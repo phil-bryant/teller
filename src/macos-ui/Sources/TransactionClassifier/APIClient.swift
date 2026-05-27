@@ -40,6 +40,7 @@ protocol ClassificationAPI: Sendable {
     func fetchMessage(emailMessageId: String) async throws -> EmailMessage
     // #R062: Search Mailcart messages for Match & Classify candidate discovery.
     // #R064: Support both keyword and structured Mailcart search criteria.
+    // #R065: Keep query serialization aligned with shared frontend-backend contract scenarios.
     func searchMessages(criteria: EmailSearchCriteria, limit: Int) async throws -> EmailSearchResponse
 }
 
@@ -130,7 +131,7 @@ actor APIClient: ClassificationAPI {
     init(baseURL: URL = APIClient.defaultBaseURL(),
          writeToken: String = APIClient.defaultWriteToken(),
          session: URLSession? = nil) {
-        self.baseURL = baseURL
+        self.baseURL = APIClient.validateHTTPSBaseURL(baseURL, source: "APIClient initializer")
         self.writeToken = writeToken
         self.session = session ?? APIClient.makeDefaultSession()
     }
@@ -332,13 +333,19 @@ actor APIClient: ClassificationAPI {
 
     private static func defaultBaseURL() -> URL {
         let env = ProcessInfo.processInfo.environment
-        let allowInsecureHTTP = (env["TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP"] ?? "").lowercased() == "true"
-        let defaultURL = allowInsecureHTTP ? "http://127.0.0.1:8787" : "https://127.0.0.1:8787"
+        let defaultURL = "https://127.0.0.1:8787"
         let baseURLString = env["TELLER_CLASSIFIER_API_URL"] ?? defaultURL
-        if let parsedURL = URL(string: baseURLString) {
-            return parsedURL
+        guard let parsedURL = URL(string: baseURLString) else {
+            fatalError("TELLER_CLASSIFIER_API_URL must be a valid absolute URL.")
         }
-        return URL(fileURLWithPath: "/")
+        return validateHTTPSBaseURL(parsedURL, source: "TELLER_CLASSIFIER_API_URL")
+    }
+
+    private static func validateHTTPSBaseURL(_ url: URL, source: String) -> URL {
+        guard let scheme = url.scheme?.lowercased(), scheme == "https" else {
+            fatalError("\(source) must use https:// (received: \(url.absoluteString)).")
+        }
+        return url
     }
 
     private static func defaultWriteToken() -> String {

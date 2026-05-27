@@ -55,6 +55,7 @@ XCUITEST_SCENARIOS=(
   "connectTabLoadsConnections"
   "connectDeleteCancel"
   "connectDeleteConfirm"
+  #R080: Ensure Connect Add/Edit smoke path asserts in-sheet ESC hint copy.
   "connectAddAndEditButtons"
   "connectTabHidesNextUnclassified"
   #R065: Verify Connect tab hides Undo control.

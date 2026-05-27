@@ -57,15 +57,13 @@ def _is_local_bind_host(host: str) -> bool:
 
 
 def _resolve_transport() -> tuple[str, str | None, str | None]:
-    #R015: Default to HTTPS with explicit insecure HTTP override for local-only development.
-    if _env_flag("TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP", default=False):
-        return ("http", None, None)
+    #R015: Always require HTTPS with local TLS cert/key files.
     certfile = os.environ.get("TELLER_CLASSIFIER_TLS_CERT_FILE", _DEFAULT_HTTPS_CERT).strip()
     keyfile = os.environ.get("TELLER_CLASSIFIER_TLS_KEY_FILE", _DEFAULT_HTTPS_KEY).strip()
     if not certfile or not keyfile:
         raise RuntimeError(
             "HTTPS mode requires TELLER_CLASSIFIER_TLS_CERT_FILE and TELLER_CLASSIFIER_TLS_KEY_FILE "
-            "(or set TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true for an explicit local-only override)."
+            "(run ./04_install_classifier_api_tls.sh to install local cert/key files)."
         )
     cert_path = Path(certfile)
     key_path = Path(keyfile)
@@ -92,10 +90,7 @@ def main():
     scheme, certfile, keyfile = _resolve_transport()
     require_write_token()
     #R005: Launch uvicorn using teller classification ASGI app.
-    if scheme == "https":
-        uvicorn.run(create_app(), host=host, port=port, ssl_certfile=certfile, ssl_keyfile=keyfile)
-    else:
-        uvicorn.run(create_app(), host=host, port=port)
+    uvicorn.run(create_app(), host=host, port=port, ssl_certfile=certfile, ssl_keyfile=keyfile)
 
 
 if __name__ == "__main__":

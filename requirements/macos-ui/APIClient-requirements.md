@@ -5,7 +5,7 @@
 Applies to `src/macos-ui/Sources/TransactionClassifier/APIClient.swift`.
 
 R001  Statement: Fetch categories and paginated transactions from the local classifier API.
-Design: `ClassificationAPI` exposes `fetchCategories(...)` and `fetchTransactions(..., includeTotal:countOnly:)`, and `APIClient` resolves base URL from `TELLER_CLASSIFIER_API_URL` with secure localhost default (`https://127.0.0.1:8787`, or explicit `TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true` override). `fetchTransactions` sends `include_total` and `count_only` query parameters (classifier API R072). Default `URLSession` pins the local classifier cert from `TELLER_CLASSIFIER_TLS_CERT_FILE` (default `~/.teller/classifier-localhost-cert.pem`) for loopback HTTPS hosts.
+Design: `ClassificationAPI` exposes `fetchCategories(...)` and `fetchTransactions(..., includeTotal:countOnly:)`, and `APIClient` resolves base URL from `TELLER_CLASSIFIER_API_URL` with secure localhost default (`https://127.0.0.1:8787`). Client configuration rejects non-HTTPS API base URLs. `fetchTransactions` sends `include_total` and `count_only` query parameters (classifier API R072). Default `URLSession` pins the local classifier cert from `TELLER_CLASSIFIER_TLS_CERT_FILE` (default `~/.teller/classifier-localhost-cert.pem`) for loopback HTTPS hosts.
 Tests:
 - R001-T01: Call both read methods and verify requests target `/v1/categories` and `/v1/transactions` with expected query parameters.
 - R001-T03: Verify `fetchTransactions` encodes `include_total` and `count_only` on the request URL.
@@ -63,6 +63,13 @@ Design: `searchMessages(criteria:limit:)` sends optional `subject`, `sender`, `b
 Tests:
 - R064-T01: Call `searchMessages` with populated criteria and verify all structured search parameters appear on the request URL.
 
+R065  Statement: Keep frontend request serialization and UI test fixtures aligned with backend contract scenarios.
+Design: Contract scenario corpus in `tests/contracts/frontend_backend_contract_scenarios.json` is consumed by Swift tests to verify `APIClient` query serialization and `UITestingFixtureClassificationAPI` query-summary behavior for critical transaction and email-search flows.
+Tests:
+- R065-T01: Validate advanced transaction filter query serialization against corpus scenarios.
+- R065-T02: Validate date-only message search serialization against corpus scenarios.
+- R065-T03: Validate fixture search query summary parity against corpus expected query strings.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `APIClient.swift` based on classifier app behavior.
@@ -75,3 +82,4 @@ Tests:
 - 2026-05-26: Added R063 (advanced transaction filter query params) and R064 (structured email search query params); updated R062 for criteria-based search.
 - 2026-05-26: Extended R001 for `include_total` / `count_only` query parameters (API R072).
 - 2026-05-27: Added R045-T03 traceability for default write-token resolution failure behavior.
+- 2026-05-27: Added R065 shared contract-scenario corpus conformance tests for APIClient and UI test fixture parity.

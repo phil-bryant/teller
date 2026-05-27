@@ -10,6 +10,8 @@ from teller.classification.constants import (
     _CATEGORY_SCHEMA_PROPERTIES,
     _CATEGORY_SCHEMA_REQUIRE_ONE,
     _CATEGORY_TEXT_FIELDS,
+    _EMAIL_MESSAGE_ID_MAX_LENGTH,
+    _EMAIL_MESSAGE_ID_PATTERN,
 )
 from teller.classification.text import _normalize_text, _validate_text_field
 
@@ -29,14 +31,24 @@ class CategoryOption(BaseModel):
 
 class CategoryMutationBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    level_1: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
-    level_1_name: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
-    level_2: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
-    level_2_name: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
-    level_3: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
-    level_4: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
-    categorization: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
-    applicability: Optional[Annotated[str, StringConstraints(max_length=120)]] = None
+    level_1: Optional[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = None
+    level_1_name: Optional[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = None
+    level_2: Optional[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = None
+    level_2_name: Optional[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = None
+    level_3: Optional[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = None
+    level_4: Optional[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = None
+    categorization: Optional[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = None
+    applicability: Optional[Annotated[str, StringConstraints(min_length=1, max_length=120)]] = None
+
+    @field_validator(*_CATEGORY_TEXT_FIELDS, mode="before")
+    @classmethod
+    def normalize_blank_strings(cls, value: Any):
+        if isinstance(value, str):
+            normalized = value.strip()
+            if normalized == "":
+                return None
+            return normalized
+        return value
 
     @field_validator(*_CATEGORY_TEXT_FIELDS)
     @classmethod
@@ -239,7 +251,10 @@ class EmailSearchResponse(BaseModel):
 
 class MatchOverrideMutation(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    email_message_id: Annotated[str, StringConstraints(min_length=1, max_length=400, pattern=r"^[\x20-\x7E]+$")]
+    email_message_id: Annotated[
+        str,
+        StringConstraints(min_length=1, max_length=_EMAIL_MESSAGE_ID_MAX_LENGTH, pattern=_EMAIL_MESSAGE_ID_PATTERN),
+    ]
     note: Optional[Annotated[str, StringConstraints(max_length=800, pattern=r"^[\x20-\x7E]*$")]] = None
 
     @field_validator("email_message_id")

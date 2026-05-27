@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import json
+import os
+import ssl
 import sys
 import urllib.error
 import urllib.request
+from urllib.parse import urlparse
 import uuid
 
 
@@ -10,8 +13,9 @@ def request_json(method: str, url: str, write_token: str, body=None):
     data = None if body is None else json.dumps(body).encode("utf-8")
     headers = {"Content-Type": "application/json", "X-Teller-Write-Token": write_token}
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    context = _tls_context_for_url(url)
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
+        with urllib.request.urlopen(req, timeout=20, context=context) as resp:
             raw = resp.read().decode("utf-8")
             payload = None
             if raw:
@@ -31,14 +35,36 @@ def request_json(method: str, url: str, write_token: str, body=None):
         return exc.code, payload
 
 
+def _tls_context_for_url(url: str):
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        return None
+    if (parsed.hostname or "").lower() in {"127.0.0.1", "localhost", "::1"}:
+        return ssl._create_unverified_context()
+    cert_file = os.environ.get("SSL_CERT_FILE") or os.environ.get("TELLER_CLASSIFIER_TLS_CERT_FILE")
+    if cert_file and os.path.isfile(cert_file):
+        return ssl.create_default_context(cafile=cert_file)
+    return ssl._create_unverified_context()
+
+
+def _load_schema(schema_path_or_url: str):
+    parsed = urlparse(schema_path_or_url)
+    if parsed.scheme.lower() in {"http", "https"}:
+        req = urllib.request.Request(schema_path_or_url, method="GET")
+        context = _tls_context_for_url(schema_path_or_url)
+        with urllib.request.urlopen(req, timeout=20, context=context) as resp:
+            return json.load(resp)
+    with open(schema_path_or_url, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
 def main() -> int:
     if len(sys.argv) != 6:
         raise SystemExit(
             "usage: delete_category_contract_check.py <schema_path> <base_url> <output_json_path> <write_token> <dast_run_id>"
         )
     schema_path, base_url, output_json_path, write_token, dast_run_id = sys.argv[1:6]
-    with open(schema_path, "r", encoding="utf-8") as fh:
-        schema = json.load(fh)
+    schema = _load_schema(schema_path)
     delete_path = "/v1/categories/{nys_snw_category_id}"
     if delete_path not in schema.get("paths", {}):
         payload = {"status": "skipped", "reason": f"OpenAPI schema does not include {delete_path}"}

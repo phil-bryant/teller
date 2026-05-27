@@ -8,6 +8,7 @@ import WebKit
 // #R015: WebView session bridge behavior.
 // #R020: Manual-save entry-point behavior.
 // #R025: Initial load task behavior.
+// #R030: Connect Add/Edit sheet renders explicit ESC back-navigation hint.
 
 struct ConnectView: View {
     @Bindable var viewModel: ConnectViewModel

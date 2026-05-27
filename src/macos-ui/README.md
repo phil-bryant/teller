@@ -9,7 +9,7 @@ This app now also includes a native **Connect** tab for local Teller enrollment 
 From repo root:
 
 ```zsh
-./04_bootstrap_local_classifier_tls.sh   # first run only (local HTTPS cert/key)
+./04_install_classifier_api_tls.sh   # first run only (local HTTPS cert/key)
 ./08_run_classification_api.py
 ```
 
@@ -20,14 +20,13 @@ Override with:
 - `TELLER_CLASSIFIER_API_HOST`
 - `TELLER_CLASSIFIER_API_PORT`
 - `TELLER_CLASSIFIER_TLS_CERT_FILE` / `TELLER_CLASSIFIER_TLS_KEY_FILE`
-- `TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true` — explicit local-only HTTP override (server and client must agree)
-- `TELLER_CLASSIFIER_API_URL` (macOS API client; defaults to `https://127.0.0.1:8787` unless insecure HTTP is enabled)
+- `TELLER_CLASSIFIER_API_URL` (macOS API client; defaults to `https://127.0.0.1:8787` and must use `https://`)
 
 Write operations require `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` to be resolvable (used by the API launcher and mutation endpoints).
 
 ### Troubleshooting slow or failed loads
 
-- **Spinner then error:** Confirm the API is listening on the same scheme as the app (`https://127.0.0.1:8787` by default). Run `./04_bootstrap_local_classifier_tls.sh` if cert files are missing.
+- **Spinner then error:** Confirm the API is listening on `https://127.0.0.1:8787`. Run `./04_install_classifier_api_tls.sh` if cert files are missing.
 - **Still slow with API up:** Initial load skips the expensive `COUNT(*)` query and refreshes the total in the background; very large databases may still take time on first paint. Check PostgreSQL profile latency (`TELLER_DB_PROFILE`, managed vs local).
 - **Proxy:** Unset `TELLER_CLASSIFIER_HTTP_PROXY` outside DAST/security test runs so loopback traffic is not proxied.
 

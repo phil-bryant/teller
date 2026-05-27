@@ -12,17 +12,22 @@ struct MockAPIConfig {
     var categories: [CategoryOption]
     var response: TransactionListResponse
     var pagedResponses: [Int: TransactionListResponse] = [:]
+    var sequentialResponses: [TransactionListResponse] = []
     var candidatesByTransactionId: [String: [MatchCandidateRow]] = [:]
     var candidatesDelayNanoseconds: UInt64 = 0
     var searchResponse: EmailSearchResponse = EmailSearchResponse(query: "", items: [])
     var searchError: Error?
     var saveError: Error?
+    var confirmTransactionCandidateError: Error?
+    var overrideTransactionCandidateError: Error?
+    var markTransactionNoEmailError: Error?
 }
 
 actor MockAPI: ClassificationAPI {
     var categories: [CategoryOption]
     var response: TransactionListResponse
     var pagedResponses: [Int: TransactionListResponse]
+    var sequentialResponses: [TransactionListResponse]
     var fetchOffsets: [Int] = []
     var lastFetchOptions: TransactionFetchOptions?
     var fetchTransactionsCalls: [FetchTransactionsCall] = []
@@ -35,10 +40,19 @@ actor MockAPI: ClassificationAPI {
     var updatedCategoryRequests: [(id: Int, request: CategoryMutationRequest)] = []
     var clearedMatchIds: [Int] = []
     var clearedTransactionIds: [String] = []
+    var confirmedMatchIds: [Int] = []
+    var confirmedTransactionCandidateCalls: [(transactionId: String, emailMessageId: String, note: String?)] = []
+    var overriddenMatchCalls: [(matchId: Int, emailMessageId: String, note: String?)] = []
+    var overriddenTransactionCandidateCalls: [(transactionId: String, emailMessageId: String, note: String?)] = []
+    var markedNoEmailMatchIds: [Int] = []
+    var markedNoEmailTransactionIds: [String] = []
     var searchCalls: [(criteria: EmailSearchCriteria, limit: Int)] = []
     var searchResponse: EmailSearchResponse
     var searchError: Error?
     var saveError: Error?
+    var confirmTransactionCandidateError: Error?
+    var overrideTransactionCandidateError: Error?
+    var markTransactionNoEmailError: Error?
 
     init(_ config: MockAPIConfig) {
         self.categories = config.categories
@@ -46,11 +60,15 @@ actor MockAPI: ClassificationAPI {
         var merged = config.pagedResponses
         merged[0] = config.response
         self.pagedResponses = merged
+        self.sequentialResponses = config.sequentialResponses
         self.candidatesByTransactionId = config.candidatesByTransactionId
         self.candidatesDelayNanoseconds = config.candidatesDelayNanoseconds
         self.searchResponse = config.searchResponse
         self.searchError = config.searchError
         self.saveError = config.saveError
+        self.confirmTransactionCandidateError = config.confirmTransactionCandidateError
+        self.overrideTransactionCandidateError = config.overrideTransactionCandidateError
+        self.markTransactionNoEmailError = config.markTransactionNoEmailError
     }
 
     init(categories: [CategoryOption], response: TransactionListResponse) {
@@ -62,8 +80,17 @@ actor MockAPI: ClassificationAPI {
         fetchTransactionsCalls.append(
             FetchTransactionsCall(includeTotal: options.includeTotal, countOnly: options.countOnly, limit: options.limit)
         )
-        if options.countOnly { return .init(total: response.total, items: []) }
+        if options.countOnly {
+            let total = sequentialResponses.first?.total ?? response.total
+            return .init(total: total, items: [])
+        }
         fetchOffsets.append(options.offset)
+        if options.offset == 0, !sequentialResponses.isEmpty {
+            let next = sequentialResponses.removeFirst()
+            response = next
+            pagedResponses[0] = next
+            return next
+        }
         return pagedResponses[options.offset] ?? response
     }
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
@@ -134,7 +161,44 @@ actor MockAPI: ClassificationAPI {
         clearedTransactionIds.append(transactionId)
         return .init(match_id: 0, transaction_id: transactionId, state: "human_confirmed_ai_match", selected_by: "human", updated_at: "now")
     }
+    func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+        confirmedMatchIds.append(matchId)
+        return .init(match_id: matchId, transaction_id: "txn_confirmed", state: "human_confirmed_ai_match", selected_by: "human", updated_at: "now")
+    }
+    func confirmTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        confirmedTransactionCandidateCalls.append((transactionId, emailMessageId, note))
+        if let confirmTransactionCandidateError { throw confirmTransactionCandidateError }
+        return .init(match_id: 0, transaction_id: transactionId, state: "human_confirmed_ai_match", selected_by: "human", updated_at: "now")
+    }
+    func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        overriddenMatchCalls.append((matchId, emailMessageId, note))
+        return .init(match_id: matchId, transaction_id: "txn_overridden", state: "human_overrode_ai_match", selected_by: "human", updated_at: "now")
+    }
+    func overrideTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        overriddenTransactionCandidateCalls.append((transactionId, emailMessageId, note))
+        if let overrideTransactionCandidateError { throw overrideTransactionCandidateError }
+        return .init(match_id: 0, transaction_id: transactionId, state: "human_overrode_ai_match", selected_by: "human", updated_at: "now")
+    }
+    func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse {
+        markedNoEmailMatchIds.append(matchId)
+        return .init(match_id: matchId, transaction_id: "txn_no_email", state: "ai_no_match_found", selected_by: "human", updated_at: "now")
+    }
+    func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse {
+        markedNoEmailTransactionIds.append(transactionId)
+        if let markTransactionNoEmailError { throw markTransactionNoEmailError }
+        return .init(match_id: 0, transaction_id: transactionId, state: "ai_no_match_found", selected_by: "human", updated_at: "now")
+    }
     func recordedClearedMatchIds() -> [Int] { clearedMatchIds }
+    func recordedConfirmedMatchIds() -> [Int] { confirmedMatchIds }
+    func recordedConfirmTransactionCandidateCalls() -> [(transactionId: String, emailMessageId: String, note: String?)] {
+        confirmedTransactionCandidateCalls
+    }
+    func recordedOverriddenMatchCalls() -> [(matchId: Int, emailMessageId: String, note: String?)] {
+        overriddenMatchCalls
+    }
+    func recordedOverrideTransactionCandidateCalls() -> [(transactionId: String, emailMessageId: String, note: String?)] {
+        overriddenTransactionCandidateCalls
+    }
     func searchMessages(criteria: EmailSearchCriteria, limit: Int) async throws -> EmailSearchResponse {
         searchCalls.append((criteria, limit))
         if let searchError { throw searchError }
@@ -483,6 +547,66 @@ final class ClassificationViewModelTests: XCTestCase {
         ]
         vm.selection = ["txn_matched"]
         XCTAssertTrue(vm.canClearSelectedMatch)
+    }
+
+    @MainActor
+    func testConfirmSelectedMatchRecoversWhenTransactionSnapshotIsStale() async {
+        // #R100-T01
+        let stale = sampleTransaction("txn_stale", classification: nil)
+        let refreshed = sampleTransactionWithMatch(id: "txn_stale", matchId: 88, emailId: "msg_existing", confidence: 0.9, count: 1)
+        var config = MockAPIConfig(categories: [], response: .init(total: 1, items: [stale]))
+        config.sequentialResponses = [
+            .init(total: 1, items: [stale]),
+            .init(total: 1, items: [refreshed]),
+        ]
+        config.confirmTransactionCandidateError = APIError.requestFailed(
+            "{\"detail\":\"Transaction already has an active match; use /v1/matchy/matches/{match_id} mutation endpoints\"}"
+        )
+        let api = MockAPI(config)
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_stale"]
+        vm.selectedCandidateId = "msg_candidate"
+
+        await vm.confirmSelectedMatch()
+
+        let transactionCalls = await api.recordedConfirmTransactionCandidateCalls()
+        let matchCalls = await api.recordedConfirmedMatchIds()
+        XCTAssertEqual(transactionCalls.count, 1)
+        XCTAssertEqual(matchCalls, [88])
+        XCTAssertEqual(vm.matchReviewStatusText, "Confirmed match 88")
+        XCTAssertTrue(vm.matchReviewErrorText.isEmpty)
+    }
+
+    @MainActor
+    func testOverrideSelectedMatchRecoversWhenTransactionSnapshotIsStale() async {
+        // #R100-T02
+        let stale = sampleTransaction("txn_stale", classification: nil)
+        let refreshed = sampleTransactionWithMatch(id: "txn_stale", matchId: 91, emailId: "msg_existing", confidence: 0.92, count: 1)
+        var config = MockAPIConfig(categories: [], response: .init(total: 1, items: [stale]))
+        config.sequentialResponses = [
+            .init(total: 1, items: [stale]),
+            .init(total: 1, items: [refreshed]),
+        ]
+        config.overrideTransactionCandidateError = APIError.requestFailed(
+            "{\"detail\":\"Transaction already has an active match; use /v1/matchy/matches/{match_id} mutation endpoints\"}"
+        )
+        let api = MockAPI(config)
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_stale"]
+        vm.selectedCandidateId = "msg_override"
+
+        await vm.overrideSelectedMatch()
+
+        let transactionCalls = await api.recordedOverrideTransactionCandidateCalls()
+        let matchCalls = await api.recordedOverriddenMatchCalls()
+        XCTAssertEqual(transactionCalls.count, 1)
+        XCTAssertEqual(matchCalls.count, 1)
+        XCTAssertEqual(matchCalls.first?.matchId, 91)
+        XCTAssertEqual(matchCalls.first?.emailMessageId, "msg_override")
+        XCTAssertEqual(vm.matchReviewStatusText, "Overrode match 91")
+        XCTAssertTrue(vm.matchReviewErrorText.isEmpty)
     }
 
     @MainActor

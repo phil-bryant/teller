@@ -15,6 +15,7 @@ extension ClassificationViewModel {
     // #R085: Classification mutation logic is split into this focused extension without behavior changes.
     // #R090: Classification-actions composition preserves advanced transaction filter forwarding behavior.
     // #R095: Classification-actions composition preserves structured debounced Mailcart search behavior.
+    // #R100: Classification-actions composition preserves stale match snapshot recovery behavior.
     // #R005: Only send updates for rows whose selected category actually changes.
     func selectedCategoryDidChange(committedCategoryId: Int? = nil) async {
         if suppressAutoApply || selection.isEmpty { return }

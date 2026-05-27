@@ -297,3 +297,25 @@ PY
   run grep "threshold_count > 0" "$(src_lane)"
   [ "$status" -eq 0 ]
 }
+
+@test "Schemathesis findings are strict by default" {
+  #R035-T01
+  run grep "SCHEMATHESIS_FAIL_ON_FINDINGS" "$(src_lane)"
+  [ "$status" -eq 0 ]
+  run grep "Schemathesis found API contract issues." "$(src_lane)"
+  [ "$status" -eq 0 ]
+}
+
+@test "Schemathesis strict gate supports explicit downgrade toggle" {
+  #R035-T02
+  run grep "continuing because SCHEMATHESIS_FAIL_ON_FINDINGS=false" "$(src_lane)"
+  [ "$status" -eq 0 ]
+}
+
+@test "DAST Mailcart stub avoids API port collisions" {
+  #R040-T01
+  run grep "collision_start_port" "$(src_lane)"
+  [ "$status" -eq 0 ]
+  run grep "DAST Mailcart stub port collided with API port" "$(src_lane)"
+  [ "$status" -eq 0 ]
+}

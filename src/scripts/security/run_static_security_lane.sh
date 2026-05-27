@@ -216,10 +216,14 @@ security_toolchain_usable() {
 wait_for_http() {
   local url="$1"
   local timeout_seconds="${2:-30}"
+  local curl_args=(-fsS)
+  if [[ "$url" == https://* ]]; then
+    curl_args+=(-k)
+  fi
   local start_ts
   start_ts="$(date +%s)"
   while true; do
-    if curl -fsS "$url" >/dev/null 2>&1; then
+    if curl "${curl_args[@]}" "$url" >/dev/null 2>&1; then
       return 0
     fi
     if (( "$(date +%s)" - start_ts >= timeout_seconds )); then
@@ -503,10 +507,20 @@ run_dast_checks() (
 
   local base_host="${DAST_BASE_HOST:-127.0.0.1}"
   local base_port="${DAST_BASE_PORT:-8787}"
-  local base_url="${DAST_BASE_URL:-http://${base_host}:${base_port}}"
+  local base_url="${DAST_BASE_URL:-https://${base_host}:${base_port}}"
+  local loopback_http_pattern='^http://(127\.0\.0\.1|localhost|\[::1\])(:[0-9]+)?($|/)'
+  if [[ "$base_url" == http://* ]] && [[ ! "$base_url" =~ $loopback_http_pattern ]]; then
+    echo "❌ DAST_BASE_URL must use https:// unless targeting loopback HTTP (received: ${base_url})"
+    exit 1
+  fi
   local openapi_url="${DAST_OPENAPI_URL:-${base_url}/openapi.json}"
+  if [[ "$openapi_url" == http://* ]] && [[ ! "$openapi_url" =~ $loopback_http_pattern ]]; then
+    echo "❌ DAST_OPENAPI_URL must use https:// unless targeting loopback HTTP (received: ${openapi_url})"
+    exit 1
+  fi
 
   local run_schemathesis="${RUN_SCHEMATHESIS:-true}"
+  local schemathesis_fail_on_findings="${SCHEMATHESIS_FAIL_ON_FINDINGS:-true}"
   local run_zap="${RUN_ZAP:-true}"
   local reuse_existing_api="${DAST_REUSE_EXISTING_API:-${MACOS_UI_DAST_REUSE_EXISTING_API:-false}}"
   local run_token_capture_dast="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
@@ -587,7 +601,11 @@ run_dast_checks() (
       exit 1
     fi
     if [[ "$SCHEMATHESIS_EXIT" -eq 1 ]]; then
-      echo "⚠️  Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."
+      if [[ "$schemathesis_fail_on_findings" == "true" ]]; then
+        echo "❌ Schemathesis found API contract issues."
+        exit 1
+      fi
+      echo "⚠️  Schemathesis found API contract issues; continuing because SCHEMATHESIS_FAIL_ON_FINDINGS=false."
     fi
   fi
 

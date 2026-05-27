@@ -42,7 +42,7 @@ final class APIClientTests: XCTestCase {
 
     private static let testBaseURL: URL = {
         var components = URLComponents()
-        components.scheme = "http"
+        components.scheme = "https"
         components.host = "127.0.0.1"
         components.port = 8787
         return components.url ?? URL(fileURLWithPath: "/")
@@ -355,6 +355,40 @@ final class APIClientTests: XCTestCase {
             ),
             limit: 25
         )
+    }
+
+    func testSearchMessagesDateOnlyCriteriaEncodingUsesStructuredFieldsOnly() async throws {
+        // #R065-T02
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/v1/matchy/messages/search")
+            guard let requestURL = request.url,
+                  let components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false) else {
+                throw APIError.invalidResponse
+            }
+            let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+            XCTAssertEqual(query["end_date"], "2026-04-18")
+            XCTAssertEqual(query["limit"], "25")
+            XCTAssertNil(query["query"])
+            XCTAssertNil(query["subject"])
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            let body = """
+            {"query":"to:2026-04-18","items":[]}
+            """
+            return (response, Data(body.utf8))
+        }
+
+        let client = makeClient()
+        _ = try await client.searchMessages(
+            criteria: EmailSearchCriteria(receivedEndDate: "2026-04-18"),
+            limit: 25
+        )
+    }
+
+    func testStructuredCriteriaQuerySummaryMatchesDateOnlyContractExpectation() {
+        // #R065-T03
+        let criteria = EmailSearchCriteria(receivedStartDate: "2026-04-01")
+        XCTAssertEqual(criteria.querySummary, "from:2026-04-01")
     }
 
     func testMissingWriteTokenThrowsExplicitError() async {

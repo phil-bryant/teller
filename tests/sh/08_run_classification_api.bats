@@ -45,9 +45,9 @@ src() {
   [ "$status" -eq 0 ]
 }
 
-@test "allows explicit insecure HTTP override" {
+@test "does not allow insecure HTTP override" {
   run grep "TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP" "$(src)"
-  [ "$status" -eq 0 ]
+  [ "$status" -ne 0 ]
   run grep 'return ("http", None, None)' "$(src)"
-  [ "$status" -eq 0 ]
+  [ "$status" -ne 0 ]
 }

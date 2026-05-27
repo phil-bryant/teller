@@ -77,6 +77,7 @@ source ./teller-venv/bin/activate
 ./tests/t08_run_python_unit_tests.sh
 ./tests/t06_run_sql_unit_tests.sh
 ./tests/t10_run_swift_unit_tests.sh
+RUN_SCHEMATHESIS=true RUN_ZAP=false SCHEMATHESIS_FAIL_ON_FINDINGS=true ./tests/t12_run_dynamic_security_tests.sh
 RUN_XCUITESTS=false ./tests/t14_run_macos_ui_regression_tests.sh
 ```
 
@@ -118,6 +119,7 @@ All primary lanes live under `tests/t*.sh`:
 - `./tests/t14_run_macos_ui_regression_tests.sh` - macOS UI snapshot + XCUITest regression
 - `./tests/t15_verify_macos_crash_test.sh` - macOS crash reporter verification
 - `./tests/t16_classification_persistence_verification_test.sh` - classification API to Postgres persistence E2E
+- `./tests/t17_run_teller_live_canary_test.sh` - strict live Teller upstream canary (requires mTLS + token)
 
 Equivalent direct Python invocation:
 
@@ -170,7 +172,7 @@ Active secret and credential sources are:
 - `07_backfill_bank_statements.py`
   - OCR-parses bank statement PDFs, derives typed/signed transactions, and backfills missing statement-linked transaction rows.
 - `08_run_classification_api.py`
-  - Starts the local classifier FastAPI service (HTTPS by default), requires `1psa` write token, and supports explicit insecure/local override flags.
+  - Starts the local classifier FastAPI service (HTTPS only), requires `1psa` write token, and requires local TLS cert/key files.
 - `09_run_classification_macos_ui.sh`
   - Builds and launches the native macOS app (`TransactionClassifier`) with in-process Connect flows; supports optional transaction-list profiling.
 - `10_run_all_tests_parallel.sh`

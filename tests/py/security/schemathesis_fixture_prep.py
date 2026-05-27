@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 import json
+import os
+import ssl
 import sys
 import urllib.request
+from urllib.parse import urlparse
 
 
 def fetch_json(url: str, write_token: str):
     req = urllib.request.Request(url, headers={"X-Teller-Write-Token": write_token}, method="GET")
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with urllib.request.urlopen(req, timeout=20, context=_tls_context_for_url(url)) as resp:
         return json.load(resp)
 
 
@@ -17,8 +20,20 @@ def post_json(url: str, write_token: str, payload: dict):
         headers={"Content-Type": "application/json", "X-Teller-Write-Token": write_token},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=20) as resp:
+    with urllib.request.urlopen(req, timeout=20, context=_tls_context_for_url(url)) as resp:
         return json.load(resp)
+
+
+def _tls_context_for_url(url: str):
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        return None
+    if (parsed.hostname or "").lower() in {"127.0.0.1", "localhost", "::1"}:
+        return ssl._create_unverified_context()
+    cert_file = os.environ.get("SSL_CERT_FILE") or os.environ.get("TELLER_CLASSIFIER_TLS_CERT_FILE")
+    if cert_file and os.path.isfile(cert_file):
+        return ssl.create_default_context(cafile=cert_file)
+    return ssl._create_unverified_context()
 
 
 def set_path_param_example(paths, path: str, method: str, param_name: str, value):
@@ -47,6 +62,33 @@ def set_json_body_example(paths, path: str, method: str, example):
         app_json["example"] = example
 
 
+def set_component_string_min_length(schema: dict, component_name: str, field_names: list[str], min_length: int):
+    components = schema.get("components", {})
+    if not isinstance(components, dict):
+        return
+    schemas = components.get("schemas", {})
+    if not isinstance(schemas, dict):
+        return
+    component = schemas.get(component_name)
+    if not isinstance(component, dict):
+        return
+    properties = component.get("properties", {})
+    if not isinstance(properties, dict):
+        return
+    for field_name in field_names:
+        prop = properties.get(field_name)
+        if not isinstance(prop, dict):
+            continue
+        if prop.get("type") == "string":
+            prop["minLength"] = min_length
+            continue
+        any_of = prop.get("anyOf")
+        if isinstance(any_of, list):
+            for variant in any_of:
+                if isinstance(variant, dict) and variant.get("type") == "string":
+                    variant["minLength"] = min_length
+
+
 def main() -> int:
     if len(sys.argv) != 7:
         raise SystemExit(
@@ -72,6 +114,18 @@ def main() -> int:
                     match_override_email = seeded_override_email
         except Exception:
             pass
+    category_text_fields = [
+        "level_1",
+        "level_1_name",
+        "level_2",
+        "level_2_name",
+        "level_3",
+        "level_4",
+        "categorization",
+        "applicability",
+    ]
+    set_component_string_min_length(schema, "CategoryCreateMutation", category_text_fields, 1)
+    set_component_string_min_length(schema, "CategoryUpdateMutation", category_text_fields, 1)
     try:
         categories = fetch_json(f"{base_url}/v1/categories", write_token)
         if isinstance(categories, list) and categories:
@@ -175,9 +229,40 @@ def main() -> int:
             "/v1/matchy/matches/{match_id}/override",
             "put",
             {
-                "email_message_id": match_override_email or "schemathesis-seeded-override@example.invalid",
+                "email_message_id": match_override_email or "msg_seeded_override_1",
                 "note": "Schemathesis seeded override",
             },
+        )
+    if transaction_id is not None and match_override_email:
+        set_path_param_example(
+            paths,
+            "/v1/matchy/transactions/{transaction_id}/confirm-candidate",
+            "put",
+            "transaction_id",
+            transaction_id,
+        )
+        set_path_param_example(
+            paths,
+            "/v1/matchy/transactions/{transaction_id}/override-candidate",
+            "put",
+            "transaction_id",
+            transaction_id,
+        )
+        candidate_body = {
+            "email_message_id": match_override_email,
+            "note": "Schemathesis seeded candidate",
+        }
+        set_json_body_example(
+            paths,
+            "/v1/matchy/transactions/{transaction_id}/confirm-candidate",
+            "put",
+            candidate_body,
+        )
+        set_json_body_example(
+            paths,
+            "/v1/matchy/transactions/{transaction_id}/override-candidate",
+            "put",
+            candidate_body,
         )
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(schema, fh)

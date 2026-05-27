@@ -56,9 +56,10 @@ Tests:
 - R040-T02: Submit write requests with mismatched token and verify 401 response.
 - R040-T03: Submit read requests without `X-Teller-Write-Token` and verify 401 response.
 - R040-T04: Invoke token resolution twice in one process and verify 1psa is called only once (cache semantics).
+- R040-T05: Hit each frontend-used `/v1/*` endpoint without token and verify the API returns 401 rather than silently bypassing auth.
 
 R045  Statement: Reject malformed mutation payloads before database persistence.
-Design: Category mutation fields reject explicit `null` field values, normalize by stripping control/non-printable characters before persistence, and reject all-empty normalized hierarchy writes with HTTP 409 conflict semantics in `_write_category`; OpenAPI publishes `minProperties` plus per-field/non-empty guards so empty or null-only objects are schema-invalid; batch classification mutations constrain `transaction_id` format/length and cap `updates` list length.
+Design: Category mutation fields reject explicit `null` field values, normalize by stripping control/non-printable characters before persistence, and reject all-empty normalized hierarchy writes with HTTP 409 conflict semantics in `_write_category`; OpenAPI publishes `minProperties` plus per-field printable-string guards while allowing empty strings that normalize away during write-path validation; batch classification mutations constrain `transaction_id` format/length and cap `updates` list length.
 Tests:
 - R045-T01: Submit category payload with control characters and verify normalized persistence-safe values.
 - R045-T02: Submit category payload with all-empty hierarchy values and verify write path returns HTTP 409 conflict.
@@ -77,15 +78,15 @@ Tests:
 - R055-T02: Trigger unknown `match_id` transitions and verify runtime 404 behavior remains unchanged.
 
 R060  Statement: List latest-run email candidates for a transaction with Mailcart-enriched metadata.
-Design: `/v1/matchy/transactions/{transaction_id}/candidates` resolves the most recent `transaction_email_match_run` for the transaction, selects rows from `transaction_email_candidate` ordered by `score DESC, email_received_at DESC NULLS LAST, candidate_id ASC`, and merges per-id subject, sender, and preview/body_text from Mailcart's `GET /v1/messages/{id}` into the UI-facing `{subject, from, snippet}` fields; per-id Mailcart failures degrade to `mailcart_error` on the row rather than failing the whole request. Returns 404 when no match runs exist for the transaction.
+Design: `/v1/matchy/transactions/{transaction_id}/candidates` resolves the most recent `transaction_email_match_run` for the transaction, selects rows from `transaction_email_candidate` ordered by `score DESC, email_received_at DESC NULLS LAST, candidate_id ASC`, and merges per-id subject, sender, and preview/body_text from Mailcart's `GET /v1/messages/{id}` into the UI-facing `{subject, from, snippet}` fields; per-id Mailcart failures degrade to `mailcart_error` on the row rather than failing the whole request. Returns an empty array when no match runs exist for the transaction.
 Tests:
-- R060-T01: Seed multiple match runs and verify only the latest run's candidates are returned, sorted by score descending; verify 404 when no runs exist; verify empty array when the latest run has no candidates.
+- R060-T01: Seed multiple match runs and verify only the latest run's candidates are returned, sorted by score descending; verify empty array when no runs exist; verify empty array when the latest run has no candidates.
 - R060-T02: Provide Mailcart subject/from/snippet and verify they appear merged onto each candidate row.
 - R060-T03: Simulate per-id Mailcart failure for one candidate and verify the row returns with `mailcart_error` populated rather than the request 502ing.
 - R060-T04: Provide Mailcart in its real per-message shape (`{message_id, sender, preview, body_text}`) and verify the rows are mapped onto `{email_message_id, from, snippet}` correctly.
 
 R061  Statement: Proxy the full Mailcart message body for the review UI right pane.
-Design: `/v1/matchy/messages/{email_message_id}` validates the identifier as URL-safe base64 (Microsoft Graph IDs) and proxies a GET to Mailcart's `/v1/messages/{id}`, returning `{email_message_id, subject, from, to, received_at, html_body, text_body, snippet}` (mapped from Mailcart's `{message_id, sender, recipients, preview, html_body, text_body}` envelope). Mailcart 404 surfaces as classifier 404; other upstream failures surface as 502. Base URL comes from env `MAILCART_SERVICE_BASE_URL` (defaults to `http://127.0.0.1:8788`); optional bearer token from `MAILCART_SERVICE_TOKEN` is only attached when set.
+Design: `/v1/matchy/messages/{email_message_id}` validates the identifier as URL-safe base64 (Microsoft Graph IDs) and proxies a GET to Mailcart's `/v1/messages/{id}`, returning `{email_message_id, subject, from, to, received_at, html_body, text_body, snippet}` (mapped from Mailcart's `{message_id, sender, recipients, preview, html_body, text_body}` envelope). Mailcart 404 surfaces as classifier 404; other upstream failures surface as 502. Base URL comes from env `MAILCART_SERVICE_BASE_URL` (defaults to `https://127.0.0.1:8788`) and must use HTTPS; invalid/non-HTTPS configuration surfaces as 503. Optional bearer token from `MAILCART_SERVICE_TOKEN` is only attached when set.
 Tests:
 - R061-T01: Provide a fake Mailcart payload and verify body fields are proxied; verify invalid `email_message_id` returns 400.
 - R061-T02: Simulate Mailcart 404 for the id and verify classifier surfaces 404.
@@ -103,13 +104,22 @@ Tests:
 - R072-T01: Call with `count_only=true` and verify one count query and empty `items`.
 - R072-T02: Call with `include_total=false` and verify only the list query runs with an estimated `total`.
 
-R062  Statement: Proxy free-form Mailcart search for ad-hoc candidate discovery.
-Design: `/v1/matchy/messages/search` accepts a printable-ASCII `query` (1-200 chars) and `limit` (1-100, default 25), proxies to Mailcart `/v1/messages/search?query=...&limit=...`, and returns `{query, items: [{email_message_id, subject, from, received_at, snippet}]}` (mapped from Mailcart's `{messages: [{message_id, sender, preview, received_at, body_text}]}` envelope). Upstream payloads missing a `messages` array (or legacy `items` array) surface as 502. The static `/search` route must be registered before `/v1/matchy/messages/{email_message_id}` so Starlette does not treat the literal path segment `search` as a message id (which would return an `EmailMessage` shape and break macOS client decoding).
+R075  Statement: Accept and enforce advanced transaction scalar filters used by the macOS client.
+Design: `/v1/transactions` accepts optional `start_date`, `end_date`, `institution_id`, `min_amount`, and `max_amount` query parameters. Unknown-parameter validation must treat these as first-class supported keys. Count/list SQL must apply each filter when present so API behavior matches frontend query serialization contract.
+Tests:
+- R075-T01: Call `/v1/transactions` over HTTPS with advanced filters and verify request succeeds and filter params reach SQL execution bindings.
+
+R062  Statement: Proxy Mailcart search for ad-hoc candidate discovery from structured criteria fields only.
+Design: `/v1/matchy/messages/search` accepts structured criteria query params (`subject`, `sender`, `body`, `start_date`, `end_date`) plus `limit` (1-100, default 25), composes a Mailcart query string (`subject:... sender:... body:... from:... to:...`), and proxies to Mailcart `/v1/messages/search?query=...&limit=...`. The legacy `query` parameter is unsupported and must be rejected as an unknown query parameter (400). Response remains `{query, items: [{email_message_id, subject, from, received_at, snippet}]}` mapped from Mailcart's `{messages: [{message_id, sender, preview, received_at, body_text}]}` envelope. Requests with no structured criteria return 422. Upstream payloads missing a `messages` array (or legacy `items` array) surface as 502. The static `/search` route must be registered before `/v1/matchy/messages/{email_message_id}` so Starlette does not treat the literal path segment `search` as a message id (which would return an `EmailMessage` shape and break macOS client decoding).
 Tests:
 - R062-T01: Provide a fake Mailcart payload and verify each hit is proxied to the response; verify a malformed upstream response surfaces 502.
 - R062-T02: Provide Mailcart's real `{messages: [...]}` envelope and verify each hit is mapped to the UI-facing `{email_message_id, from, snippet}` shape.
 - R062-T03: Resolve `/v1/matchy/messages/search` through the app router and verify it matches the search route (not `/{email_message_id}`) and that route registration order keeps `/search` ahead of `/{email_message_id}`.
 - R062-T04: Simulate a Mailcart throttling error wrapped as `MailcartError(status_code=502, message contains upstream 429)` and verify the search route preserves the 502 response contract.
+- R062-T05: Call search with structured criteria and no `query`, then verify the classifier composes and forwards a Mailcart-compatible query string.
+- R062-T06: Call search with legacy `query` parameter and verify request validation fails with 400 unknown-parameter error.
+- R062-T07: Call search with no structured criteria and verify request validation fails with 422.
+- R062-T08: Call search with date-only criteria (`end_date` or `start_date`) over HTTPS and verify response is 200 with composed query summary.
 
 R071  Statement: Clear a human-reviewed match and return the transaction to unmatched.
 Design: Match-review mutation endpoints include `/v1/matchy/matches/{match_id}/clear` and `/v1/matchy/transactions/{transaction_id}/clear`. Each deactivates the transaction's active `transaction_email_match` row (`active = FALSE`), records an audit row, and returns `MatchReviewActionResponse`. After clear, `/v1/transactions` no longer exposes a `match` field for that transaction (it qualifies for `match_state=unmatched`). Unknown `match_id` returns 404; clearing when no active match exists returns 404. OpenAPI documents `404` on both endpoints.
@@ -122,6 +132,8 @@ Tests:
 
 - 2026-05-26: Added R072 (`include_total`, `count_only`) and optimized active-match lateral + `match_count` window aggregation for `/v1/transactions`.
 - 2026-05-27: Clarified R040 runtime token cache semantics and explicit restart requirement after write-token rotation.
+- 2026-05-27: Tightened R062 to structured-search-only input and removed legacy `query` support.
+- 2026-05-27: Added R075 advanced transaction scalar filters and R062-T08 date-only HTTP contract coverage.
 
 - 2026-05-25: Expanded R040 authz boundary to all `/v1/*` endpoints (read and write) with shared token enforcement.
 - 2026-04-22: Initial reverse-engineered requirements for `src/teller/teller_classification_api.py`.

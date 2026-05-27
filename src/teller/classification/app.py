@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+from datetime import date
+from decimal import Decimal, InvalidOperation
 from types import SimpleNamespace
 from typing import Dict, List, Literal
 
-from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi import FastAPI, HTTPException, Path, Query, Request, Response
 from sqlalchemy import String, bindparam, cast, func, select, text
 from sqlalchemy.exc import DataError
 
 from teller.classification import auth, mailcart, services
 from teller.classification.constants import (
+    _EMAIL_MESSAGE_ID_PATTERN,
     _EMAIL_SEARCH_QUERY_PATTERN,
     _LATEST_MATCH_RUN_SQL,
     _LATEST_RUN_CANDIDATES_SQL,
@@ -199,11 +202,59 @@ def _register_category_routes(app: FastAPI, bindings) -> None:
 
 
 def _register_transaction_routes(app: FastAPI, bindings) -> None:
+    def _parse_optional_date(value: str | None, field_name: str) -> date | None:
+        if value is None:
+            return None
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"", "null"}:
+                return None
+            try:
+                return date.fromisoformat(normalized)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid query parameter value: {field_name}")
+        # Direct endpoint invocations in unit tests may pass FastAPI Query marker objects.
+        return None
+
+    def _parse_optional_amount(value: str | None, field_name: str) -> Decimal | None:
+        if value is None:
+            return None
+        parsed: Decimal | None = None
+        if isinstance(value, Decimal):
+            parsed = value
+        elif isinstance(value, (int, float)):
+            parsed = Decimal(str(value))
+        elif isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"", "null"}:
+                return None
+            try:
+                parsed = Decimal(normalized)
+            except (InvalidOperation, ValueError):
+                raise HTTPException(
+                    status_code=422,
+                    detail=[{"loc": ["query", field_name], "msg": "Input should be a valid decimal", "type": "decimal_parsing"}],
+                )
+        else:
+            # Direct endpoint invocations in unit tests may pass FastAPI Query marker objects.
+            return None
+        if parsed is None:
+            return None
+        if parsed < 0:
+            raise HTTPException(
+                status_code=422,
+                detail=[{"loc": ["query", field_name], "msg": "Input should be greater than or equal to 0", "type": "greater_than_equal"}],
+            )
+        return parsed
+
     @app.get(
         "/v1/transactions",
         response_model=TransactionListResponse,
         responses={
             400: {"model": ApiError, "description": "Invalid query parameter value"},
+            422: {"model": ApiError, "description": "Malformed query parameter value"},
             500: {"model": ApiError, "description": "Unexpected server error"},
         },
     )
@@ -214,6 +265,12 @@ def _register_transaction_routes(app: FastAPI, bindings) -> None:
         only_unclassified: bool = Query(default=False),
         match_state: Literal["", "unmatched", "no_email", "ai_no_match_found", "ai_candidate_uncertain", "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
         only_unmoved_match: bool = Query(default=False),
+        #R075: Support advanced scalar filters used by the macOS Match & Classify transaction pane.
+        start_date: str | None = Query(default=None, max_length=20, pattern=r"^(null|[0-9]{4}-[0-9]{2}-[0-9]{2})?$"),
+        end_date: str | None = Query(default=None, max_length=20, pattern=r"^(null|[0-9]{4}-[0-9]{2}-[0-9]{2})?$"),
+        institution_id: str = Query(default="", min_length=0, max_length=120, pattern=r"^[\x20-\x7E]*$"),
+        min_amount: str | None = Query(default=None, max_length=40, pattern=r"^(null|[0-9]+(?:\.[0-9]+)?)?$"),
+        max_amount: str | None = Query(default=None, max_length=40, pattern=r"^(null|[0-9]+(?:\.[0-9]+)?)?$"),
         include_total: bool = Query(default=True),
         count_only: bool = Query(default=False),
         limit: int = Query(default=150, ge=1, le=500),
@@ -226,6 +283,11 @@ def _register_transaction_routes(app: FastAPI, bindings) -> None:
             "only_unclassified",
             "match_state",
             "only_unmoved_match",
+            "start_date",
+            "end_date",
+            "institution_id",
+            "min_amount",
+            "max_amount",
             "include_total",
             "count_only",
             "limit",
@@ -246,6 +308,7 @@ def _register_transaction_routes(app: FastAPI, bindings) -> None:
                     }
                 ],
             )
+        normalized_institution_id = institution_id.strip() if isinstance(institution_id, str) else ""
         params = {
             "search": search,
             "search_pattern": f"%{search}%" if search else "",
@@ -253,6 +316,11 @@ def _register_transaction_routes(app: FastAPI, bindings) -> None:
             "only_unclassified": only_unclassified,
             "match_state": match_state,
             "only_unmoved_match": only_unmoved_match,
+            "start_date": _parse_optional_date(start_date, "start_date"),
+            "end_date": _parse_optional_date(end_date, "end_date"),
+            "institution_id": normalized_institution_id,
+            "min_amount": _parse_optional_amount(min_amount, "min_amount"),
+            "max_amount": _parse_optional_amount(max_amount, "max_amount"),
             "limit": limit,
             "offset": offset,
         }
@@ -338,7 +406,51 @@ def _register_transaction_routes(app: FastAPI, bindings) -> None:
 
 
 def _register_matchy_routes(app: FastAPI, bindings) -> None:
-    @app.get("/v1/matchy/review", response_model=MatchReviewListResponse)
+    def _search_text(value: object) -> str:
+        if not isinstance(value, str):
+            return ""
+        return value.strip()
+
+    def _search_date(value: object) -> str | None:
+        if isinstance(value, date):
+            return value.isoformat()
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"", "null"}:
+                return None
+            return normalized
+        return None
+
+    def _effective_email_search_query(
+        *,
+        subject: str,
+        sender: str,
+        body: str,
+        start_date: str | None,
+        end_date: str | None,
+    ) -> str:
+        parts = []
+        if subject:
+            parts.append(f"subject:{subject}")
+        if sender:
+            parts.append(f"sender:{sender}")
+        if body:
+            parts.append(f"body:{body}")
+        if start_date is not None:
+            parts.append(f"from:{start_date}")
+        if end_date is not None:
+            parts.append(f"to:{end_date}")
+        if parts:
+            return " ".join(parts)
+        return ""
+
+    @app.get(
+        "/v1/matchy/review",
+        response_model=MatchReviewListResponse,
+        responses={
+            400: {"model": ApiError, "description": "Invalid query parameter"},
+        },
+    )
     def list_matchy_review(
         request: Request,
         state: Literal["", "ai_no_match_found", "ai_candidate_uncertain", "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
@@ -347,6 +459,12 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
         offset: int = Query(default=0, ge=0, le=1_000_000),
     ):
         bindings._require_authenticated_access(request)
+        allowed_query_params = {"state", "only_unmoved", "limit", "offset"}
+        request_query_params = getattr(request, "query_params", {})
+        query_param_keys = request_query_params.keys() if hasattr(request_query_params, "keys") else []
+        unknown_params = sorted(set(query_param_keys) - allowed_query_params)
+        if unknown_params:
+            raise HTTPException(status_code=400, detail=f"Unknown query parameters: {', '.join(unknown_params)}")
         filters = bindings._match_review_filters(state=state, only_unmoved=only_unmoved)
         params: Dict[str, object] = {"limit": limit, "offset": offset}
         if state:
@@ -406,6 +524,7 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
         "/v1/matchy/matches/{match_id:int}/override",
         response_model=MatchReviewActionResponse,
         responses={
+            400: {"model": ApiError, "description": "Malformed request body"},
             404: {"model": ApiError, "description": "Unknown match id"},
             409: {"model": ApiError, "description": "Match state transition conflicts with current state"},
         },
@@ -459,43 +578,53 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
         "/v1/matchy/transactions/{transaction_id}/confirm-candidate",
         response_model=MatchReviewActionResponse,
         responses={
+            400: {"model": ApiError, "description": "Malformed request body or invalid email message identifier"},
             404: {"model": ApiError, "description": "Unknown transaction or no match runs recorded"},
             409: {"model": ApiError, "description": "Transaction already has an active match or email link conflict"},
-            422: {"model": ApiError, "description": "Selected email is not a candidate for this transaction"},
         },
     )
     def confirm_transaction_candidate(request: Request, transaction_id: str, body: MatchOverrideMutation):
         bindings._require_write_access(request)
-        with bindings.get_session() as session:
-            return bindings._create_transaction_match(
-                session=session,
-                transaction_id=transaction_id,
-                email_message_id=body.email_message_id,
-                to_state="human_confirmed_ai_match",
-                actor="human",
-                note=body.note or "Confirmed candidate from Teller review UI",
-            )
+        try:
+            with bindings.get_session() as session:
+                return bindings._create_transaction_match(
+                    session=session,
+                    transaction_id=transaction_id,
+                    email_message_id=body.email_message_id,
+                    to_state="human_confirmed_ai_match",
+                    actor="human",
+                    note=body.note or "Confirmed candidate from Teller review UI",
+                )
+        except HTTPException as exc:
+            if exc.status_code == 422:
+                raise HTTPException(status_code=409, detail=exc.detail)
+            raise
 
     @app.put(
         "/v1/matchy/transactions/{transaction_id}/override-candidate",
         response_model=MatchReviewActionResponse,
         responses={
+            400: {"model": ApiError, "description": "Malformed request body or invalid email message identifier"},
             404: {"model": ApiError, "description": "Unknown transaction or no match runs recorded"},
             409: {"model": ApiError, "description": "Transaction already has an active match or email link conflict"},
-            422: {"model": ApiError, "description": "Selected email is not a candidate for this transaction"},
         },
     )
     def override_transaction_candidate(request: Request, transaction_id: str, body: MatchOverrideMutation):
         bindings._require_write_access(request)
-        with bindings.get_session() as session:
-            return bindings._create_transaction_match(
-                session=session,
-                transaction_id=transaction_id,
-                email_message_id=body.email_message_id,
-                to_state="human_overrode_ai_match",
-                actor="human",
-                note=body.note or "Overridden from Teller review UI",
-            )
+        try:
+            with bindings.get_session() as session:
+                return bindings._create_transaction_match(
+                    session=session,
+                    transaction_id=transaction_id,
+                    email_message_id=body.email_message_id,
+                    to_state="human_overrode_ai_match",
+                    actor="human",
+                    note=body.note or "Overridden from Teller review UI",
+                )
+        except HTTPException as exc:
+            if exc.status_code == 422:
+                raise HTTPException(status_code=409, detail=exc.detail)
+            raise
 
     @app.put(
         "/v1/matchy/transactions/{transaction_id}/no-email",
@@ -540,7 +669,6 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
         response_model=List[MatchCandidateRow],
         response_model_by_alias=True,
         responses={
-            404: {"model": ApiError, "description": "Unknown transaction or no match runs recorded"},
             503: {"model": ApiError, "description": "Mailcart is not configured"},
         },
     )
@@ -549,7 +677,10 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
         with bindings.get_session() as session:
             latest = session.execute(_LATEST_MATCH_RUN_SQL, {"transaction_id": transaction_id}).fetchone()
             if not latest:
-                raise HTTPException(status_code=404, detail=f"No match runs recorded for transaction_id: {transaction_id}")
+                # A missing run is a common pre-match state for newly loaded transactions.
+                # Return an empty candidate set so the UI can render this as "no candidates yet"
+                # instead of surfacing a transport-level error.
+                return []
             candidate_rows = session.execute(_LATEST_RUN_CANDIDATES_SQL, {"match_run_id": latest[0]}).mappings().all()
             if not candidate_rows:
                 return []
@@ -561,21 +692,39 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
         response_model_by_alias=True,
         responses={
             400: {"model": ApiError, "description": "Invalid query parameter"},
+            422: {"model": ApiError, "description": "Missing or malformed structured search criteria"},
             502: {"model": ApiError, "description": "Mailcart upstream returned an unexpected response"},
             503: {"model": ApiError, "description": "Mailcart is not configured"},
         },
     )
     def search_match_messages(
         request: Request,
-        query: str = Query(..., min_length=1, max_length=200, pattern=_EMAIL_SEARCH_QUERY_PATTERN),
+        subject: str | None = Query(default=None, min_length=1, max_length=200, pattern=_EMAIL_SEARCH_QUERY_PATTERN),
+        sender: str | None = Query(default=None, min_length=1, max_length=200, pattern=_EMAIL_SEARCH_QUERY_PATTERN),
+        body: str | None = Query(default=None, min_length=1, max_length=200, pattern=_EMAIL_SEARCH_QUERY_PATTERN),
+        start_date: str | None = Query(default=None, max_length=20, pattern=r"^(null|[0-9]{4}-[0-9]{2}-[0-9]{2})?$"),
+        end_date: str | None = Query(default=None, max_length=20, pattern=r"^(null|[0-9]{4}-[0-9]{2}-[0-9]{2})?$"),
         limit: int = Query(default=25, ge=1, le=100),
     ):
         bindings._require_authenticated_access(request)
+        allowed_query_params = {"subject", "sender", "body", "start_date", "end_date", "limit"}
+        unknown_params = sorted(set(request.query_params.keys()) - allowed_query_params)
+        if unknown_params:
+            raise HTTPException(status_code=400, detail=f"Unknown query parameters: {', '.join(unknown_params)}")
+        effective_query = _effective_email_search_query(
+            subject=_search_text(subject),
+            sender=_search_text(sender),
+            body=_search_text(body),
+            start_date=_search_date(start_date),
+            end_date=_search_date(end_date),
+        )
         client = bindings.get_mailcart_client()
         try:
-            payload = client.search(query=query, limit=limit)
+            payload = client.search(query=effective_query, limit=limit)
         except MailcartError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.message)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"mailcart: request failed: {exc}") from exc
         hits_raw = None
         if isinstance(payload, dict):
             hits_raw = payload.get("messages")
@@ -584,7 +733,7 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
         if not isinstance(hits_raw, list):
             raise HTTPException(status_code=502, detail="mailcart: search response missing 'messages' array")
         hits = [bindings._email_search_hit_from_payload(item) for item in hits_raw if isinstance(item, dict)]
-        return EmailSearchResponse(query=query, items=hits)
+        return EmailSearchResponse(query=effective_query, items=hits)
 
     @app.get(
         "/v1/matchy/messages/{email_message_id}",
@@ -597,7 +746,15 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
             503: {"model": ApiError, "description": "Mailcart is not configured"},
         },
     )
-    def get_match_message(request: Request, email_message_id: str):
+    def get_match_message(
+        request: Request,
+        email_message_id: str = Path(
+            ...,
+            min_length=1,
+            max_length=4096,
+            pattern=_EMAIL_MESSAGE_ID_PATTERN,
+        ),
+    ):
         bindings._require_authenticated_access(request)
         bindings._validate_email_message_id(email_message_id)
         client = bindings.get_mailcart_client()
@@ -605,6 +762,8 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
             payload = client.get_message(email_message_id)
         except MailcartError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.message)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"mailcart: request failed: {exc}") from exc
         return bindings._email_message_from_payload(email_message_id, payload)
 
 

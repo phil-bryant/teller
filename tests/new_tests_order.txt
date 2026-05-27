@@ -15,3 +15,4 @@ t13_run_teller_api_smoke_tests.sh
 t14_run_macos_ui_regression_tests.sh
 t15_verify_macos_crash_test.sh
 t16_classification_persistence_verification_test.sh
+t17_run_teller_live_canary_test.sh

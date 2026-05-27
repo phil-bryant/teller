@@ -91,7 +91,7 @@ final class TransactionClassifierUITests: XCTestCase {
             case 21: runConnectDeleteCancelScenario()
             case 22: // #R010-T01
                 runConnectDeleteConfirmScenario()
-            case 23: // #R015-T01
+            case 23: // #R015-T01 #R080-T01
                 runConnectAddAndEditButtonsScenario()
             case 24: // #R055-T01 #R060-T01
                 runConnectTabHidesNextUnclassifiedScenario()

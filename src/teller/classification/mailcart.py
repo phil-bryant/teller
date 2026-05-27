@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from teller.classification.constants import _MAILCART_ENRICHMENT_WORKERS, _UPDATE_CANDIDATE_CACHE_SQL
 from teller.classification.schemas import EmailMessage, EmailSearchHit, MatchCandidateRow
@@ -107,6 +108,10 @@ def _enrich_candidates_with_mailcart(
 
     try:
         client = get_mailcart_client_fn()
+    except MailcartError as exc:
+        if exc.status_code == 503:
+            return _candidates_with_service_unavailable_error(candidate_rows, cold_indexes, exc.message, enriched)
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
     except HTTPException as exc:
         if exc.status_code == 503:
             return _candidates_with_service_unavailable_error(candidate_rows, cold_indexes, exc.detail, enriched)
@@ -163,18 +168,21 @@ def _candidate_payload(row: Dict[str, Any]) -> Dict[str, Any]:
 def _email_message_from_payload(email_message_id: str, payload: Dict[str, Any]) -> EmailMessage:
     if not isinstance(payload, dict):
         raise HTTPException(status_code=502, detail="mailcart: message response was not a JSON object")
-    return EmailMessage.model_validate(
-        {
-            "email_message_id": payload.get("message_id") or payload.get("email_message_id") or email_message_id,
-            "subject": payload.get("subject"),
-            "from": payload.get("sender") or payload.get("from"),
-            "to": payload.get("recipients") or payload.get("to"),
-            "received_at": payload.get("received_at"),
-            "html_body": payload.get("html_body"),
-            "text_body": payload.get("text_body"),
-            "snippet": payload.get("preview") or payload.get("snippet"),
-        }
-    )
+    try:
+        return EmailMessage.model_validate(
+            {
+                "email_message_id": payload.get("message_id") or payload.get("email_message_id") or email_message_id,
+                "subject": payload.get("subject"),
+                "from": payload.get("sender") or payload.get("from"),
+                "to": payload.get("recipients") or payload.get("to"),
+                "received_at": payload.get("received_at"),
+                "html_body": payload.get("html_body"),
+                "text_body": payload.get("text_body"),
+                "snippet": payload.get("preview") or payload.get("snippet"),
+            }
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=502, detail=f"mailcart: invalid message payload: {exc.errors()}") from exc
 
 
 def _email_search_hit_from_payload(payload: Dict[str, Any]) -> EmailSearchHit:

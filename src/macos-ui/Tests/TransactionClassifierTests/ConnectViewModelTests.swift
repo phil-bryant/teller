@@ -105,7 +105,7 @@ final class ConnectViewModelTests: XCTestCase {
 
     @MainActor
     func testEditStartsSessionForSelectedConnection() async {
-        // #R005-T01 #R020-T02
+        // #R005-T01 #R020-T02 #R030-T02
         let api = MockConnectAPI(
             status: ConnectStatusResponse(token_saved: false, saved_path: "", error: ""),
             contexts: [sampleContext(key: "suffix:inst_beta", institution: "inst_beta", enrollment: "enr_beta")]

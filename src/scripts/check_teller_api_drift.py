@@ -2,6 +2,7 @@
 #R001: Resolve Teller credentials with predictable local-token fallback behavior.
 #R005: Run live canary checks when credentials exist and degrade safely otherwise.
 #R010: Persist smoke artifacts and fail only on hard check failures.
+#R015: Support strict live canary mode with live-only and warn-as-fail flags.
 """Run Teller API compatibility checks using live canary or local fallback."""
 
 from __future__ import annotations
@@ -362,6 +363,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run authenticated checks for every discovered local token candidate.",
     )
+    parser.add_argument(
+        "--require-live",
+        action="store_true",
+        help="Fail when live canary cannot run and fallback mode is used.",
+    )
+    parser.add_argument(
+        "--fail-on-warn",
+        action="store_true",
+        help="Treat warning status as a failure exit code.",
+    )
     return parser.parse_args()
 
 
@@ -403,7 +414,8 @@ def main() -> int:
         institution_id=args.institution_id,
         run_all_tokens=args.run_all_tokens,
     )
-    if live_result["mode"] == "fallback":
+    used_fallback = live_result["mode"] == "fallback"
+    if used_fallback:
         fallback_result = run_fallback_checks()
         merged_checks = fallback_result["checks"]
         merged_warnings = list(live_result.get("warnings", []))
@@ -429,7 +441,13 @@ def main() -> int:
     text_report = build_text_report(report)
     output_text.write_text(text_report, encoding="utf-8")
     print(text_report, end="")
-    return 1 if report["status"] == "fail" else 0
+    if args.require_live and used_fallback:
+        return 1
+    if report["status"] == "fail":
+        return 1
+    if args.fail_on_warn and report["status"] == "warn":
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

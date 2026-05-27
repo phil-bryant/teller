@@ -15,6 +15,7 @@ extension ClassificationViewModel {
     // #R085: Match-review logic is split into this focused extension without behavior changes.
     // #R090: Match-review composition preserves advanced transaction filter forwarding behavior.
     // #R095: Match-review extension owns structured debounced Mailcart search criteria behavior.
+    // #R100: Match-review extension owns stale snapshot reload-and-retry fallback behavior.
     /// Triggered whenever the primary selected transaction changes. Loads the candidate set + email
     /// for the primary transaction so the right pane stays in sync with the left pane.
     func selectedTransactionDidChange() async {
@@ -65,6 +66,17 @@ extension ClassificationViewModel {
         if mailcartSearchTaskToken == token { mailcartSearchBusy = false }
     }
 
+    private func _isActiveMatchConflict(_ error: Error) -> Bool {
+        let message: String
+        if case let APIError.requestFailed(raw) = error {
+            message = raw.lowercased()
+        } else {
+            message = error.localizedDescription.lowercased()
+        }
+        return message.contains("already has an active match")
+            || message.contains("/v1/matchy/matches/{match_id}")
+    }
+
     func confirmSelectedMatch() async {
         let trimmedNote = matchOverrideNote.trimmingCharacters(in: .whitespacesAndNewlines)
         let note = trimmedNote.isEmpty ? nil : trimmedNote
@@ -74,12 +86,21 @@ extension ClassificationViewModel {
                 matchReviewStatusText = "Confirmed match \(matchId)"
             } else if let transactionId = primaryTransaction?.transaction_id,
                       let emailId = overrideTargetEmailMessageId {
-                let response = try await api.confirmTransactionCandidate(
-                    transactionId: transactionId,
-                    emailMessageId: emailId,
-                    note: note
-                )
-                matchReviewStatusText = "Confirmed candidate for \(response.transaction_id)"
+                do {
+                    let response = try await api.confirmTransactionCandidate(
+                        transactionId: transactionId,
+                        emailMessageId: emailId,
+                        note: note
+                    )
+                    matchReviewStatusText = "Confirmed candidate for \(response.transaction_id)"
+                } catch {
+                    guard _isActiveMatchConflict(error) else { throw error }
+                    lastLoadedCandidatesTransactionId = nil
+                    await loadAll()
+                    guard let refreshedMatchId = selectedMatchId else { throw error }
+                    _ = try await api.confirmMatch(matchId: refreshedMatchId)
+                    matchReviewStatusText = "Confirmed match \(refreshedMatchId)"
+                }
             } else {
                 matchReviewErrorText = "Select a candidate before confirming."
                 matchReviewStatusText = "Match confirm failed"
@@ -108,12 +129,21 @@ extension ClassificationViewModel {
                 _ = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: note)
                 matchReviewStatusText = "Overrode match \(matchId)"
             } else if let transactionId = primaryTransaction?.transaction_id {
-                let response = try await api.overrideTransactionCandidate(
-                    transactionId: transactionId,
-                    emailMessageId: emailId,
-                    note: note
-                )
-                matchReviewStatusText = "Assigned email to \(response.transaction_id)"
+                do {
+                    let response = try await api.overrideTransactionCandidate(
+                        transactionId: transactionId,
+                        emailMessageId: emailId,
+                        note: note
+                    )
+                    matchReviewStatusText = "Assigned email to \(response.transaction_id)"
+                } catch {
+                    guard _isActiveMatchConflict(error) else { throw error }
+                    lastLoadedCandidatesTransactionId = nil
+                    await loadAll()
+                    guard let refreshedMatchId = selectedMatchId else { throw error }
+                    _ = try await api.overrideMatch(matchId: refreshedMatchId, emailMessageId: emailId, note: note)
+                    matchReviewStatusText = "Overrode match \(refreshedMatchId)"
+                }
             } else {
                 matchReviewErrorText = "Select a transaction before overriding."
                 matchReviewStatusText = "Match override failed"
@@ -136,8 +166,17 @@ extension ClassificationViewModel {
                 _ = try await api.markMatchNoEmail(matchId: matchId)
                 matchReviewStatusText = "Marked match \(matchId) as no-email"
             } else if let transactionId = primaryTransaction?.transaction_id {
-                let response = try await api.markTransactionNoEmail(transactionId: transactionId)
-                matchReviewStatusText = "Marked \(response.transaction_id) as no-email"
+                do {
+                    let response = try await api.markTransactionNoEmail(transactionId: transactionId)
+                    matchReviewStatusText = "Marked \(response.transaction_id) as no-email"
+                } catch {
+                    guard _isActiveMatchConflict(error) else { throw error }
+                    lastLoadedCandidatesTransactionId = nil
+                    await loadAll()
+                    guard let refreshedMatchId = selectedMatchId else { throw error }
+                    _ = try await api.markMatchNoEmail(matchId: refreshedMatchId)
+                    matchReviewStatusText = "Marked match \(refreshedMatchId) as no-email"
+                }
             } else {
                 matchReviewErrorText = "Select a transaction before marking no-email."
                 matchReviewStatusText = "No-email action failed"

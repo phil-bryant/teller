@@ -15,6 +15,7 @@ import Observation
 // #R075: Shared total/status state supports background count-only refresh.
 // #R080: Shared loading/status state supports optional transaction-load profiling.
 // #R085: Keep this file as the observable surface while behavior lives in focused extensions.
+// #R100: Shared match action state supports stale snapshot reload-and-retry behavior.
 
 struct UndoAction { let prior: [String: TransactionCategory?] }
 struct CategoryDraft: Equatable {

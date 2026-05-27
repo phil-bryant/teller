@@ -19,6 +19,7 @@ CHECKS=(
   "t14_run_macos_ui_regression_tests.sh"
   "t15_verify_macos_crash_test.sh"
   "t16_classification_persistence_verification_test.sh"
+  "t17_run_teller_live_canary_test.sh"
 )
 
 write_child_stub() {
@@ -203,7 +204,7 @@ teardown() {
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
     bash "${FIXTURE_ROOT}/10_run_all_tests_parallel.sh"
   [ "$status" -eq 0 ]
-  grep -q '^api_url=http://127.0.0.1:8787$' "${CALLS_LOG}"
+  grep -q '^api_url=https://127.0.0.1:8787$' "${CALLS_LOG}"
   grep -q '^dast_base_port=8788$' "${CALLS_LOG}"
   grep -q '^dast_reuse_api=false$' "${CALLS_LOG}"
 }

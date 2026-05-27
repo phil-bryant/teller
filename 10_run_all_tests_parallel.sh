@@ -297,7 +297,7 @@ for script in "${CHECKS[@]}"; do
   (
     set +e
     # Keep lanes parallel while isolating shared resources.
-    lane_api_url="${PARALLEL_CLASSIFIER_API_URL:-http://127.0.0.1:${PARALLEL_CLASSIFIER_API_PORT:-8787}}"
+    lane_api_url="${PARALLEL_CLASSIFIER_API_URL:-https://127.0.0.1:${PARALLEL_CLASSIFIER_API_PORT:-8787}}"
     lane_dast_base_port="${PARALLEL_DAST_BASE_PORT:-8788}"
     lane_dast_reuse_api="${PARALLEL_DAST_REUSE_EXISTING_API:-false}"
     lane_dast_db_profile="${PARALLEL_DAST_DB_PROFILE:-${TELLER_DB_PROFILE:-}}"
@@ -471,6 +471,7 @@ LANE_GROUPS = {
         "t02_run_dependency_freshness_tests",
         "t03_run_static_security_tests",
         "t12_run_dynamic_security_tests",
+        "t17_run_teller_live_canary_test",
     ),
 }
 

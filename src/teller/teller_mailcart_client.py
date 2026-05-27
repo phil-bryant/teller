@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 from functools import lru_cache
+from ipaddress import ip_address
 from typing import Any, Dict, Optional
 from urllib.parse import urlsplit
 
@@ -11,7 +12,7 @@ log = structlog.get_logger()
 
 _BASE_URL_ENV = "MAILCART_SERVICE_BASE_URL"
 _TOKEN_ENV = "MAILCART_SERVICE_TOKEN"
-_DEFAULT_BASE_URL = "http://127.0.0.1:8788"
+_DEFAULT_BASE_URL = "https://127.0.0.1:8788"
 _DEFAULT_TIMEOUT_SECONDS = 12.0
 
 
@@ -26,7 +27,7 @@ class MailcartClient:
     #R060: Sync HTTP client for Mailcart; contract in Architecture.md § Teller ↔ Mailcart contract.
     def __init__(self, base_url: str, token: Optional[str] = None, *, timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
                  session: Optional[requests.Session] = None, max_connections: int = 32) -> None:
-        self._base_url = base_url.rstrip("/")
+        self._base_url = _validated_https_base_url(base_url).rstrip("/")
         self._token = (token or "").strip()
         self._timeout = timeout_seconds
         if session is None:
@@ -41,6 +42,11 @@ class MailcartClient:
             )
             scheme = (urlsplit(self._base_url).scheme or "http").lower()
             session.mount(f"{scheme}://", adapter)
+        parsed = urlsplit(self._base_url)
+        if (parsed.scheme or "").lower() == "https" and _is_loopback_host(parsed.hostname):
+            # Local Mailcart HTTPS commonly uses a self-signed cert in development.
+            # Keep transport encrypted while allowing local loopback certs.
+            session.verify = False
         self._session = session
 
     def _request(self, method: str, path: str, *, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -88,9 +94,38 @@ def _mailcart_client_for_config(base_url: str, token: str) -> MailcartClient:
 def get_mailcart_client() -> MailcartClient:
     base_url = (os.environ.get(_BASE_URL_ENV) or _DEFAULT_BASE_URL).strip() or _DEFAULT_BASE_URL
     token = (os.environ.get(_TOKEN_ENV) or "").strip()
-    return _mailcart_client_for_config(base_url, token)
+    normalized_base_url = _validated_https_base_url(base_url)
+    return _mailcart_client_for_config(normalized_base_url, token)
 
 
 def reset_mailcart_client_cache() -> None:
     #R060: Allow tests to drop cached clients without monkeypatching internals.
     _mailcart_client_for_config.cache_clear()
+
+
+def _validated_https_base_url(base_url: str) -> str:
+    normalized = (base_url or "").strip()
+    if not normalized:
+        raise MailcartError(status_code=503, message=f"mailcart: {_BASE_URL_ENV} must be configured with an https URL")
+    parsed = urlsplit(normalized)
+    scheme = (parsed.scheme or "").lower()
+    if scheme != "https":
+        raise MailcartError(
+            status_code=503,
+            message=f"mailcart: {_BASE_URL_ENV} must use https (received: {normalized})",
+        )
+    if not parsed.netloc:
+        raise MailcartError(status_code=503, message=f"mailcart: {_BASE_URL_ENV} must include a host")
+    return normalized
+
+
+def _is_loopback_host(host: str | None) -> bool:
+    normalized = (host or "").strip().lower()
+    if normalized in {"localhost", "127.0.0.1", "::1"}:
+        return True
+    if not normalized:
+        return False
+    try:
+        return ip_address(normalized).is_loopback
+    except ValueError:
+        return False

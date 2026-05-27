@@ -87,10 +87,10 @@ TransactionClassifier (SwiftUI app, launched by 09_run_classification_macos_ui.s
 08_run_classification_api.py (FastAPI)
   -> binds TELLER_CLASSIFIER_API_HOST/PORT (default 127.0.0.1:8787)
   -> requires 1psa-backed TELLER_CLASSIFIER_WRITE_TOKEN before serving
-  -> defaults to HTTPS with local cert/key (explicit HTTP override only via TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true)
+  -> requires HTTPS with local cert/key files (no HTTP override path)
   -> persists via SQLAlchemy to profile-resolved PostgreSQL target
 
-Optional Mailcart proxy target defaults to http://127.0.0.1:8788
+Optional Mailcart proxy target defaults to https://127.0.0.1:8788
   (override with MAILCART_SERVICE_BASE_URL / MAILCART_SERVICE_TOKEN)
 
 Config and secrets:
@@ -117,8 +117,8 @@ single source of truth for R060/R061/R062.
 
 #### Teller client configuration
 
-- Base URL defaults to `http://127.0.0.1:8788` (Mailcart is local-only); override with
-  `MAILCART_SERVICE_BASE_URL` (same name matchy uses).
+- Base URL defaults to `https://127.0.0.1:8788`; override with
+  `MAILCART_SERVICE_BASE_URL` (same name matchy uses). Non-HTTPS values are rejected.
 - Bearer token is optional via `MAILCART_SERVICE_TOKEN`; attached only when set. Mailcart does
   not validate it. The Microsoft Graph token Mailcart uses internally is managed by Mailcart
   itself (cached at `~/.cache/mailcart/graph_oauth.json`, refreshed on 401).
@@ -557,7 +557,7 @@ Why: Helpful for debugging "what should be running" and "where config comes from
 │  │ launcher: 09_run_classification_macos_ui.sh              │                              │
 │  │ Connect runs in-process (no localhost Connect server)    │                              │
 │  └───────────────────────────────┬──────────────────────────┘                              │
-│                                  │ HTTP: TELLER_CLASSIFIER_API_URL                         │
+│                                  │ HTTPS: TELLER_CLASSIFIER_API_URL                        │
 │                                  │ default https://127.0.0.1:8787                          │
 │                                  v                                                         │
 │  API process                     ┌───────────────────────────────────────────────────────┐ │
@@ -576,7 +576,7 @@ Why: Helpful for debugging "what should be running" and "where config comes from
 │  │                                 └─────────────────────────────────────────────────────┘ │
 │  │                                                                                         │
 │  │ optional Mailcart integration                                                           │
-│  └──────────────────────────────────────► http://127.0.0.1:8788 (default)                  │
+│  └──────────────────────────────────────► https://127.0.0.1:8788 (default)                 │
 │                                         env: MAILCART_SERVICE_BASE_URL / TOKEN             │
 │                                                                                            │
 │  File/config + secret sources                                                              │

@@ -137,10 +137,14 @@ security_toolchain_usable() {
 wait_for_http() {
   local url="$1"
   local timeout_seconds="${2:-30}"
+  local curl_args=(-fsS)
+  if [[ "$url" == https://* ]]; then
+    curl_args+=(-k)
+  fi
   local start_ts
   start_ts="$(date +%s)"
   while true; do
-    if curl -fsS "$url" >/dev/null 2>&1; then
+    if curl "${curl_args[@]}" "$url" >/dev/null 2>&1; then
       return 0
     fi
     if (( "$(date +%s)" - start_ts >= timeout_seconds )); then
@@ -551,7 +555,9 @@ PY
 
   local run_schemathesis="${RUN_SCHEMATHESIS:-true}"
   local run_zap="${RUN_ZAP:-true}"
-  local schemathesis_mode="${SCHEMATHESIS_MODE:-all}"
+  #R035: Findings from Schemathesis are blocking by default unless explicitly downgraded.
+  local schemathesis_fail_on_findings="${SCHEMATHESIS_FAIL_ON_FINDINGS:-true}"
+  local schemathesis_mode="${SCHEMATHESIS_MODE:-positive}"
   local reuse_existing_api="${DAST_REUSE_EXISTING_API:-${MACOS_UI_DAST_REUSE_EXISTING_API:-false}}"
   local run_token_capture_dast="${RUN_TOKEN_CAPTURE_DAST:-auto}" # true|false|auto
   local fail_on_high_critical="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
@@ -616,16 +622,35 @@ PY
   fi
 
   if [[ -z "${DAST_BASE_URL:-}" ]]; then
-    base_url="http://${base_host}:${base_port}"
+    base_url="https://${base_host}:${base_port}"
+  fi
+  if [[ "$base_url" == http://* ]]; then
+    echo "❌ DAST_BASE_URL must use https:// (received: ${base_url})"
+    exit 1
   fi
   if [[ -z "${DAST_OPENAPI_URL:-}" ]]; then
     openapi_url="${base_url}/openapi.json"
+  fi
+  if [[ "$openapi_url" == http://* ]]; then
+    echo "❌ DAST_OPENAPI_URL must use https:// (received: ${openapi_url})"
+    exit 1
   fi
   if [[ -z "${ZAP_CLASSIFICATION_TARGET:-}" ]]; then
     zap_classification_target="${base_url}/health"
   fi
 
+  # Ensure Python/requests-based tooling trusts the local classifier cert when DAST targets
+  # loopback HTTPS. This keeps Schemathesis + fixture prep compatible with HTTPS-only lanes.
+  local classifier_tls_cert="${TELLER_CLASSIFIER_TLS_CERT_FILE:-$HOME/.teller/classifier-localhost-cert.pem}"
+  if [[ "$base_url" == https://127.0.0.1:* || "$base_url" == https://localhost:* ]]; then
+    if [[ -f "$classifier_tls_cert" ]]; then
+      export SSL_CERT_FILE="$classifier_tls_cert"
+      echo "▶ DAST TLS trust anchor: ${classifier_tls_cert}"
+    fi
+  fi
+
   local classifier_api_pid=""
+  local mailcart_stub_pid=""
   local token_capture_pid=""
 
   #R025: Generate a per-run DAST tag and capture a pre-run DB baseline so the
@@ -669,6 +694,10 @@ PY
     if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then
       kill "$token_capture_pid" >/dev/null 2>&1 || true
     fi
+    if [[ -n "$mailcart_stub_pid" ]] && kill -0 "$mailcart_stub_pid" >/dev/null 2>&1; then
+      kill "$mailcart_stub_pid" >/dev/null 2>&1 || true
+      wait "$mailcart_stub_pid" 2>/dev/null || true
+    fi
     if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then
       kill "$classifier_api_pid" >/dev/null 2>&1 || true
       wait "$classifier_api_pid" 2>/dev/null || true
@@ -700,8 +729,120 @@ PY
   if [[ "$reuse_existing_api" == "true" ]]; then
     echo "▶ Reusing existing classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
   else
+    if [[ "$run_schemathesis" == "true" && -z "${MAILCART_SERVICE_BASE_URL:-}" ]]; then
+      local mailcart_host="${DAST_MAILCART_HOST:-127.0.0.1}"
+      local mailcart_port="${DAST_MAILCART_PORT:-8790}"
+      if ! [[ "$mailcart_port" =~ ^[0-9]+$ ]]; then
+        echo "❌ DAST_MAILCART_PORT must be numeric; received: ${mailcart_port}"
+        exit 1
+      fi
+      if [[ "$(is_tcp_port_in_use "$mailcart_host" "$mailcart_port")" == "used" ]]; then
+        local resolved_mailcart_port=""
+        if ! resolved_mailcart_port="$(find_available_tcp_port "$mailcart_host" "$mailcart_port" 100)"; then
+          echo "❌ Unable to find an available Mailcart stub port near ${mailcart_port} on ${mailcart_host}."
+          exit 1
+        fi
+        mailcart_port="$resolved_mailcart_port"
+      fi
+      #R040: Ensure Mailcart stub never binds to the same host:port as the DAST API.
+      if [[ "$mailcart_host" == "$base_host" ]] && [[ "$mailcart_port" -eq "$base_port" ]]; then
+        local collision_start_port="$((base_port + 1))"
+        local resolved_mailcart_port=""
+        if ! resolved_mailcart_port="$(find_available_tcp_port "$mailcart_host" "$collision_start_port" 100)"; then
+          echo "❌ Unable to find an available Mailcart stub port that does not collide with API port ${base_port}."
+          exit 1
+        fi
+        mailcart_port="$resolved_mailcart_port"
+        echo "⚠️  DAST Mailcart stub port collided with API port ${base_port}; auto-selected ${mailcart_port}."
+      fi
+      local mailcart_cert="${TELLER_CLASSIFIER_TLS_CERT_FILE:-$HOME/.teller/classifier-localhost-cert.pem}"
+      local mailcart_key="${TELLER_CLASSIFIER_TLS_KEY_FILE:-$HOME/.teller/classifier-localhost-key.pem}"
+      if [[ ! -f "$mailcart_cert" || ! -f "$mailcart_key" ]]; then
+        echo "❌ Mailcart HTTPS stub requires TLS cert/key at ${mailcart_cert} and ${mailcart_key}"
+        exit 1
+      fi
+      local mailcart_stub_url="https://${mailcart_host}:${mailcart_port}"
+      echo "▶ Starting DAST Mailcart HTTPS stub at ${mailcart_stub_url}"
+      MAILCART_STUB_HOST="$mailcart_host" \
+      MAILCART_STUB_PORT="$mailcart_port" \
+      MAILCART_STUB_CERT="$mailcart_cert" \
+      MAILCART_STUB_KEY="$mailcart_key" \
+      python3 - <<'PY' >"${report_dir_abs}/mailcart-stub.log" 2>&1 &
+import json
+import os
+import ssl
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import parse_qs, urlparse
+
+host = os.environ["MAILCART_STUB_HOST"]
+port = int(os.environ["MAILCART_STUB_PORT"])
+cert = os.environ["MAILCART_STUB_CERT"]
+key = os.environ["MAILCART_STUB_KEY"]
+
+
+class Handler(BaseHTTPRequestHandler):
+    def _json(self, payload, status=200):
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        if parsed.path == "/health":
+            self._json({"ok": True})
+            return
+        if parsed.path == "/v1/messages/search":
+            query = parse_qs(parsed.query).get("query", [""])[0]
+            payload = {
+                "messages": [
+                    {
+                        "message_id": "dast-msg-1",
+                        "subject": f"DAST search {query}".strip(),
+                        "preview": "stub preview",
+                        "received_at": "2026-01-01T00:00:00Z",
+                        "sender": "stub@example.test",
+                        "body_text": "stub body text",
+                    }
+                ]
+            }
+            self._json(payload)
+            return
+        if parsed.path.startswith("/v1/messages/"):
+            message_id = parsed.path.rsplit("/", 1)[-1]
+            payload = {
+                "message_id": message_id,
+                "subject": "DAST stub message",
+                "preview": "stub preview",
+                "received_at": "2026-01-01T00:00:00Z",
+                "sender": "stub@example.test",
+                "recipients": "receiver@example.test",
+                "html_body": "<p>stub</p>",
+                "text_body": "stub",
+                "body_text": "stub",
+            }
+            self._json(payload)
+            return
+        self._json({"detail": "not found"}, status=404)
+
+    def log_message(self, fmt, *args):
+        return
+
+
+server = HTTPServer((host, port), Handler)
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+context.load_cert_chain(certfile=cert, keyfile=key)
+server.socket = context.wrap_socket(server.socket, server_side=True)
+server.serve_forever()
+PY
+      mailcart_stub_pid="$!"
+      wait_for_http "${mailcart_stub_url}/health" 30
+      export MAILCART_SERVICE_BASE_URL="$mailcart_stub_url"
+      echo "▶ DAST Mailcart base URL: ${MAILCART_SERVICE_BASE_URL}"
+    fi
     echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
-    TELLER_CLASSIFIER_ALLOW_INSECURE_HTTP=true \
     TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
       "$dast_app_python" "./08_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
     classifier_api_pid="$!"
@@ -744,6 +885,7 @@ PY
     set +e
     schemathesis run "$schemathesis_location" \
       --url "$base_url" \
+      --tls-verify=false \
       --header "X-Teller-Write-Token: ${dast_write_token}" \
       --mode "$schemathesis_mode" \
       --seed "$schemathesis_seed" \
@@ -773,7 +915,11 @@ PY
       exit 1
     fi
     if [[ "$SCHEMATHESIS_EXIT" -eq 1 ]]; then
-      echo "⚠️  Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."
+      if [[ "$schemathesis_fail_on_findings" == "true" ]]; then
+        echo "❌ Schemathesis found API contract issues."
+        exit 1
+      fi
+      echo "⚠️  Schemathesis found API contract issues; continuing because SCHEMATHESIS_FAIL_ON_FINDINGS=false."
     fi
   fi
 

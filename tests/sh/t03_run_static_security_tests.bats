@@ -1152,7 +1152,7 @@ EOF
   [[ "$calls" != *" -silent"* ]]
 }
 
-@test "Schemathesis findings do not abort DAST lane" {
+@test "Schemathesis findings fail DAST lane by default" {
   setup_shell_test
   copy_security_project_files
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
@@ -1166,9 +1166,27 @@ EOF
     DAST_APP_PYTHON=/usr/bin/python3 \
     DAST_OPENAPI_URL="http://127.0.0.1:18793/openapi.json" \
     bash "${FIXTURE_ROOT}/t03_run_static_security_tests.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Schemathesis found API contract issues."* ]]
+}
+
+@test "SCHEMATHESIS_FAIL_ON_FINDINGS=false keeps legacy non-blocking behavior" {
+  setup_shell_test
+  copy_security_project_files
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  stub_curl_success
+  stub_schemathesis_findings
+  run env RUN_SAST=false RUN_DAST=true RUN_ZAP=false \
+    SCHEMATHESIS_FAIL_ON_FINDINGS=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18796 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    DAST_OPENAPI_URL="http://127.0.0.1:18796/openapi.json" \
+    bash "${FIXTURE_ROOT}/t03_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Schemathesis found API contract issues; continuing to ZAP and Dynamic Application Security Testing (DAST) gating."* ]]
-  [[ "$output" == *"Dynamic Application Security Testing (DAST) checks completed."* ]]
+  [[ "$output" == *"continuing because SCHEMATHESIS_FAIL_ON_FINDINGS=false."* ]]
 }
 
 @test "prints completion line with report directory" {

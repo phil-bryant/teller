@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
@@ -132,6 +132,21 @@ class ClassificationApiTests(unittest.TestCase):
         response = client.get("/v1/categories")
         self.assertEqual(response.status_code, 401)
         self.assertIn("Missing write token header", response.json()["detail"])
+
+    @unittest.skipIf(TestClient is None, "fastapi testclient optional dependency (httpx) is not installed")
+    def test_http_frontend_used_v1_endpoints_require_write_token(self):
+        #R040-T05
+        client = TestClient(create_app())
+        cases = [
+            ("GET", "/v1/categories", None),
+            ("GET", "/v1/transactions", None),
+            ("POST", "/v1/transactions/classifications", {"updates": [{"transaction_id": "txn_1", "nys_snw_category_id": 1}]}),
+            ("GET", "/v1/matchy/messages/search?subject=receipt", None),
+            ("GET", "/v1/matchy/messages/msg_1", None),
+        ]
+        for method, path, body in cases:
+            response = client.request(method, path, json=body)
+            self.assertEqual(response.status_code, 401, f"{method} {path} should require write token")
 
     @unittest.skipIf(TestClient is None, "fastapi testclient optional dependency (httpx) is not installed")
     def test_http_category_counts_write_methods_return_405(self):
@@ -1227,15 +1242,14 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertEqual(body[1].mailcart_error, "mailcart: upstream returned 500")
 
     @patch("teller.teller_classification_api.get_session")
-    def test_list_candidates_returns_404_when_no_runs_exist(self, get_session_mock):
+    def test_list_candidates_returns_empty_when_no_runs_exist(self, get_session_mock):
         #R060-T01
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
         session = _FakeSession(rows=[_Result(row=None)])
         get_session_mock.return_value = _SessionContext(session)
-        with self.assertRaises(HTTPException) as ctx:
-            endpoint(request=self._authorized_request(), transaction_id="txn_missing")
-        self.assertEqual(ctx.exception.status_code, 404)
+        body = endpoint(request=self._authorized_request(), transaction_id="txn_missing")
+        self.assertEqual(body, [])
 
     @patch("teller.teller_classification_api.get_session")
     def test_list_candidates_returns_empty_when_run_has_no_candidates(self, get_session_mock):
@@ -1296,7 +1310,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
             endpoint(request=self._authorized_request(), email_message_id="bad id with space")
         self.assertEqual(ctx.exception.status_code, 400)
 
-    def test_search_messages_validates_query_and_proxies_items(self):
+    def test_search_messages_uses_structured_criteria_and_proxies_items(self):
         #R062-T01
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
@@ -1305,10 +1319,21 @@ class MatchCandidateProxyTests(unittest.TestCase):
             {"email_message_id": "msg_b", "subject": "B", "from": "b@example.com", "received_at": "2026-05-17T13:00:00+00:00", "snippet": "..."},
         ]})
         self._install_mailcart_client(client)
-        body = endpoint(request=self._authorized_request(), query="amazon receipt", limit=5)
-        self.assertEqual(body.query, "amazon receipt")
+        body = endpoint(
+            request=SimpleNamespace(
+                headers={"x-teller-write-token": "test-write-token"},
+                query_params={"subject": "amazon receipt", "limit": "5"},
+            ),
+            subject="amazon receipt",
+            sender="",
+            body="",
+            start_date=None,
+            end_date=None,
+            limit=5,
+        )
+        self.assertEqual(body.query, "subject:amazon receipt")
         self.assertEqual([hit.email_message_id for hit in body.items], ["msg_a", "msg_b"])
-        self.assertEqual(client.search_calls, [{"query": "amazon receipt", "limit": 5}])
+        self.assertEqual(client.search_calls, [{"query": "subject:amazon receipt", "limit": 5}])
 
     def test_search_messages_502s_when_upstream_returns_no_items_array(self):
         #R062-T01
@@ -1316,7 +1341,18 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
         self._install_mailcart_client(_FakeMailcartClient(search_payload={"not_items": []}))
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(request=self._authorized_request(), query="q", limit=5)
+            endpoint(
+                request=SimpleNamespace(
+                    headers={"x-teller-write-token": "test-write-token"},
+                    query_params={"subject": "q", "limit": "5"},
+                ),
+                subject="q",
+                sender="",
+                body="",
+                start_date=None,
+                end_date=None,
+                limit=5,
+            )
         self.assertEqual(ctx.exception.status_code, 502)
 
     def test_search_messages_preserves_upstream_429_wrapped_as_502(self):
@@ -1327,7 +1363,18 @@ class MatchCandidateProxyTests(unittest.TestCase):
             _FakeMailcartClient(search_error=MailcartError(status_code=502, message="mailcart: upstream returned 429: slow down"))
         )
         with self.assertRaises(HTTPException) as ctx:
-            endpoint(request=self._authorized_request(), query="receipt", limit=5)
+            endpoint(
+                request=SimpleNamespace(
+                    headers={"x-teller-write-token": "test-write-token"},
+                    query_params={"subject": "receipt", "limit": "5"},
+                ),
+                subject="receipt",
+                sender="",
+                body="",
+                start_date=None,
+                end_date=None,
+                limit=5,
+            )
         self.assertEqual(ctx.exception.status_code, 502)
         self.assertIn("upstream returned 429", ctx.exception.detail)
 
@@ -1342,10 +1389,125 @@ class MatchCandidateProxyTests(unittest.TestCase):
              "preview": "second", "received_at": "2026-05-17T13:00:00+00:00", "body_text": "second"},
         ]})
         self._install_mailcart_client(client)
-        body = endpoint(request=self._authorized_request(), query="amazon", limit=5)
+        body = endpoint(
+            request=SimpleNamespace(
+                headers={"x-teller-write-token": "test-write-token"},
+                query_params={"subject": "amazon", "limit": "5"},
+            ),
+            subject="amazon",
+            sender="",
+            body="",
+            start_date=None,
+            end_date=None,
+            limit=5,
+        )
         self.assertEqual([hit.email_message_id for hit in body.items], ["msg_a", "msg_b"])
         self.assertEqual(body.items[0].sender, "store@example.com")
         self.assertEqual(body.items[0].snippet, "preview text")
+
+    def test_search_messages_accepts_structured_criteria_without_query(self):
+        #R062-T05
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
+        client = _FakeMailcartClient(search_payload={"messages": [
+            {
+                "message_id": "msg_structured",
+                "subject": "Transit card payment confirmed",
+                "sender": "alerts@transit.example.com",
+                "preview": "Charge complete",
+                "received_at": "2026-05-17T12:00:00+00:00",
+            }
+        ]})
+        self._install_mailcart_client(client)
+        body = endpoint(
+            request=SimpleNamespace(
+                headers={"x-teller-write-token": "test-write-token"},
+                query_params={
+                    "subject": "Transit",
+                    "sender": "alerts@transit.example.com",
+                    "body": "Charge",
+                    "start_date": "2026-04-01",
+                    "end_date": "2026-04-30",
+                    "limit": "5",
+                },
+            ),
+            subject="Transit",
+            sender="alerts@transit.example.com",
+            body="Charge",
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 30),
+            limit=5,
+        )
+        self.assertEqual(body.query, "subject:Transit sender:alerts@transit.example.com body:Charge from:2026-04-01 to:2026-04-30")
+        self.assertEqual([hit.email_message_id for hit in body.items], ["msg_structured"])
+        self.assertEqual(client.search_calls, [{"query": body.query, "limit": 5}])
+
+    def test_search_messages_rejects_legacy_query_parameter(self):
+        #R062-T06
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
+        client = _FakeMailcartClient(search_payload={"items": []})
+        self._install_mailcart_client(client)
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=SimpleNamespace(
+                    headers={"x-teller-write-token": "test-write-token"},
+                    query_params={"query": "from:noreply@example.com", "subject": "ignored-subject", "limit": "7"},
+                ),
+                subject="ignored-subject",
+                sender="",
+                body="",
+                start_date=None,
+                end_date=None,
+                limit=7,
+            )
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn("Unknown query parameters: query", str(ctx.exception.detail))
+        self.assertEqual(client.search_calls, [])
+
+    def test_search_messages_requires_structured_criteria(self):
+        #R062-T07
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
+        client = _FakeMailcartClient(search_payload={"messages": []})
+        self._install_mailcart_client(client)
+        body = endpoint(
+            request=SimpleNamespace(
+                headers={"x-teller-write-token": "test-write-token"},
+                query_params={"limit": "5"},
+            ),
+            subject="",
+            sender="",
+            body="",
+            start_date=None,
+            end_date=None,
+            limit=5,
+        )
+        self.assertEqual(body.query, "")
+        self.assertEqual(body.items, [])
+        self.assertEqual(client.search_calls, [{"query": "", "limit": 5}])
+
+    def test_search_messages_accepts_date_only_structured_criteria(self):
+        #R062-T08
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
+        client = _FakeMailcartClient(search_payload={"messages": []})
+        self._install_mailcart_client(client)
+        body = endpoint(
+            request=SimpleNamespace(
+                headers={"x-teller-write-token": "test-write-token"},
+                query_params={"end_date": "2026-04-18", "limit": "5"},
+            ),
+            subject="",
+            sender="",
+            body="",
+            start_date=None,
+            end_date=date(2026, 4, 18),
+            limit=5,
+        )
+        self.assertEqual(body.query, "to:2026-04-18")
+        self.assertEqual(body.items, [])
+        self.assertEqual(client.search_calls, [{"query": "to:2026-04-18", "limit": 5}])
 
     def test_search_route_is_registered_before_message_id_route(self):
         #R062-T03
@@ -1368,7 +1530,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
             "raw_path": b"/v1/matchy/messages/search",
             "root_path": "",
             "scheme": "http",
-            "query_string": b"query=phil&limit=5",
+            "query_string": b"subject=phil&limit=5",
             "headers": [],
             "client": ("test", 50000),
             "server": ("testserver", 80),
@@ -1725,6 +1887,56 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertIn("LIMIT", session.calls[0][0])
         self.assertEqual(body.total, 1)
         self.assertEqual(len(body.items), 1)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_endpoint_accepts_advanced_scalar_filters(self, get_session_mock):
+        #R075-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        session = _FakeSession(rows=[_Result(scalar=0)])
+        get_session_mock.return_value = _SessionContext(session)
+        request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
+            query_params={
+                "search": "",
+                "status": "",
+                "only_unclassified": "false",
+                "start_date": "2026-04-01",
+                "end_date": "2026-04-30",
+                "institution_id": "inst_alpha",
+                "min_amount": "10",
+                "max_amount": "100",
+                "count_only": "true",
+                "limit": "25",
+                "offset": "0",
+            },
+        )
+        body = endpoint(
+            request=request,
+            search="",
+            status="",
+            only_unclassified=False,
+            match_state="",
+            only_unmoved_match=False,
+            start_date=date(2026, 4, 1),
+            end_date=date(2026, 4, 30),
+            institution_id="inst_alpha",
+            min_amount=10,
+            max_amount=100,
+            include_total=True,
+            count_only=True,
+            limit=25,
+            offset=0,
+        )
+        self.assertEqual(body.total, 0)
+        self.assertEqual(body.items, [])
+        self.assertEqual(len(session.calls), 1)
+        _, params = session.calls[0]
+        self.assertEqual(params["start_date"], date(2026, 4, 1))
+        self.assertEqual(params["end_date"], date(2026, 4, 30))
+        self.assertEqual(params["institution_id"], "inst_alpha")
+        self.assertEqual(params["min_amount"], 10)
+        self.assertEqual(params["max_amount"], 100)
 
 
 if __name__ == "__main__":

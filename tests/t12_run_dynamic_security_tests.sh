@@ -16,4 +16,6 @@ fi
 #R020: Delegates completion/report output contract to lane script implementation.
 #R025: Delegates DAST baseline/cleanup hygiene orchestration to lane script implementation.
 #R030: Delegates ZAP summary + threshold gate behavior to lane script implementation.
+#R035: Delegates strict Schemathesis findings gate (with optional downgrade toggle) to lane script implementation.
+#R040: Delegates local API/Mailcart port-collision avoidance behavior to lane script implementation.
 exec "${REPO_ROOT}/src/scripts/security/run_dynamic_security_lane.sh" "$@"
