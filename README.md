@@ -12,6 +12,7 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `02_create_venv.sh`
 - `03_load_requirements.sh`
 - `04_install_classifier_api_tls.sh`
+- `tests/t00_run_code_quality_tests.sh`
 - `tests/t02_run_dependency_freshness_tests.sh`
 - `tests/t01_run_av_test.sh`
 - `tests/t03_run_static_security_tests.sh`
@@ -53,6 +54,7 @@ From the project root:
 source ./teller-venv/bin/activate
 ./03_load_requirements.sh
 ./04_install_classifier_api_tls.sh
+./tests/t00_run_code_quality_tests.sh
 ./tests/t02_run_dependency_freshness_tests.sh
 ./tests/t01_run_av_test.sh
 ./tests/t03_run_static_security_tests.sh
@@ -198,7 +200,7 @@ Verifies every requirement ID in `requirements/**/*-requirements.md` is mapped t
 Optional single-pair mode:
 
 ```bash
-./tests/t04_run_requirements_traceability_tests.sh requirements/22_classification_persistence_verification_test-requirements.md tests/t16_classification_persistence_verification_test.sh
+./tests/t04_run_requirements_traceability_tests.sh requirements/t16_classification_persistence_verification_test-requirements.md tests/t16_classification_persistence_verification_test.sh
 ```
 
 ### 2) Unit Tests

@@ -390,16 +390,52 @@ for exit_file in sorted(report_dir.glob("*.log.exit")):
 
 lane_status = {entry["lane"]: 1.0 if entry["status"] == "pass" else 0.0 for entry in lane_entries}
 
-def score_group(prefixes):
-    values = [lane_status[name] for name in lane_status if any(name.startswith(prefix) for prefix in prefixes)]
+# Group lanes by intent. Names match the saved lane filenames (stem of `tests/t*.sh`).
+# Adding/removing a lane requires touching this map — if it goes empty the group scores 0.0
+# (fail-loud) instead of silently treating an empty group as perfect.
+LANE_GROUPS = {
+    "behavioral_coverage": (
+        "t05_deploy_database_verification_test",
+        "t13_run_teller_api_smoke_tests",
+        "t14_run_macos_ui_regression_tests",
+        "t15_verify_macos_crash_test",
+        "t16_classification_persistence_verification_test",
+    ),
+    "effectiveness_quality": (
+        "t00_run_code_quality_tests",
+        "t06_run_sql_unit_tests",
+        "t07_run_shell_unit_tests",
+        "t08_run_python_unit_tests",
+        "t09_run_mutation_tests",
+        "t10_run_swift_unit_tests",
+        "t11_run_fuzz_tests",
+    ),
+    "security_runtime_quality": (
+        "t01_run_av_test",
+        "t02_run_dependency_freshness_tests",
+        "t03_run_static_security_tests",
+        "t12_run_dynamic_security_tests",
+    ),
+}
+
+def score_group(group_name):
+    members = LANE_GROUPS[group_name]
+    values = [lane_status[name] for name in members if name in lane_status]
+    missing = [name for name in members if name not in lane_status]
+    if missing:
+        # Surface drift: a configured lane is no longer being executed/discovered.
+        sys.stderr.write(
+            f"⚠️  quality scoring: group '{group_name}' missing lanes: {missing}\n"
+        )
     if not values:
-        return 1.0
+        # Empty group is a configuration failure, not a free pass.
+        return 0.0
     return sum(values) / len(values)
 
 lane_reliability = (passed / total) if total else 0.0
-behavioral_coverage = score_group(("10_", "11_", "13_", "15_", "16_", "19_", "20_", "22_"))
-effectiveness_quality = score_group(("12_", "14_"))
-security_runtime_quality = score_group(("06_", "07_", "23_"))
+behavioral_coverage = score_group("behavioral_coverage")
+effectiveness_quality = score_group("effectiveness_quality")
+security_runtime_quality = score_group("security_runtime_quality")
 overall_score = round(
     (
         (0.35 * lane_reliability)

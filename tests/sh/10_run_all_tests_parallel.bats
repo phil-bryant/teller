@@ -2,6 +2,7 @@
 load "helpers/common.bash"
 
 CHECKS=(
+  "t00_run_code_quality_tests.sh"
   "t01_run_av_test.sh"
   "t02_run_dependency_freshness_tests.sh"
   "t03_run_static_security_tests.sh"
@@ -55,14 +56,14 @@ teardown() {
   teardown_shell_test
 }
 
-@test "reports pass for all sixteen checks when every child succeeds" {
+@test "reports pass for all checks when every child succeeds" {
   #R001-T01 #R025-T01 #R025-T02 #R025-T03 #R030-T01 #R030-T02 #R060-T01
   write_all_child_stubs 'echo "stub ${BASH_SOURCE[0]##*/}"; exit 0'
 
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
     bash "${FIXTURE_ROOT}/10_run_all_tests_parallel.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"✅ PASS: all parallel checks succeeded (16/16)"* ]]
+  [[ "$output" == *"✅ PASS: all parallel checks succeeded (${#CHECKS[@]}/${#CHECKS[@]})"* ]]
   [[ "$output" == *"Timing: wall "* ]]
 
   local check pass_count=0
@@ -70,7 +71,7 @@ teardown() {
     [[ "$output" == *"✅ PASS: ${check}"* ]]
     pass_count=$((pass_count + 1))
   done
-  [ "$pass_count" -eq 16 ]
+  [ "$pass_count" -eq "${#CHECKS[@]}" ]
 }
 
 @test "runs from repository root regardless of caller directory" {
@@ -86,7 +87,7 @@ teardown() {
   while IFS= read -r line; do
     [[ "$line" == cwd="${FIXTURE_ROOT}" ]]
   done < <(grep '^cwd=' "${CALLS_LOG}")
-  [ "$(grep -c '^cwd=' "${CALLS_LOG}")" -eq 16 ]
+  [ "$(grep -c '^cwd=' "${CALLS_LOG}")" -eq "${#CHECKS[@]}" ]
 }
 
 @test "discovers only numbered test scripts and excludes self" {
@@ -98,7 +99,7 @@ teardown() {
   run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
     bash "${FIXTURE_ROOT}/10_run_all_tests_parallel.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"▶ Starting parallel checks (16 scripts)..."* ]]
+  [[ "$output" == *"▶ Starting parallel checks (${#CHECKS[@]} scripts)..."* ]]
   [[ "$output" != *"✅ PASS: 05_deploy_database.sh"* ]]
   [[ "$output" != *"✅ PASS: 10_run_all_tests_parallel.sh"* ]]
   [ ! -f "${REPORT_DIR}/05_deploy_database.log.exit" ]
@@ -145,8 +146,8 @@ teardown() {
     bash "${FIXTURE_ROOT}/10_run_all_tests_parallel.sh"
   [ "$status" -eq 0 ]
 
-  [[ "$output" == *"Progress: [0/16 (0%)]"* ]]
-  [[ "$output" =~ Progress:\ \[([1-9]|1[0-5])/16\ \([0-9]+%\)\] ]]
+  [[ "$output" == *"Progress: [0/${#CHECKS[@]} (0%)]"* ]]
+  [[ "$output" == *"Progress: [1/${#CHECKS[@]}"* || "$output" == *"Progress: [2/${#CHECKS[@]}"* || "$output" == *"Progress: [3/${#CHECKS[@]}"* || "$output" == *"Progress: [4/${#CHECKS[@]}"* || "$output" == *"Progress: [5/${#CHECKS[@]}"* || "$output" == *"Progress: [6/${#CHECKS[@]}"* || "$output" == *"Progress: [7/${#CHECKS[@]}"* || "$output" == *"Progress: [8/${#CHECKS[@]}"* || "$output" == *"Progress: [9/${#CHECKS[@]}"* || "$output" == *"Progress: [10/${#CHECKS[@]}"* || "$output" == *"Progress: [11/${#CHECKS[@]}"* || "$output" == *"Progress: [12/${#CHECKS[@]}"* || "$output" == *"Progress: [13/${#CHECKS[@]}"* || "$output" == *"Progress: [14/${#CHECKS[@]}"* || "$output" == *"Progress: [15/${#CHECKS[@]}"* || "$output" == *"Progress: [16/${#CHECKS[@]}"* ]]
 }
 
 @test "prints final 100 percent progress before overall summary" {
@@ -157,9 +158,9 @@ teardown() {
   [ "$status" -eq 0 ]
 
   local before_overall
-  before_overall="${output%%✅ PASS: all parallel checks succeeded (16/16)*}"
-  [[ "$before_overall" == *"Progress: [16/16 (100%)]"* ]]
-  [[ "$output" == *"✅ PASS: all parallel checks succeeded (16/16)"* ]]
+  before_overall="${output%%✅ PASS: all parallel checks succeeded (${#CHECKS[@]}/${#CHECKS[@]})*}"
+  [[ "$before_overall" == *"Progress: [${#CHECKS[@]}/${#CHECKS[@]} (100%)]"* ]]
+  [[ "$output" == *"✅ PASS: all parallel checks succeeded (${#CHECKS[@]}/${#CHECKS[@]})"* ]]
 }
 
 @test "waits for all checks and reports a single failed child" {
@@ -173,7 +174,7 @@ teardown() {
   [[ "$output" == *"❌ FAIL: t08_run_python_unit_tests.sh (exit 1,"* ]]
   [[ "$output" == *"see ${REPORT_DIR}/t08_run_python_unit_tests.log"* ]]
   [[ "$output" == *"✅ PASS: t04_run_requirements_traceability_tests.sh"* ]]
-  [[ "$output" == *"❌ FAIL: parallel checks: 15/16 passed"* ]]
+  [[ "$output" == *"❌ FAIL: parallel checks: $(( ${#CHECKS[@]} - 1 ))/${#CHECKS[@]} passed"* ]]
   grep -q 'unit-tests-failed' "${REPORT_DIR}/t08_run_python_unit_tests.log"
 }
 
@@ -262,4 +263,33 @@ teardown() {
     run pgrep -f "${FIXTURE_ROOT}/tests/${check}"
     [ "$status" -ne 0 ]
   done
+}
+
+@test "quality telemetry scores t-prefixed lane groups from actual lane outcomes" {
+  write_all_child_stubs 'exit 1'
+  local telemetry_dir="${FIXTURE_ROOT}/telemetry"
+  mkdir -p "${telemetry_dir}"
+
+  run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
+    QUALITY_TELEMETRY_DIR="${telemetry_dir}" \
+    bash "${FIXTURE_ROOT}/10_run_all_tests_parallel.sh"
+  [ "$status" -eq 1 ]
+
+  run python3 - <<'PY' "${telemetry_dir}/quality-history.ndjson"
+import json
+import sys
+from pathlib import Path
+
+history_path = Path(sys.argv[1])
+rows = [json.loads(line) for line in history_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+assert rows, "expected at least one telemetry row"
+latest = rows[-1]
+components = latest.get("components", {})
+assert latest.get("score") == 0.0, f"score should be 0.0 when all lanes fail: {latest.get('score')}"
+assert components.get("lane_reliability") == 0.0, components
+assert components.get("behavioral_coverage") == 0.0, components
+assert components.get("effectiveness_quality") == 0.0, components
+assert components.get("security_runtime_quality") == 0.0, components
+PY
+  [ "$status" -eq 0 ]
 }

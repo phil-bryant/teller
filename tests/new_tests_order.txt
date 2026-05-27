@@ -1,0 +1,17 @@
+t00_run_code_quality_tests.sh
+t01_run_av_test.sh
+t02_run_dependency_freshness_tests.sh
+t03_run_static_security_tests.sh
+t04_run_requirements_traceability_tests.sh
+t05_deploy_database_verification_test.sh
+t06_run_sql_unit_tests.sh
+t07_run_shell_unit_tests.sh
+t08_run_python_unit_tests.sh
+t09_run_mutation_tests.sh
+t10_run_swift_unit_tests.sh
+t11_run_fuzz_tests.sh
+t12_run_dynamic_security_tests.sh
+t13_run_teller_api_smoke_tests.sh
+t14_run_macos_ui_regression_tests.sh
+t15_verify_macos_crash_test.sh
+t16_classification_persistence_verification_test.sh
