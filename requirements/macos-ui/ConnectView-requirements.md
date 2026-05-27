@@ -38,7 +38,15 @@ Tests:
 - R025-T01: Open Connect tab and verify status/contexts load without additional setup actions.
 - R025-T02: Simulate service failure and verify user-facing "could not load connections" status and error banner.
 
+R030  Statement: Connect add/edit sheet must include an explicit ESC back-navigation hint.
+Design: `ConnectWebFlowHTML` renders `Press ESC to go back.` in the in-app launcher copy shown before entering Teller Connect; both Add and Edit sessions reuse this shell.
+Tests:
+- R030-T01: Render Add-session Connect HTML and verify the ESC hint text is present.
+- R030-T02: Render Edit-session Connect HTML and verify the ESC hint text is present.
+- R030-T03: Run Connect Add/Edit XCUITest scenario and verify the sheet shows the ESC hint for both entry points.
+
 ## Changelog
 
 - 2026-05-02: Added Swift replacement requirements for connect UI and state-management behavior previously documented for shell/token-server UI flows.
 - 2026-05-23: Reframed Connect tab requirements around Add/Edit/Delete-first UX and plain-language status behavior.
+- 2026-05-27: Added R030 requiring an in-sheet `Press ESC to go back.` hint for both Add and Edit Connect flows.

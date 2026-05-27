@@ -665,9 +665,17 @@ final class TransactionClassifierUITests: XCTestCase {
 
         // Exercise Add and Edit without entering external Teller flow.
         addButton.click()
+        XCTAssertTrue(
+            waitForElement(app.staticTexts["Press ESC to go back."].firstMatch, timeout: waitTimeout * 3),
+            "Add flow sheet must show ESC back-navigation hint."
+        )
         dismissPresentedSheetIfVisible()
         app.staticTexts["inst_alpha"].firstMatch.click()
         editButton.click()
+        XCTAssertTrue(
+            waitForElement(app.staticTexts["Press ESC to go back."].firstMatch, timeout: waitTimeout * 3),
+            "Edit flow sheet must show ESC back-navigation hint."
+        )
         dismissPresentedSheetIfVisible()
     }
 

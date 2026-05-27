@@ -32,6 +32,7 @@ enum ConnectWebFlowHTML {
           <div class="launcher">
             <h2>Teller Connect</h2>
             <p>Complete enrollment in this window.</p>
+            <p>Press ESC to go back.</p>
             <button id="connectButton">Open Connect</button>
             <pre id="status">Ready.</pre>
           </div>

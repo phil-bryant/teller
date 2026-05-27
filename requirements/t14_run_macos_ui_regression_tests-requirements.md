@@ -86,9 +86,15 @@ Design: `XCUITEST_SMOKE_DEFAULT_STEPS` must include scenarios 31 and 32 so stand
 Tests:
 - R075-T01: Run script with default smoke profile and verify `XCUITEST_STEPS` includes `31-32`.
 
+R080  Statement: Connect Add/Edit smoke coverage must verify the in-sheet ESC back-navigation hint.
+Design: Smoke scenario `connectAddAndEditButtons` opens both Add and Edit Connect sheets and asserts `Press ESC to go back.` is visible before dismissing each sheet with Escape.
+Tests:
+- R080-T01: Run smoke scenario 23 and verify both Add and Edit flows render the ESC hint copy.
+
 ## Changelog
 
 - 2026-05-27: Added R075 to require smoke defaults include scenarios 31-32 for advanced transaction and email filter regressions.
+- 2026-05-27: Added R080 requiring Connect Add/Edit smoke coverage to assert the in-sheet ESC back-navigation hint.
 - 2026-05-25: Added R055/R060/R065/R070 for full Match filter option coverage, tab-specific toolbar visibility, and long-list manual selection scroll stability.
 - 2026-05-20: Reworked XCUITest lane to a single-session `testMacOSUISmokeSuite` with 12 requirement-driven scenarios; R040/R045 now target scenario-step selection via `XCUITEST_STEPS`.
 - 2026-05-12: Replaced optional crash-reporter lane with R050 isolation requirement; verification is standalone `17_verify_macos_crash_test.sh`.
