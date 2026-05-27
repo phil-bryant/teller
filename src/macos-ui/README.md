@@ -56,13 +56,13 @@ Connect is now owned in-process by the app (local file-backed service + native W
 From repo root, the recommended launcher is:
 
 ```zsh
-./09_run_classification_macos-ui.sh
+./09_run_classification_macos_ui.sh
 ```
 
 Profile transaction-list load and first-render timings:
 
 ```zsh
-./09_run_classification_macos-ui.sh --profile
+./09_run_classification_macos_ui.sh --profile
 ```
 
 That command launches this macOS app; open the Connect tab to manage local enrollments.

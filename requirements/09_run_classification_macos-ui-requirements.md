@@ -2,7 +2,7 @@
 
 ## Scope
 
-Applies to `09_run_classification_macos-ui.sh`.
+Applies to `09_run_classification_macos_ui.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` to propagate execution failures.
@@ -28,14 +28,14 @@ Tests:
 
 ## Changelog
 
-- 2026-04-24: Initial requirements for `09_run_classification_macos-ui.sh`.
+- 2026-04-24: Initial requirements for `09_run_classification_macos_ui.sh`.
 - 2026-05-26: Updated R010 for binary launch + empty-arg safety; added R015 (`--profile`).
 - 2026-05-26: Replaced deprecated `23` wrapper requirements with canonical `24` launcher requirements.
 # Run Transaction Classification macOS UI Requirements
 
 ## Scope
 
-Applies to `09_run_classification_macos-ui.sh`.
+Applies to `09_run_classification_macos_ui.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` to propagate execution failures.
@@ -61,14 +61,14 @@ Tests:
 
 ## Changelog
 
-- 2026-04-24: Initial requirements for `09_run_classification_macos-ui.sh`.
+- 2026-04-24: Initial requirements for `09_run_classification_macos_ui.sh`.
 - 2026-05-26: Updated R010 for binary launch + empty-arg safety; added R015 (`--profile`).
 - 2026-05-26: Replaced deprecated `23` wrapper requirements with canonical `24` launcher requirements.
 # macOS UI Launcher Requirements
 
 ## Scope
 
-Applies to `09_run_classification_macos-ui.sh`.
+Applies to `09_run_classification_macos_ui.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` so argument parsing and launcher setup fail safely.
@@ -99,7 +99,7 @@ Tests:
 
 ## Scope
 
-Applies to `09_run_classification_macos-ui.sh`.
+Applies to `09_run_classification_macos_ui.sh`.
 
 R001  Statement: Run in strict shell mode and fail fast.
 Design: Use `set -euo pipefail` to propagate execution failures.
@@ -125,5 +125,5 @@ Tests:
 
 ## Changelog
 
-- 2026-04-24: Initial requirements for `09_run_classification_macos-ui.sh`.
+- 2026-04-24: Initial requirements for `09_run_classification_macos_ui.sh`.
 - 2026-05-26: Updated R010 for binary launch + empty-arg safety; added R015 (`--profile`).

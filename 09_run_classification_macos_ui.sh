@@ -20,7 +20,7 @@ while (($# > 0)); do
             ;;
         -h|--help)
             cat <<'EOF'
-usage: ./09_run_classification_macos-ui.sh [--profile] [app args...]
+usage: ./09_run_classification_macos_ui.sh [--profile] [app args...]
 
   --profile  Log transaction-list load and first-render timings to stderr
              ([teller-ui-profile] lines). Start the classifier API separately, e.g.:

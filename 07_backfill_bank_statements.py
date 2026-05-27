@@ -41,12 +41,6 @@ LAST_FOUR_OCR_RES = (
     re.compile(r'(?:ending|last)\s*(?:in|#|:)?\s*(\d{4})\b', re.I),
 )
 
-def _parse_tsv_words(tsv_text):
-    raise NotImplementedError("_parse_tsv_words is no longer used")
-
-def _build_tsv_lines(words):
-    raise NotImplementedError("_build_tsv_lines is no longer used")
-
 def _vision_ocr_pages(image_paths):
     #R001: Run Vision OCR and normalize recognized text into line-oriented page strings.
     if not image_paths:

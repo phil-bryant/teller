@@ -7,7 +7,7 @@ teardown() {
 }
 
 src() {
-  printf '%s' "$(repo_root)/09_run_classification_macos-ui.sh"
+  printf '%s' "$(repo_root)/09_run_classification_macos_ui.sh"
 }
 
 @test "uses strict shell mode" {
@@ -53,12 +53,12 @@ src() {
   setup_shell_test
   create_repo_fixture
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui"
-  copy_script_to_fixture "09_run_classification_macos-ui.sh"
+  copy_script_to_fixture "09_run_classification_macos_ui.sh"
   cat > "${STUB_BIN}/swift" <<'EOF'
 #!/usr/bin/env bash
 exit 1
 EOF
   chmod +x "${STUB_BIN}/swift"
-  run bash -c "cd '${FIXTURE_ROOT}' && PATH='${STUB_BIN}':\"\$PATH\" ./09_run_classification_macos-ui.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && PATH='${STUB_BIN}':\"\$PATH\" ./09_run_classification_macos_ui.sh"
   [ "$status" -eq 1 ]
 }
