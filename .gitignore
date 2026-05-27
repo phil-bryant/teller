@@ -1,6 +1,7 @@
 .env
 *.pyc
 __pycache__/
+/__pycache__/
 teller-venv/*
 .DS_Store
 src/macos-ui/.build/
@@ -28,7 +29,10 @@ artifacts/mutation/
 artifacts/fuzz/
 artifacts/venv/security/
 artifacts/cache/
-artifacts/telemetry/lane-summary*
+artifacts/cache/pycache/private/var/folders/
+artifacts/telemetry/quality-history.ndjson
+artifacts/telemetry/quality-trend.json
+artifacts/telemetry/lane-summary-*.json
 .ruff_cache/
 .hypothesis/
 .24_run_all_tests_parallel.lock
