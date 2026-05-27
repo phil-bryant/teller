@@ -22,6 +22,7 @@ class _Session:
         self.execute_result = execute_result
         self.calls = []
         self.commits = 0
+        self.rollbacks = 0
 
     def execute(self, sql, params):
         self.calls.append((sql, params))
@@ -29,6 +30,9 @@ class _Session:
 
     def commit(self):
         self.commits += 1
+
+    def rollback(self):
+        self.rollbacks += 1
 
 
 class TellerPersistTests(unittest.TestCase):
@@ -291,6 +295,19 @@ class TellerPersistTests(unittest.TestCase):
         )
         upsert_balances.assert_not_called()
         self.assertEqual(session.commits, 1)
+
+    @patch("teller.teller_persist._upsert_account", side_effect=RuntimeError("boom"))
+    def test_persist_all_rolls_back_when_any_step_fails(self, _upsert_account):
+        session = _Session(_Result())
+        with self.assertRaises(RuntimeError):
+            teller_persist.persist_all(
+                session,
+                raw_identities=[{"account": {"id": "acc_1"}, "owners": []}],
+                raw_transactions_by_account={},
+                raw_balances_by_account={},
+            )
+        self.assertEqual(session.commits, 0)
+        self.assertEqual(session.rollbacks, 1)
 
 
 if __name__ == "__main__":

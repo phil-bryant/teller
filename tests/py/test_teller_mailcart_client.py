@@ -102,6 +102,19 @@ class MailcartClientTests(unittest.TestCase):
         self.assertEqual(first._base_url, "http://mailcart.internal:9000")
         self.assertEqual(first._token, "cached-token")
 
+    def test_get_mailcart_client_reloads_when_env_changes(self):
+        os.environ["MAILCART_SERVICE_BASE_URL"] = "http://mailcart.internal:9000"
+        os.environ["MAILCART_SERVICE_TOKEN"] = "cached-token"
+        first = get_mailcart_client()
+
+        os.environ["MAILCART_SERVICE_BASE_URL"] = "http://mailcart.internal:9001"
+        os.environ["MAILCART_SERVICE_TOKEN"] = "rotated-token"
+        second = get_mailcart_client()
+
+        self.assertIsNot(first, second)
+        self.assertEqual(second._base_url, "http://mailcart.internal:9001")
+        self.assertEqual(second._token, "rotated-token")
+
 
 if __name__ == "__main__":
     unittest.main()

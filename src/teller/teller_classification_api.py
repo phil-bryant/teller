@@ -4,7 +4,6 @@ import os
 import re
 import shutil
 import unicodedata
-from functools import lru_cache
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from subprocess import CalledProcessError, run as run_process  # nosec B404
@@ -283,7 +282,6 @@ def _normalize_text(value: Optional[str]) -> Optional[str]:
     return normalized if normalized else None
 
 
-@lru_cache(maxsize=1)
 def _configured_write_token() -> str:
     one_psa_path = shutil.which("1psa")
     if not one_psa_path or not os.path.isabs(one_psa_path):
@@ -513,7 +511,7 @@ class MatchReviewActionResponse(BaseModel):
 
 
 class MatchCandidateRow(BaseModel):
-    #R060: Latest-run candidate row enriched with Mailcart metadata for the middle pane.
+    #R060: Latest-run candidate row; Mailcart enrichment in Architecture.md § Teller ↔ Mailcart contract.
     email_message_id: str
     score: float
     reason_json: Dict[str, Any] = Field(default_factory=dict)
@@ -529,7 +527,7 @@ class MatchCandidateRow(BaseModel):
 
 
 class EmailMessage(BaseModel):
-    #R061: Full email message body proxied from Mailcart.
+    #R061: Full email message body; field mapping in Architecture.md § Teller ↔ Mailcart contract.
     email_message_id: str
     subject: Optional[str] = None
     sender: Optional[str] = Field(default=None, alias="from")
@@ -553,13 +551,12 @@ class EmailSearchHit(BaseModel):
 
 
 class EmailSearchResponse(BaseModel):
-    #R062: Free-form Mailcart search results proxied through the classifier API.
+    #R062: Mailcart search results; field mapping in Architecture.md § Teller ↔ Mailcart contract.
     query: str
     items: List[EmailSearchHit]
 
 
-#R061: Microsoft Graph message IDs are URL-safe base64-ish strings (letters, digits, dashes, underscores,
-#R061: and occasionally `=` padding); cap at 4096 chars to comfortably cover Graph IDs (typically ~152).
+#R061: Graph message ID validation; rules in Architecture.md § Teller ↔ Mailcart contract.
 _EMAIL_MESSAGE_ID_PATTERN = r"^[A-Za-z0-9_\-=]+$"
 _EMAIL_MESSAGE_ID_MAX_LENGTH = 4096
 _EMAIL_SEARCH_QUERY_PATTERN = r"^[\x20-\x7E]+$"
@@ -1477,7 +1474,7 @@ def _register_matchy_routes(app: FastAPI) -> None:
                 note="Cleared from Teller review UI",
             )
 
-    #R060: List latest-run candidates for a transaction, enriched with Mailcart metadata.
+    #R060: Latest-run candidates with Mailcart enrichment; see Architecture.md § Teller ↔ Mailcart contract.
     @app.get(
         "/v1/matchy/transactions/{transaction_id}/candidates",
         response_model=List[MatchCandidateRow],
@@ -1500,9 +1497,7 @@ def _register_matchy_routes(app: FastAPI) -> None:
                 return []
             return _enrich_candidates_with_mailcart(session, candidate_rows)
 
-    #R062: Proxy a free-form Mailcart search to populate the secondary middle-pane results.
-    #R062: Register this static path before `/v1/matchy/messages/{email_message_id}` so Starlette does not
-    #R062: treat the literal segment `search` as a message id (which breaks macOS Mailcart search decoding).
+    #R062: Mailcart search proxy; route order and response shape in Architecture.md § Teller ↔ Mailcart contract.
     @app.get(
         "/v1/matchy/messages/search",
         response_model=EmailSearchResponse,
@@ -1524,8 +1519,7 @@ def _register_matchy_routes(app: FastAPI) -> None:
             payload = client.search(query=query, limit=limit)
         except MailcartError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.message)
-        #R062: Mailcart returns {"messages": [...]} (see mailcart/scripts/matchy_mailcart_api.py R020); accept "items"
-        #R062: as a fallback so a future contract change does not silently break the UI.
+        #R062: Accept `messages` or legacy `items`; see Architecture.md § Teller ↔ Mailcart contract.
         hits_raw = None
         if isinstance(payload, dict):
             hits_raw = payload.get("messages")
@@ -1536,7 +1530,7 @@ def _register_matchy_routes(app: FastAPI) -> None:
         hits = [_email_search_hit_from_payload(item) for item in hits_raw if isinstance(item, dict)]
         return EmailSearchResponse(query=query, items=hits)
 
-    #R061: Proxy the full message body + metadata from Mailcart for the right pane.
+    #R061: Message body proxy; field mapping in Architecture.md § Teller ↔ Mailcart contract.
     @app.get(
         "/v1/matchy/messages/{email_message_id}",
         response_model=EmailMessage,
@@ -1595,8 +1589,7 @@ def _candidate_from_mailcart_row(client, row: Dict[str, Any], index: int) -> tup
     try:
         metadata = client.get_message(row["email_message_id"])
     except MailcartError as exc:
-        # Translate Mailcart's "no longer in inbox" signal (404) into a user-friendly label and
-        # mark the row negatively-cached so we don't re-ask Graph for it on every UI render.
+        #R060: 404 negative-cache behavior in Architecture.md § Teller ↔ Mailcart contract.
         if exc.status_code == 404:
             return index, _candidate_row_with_error(row, "email no longer in inbox"), {"_negative": True}
         return index, _candidate_row_with_error(row, exc.message), None
@@ -1663,12 +1656,7 @@ def _candidates_with_service_unavailable_error(
 
 
 def _enrich_candidates_with_mailcart(session, candidate_rows: List[Dict[str, Any]]) -> List[MatchCandidateRow]:
-    #R060: Best-effort fan-out enrichment; per-id Mailcart failures degrade to mailcart_error rather than 502.
-    #R060: For rows that already carry cached subject/sender/snippet (matchy persists these at
-    #R060: candidate-insert time), serve directly from the DB so the candidates pane is subsecond.
-    #R060: For rows with NULL cache (legacy data from before the cache columns existed), fall out to
-    #R060: Mailcart through a 16-worker thread pool and write the metadata back into the cache so
-    #R060: the next call is hot. Order of the input candidate list is preserved in the returned list.
+    #R060: Candidate enrichment behavior in Architecture.md § Teller ↔ Mailcart contract.
     if not candidate_rows:
         return []
 
@@ -1700,8 +1688,7 @@ def _candidate_row_from_cache(row: Dict[str, Any]) -> MatchCandidateRow:
 
 
 def _candidate_row_from_db_and_metadata(row: Dict[str, Any], metadata: Dict[str, Any]) -> MatchCandidateRow:
-    #R060: Mailcart's per-message response uses {subject, sender, preview, body_text} (and html_body for HTML
-    #R060: messages); map those into the UI-facing {subject, from, snippet} fields.
+    #R060: Field mapping in Architecture.md § Teller ↔ Mailcart contract.
     payload = _candidate_payload(row)
     if isinstance(metadata, dict):
         payload["subject"] = metadata.get("subject")
@@ -1735,9 +1722,7 @@ def _candidate_payload(row: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _email_message_from_payload(email_message_id: str, payload: Dict[str, Any]) -> EmailMessage:
-    #R061: Mailcart serializes per-message rows as {message_id, subject, sender, recipients, preview,
-    #R061: html_body, text_body, body_text, received_at} (see mailcart R035); fall back to legacy
-    #R061: field names where they happen to coincide so callers that mock the older contract still work.
+    #R061: Field mapping in Architecture.md § Teller ↔ Mailcart contract.
     if not isinstance(payload, dict):
         raise HTTPException(status_code=502, detail="mailcart: message response was not a JSON object")
     return EmailMessage.model_validate({
@@ -1753,7 +1738,7 @@ def _email_message_from_payload(email_message_id: str, payload: Dict[str, Any]) 
 
 
 def _email_search_hit_from_payload(payload: Dict[str, Any]) -> EmailSearchHit:
-    #R062: Mailcart search rows use {message_id, subject, sender, preview, received_at, body_text}.
+    #R062: Field mapping in Architecture.md § Teller ↔ Mailcart contract.
     return EmailSearchHit.model_validate({
         "email_message_id": payload.get("message_id") or payload.get("email_message_id") or payload.get("id") or "",
         "subject": payload.get("subject"),

@@ -200,6 +200,34 @@ def _candidate_profile_paths() -> list[Path]:
     return paths
 
 
+def _profile_file_fingerprint(path: Path) -> tuple[str, int, int]:
+    try:
+        stat = path.stat()
+    except OSError:
+        return (str(path), -1, -1)
+    return (str(path), stat.st_mtime_ns, stat.st_size)
+
+
+def _profile_cache_key() -> tuple:
+    env_values = tuple(
+        os.environ.get(name, "")
+        for name in (
+            "TELLER_DB_PROFILE",
+            "TELLER_DB_PROFILE_FILE",
+            "TELLER_DB_HOST",
+            "TELLER_DB_PORT",
+            "TELLER_DB_NAME",
+            "TELLER_DB_USER",
+            "TELLER_DB_ROLE",
+            "TELLER_DB_SSLMODE",
+            "TELLER_DB_SEARCH_PATH",
+            "ONEPSA_LIB_PATH",
+        )
+    )
+    fingerprints = tuple(_profile_file_fingerprint(path) for path in _candidate_profile_paths())
+    return (str(Path.cwd()), env_values, fingerprints)
+
+
 #R010: Load the first existing profile file, or fail with setup guidance.
 def _load_profile_document() -> dict:
     for path in _candidate_profile_paths():
@@ -279,8 +307,8 @@ def _apply_env_overrides(record: dict) -> dict:
 
 
 #R001: Public entry point used by ``teller_db.get_engine``.
-@lru_cache(maxsize=1)
-def resolve_profile() -> ResolvedProfile:
+@lru_cache(maxsize=32)
+def _resolve_profile_cached(_cache_key: tuple) -> ResolvedProfile:
     document = _load_profile_document()
     name = _select_profile_name(document)
     onepsa_item = _resolve_onepsa_item(document, name)
@@ -300,6 +328,12 @@ def resolve_profile() -> ResolvedProfile:
     )
 
 
+def resolve_profile() -> ResolvedProfile:
+    #R001: Cache profile resolution by effective env + profile file fingerprint.
+    #R001: This keeps reads deterministic across reruns while still refreshing on env/file changes.
+    return _resolve_profile_cached(_profile_cache_key())
+
+
 def reset_profile_cache() -> None:
     """Clear the cached profile so tests can mutate env/files between assertions."""
-    resolve_profile.cache_clear()
+    _resolve_profile_cached.cache_clear()

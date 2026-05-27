@@ -350,30 +350,35 @@ def _upsert_account_balances(session, bal_data):
 
 #R040: Persist identities, balances, transactions, then commit once.
 def persist_all(session, raw_identities, raw_transactions_by_account, raw_balances_by_account=None):
-    for item in raw_identities:
-        account_data = item["account"]
-        _upsert_account(session, account_data)
-        for owner_data in item["owners"]:
-            identity_id = _upsert_identity(session, owner_data)
-            _upsert_account_identity(session, account_data["id"], identity_id)
-        log.info("Persisted account + identities", account_id=account_data["id"], owner_count=len(item["owners"]))
-    for account_id, bal_data in (raw_balances_by_account or {}).items():
-        _upsert_account_balances(session, bal_data)
-        log.info("Persisted balances", account_id=account_id, ledger=bal_data.get("ledger"), available=bal_data.get("available"))
-    for account_id, txns in raw_transactions_by_account.items():
-        canonical_txns = _canonicalize_transactions(txns)
-        for txn_data in canonical_txns:
-            _upsert_transaction(session, txn_data)
-        deleted_pending_ids = _reconcile_missing_pending_transactions(
-            session,
-            account_id,
-            [txn_data["id"] for txn_data in canonical_txns],
-        )
-        log.info("Persisted transactions", account_id=account_id, count=len(canonical_txns))
-        if deleted_pending_ids:
-            log.info("Removed stale pending transactions", account_id=account_id, count=len(deleted_pending_ids))
-    pruned = _prune_unreferenced_transaction_relations(session)
-    if any(pruned.values()):
-        log.info("Pruned unreferenced transaction relation rows", **pruned)
-    session.commit()
-    log.info("Database commit complete")
+    try:
+        for item in raw_identities:
+            account_data = item["account"]
+            _upsert_account(session, account_data)
+            for owner_data in item["owners"]:
+                identity_id = _upsert_identity(session, owner_data)
+                _upsert_account_identity(session, account_data["id"], identity_id)
+            log.info("Persisted account + identities", account_id=account_data["id"], owner_count=len(item["owners"]))
+        for account_id, bal_data in (raw_balances_by_account or {}).items():
+            _upsert_account_balances(session, bal_data)
+            log.info("Persisted balances", account_id=account_id, ledger=bal_data.get("ledger"), available=bal_data.get("available"))
+        for account_id, txns in raw_transactions_by_account.items():
+            canonical_txns = _canonicalize_transactions(txns)
+            for txn_data in canonical_txns:
+                _upsert_transaction(session, txn_data)
+            deleted_pending_ids = _reconcile_missing_pending_transactions(
+                session,
+                account_id,
+                [txn_data["id"] for txn_data in canonical_txns],
+            )
+            log.info("Persisted transactions", account_id=account_id, count=len(canonical_txns))
+            if deleted_pending_ids:
+                log.info("Removed stale pending transactions", account_id=account_id, count=len(deleted_pending_ids))
+        pruned = _prune_unreferenced_transaction_relations(session)
+        if any(pruned.values()):
+            log.info("Pruned unreferenced transaction relation rows", **pruned)
+        session.commit()
+        log.info("Database commit complete")
+    except Exception:
+        if hasattr(session, "rollback"):
+            session.rollback()
+        raise

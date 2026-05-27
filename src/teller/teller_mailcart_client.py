@@ -23,9 +23,7 @@ class MailcartError(Exception):
 
 
 class MailcartClient:
-    #R060: Sync HTTP client for Mailcart message + search endpoints, exposed via the classifier API proxy.
-    #R060: Mailcart is a local-only service (default 127.0.0.1:8788) so caller authentication is optional;
-    #R060: a bearer header is only attached when `MAILCART_SERVICE_TOKEN` is configured (parity with matchy).
+    #R060: Sync HTTP client for Mailcart; contract in Architecture.md § Teller ↔ Mailcart contract.
     def __init__(self, base_url: str, token: Optional[str] = None, *, timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
                  session: Optional[requests.Session] = None, max_connections: int = 32) -> None:
         self._base_url = base_url.rstrip("/")
@@ -73,24 +71,26 @@ class MailcartClient:
             message=f"mailcart: upstream returned {response.status_code}: {body_preview}".strip(),
         )
 
-    #R061: Mailcart's per-message endpoint returns {message_id, subject, preview, received_at, sender,
-    #R061: recipients, html_body, text_body, body_text} — see mailcart/scripts/matchy_mailcart_api.py R035.
+    #R061: GET /v1/messages/{id}; response shape in Architecture.md § Teller ↔ Mailcart contract.
     def get_message(self, email_message_id: str) -> Dict[str, Any]:
         return self._request("GET", f"/v1/messages/{email_message_id}")
 
-    #R060: Mailcart search lives at /v1/messages/search and returns {messages: [...]}; the limit upper bound
-    #R060: matches Mailcart's own contract (1-100).
+    #R060: GET /v1/messages/search; limit bounds in Architecture.md § Teller ↔ Mailcart contract.
     def search(self, query: str, limit: int) -> Dict[str, Any]:
         return self._request("GET", "/v1/messages/search", params={"query": query, "limit": limit})
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=8)
+def _mailcart_client_for_config(base_url: str, token: str) -> MailcartClient:
+    return MailcartClient(base_url=base_url, token=token or None)
+
+
 def get_mailcart_client() -> MailcartClient:
     base_url = (os.environ.get(_BASE_URL_ENV) or _DEFAULT_BASE_URL).strip() or _DEFAULT_BASE_URL
-    token = os.environ.get(_TOKEN_ENV)
-    return MailcartClient(base_url=base_url, token=token)
+    token = (os.environ.get(_TOKEN_ENV) or "").strip()
+    return _mailcart_client_for_config(base_url, token)
 
 
 def reset_mailcart_client_cache() -> None:
-    #R060: Allow tests to drop the cached singleton without monkeypatching internals.
-    get_mailcart_client.cache_clear()
+    #R060: Allow tests to drop cached clients without monkeypatching internals.
+    _mailcart_client_for_config.cache_clear()

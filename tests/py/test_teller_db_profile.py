@@ -179,6 +179,21 @@ class ResolveProfileTests(_IsolatedEnvTest):
         self.assertEqual(profile.dbname, "prod")
         self.assertEqual(profile.user, "teller")
 
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
+    def test_profile_resolution_refreshes_when_env_changes_without_manual_cache_clear(self, _mock):
+        self._write_profile_file({
+            "default_profile": "local",
+            "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
+        })
+        os.environ["TELLER_DB_HOST"] = "first-host"
+        first = resolve_profile()
+
+        os.environ["TELLER_DB_HOST"] = "second-host"
+        second = resolve_profile()
+
+        self.assertEqual(first.host, "first-host")
+        self.assertEqual(second.host, "second-host")
+
     # #R020: TELLER_PSA_ITEM no longer overrides onepsa_item (item comes from JSON only).
     # Instead we verify TELLER_DB_USER can override the user field.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
