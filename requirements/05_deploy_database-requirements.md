@@ -4,8 +4,8 @@
 
 Applies to `05_deploy_database.sh`.
 
-R001  Statement: Fail fast when deployment steps fail.
-Design: Use `set -e` and exit non-zero on unrecoverable errors.
+R001  Statement: Run in strict shell mode with private-default file permissions.
+Design: Use `umask 007` and `set -euo pipefail`; exit non-zero on unrecoverable errors.
 Tests:
 - R001-T01: Force failing SQL execution and verify script exits non-zero.
 

@@ -4,8 +4,8 @@
 
 Applies to `02_create_venv.sh`.
 
-R001  Statement: Run with bash and fail fast on unrecoverable errors.
-Design: Use `set -e` and exit non-zero on hard failures.
+R001  Statement: Run in strict shell mode and fail fast on unrecoverable errors.
+Design: Use `umask 007` and `set -euo pipefail`; exit non-zero on hard failures.
 Tests:
 - R001-T01: Force a failing command and verify script exits non-zero.
 

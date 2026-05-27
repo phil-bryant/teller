@@ -26,6 +26,8 @@ from teller.teller_transaction import TellerTransaction  # noqa: F401,E402
 log = structlog.get_logger()
 TELLER_DIR = Path.home() / ".teller"
 REQUEST_TIMEOUT_SECONDS = 30
+TRANSACTION_PAGINATION_MAX_PAGES_DEFAULT = 1000
+TRANSACTION_PAGINATION_MAX_PAGES_ENV = "TELLER_TXN_MAX_PAGES"
 
 class TellerAPIError(Exception):
     def __init__(self, message: str, code: str = "", status_code: int = 0):
@@ -94,6 +96,16 @@ class TellerAPIClient:
         enrollment_id = self._enrollment_id or (enrollment_id_file.read_text().strip() if enrollment_id_file.is_file() else "")
         repaired = False
         if enrollment_id:
+            if not (sys.stdin.isatty() and sys.stdout.isatty()):
+                raise TellerAPIError(
+                    message=(
+                        "Enrollment disconnected in a non-interactive session. "
+                        "Manual reconnect is required. Run ./09_run_classification_macos_ui.sh "
+                        "and use the Connect tab, then rerun this script."
+                    ),
+                    code="enrollment.disconnected.manual_repair_required",
+                    status_code=0,
+                )
             try:
                 launcher = Path(__file__).resolve().parent / "09_run_classification_macos_ui.sh"
                 if not launcher.is_file():
@@ -131,12 +143,60 @@ class TellerAPIClient:
         return response.json()
 
 
+def _resolve_transaction_pagination_max_pages() -> int:
+    raw_max_pages = os.getenv(TRANSACTION_PAGINATION_MAX_PAGES_ENV, "").strip()
+    if not raw_max_pages:
+        return TRANSACTION_PAGINATION_MAX_PAGES_DEFAULT
+    try:
+        parsed = int(raw_max_pages)
+    except ValueError:
+        log.warning(
+            "Invalid pagination max pages; using default",
+            env_var=TRANSACTION_PAGINATION_MAX_PAGES_ENV,
+            value=raw_max_pages,
+            default=TRANSACTION_PAGINATION_MAX_PAGES_DEFAULT,
+        )
+        return TRANSACTION_PAGINATION_MAX_PAGES_DEFAULT
+    if parsed <= 0:
+        log.warning(
+            "Non-positive pagination max pages; using default",
+            env_var=TRANSACTION_PAGINATION_MAX_PAGES_ENV,
+            value=raw_max_pages,
+            default=TRANSACTION_PAGINATION_MAX_PAGES_DEFAULT,
+        )
+        return TRANSACTION_PAGINATION_MAX_PAGES_DEFAULT
+    return parsed
+
+
 def _fetch_all_transactions(client, txn_url):
     #R015: Fetch complete transaction history by paging with from_id cursor.
+    max_pages = _resolve_transaction_pagination_max_pages()
+    page_count = 0
+    seen_last_ids = set()
     all_txns, page = [], client.get(txn_url)
     while page:
+        page_count += 1
+        if page_count > max_pages:
+            raise TellerAPIError(
+                message=(
+                    f"Transaction pagination exceeded maximum pages ({max_pages}). "
+                    f"Set {TRANSACTION_PAGINATION_MAX_PAGES_ENV} to a larger value if needed."
+                ),
+                code="transactions.pagination.max_pages_exceeded",
+                status_code=0,
+            )
         all_txns.extend(page)
         last_id = page[-1]["id"]
+        if last_id in seen_last_ids:
+            raise TellerAPIError(
+                message=(
+                    "Transaction pagination repeated the same cursor value. "
+                    f"Detected repeated from_id={last_id} after {page_count} pages."
+                ),
+                code="transactions.pagination.repeated_cursor",
+                status_code=0,
+            )
+        seen_last_ids.add(last_id)
         log.info("Fetched transaction page", count=len(page), total=len(all_txns), oldest=page[-1]["date"], last_id=last_id)
         page = client.get(txn_url, {"from_id": last_id})
         log.info("Pagination response", from_id=last_id, returned=len(page) if isinstance(page, list) else type(page).__name__)
@@ -174,7 +234,10 @@ def _load_metadata_contexts() -> List[dict]:
 def _load_suffix_contexts() -> List[dict]:
     contexts = []
     for token_file in sorted(TELLER_DIR.glob("auth_token_*.json")):
-        suffix = token_file.name[11:-5]
+        suffix = token_file.stem.removeprefix("auth_token_")
+        if not suffix:
+            log.warning("Skipping malformed suffix token filename", path=str(token_file))
+            continue
         contexts.append({
             "enrollment_id": _read_text_file(TELLER_DIR / f"enrollment_id_{suffix}.txt"),
             "token": _read_token_file(token_file),

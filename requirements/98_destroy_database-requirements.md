@@ -4,8 +4,8 @@
 
 Applies to `98_destroy_database.sh`.
 
-R001  Statement: Run with bash and fail fast on unrecoverable errors.
-Design: Use `set -e` with non-zero exits on failed operations.
+R001  Statement: Run in strict shell mode with private-default file permissions.
+Design: Use `umask 007` and `set -euo pipefail`.
 Tests:
 - R001-T01: Force a failing SQL command and verify non-zero exit.
 

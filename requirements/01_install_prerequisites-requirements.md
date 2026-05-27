@@ -4,8 +4,8 @@
 
 Applies to `01_install_prerequisites.sh` and any successor installer for local macOS setup.
 
-R001  Statement: Run on macOS with `bash` and fail fast.
-Design: Use `set -e`; return non-zero on unrecoverable failures.
+R001  Statement: Run on macOS in strict shell mode and fail fast.
+Design: Use `umask 007` and `set -euo pipefail`; return non-zero on unrecoverable failures.
 Tests:
 - R001-T01: Force a failing install step and verify non-zero exit.
 

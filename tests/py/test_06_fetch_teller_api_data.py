@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import builtins
 import importlib.util
 import json
 import sys
@@ -168,6 +169,16 @@ class EnrollmentContextDiscoveryTests(unittest.TestCase):
         self.assertEqual(contexts[0]["token"], "token-b")
         self.assertEqual(contexts[0]["source"], "suffix")
 
+    def test_load_suffix_contexts_skips_malformed_empty_suffix_filename(self) -> None:
+        self._write_token("auth_token_.json", "token-bad")
+        self._write_token("auth_token_bank_valid.json", "token-good")
+        (self.teller_dir / "enrollment_id_bank_valid.txt").write_text("enr_valid\n", encoding="utf-8")
+
+        contexts = self.module._load_suffix_contexts()
+        self.assertEqual(len(contexts), 1)
+        self.assertEqual(contexts[0]["institution_id"], "bank_valid")
+        self.assertEqual(contexts[0]["token"], "token-good")
+
 
 class TellerApiClientRequestTimeoutTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -219,6 +230,120 @@ class TellerApiClientRequestTimeoutTests(unittest.TestCase):
         txns = self.module._fetch_all_transactions(client, "https://api.teller.io/txns")
         self.assertEqual([txn["id"] for txn in txns], ["txn_1", "txn_2", "txn_3"])
         self.assertEqual(client.calls, [{}, {"from_id": "txn_2"}, {"from_id": "txn_3"}])
+
+    def test_fetch_all_transactions_raises_on_repeated_cursor(self) -> None:
+        class _FakeClient:
+            def get(self, _url, params=None):
+                if params is None:
+                    return [{"id": "txn_1", "date": "2026-01-03"}, {"id": "txn_2", "date": "2026-01-02"}]
+                if params.get("from_id") == "txn_2":
+                    return [{"id": "txn_2", "date": "2026-01-01"}]
+                return []
+
+        with self.assertRaises(self.module.TellerAPIError) as exc:
+            self.module._fetch_all_transactions(_FakeClient(), "https://api.teller.io/txns")
+        self.assertEqual(exc.exception.code, "transactions.pagination.repeated_cursor")
+
+    def test_fetch_all_transactions_raises_when_max_pages_exceeded(self) -> None:
+        class _FakeClient:
+            def get(self, _url, params=None):
+                if params is None:
+                    return [{"id": "txn_1", "date": "2026-01-03"}]
+                if params.get("from_id") == "txn_1":
+                    return [{"id": "txn_2", "date": "2026-01-02"}]
+                return []
+
+        previous = self.module.os.environ.get("TELLER_TXN_MAX_PAGES")
+        self.module.os.environ["TELLER_TXN_MAX_PAGES"] = "1"
+        try:
+            with self.assertRaises(self.module.TellerAPIError) as exc:
+                self.module._fetch_all_transactions(_FakeClient(), "https://api.teller.io/txns")
+        finally:
+            if previous is None:
+                self.module.os.environ.pop("TELLER_TXN_MAX_PAGES", None)
+            else:
+                self.module.os.environ["TELLER_TXN_MAX_PAGES"] = previous
+        self.assertEqual(exc.exception.code, "transactions.pagination.max_pages_exceeded")
+
+    def test_repair_enrollment_fails_fast_in_non_interactive_session(self) -> None:
+        class _FakeTTY:
+            @staticmethod
+            def isatty():
+                return False
+
+        client = self.module.TellerAPIClient.__new__(self.module.TellerAPIClient)
+        client._enrollment_id = "enr_123"
+        original_stdin = self.module.sys.stdin
+        original_stdout = self.module.sys.stdout
+        self.module.sys.stdin = _FakeTTY()
+        self.module.sys.stdout = _FakeTTY()
+        try:
+            with self.assertRaises(self.module.TellerAPIError) as exc:
+                self.module.TellerAPIClient._repair_enrollment(client)
+        finally:
+            self.module.sys.stdin = original_stdin
+            self.module.sys.stdout = original_stdout
+        self.assertEqual(exc.exception.code, "enrollment.disconnected.manual_repair_required")
+
+    def test_repair_enrollment_prompts_and_reloads_when_interactive(self) -> None:
+        class _FakeTTYIn:
+            @staticmethod
+            def isatty():
+                return True
+
+        class _FakeTTYOut:
+            def __init__(self):
+                self.buffer = []
+
+            @staticmethod
+            def isatty():
+                return True
+
+            def write(self, value):
+                self.buffer.append(value)
+                return len(value)
+
+            def flush(self):
+                return None
+
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        script_dir = Path(temp_dir.name)
+        launcher = script_dir / "09_run_classification_macos_ui.sh"
+        launcher.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        launcher.chmod(0o755)
+
+        popen_calls = []
+        input_calls = []
+        load_auth_calls = []
+        original_file = self.module.__file__
+        original_stdin = self.module.sys.stdin
+        original_stdout = self.module.sys.stdout
+        original_popen = self.module.subprocess.Popen
+        original_input = builtins.input
+
+        client = self.module.TellerAPIClient.__new__(self.module.TellerAPIClient)
+        client._enrollment_id = "enr_123"
+        client._load_auth = lambda: load_auth_calls.append("called")
+
+        self.module.__file__ = str(script_dir / "06_fetch_teller_api_data.py")
+        self.module.sys.stdin = _FakeTTYIn()
+        self.module.sys.stdout = _FakeTTYOut()
+        self.module.subprocess.Popen = lambda args, env=None: popen_calls.append((args, env))
+        builtins.input = lambda _prompt: input_calls.append("prompted") or ""
+        try:
+            repaired = self.module.TellerAPIClient._repair_enrollment(client)
+        finally:
+            self.module.__file__ = original_file
+            self.module.sys.stdin = original_stdin
+            self.module.sys.stdout = original_stdout
+            self.module.subprocess.Popen = original_popen
+            builtins.input = original_input
+
+        self.assertTrue(repaired)
+        self.assertEqual(len(popen_calls), 1)
+        self.assertEqual(len(input_calls), 1)
+        self.assertEqual(len(load_auth_calls), 1)
 
 
 if __name__ == "__main__":

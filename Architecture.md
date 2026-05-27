@@ -100,33 +100,77 @@ Config and secrets:
 
 ### Teller ↔ Mailcart contract (Match Review UI)
 
-The Teller classifier API proxies Mailcart for the macOS Match Review three-pane UI. The
-contract Mailcart exposes (see `mailcart/scripts/matchy_mailcart_api.py` and matchy's
-`matchy/mailcart_client.py`):
+Canonical upstream contract lives in the Mailcart repo (`mailcart/scripts/matchy_mailcart_api.py`,
+R035 for per-message; R020 for search) and matchy's `matchy/mailcart_client.py`. Teller
+implements the client in `src/teller/teller_mailcart_client.py` and the classifier API proxy in
+`src/teller/teller_classification_api.py`. Field mappings and error semantics below are the
+single source of truth for R060/R061/R062.
 
-- `GET /v1/messages/search?query=<string>&limit=<int>` — returns
-`{"messages": [{"message_id", "subject", "preview", "received_at", "sender", "body_text"}]}`.
+#### Mailcart upstream endpoints
+
+- `GET /v1/messages/search?query=<string>&limit=<int>` — `limit` is 1–100. Returns
+  `{"messages": [{"message_id", "subject", "preview", "received_at", "sender", "body_text"}]}`.
 - `GET /v1/messages/{message_id}` — returns
-`{"message_id", "subject", "preview", "received_at", "sender", "recipients", "html_body", "text_body", "body_text"}`.
+  `{"message_id", "subject", "preview", "received_at", "sender", "recipients", "html_body", "text_body", "body_text"}`.
 - `POST /v1/messages/{message_id}/move` — used by matchy, not by Teller.
 
-Teller calls Mailcart via the proxy module `src/teller/teller_mailcart_client.py`:
+#### Teller client configuration
 
-- Base URL defaults to `http://127.0.0.1:8788` (Mailcart is a local-only service); override
-with the `MAILCART_SERVICE_BASE_URL` environment variable (the same name matchy uses).
-- Bearer token is optional and read from `MAILCART_SERVICE_TOKEN`; it is only attached when
-set. Mailcart does not validate it. The Microsoft Graph token Mailcart uses internally is
-managed by Mailcart itself (cached at `~/.cache/mailcart/graph_oauth.json`, refreshed on 401).
-- Teller exposes three read-only proxy/aggregation endpoints (write token required, like all `/v1/*` routes):
-`GET /v1/matchy/transactions/{transaction_id}/candidates`,
-`GET /v1/matchy/messages/{email_message_id}`,
-`GET /v1/matchy/messages/search`. Each endpoint maps Mailcart's
-`{message_id, sender, preview, body_text}` fields onto the UI-facing
-`{email_message_id, from, snippet, html_body, text_body}` shape used by `MatchCandidateRow`,
-`EmailMessage`, and `EmailSearchHit`.
-- Per-id Mailcart failures during candidate enrichment degrade gracefully — the row returns
-with `mailcart_error` rather than failing the whole listing — so the review pane remains
-usable when Mailcart is partially unavailable.
+- Base URL defaults to `http://127.0.0.1:8788` (Mailcart is local-only); override with
+  `MAILCART_SERVICE_BASE_URL` (same name matchy uses).
+- Bearer token is optional via `MAILCART_SERVICE_TOKEN`; attached only when set. Mailcart does
+  not validate it. The Microsoft Graph token Mailcart uses internally is managed by Mailcart
+  itself (cached at `~/.cache/mailcart/graph_oauth.json`, refreshed on 401).
+
+#### Teller classifier proxy endpoints
+
+All three require `X-Teller-Write-Token` like other `/v1/*` routes.
+
+- `GET /v1/matchy/transactions/{transaction_id}/candidates` — latest-run candidates enriched
+  with Mailcart metadata (R060).
+- `GET /v1/matchy/messages/{email_message_id}` — full message body for the right pane (R061).
+- `GET /v1/matchy/messages/search` — free-form search for ad-hoc discovery (R062). Register
+  this static path before `/v1/matchy/messages/{email_message_id}` so Starlette does not treat
+  the literal segment `search` as a message id.
+
+#### Field mapping (Mailcart → UI-facing)
+
+| Mailcart field | UI field | Used by |
+| --- | --- | --- |
+| `message_id` | `email_message_id` | candidates, message, search |
+| `sender` | `from` | all three |
+| `preview` | `snippet` | all three (fallback: first 200 chars of `body_text`/`text_body` for candidates) |
+| `recipients` | `to` | message |
+| `html_body`, `text_body` | same | message |
+| `received_at` | same | message, search |
+
+Legacy aliases (`email_message_id`, `from`, `snippet`, `id`, `to`) are accepted on inbound
+payloads so tests and older mocks keep working.
+
+Search responses must include a `messages` array; a legacy `items` array is accepted as a
+fallback. Missing both surfaces as HTTP 502.
+
+#### Identifier validation (R061)
+
+`email_message_id` path segments must match Microsoft Graph message IDs: URL-safe base64-ish
+strings (`[A-Za-z0-9_\-=]+`), capped at 4096 characters. Invalid ids return HTTP 400.
+
+#### Candidate enrichment behavior (R060)
+
+- Rows with cached `subject`/`sender`/`snippet` (persisted by matchy at insert time) are served
+  directly from the DB.
+- Rows with NULL cache (legacy data) are fetched from Mailcart via a 16-worker thread pool;
+  metadata is written back to the cache so subsequent calls are hot.
+- Per-id Mailcart failures degrade to `mailcart_error` on the row rather than failing the whole
+  listing; Mailcart 404 on enrichment is translated to a user-friendly "no longer in inbox" label
+  and negative-cached so Graph is not re-queried on every UI render.
+- Input candidate order is preserved in the response.
+
+#### Upstream error mapping
+
+- Mailcart 404 on message fetch → classifier 404.
+- Other Mailcart/upstream failures → classifier 502.
+- Mailcart unavailable at startup → classifier 503 on proxy routes.
 
 ## Tech Stack Overview
 
@@ -278,9 +322,8 @@ PostgreSQL (teller schema)
 
 ## Teller Internal Architecture
 
-```text
-1) AUTH + TOKEN LIFECYCLE (CONNECT -> STORAGE -> API USAGE)
-------------------------------------------------------------
+### 1) AUTH + TOKEN LIFECYCLE (CONNECT -> STORAGE -> API USAGE)
+
 Why: Clarifies security boundaries and where credentials/tokens live and rotate.
 
 ```text
@@ -340,12 +383,11 @@ Token and credential lifecycle notes:
 - Disconnected enrollment recovery: when Teller returns `enrollment.disconnected`, script triggers the macOS Connect repair flow and retries once.
 - Cert/key rotation boundary: certificate/private key issuance and revocation happen in Teller dashboard; local app/scripts only read local `certificate.pem` / `private_key.pem`.
 
-2) INGEST + NORMALIZATION + PERSISTENCE SEQUENCE
-
----
+### 2) INGEST + NORMALIZATION + PERSISTENCE SEQUENCE
 
 Why: Shows exact order and idempotency points for data movement into Postgres.
 
+```text
 [scheduler/manual]
       |
       v
@@ -361,10 +403,9 @@ Why: Shows exact order and idempotency points for data movement into Postgres.
 PostgreSQL (teller schema)
       |
       +--> views/triggers/audit paths
+```
 
-3) CLASSIFICATION WRITE PATH + AUTHZ BOUNDARY
-
----
+### 3) CLASSIFICATION WRITE PATH + AUTHZ BOUNDARY
 
 Why: Makes mutation protection and persistence verification explicit.
 
@@ -404,9 +445,7 @@ Trust/authz boundaries:
           `tests/t16_classification_persistence_verification_test.sh`
 ```
 
-4) DATA MODEL ER DIAGRAM (CORE TABLES + RELATIONSHIPS)
-
----
+### 4) DATA MODEL ER DIAGRAM (CORE TABLES + RELATIONSHIPS)
 
 Why: Repo has rich SQL under `src/sql/postgres/`; a compact ER view speeds onboarding.
 
@@ -501,9 +540,7 @@ Notes:
 - `transaction_classification` is implemented as `teller.transaction_nys_snw_category`.
 - Matchy tables (`transaction_email_match_run`, `transaction_email_candidate`, `transaction_email_match`, `transaction_email_match_audit`) are in active use by the classification API.
 
-5) LOCAL RUNTIME TOPOLOGY (PROCESSES, PORTS, FILES, ENV)
-
----
+### 5) LOCAL RUNTIME TOPOLOGY (PROCESSES, PORTS, FILES, ENV)
 
 Why: Helpful for debugging "what should be running" and "where config comes from".
 
@@ -555,9 +592,7 @@ Local runtime debugging checklist:
 - If DB connect fails, inspect the resolved profile (`TELLER_DB_PROFILE`, profile file path precedence, and `1psa_or_env_item`).
 - If match-review email fetch fails, verify optional Mailcart process on `127.0.0.1:8788` or override `MAILCART_SERVICE_BASE_URL`.
 
-6) TEST STRATEGY MAP (LANES -> SCOPE -> GATES)
-
----
+### 6) TEST STRATEGY MAP (LANES -> SCOPE -> GATES)
 
 Why: Explains why there are many numbered scripts and what each gate protects.
 
@@ -596,9 +631,7 @@ How to interpret failures:
 - t16 fail: persistence contract break between API and database layers.
 - 10 (parallel runner) fail: composite readiness not met; inspect failing child lanes.
 
-7) SECURITY THREAT MODEL (TRUST BOUNDARIES + DATA FLOWS)
-
----
+### 7) SECURITY THREAT MODEL (TRUST BOUNDARIES + DATA FLOWS)
 
 Why: Security tools are present, but a visual threat model explains risk ownership.
 
@@ -676,9 +709,7 @@ Threat ownership map (who mitigates what):
 - DB integrity escalation (B4): schema/API owners enforce authz on `/v1/*` endpoints, parameterized ORM usage, and verification/audit tests.
 - Supply-chain compromise (AS): platform owners enforce freshness/security lanes (`tests/t02`, `tests/t03`, `tests/t12`) and fail-gates on high/critical findings.
 
-8) OPERATIONS / RECOVERY FLOW (BACKUP, RESTORE, DESTROY)
-
----
+### 8) OPERATIONS / RECOVERY FLOW (BACKUP, RESTORE, DESTROY)
 
 Why: Scripts `97/98/99` are critical but easy to misuse without a flow diagram.
 
@@ -768,8 +799,4 @@ Operational notes:
 - For managed-target restores, `99` always requires `--table schema.table` (full restore is refused because
   managed targets cannot accept a CREATE-DATABASE-style restore or replay globals).
 - Use `--table schema.table` in `99` for targeted repair when full schema replacement is not desired.
-
-```
-
-```
 
