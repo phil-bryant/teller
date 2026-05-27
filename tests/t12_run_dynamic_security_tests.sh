@@ -1688,7 +1688,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "https://github.com/Yelp/detect-secrets"
   echo "▶ Running detect-secrets"
   detect-secrets scan --all-files --force-use-all-plugins \
-    --exclude-files '(^\.git/|^teller-venv/|^artifacts/venv/security/|^artifacts/security/|^artifacts/security-dast/|^artifacts/parallel/|^artifacts/mutation/|^artifacts/fuzz/|^artifacts/cache/ruff/|^artifacts/cache/pytest/|^artifacts/cache/hypothesis/|^artifacts/cache/egg-info/|^backups/|^archive/backup_extracts/|^archive/legacy/teller-connect-ui/|^config/bank_statements/|^src/macos-ui/\.derivedData-ui-tests/|^src/macos-ui/\.build/|^requirements/)' \
+    --exclude-files '(^\.git/|^teller-venv/|^artifacts/venv/security/|^artifacts/security/|^artifacts/security-dast/|^artifacts/parallel/|^artifacts/mutation/|^artifacts/fuzz/|^artifacts/cache/ruff/|^artifacts/cache/pytest/|^artifacts/cache/hypothesis/|^artifacts/cache/egg-info/|^backups/|^archive/backup_extracts/|^config/bank_statements/|^src/macos-ui/\.derivedData-ui-tests/|^src/macos-ui/\.build/|^requirements/)' \
     > "${REPORT_DIR}/detect-secrets.json"
 
   run_gitleaks_sast "${REPORT_DIR}/gitleaks.json"
