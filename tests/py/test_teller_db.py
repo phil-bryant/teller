@@ -131,24 +131,30 @@ class ConnectListenerTests(_IsolatedEnvTest):
         #R040-T01
         listener = self._capture_connect_listener()
         cursor = MagicMock()
-        cursor.fetchone.return_value = ('"teller_write"',)
+        cursor.fetchone.side_effect = [('"teller"',), ('"teller_write"',)]
         dbapi_conn = MagicMock()
         dbapi_conn.cursor.return_value = cursor
         listener(dbapi_conn, MagicMock())
         executed_sql = [call.args[0] for call in cursor.execute.call_args_list]
-        self.assertIn("SET search_path TO teller", executed_sql)
-        self.assertTrue(any(sql.startswith("SET ROLE ") for sql in executed_sql))
+        self.assertIn("SELECT string_agg(quote_ident(trim(schema_name)), ',')", executed_sql[0])
+        self.assertIn('SET search_path TO "teller"', executed_sql)
+        self.assertIn("SELECT quote_ident(%s)", executed_sql)
+        self.assertIn('SET ROLE "teller_write"', executed_sql)
 
     # #R040: SET ROLE is skipped when runtime_role is empty (e.g. Supabase profile).
     def test_set_role_skipped_when_empty(self):
         #R040-T02
         listener = self._capture_connect_listener(profile=_SUPABASE_PROFILE)
         cursor = MagicMock()
+        cursor.fetchone.return_value = ('"teller"',)
         dbapi_conn = MagicMock()
         dbapi_conn.cursor.return_value = cursor
         listener(dbapi_conn, MagicMock())
         executed_sql = [call.args[0] for call in cursor.execute.call_args_list]
-        self.assertEqual(executed_sql, ["SET search_path TO teller"])
+        self.assertEqual(len(executed_sql), 2)
+        self.assertIn("SELECT string_agg(quote_ident(trim(schema_name)), ',')", executed_sql[0])
+        self.assertEqual(executed_sql[1], 'SET search_path TO "teller"')
+        self.assertFalse(any(sql.startswith("SET ROLE ") for sql in executed_sql))
 
 
 if __name__ == "__main__":
