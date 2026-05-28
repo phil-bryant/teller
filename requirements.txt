@@ -6,8 +6,8 @@ urllib3==2.7.0
 structlog==25.5.0
 psycopg2-binary==2.9.12
 sqlalchemy==2.0.50
-starlette==1.1.0
-idna==3.16
+starlette==1.2.0
+idna==3.17
 pydantic==2.13.4
 hypothesis==6.153.0
 mutmut==3.5.0

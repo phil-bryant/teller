@@ -13,6 +13,10 @@ extension ClassificationViewModel {
     // #R075: Transaction-loading extension owns background accurate-total refresh behavior.
     // #R080: Transaction-loading extension owns optional transaction-list profiling behavior.
     // #R085: Transaction-loading logic is split into this focused extension without behavior changes.
+    // #R105: Transaction-loading composition preserves explicit confirm-vs-override semantics.
+    // #R110: Transaction-loading composition preserves unmatched confirm candidate-scope behavior.
+    // #R115: Transaction-loading composition preserves override retargeting guards.
+    // #R116: Transaction-loading composition preserves Mailcart search persistence behavior.
     // #R090: Transaction-loading extension forwards advanced filters on every fetch call.
     // #R095: Transaction-loading composition preserves structured debounced Mailcart search behavior.
     // #R100: Transaction-loading composition preserves stale match snapshot recovery behavior.

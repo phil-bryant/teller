@@ -123,6 +123,7 @@ from teller.teller_mailcart_client import get_mailcart_client
 #R070: Compatibility facade re-exports active-match transaction list helpers/filters.
 #R071: Compatibility facade re-exports clear/deactivate match helper bindings.
 #R072: Compatibility facade re-exports include_total/count_only pagination helper.
+#R073: Compatibility facade re-exports unmatched manual transaction override helper bindings.
 #R075: Compatibility facade re-exports advanced transaction scalar filter support.
 def _transition_match_state(*args, **kwargs):
     kwargs.setdefault("read_match_row_fn", _read_match_row)
@@ -146,6 +147,7 @@ def _create_transaction_match(*args, **kwargs):
 
 
 def _create_transaction_match_allowing_non_candidate_email(*args, **kwargs):
+    #R073: Allow transaction-level override to link valid search-hit emails outside latest candidates.
     kwargs.setdefault("ensure_posted_transaction_fn", _ensure_posted_transaction)
     kwargs.setdefault("ensure_no_active_match_fn", _ensure_no_active_match)
     kwargs.setdefault("insert_match_audit_fn", _insert_match_audit)

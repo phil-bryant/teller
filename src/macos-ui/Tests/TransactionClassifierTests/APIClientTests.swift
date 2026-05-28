@@ -413,6 +413,7 @@ final class APIClientTests: XCTestCase {
     }
 
     func testSearchMessagesNormalizesWhitespaceInStructuredCriteria() async throws {
+        // #R064-T02
         URLProtocolStub.requestHandler = { request in
             XCTAssertEqual(request.httpMethod, "GET")
             XCTAssertEqual(request.url?.path, "/v1/matchy/messages/search")

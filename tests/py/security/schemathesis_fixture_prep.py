@@ -89,6 +89,36 @@ def set_component_string_min_length(schema: dict, component_name: str, field_nam
                     variant["minLength"] = min_length
 
 
+def tighten_matchy_search_query_params(paths: dict):
+    operation = paths.get("/v1/matchy/messages/search", {}).get("get", {})
+    parameters = operation.get("parameters", [])
+    if not isinstance(parameters, list):
+        return
+    for param in parameters:
+        if not isinstance(param, dict):
+            continue
+        if param.get("in") != "query":
+            continue
+        name = param.get("name")
+        schema_obj = param.get("schema")
+        if not isinstance(schema_obj, dict):
+            continue
+        if name in {"subject", "sender", "body"}:
+            schema_obj["minLength"] = max(int(schema_obj.get("minLength", 0) or 0), 1)
+        if name == "subject":
+            # FastAPI enforces "at least one structured criterion", which OpenAPI cannot express as
+            # "one-of these query params must be present". Require `subject` in the generated
+            # Schemathesis fixture to avoid schema-valid empty requests that the API correctly rejects.
+            param["required"] = True
+        if name in {"start_date", "end_date"}:
+            # The API treats empty/"null" date values as no-op criteria and can return 422 when
+            # no effective structured filters remain. Keep Schemathesis focused on meaningful
+            # structured date inputs so schema-valid requests align with success-path behavior.
+            schema_obj["minLength"] = 10
+            schema_obj["maxLength"] = 10
+            schema_obj["pattern"] = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+
+
 def main() -> int:
     if len(sys.argv) != 7:
         raise SystemExit(
@@ -196,6 +226,8 @@ def main() -> int:
         except Exception:
             pass
     paths = schema.get("paths", {})
+    if isinstance(paths, dict):
+        tighten_matchy_search_query_params(paths)
     if category_id is not None:
         set_path_param_example(paths, "/v1/categories/{nys_snw_category_id}", "put", "nys_snw_category_id", category_id)
     if delete_seed_ids:

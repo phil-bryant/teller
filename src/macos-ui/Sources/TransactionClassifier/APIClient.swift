@@ -33,6 +33,7 @@ protocol ClassificationAPI: Sendable {
     // #R050: Clear human-reviewed matches by match id or transaction id.
     func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse
     func confirmTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
+    // #R066: Support unmatched transaction override against explicit email ids.
     func overrideTransaction(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func overrideTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse
@@ -98,6 +99,7 @@ extension ClassificationAPI {
         throw APIError.unsupportedOperation("Transaction candidate override")
     }
 
+    // #R066: PUT /v1/matchy/transactions/{transaction_id}/override for unmatched manual assignment.
     func overrideTransaction(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
         _ = transactionId
         _ = emailMessageId

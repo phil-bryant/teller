@@ -15,6 +15,10 @@ import Observation
 // #R075: Shared total/status state supports background count-only refresh.
 // #R080: Shared loading/status state supports optional transaction-load profiling.
 // #R085: Keep this file as the observable surface while behavior lives in focused extensions.
+// #R105: Shared match review state supports explicit confirm-vs-override action semantics.
+// #R110: Shared match review state keeps confirm candidate-scoped for unmatched transactions.
+// #R115: Shared match review state guards against override retargeting a different transaction.
+// #R116: Shared Mailcart state preserves search results and user selection across transaction changes.
 // #R100: Shared match action state supports stale snapshot reload-and-retry behavior.
 
 struct UndoAction { let prior: [String: TransactionCategory?] }

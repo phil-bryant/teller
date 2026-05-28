@@ -1530,6 +1530,7 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertEqual(client.search_calls, [{"query": body.query, "limit": 5}])
 
     def test_search_messages_normalizes_whitespace_within_structured_fields(self):
+        #R062-T09
         app = create_app()
         endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
         client = _FakeMailcartClient(search_payload={"messages": []})
@@ -1586,21 +1587,35 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
         client = _FakeMailcartClient(search_payload={"messages": []})
         self._install_mailcart_client(client)
-        with self.assertRaises(HTTPException) as ctx:
-            endpoint(
-                request=SimpleNamespace(
-                    headers={"x-teller-write-token": "test-write-token"},
-                    query_params={"limit": "5"},
-                ),
-                subject="",
-                sender="",
-                body="",
-                start_date=None,
-                end_date=None,
-                limit=5,
-            )
-        self.assertEqual(ctx.exception.status_code, 422)
-        self.assertIn("structured search criterion", str(ctx.exception.detail))
+        cases = [
+            (
+                {"limit": "5"},
+                {"subject": "", "sender": "", "body": "", "start_date": None, "end_date": None, "limit": 5},
+            ),
+            (
+                {"start_date": "", "limit": "5"},
+                {"subject": "", "sender": "", "body": "", "start_date": "", "end_date": None, "limit": 5},
+            ),
+            (
+                {"start_date": "null", "limit": "5"},
+                {"subject": "", "sender": "", "body": "", "start_date": "null", "end_date": None, "limit": 5},
+            ),
+            (
+                {"end_date": "null", "limit": "5"},
+                {"subject": "", "sender": "", "body": "", "start_date": None, "end_date": "null", "limit": 5},
+            ),
+        ]
+        for query_params, kwargs in cases:
+            with self.assertRaises(HTTPException) as ctx:
+                endpoint(
+                    request=SimpleNamespace(
+                        headers={"x-teller-write-token": "test-write-token"},
+                        query_params=query_params,
+                    ),
+                    **kwargs,
+                )
+            self.assertEqual(ctx.exception.status_code, 422)
+            self.assertIn("structured search criterion", str(ctx.exception.detail))
         self.assertEqual(client.search_calls, [])
 
     def test_search_messages_accepts_date_only_structured_criteria(self):
@@ -1771,14 +1786,13 @@ class MatchCandidateProxyTests(unittest.TestCase):
     @patch("teller.teller_classification_api._ensure_candidate_for_transaction")
     @patch("teller.teller_classification_api._ensure_no_active_match")
     @patch("teller.teller_classification_api._ensure_posted_transaction")
-    def test_create_transaction_match_override_allows_non_candidate_email(
+    def test_create_transaction_match_override_allows_non_candidate_email(  #R073-T02
         self,
         ensure_posted_mock,
         ensure_no_active_mock,
         ensure_candidate_mock,
         insert_audit_mock,
     ):
-        #R073-T02
         session = _FakeSession(
             rows=[
                 _Result(row={"match_id": 101, "updated_at": datetime.now(timezone.utc)}),

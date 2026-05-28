@@ -13,6 +13,9 @@ extension ClassificationViewModel {
     // #R075: Match-review composition preserves background accurate-total refresh behavior.
     // #R080: Match-review composition preserves optional transaction-list profiling behavior.
     // #R085: Match-review logic is split into this focused extension without behavior changes.
+    // #R105: Match-review extension routes confirm-vs-override by selected email intent.
+    // #R110: Match-review extension keeps unmatched confirm candidate-scoped while allowing override.
+    // #R115: Match-review extension rejects override responses that resolve to another transaction.
     // #R090: Match-review composition preserves advanced transaction filter forwarding behavior.
     // #R095: Match-review extension owns structured debounced Mailcart search criteria behavior.
     // #R116: Mailcart search results persist across transaction selection changes.
@@ -132,55 +135,86 @@ extension ClassificationViewModel {
         let selectedTransactionIdAtActionStart = primaryTransaction?.transaction_id
         do {
             if let matchId = selectedMatchId {
-                let response = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: note)
-                if let selectedTransactionIdAtActionStart,
-                   response.transaction_id != selectedTransactionIdAtActionStart {
-                    lastLoadedCandidatesTransactionId = nil
-                    await loadAll()
-                    matchReviewErrorText = "Override targeted a different transaction than selected. Please retry."
-                    matchReviewStatusText = "Match override failed"
+                guard
+                    let status = try await overrideExistingMatch(
+                        matchId: matchId,
+                        emailId: emailId,
+                        note: note,
+                        selectedTransactionIdAtActionStart: selectedTransactionIdAtActionStart
+                    )
+                else {
                     return
                 }
-                matchReviewStatusText = "Overrode match \(matchId)"
+                matchReviewStatusText = status
             } else if let transactionId = primaryTransaction?.transaction_id {
-                do {
-                    let response: MatchReviewActionResponse
-                    if isOverrideTargetInLatestCandidateSet {
-                        response = try await api.overrideTransactionCandidate(
-                            transactionId: transactionId,
-                            emailMessageId: emailId,
-                            note: note
-                        )
-                    } else {
-                        response = try await api.overrideTransaction(
-                            transactionId: transactionId,
-                            emailMessageId: emailId,
-                            note: note
-                        )
-                    }
-                    matchReviewStatusText = "Assigned email to \(response.transaction_id)"
-                } catch {
-                    guard _isActiveMatchConflict(error) else { throw error }
-                    lastLoadedCandidatesTransactionId = nil
-                    await loadAll()
-                    guard let refreshedMatchId = selectedMatchId else { throw error }
-                    _ = try await api.overrideMatch(matchId: refreshedMatchId, emailMessageId: emailId, note: note)
-                    matchReviewStatusText = "Overrode match \(refreshedMatchId)"
-                }
+                matchReviewStatusText = try await overrideUnmatchedTransaction(
+                    transactionId: transactionId,
+                    emailId: emailId,
+                    note: note
+                )
             } else {
                 matchReviewErrorText = "Select a transaction before overriding."
                 matchReviewStatusText = "Match override failed"
                 return
             }
             matchReviewErrorText = ""
-            matchOverrideEmailMessageId = ""
-            matchOverrideNote = ""
+            clearOverrideInputs()
             lastLoadedCandidatesTransactionId = nil
             await loadAll()
         } catch {
             matchReviewErrorText = error.localizedDescription
             matchReviewStatusText = "Match override failed"
         }
+    }
+
+    private func overrideExistingMatch(
+        matchId: Int,
+        emailId: String,
+        note: String,
+        selectedTransactionIdAtActionStart: String?
+    ) async throws -> String? {
+        let response = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: note)
+        if let selectedTransactionIdAtActionStart,
+           response.transaction_id != selectedTransactionIdAtActionStart {
+            lastLoadedCandidatesTransactionId = nil
+            await loadAll()
+            matchReviewErrorText = "Override targeted a different transaction than selected. Please retry."
+            matchReviewStatusText = "Match override failed"
+            return nil
+        }
+        return "Overrode match \(matchId)"
+    }
+
+    private func overrideUnmatchedTransaction(transactionId: String, emailId: String, note: String) async throws -> String {
+        do {
+            let response: MatchReviewActionResponse
+            if isOverrideTargetInLatestCandidateSet {
+                response = try await api.overrideTransactionCandidate(
+                    transactionId: transactionId,
+                    emailMessageId: emailId,
+                    note: note
+                )
+            } else {
+                response = try await api.overrideTransaction(
+                    transactionId: transactionId,
+                    emailMessageId: emailId,
+                    note: note
+                )
+            }
+            return "Assigned email to \(response.transaction_id)"
+        } catch {
+            guard _isActiveMatchConflict(error) else { throw error }
+            lastLoadedCandidatesTransactionId = nil
+            await loadAll()
+            guard let refreshedMatchId = selectedMatchId else { throw error }
+            _ = try await api.overrideMatch(matchId: refreshedMatchId, emailMessageId: emailId, note: note)
+            return "Overrode match \(refreshedMatchId)"
+        }
+    }
+
+    private func clearOverrideInputs() {
+        matchOverrideEmailMessageId = ""
+        matchOverrideNote = ""
     }
 
     func markSelectedMatchNoEmail() async {

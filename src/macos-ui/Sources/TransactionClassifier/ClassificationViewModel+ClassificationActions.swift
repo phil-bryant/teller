@@ -13,6 +13,10 @@ extension ClassificationViewModel {
     // #R075: Classification-actions composition preserves background accurate-total refresh behavior.
     // #R080: Classification-actions composition preserves optional transaction-list profiling behavior.
     // #R085: Classification mutation logic is split into this focused extension without behavior changes.
+    // #R105: Classification-actions composition preserves explicit confirm-vs-override semantics.
+    // #R110: Classification-actions composition preserves unmatched confirm candidate-scope behavior.
+    // #R115: Classification-actions composition preserves override retargeting guards.
+    // #R116: Classification-actions composition preserves Mailcart search persistence behavior.
     // #R090: Classification-actions composition preserves advanced transaction filter forwarding behavior.
     // #R095: Classification-actions composition preserves structured debounced Mailcart search behavior.
     // #R100: Classification-actions composition preserves stale match snapshot recovery behavior.

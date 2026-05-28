@@ -81,18 +81,25 @@ Design: Smoke coverage must validate that selecting an already-visible deep-list
 Tests:
 - R070-T01: Load a long fixture list, verify it requires scrolling to span top-to-bottom rows, scroll to middle-list rows, select one or more visible middle rows, and verify row frame position remains effectively unchanged after each selection.
 
-R075  Statement: Default smoke profile must include advanced filter regression scenarios.
-Design: `XCUITEST_SMOKE_DEFAULT_STEPS` must include scenarios 31 and 32 so standard `t14` runs always exercise advanced transaction scalar filters (`start`, `end`, `min`, `max`) and advanced email search filters (`body keyword`, `received from`, `received to`).
+R075  Statement: Default smoke profile must prioritize fast feedback while keeping advanced filters opt-in.
+Design: Keep `XCUITEST_SMOKE_DEFAULT_STEPS` at the core scenario set (`1-17,19-29`) for fast regression cadence; run advanced filter scenarios 31-32 via explicit selector or `extended/full` profile.
 Tests:
-- R075-T01: Run script with default smoke profile and verify `XCUITEST_STEPS` includes `31-32`.
+- R075-T01: Run script with default smoke profile and verify `XCUITEST_STEPS` does not include `31-32`.
+- R075-T02: Run script with `XCUITEST_PROFILE=extended` and verify `XCUITEST_STEPS` includes `31-32`.
 
 R080  Statement: Connect Add/Edit smoke coverage must verify the in-sheet ESC back-navigation hint.
 Design: Smoke scenario `connectAddAndEditButtons` opens both Add and Edit Connect sheets and asserts `Press ESC to go back.` is visible before dismissing each sheet with Escape.
 Tests:
 - R080-T01: Run smoke scenario 23 and verify both Add and Edit flows render the ESC hint copy.
 
+R085  Statement: UI smoke execution must not add artificial interaction delays.
+Design: The smoke suite and runner must avoid deliberate sleeps/backoff inserted only to slow interactions (for example, fixed post-click `sleep` calls). Keep polling/event waits condition-driven and minimal.
+Tests:
+- R085-T01: Verify `tests/t14_run_macos_ui_regression_tests.sh` and `src/macos-ui/UITests/TransactionClassifierUITests.swift` contain no fixed `sleep` calls used as post-click delay padding.
+
 ## Changelog
 
+- 2026-05-28: Updated R075 to keep default smoke profile fast (`1-17,19-29`) and move scenarios 31-32 to explicit/extended runs; added R085 to forbid artificial fixed-delay pacing in smoke interactions.
 - 2026-05-27: Added R075 to require smoke defaults include scenarios 31-32 for advanced transaction and email filter regressions.
 - 2026-05-27: Added R080 requiring Connect Add/Edit smoke coverage to assert the in-sheet ESC back-navigation hint.
 - 2026-05-25: Added R055/R060/R065/R070 for full Match filter option coverage, tab-specific toolbar visibility, and long-list manual selection scroll stability.

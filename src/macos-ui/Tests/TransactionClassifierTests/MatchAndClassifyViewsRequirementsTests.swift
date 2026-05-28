@@ -275,6 +275,19 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
         XCTAssertTrue(source.contains(#"replaceText(in: uiElement("mailcart-search-start-date-field"), with: "2026-04-19")"#))
         XCTAssertTrue(source.contains(#"replaceText(in: uiElement("mailcart-search-end-date-field"), with: "2026-04-18")"#))
     }
+
+    func testAdvancedEmailSearchScenarioPersistsHitsAcrossTransactionSelection() throws {
+        // #R071-T07
+        let source = try Self.loadUITestSource()
+        XCTAssertTrue(
+            source.contains(#"selectTransactionRow("txn_001", label: "Coffee Roasters")"#),
+            "Advanced email search smoke scenario must switch transactions after search criteria are applied."
+        )
+        XCTAssertTrue(
+            source.contains(#"waitForElement(uiElement("mailcart-hit-row-msg_search_001"), timeout: waitTimeout * 3)"#),
+            "Advanced email search smoke scenario must retain hit rows after switching transactions."
+        )
+    }
 }
 
 private extension MatchAndClassifyViewsRequirementsTests {

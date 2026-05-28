@@ -73,7 +73,7 @@ XCUITEST_SCENARIOS=(
   "advancedEmailSearch"
 )
 XCUITEST_SMOKE_SUITE="TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite"
-XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-17,19-29,31-32}"
+XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-17,19-29}"
 XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-32}"
 
 if [[ $# -gt 1 ]]; then
@@ -94,6 +94,7 @@ fi
 source "$MACOS_UI_SWIFT_LOCK_HELPER"
 
 run_with_timeout() {
+  #R085: Timeout guard is watchdog-only; do not introduce fixed sleeps to pace interactions.
   local timeout_seconds="$1"
   local timeout_label="$2"
   shift 2

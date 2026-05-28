@@ -158,7 +158,30 @@ EOF
   [ "$status" -eq 0 ]
   grep "swift" "${CALLS_LOG}"
   grep "xcodebuild" "${CALLS_LOG}"
-  [[ "$output" == *"1-17,19-29,31-32"* ]]
+  [[ "$output" == *"1-17,19-29"* ]]
+}
+
+@test "extended profile includes advanced filter scenarios" {
+  #R075-T02
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  cat > "${STUB_BIN}/swift" <<EOF
+#!/usr/bin/env bash
+echo swift "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swift"
+  cat > "${STUB_BIN}/xcodebuild" <<EOF
+#!/usr/bin/env bash
+echo xcodebuild "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/xcodebuild"
+  run bash -c "cd '${FIXTURE_ROOT}' && \
+    export PATH='${STUB_BIN}:'\${PATH} && \
+    XCUITEST_PROFILE=extended \
+    ./t14_run_macos_ui_regression_tests.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"1-32"* ]]
 }
 
 @test "passes xcodebuild project scheme destination and derived data overrides" {
@@ -262,5 +285,11 @@ EOF
 @test "does not invoke macOS crash reporter verification script" {
   #R050-T01
   run grep -E 'verify_macos_crash_test|CRASH_REPORTER_SMOKE' "${FIXTURE_ROOT}/t14_run_macos_ui_regression_tests.sh"
+  [ "$status" -ne 0 ]
+}
+
+@test "runner avoids fixed sleep-based interaction padding" {
+  #R085-T01
+  run grep -nE '(^|[^[:alnum:]_])sleep[[:space:]]+[0-9]' "${FIXTURE_ROOT}/t14_run_macos_ui_regression_tests.sh"
   [ "$status" -ne 0 ]
 }

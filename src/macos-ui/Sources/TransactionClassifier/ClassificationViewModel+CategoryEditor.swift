@@ -13,6 +13,10 @@ extension ClassificationViewModel {
     // #R075: Category-editor composition preserves background accurate-total refresh behavior.
     // #R080: Category-editor composition preserves optional transaction-list profiling behavior.
     // #R085: Category-editor logic is split into this focused extension without behavior changes.
+    // #R105: Category-editor composition preserves explicit confirm-vs-override semantics.
+    // #R110: Category-editor composition preserves unmatched confirm candidate-scope behavior.
+    // #R115: Category-editor composition preserves override retargeting guards.
+    // #R116: Category-editor composition preserves Mailcart search persistence behavior.
     // #R090: Category-editor composition preserves advanced transaction filter forwarding behavior.
     // #R095: Category-editor composition preserves structured debounced Mailcart search behavior.
     // #R100: Category-editor composition preserves stale match snapshot recovery behavior.
