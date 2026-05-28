@@ -11,6 +11,7 @@ struct FetchTransactionsCall: Sendable {
 struct MockAPIConfig {
     var categories: [CategoryOption]
     var response: TransactionListResponse
+    var fetchError: Error?
     var pagedResponses: [Int: TransactionListResponse] = [:]
     var sequentialResponses: [TransactionListResponse] = []
     var candidatesByTransactionId: [String: [MatchCandidateRow]] = [:]
@@ -26,6 +27,7 @@ struct MockAPIConfig {
 actor MockAPI: ClassificationAPI {
     var categories: [CategoryOption]
     var response: TransactionListResponse
+    var fetchError: Error?
     var pagedResponses: [Int: TransactionListResponse]
     var sequentialResponses: [TransactionListResponse]
     var fetchOffsets: [Int] = []
@@ -57,6 +59,7 @@ actor MockAPI: ClassificationAPI {
     init(_ config: MockAPIConfig) {
         self.categories = config.categories
         self.response = config.response
+        self.fetchError = config.fetchError
         var merged = config.pagedResponses
         merged[0] = config.response
         self.pagedResponses = merged
@@ -76,6 +79,7 @@ actor MockAPI: ClassificationAPI {
     }
     func fetchCategories() async throws -> [CategoryOption] { categories }
     func fetchTransactions(_ options: TransactionFetchOptions) async throws -> TransactionListResponse {
+        if let fetchError { throw fetchError }
         lastFetchOptions = options
         fetchTransactionsCalls.append(
             FetchTransactionsCall(includeTotal: options.includeTotal, countOnly: options.countOnly, limit: options.limit)
@@ -731,6 +735,24 @@ final class ClassificationViewModelTests: XCTestCase {
         XCTAssertEqual(options?.institutionId, "inst_alpha")
         XCTAssertEqual(options?.minAmount, "10")
         XCTAssertEqual(options?.maxAmount, "100")
+    }
+
+    @MainActor
+    func testLoadAllSurfacesFriendlyDateFormatErrorTextForTransactionFilters() async {
+        // #R090-T03
+        var startConfig = MockAPIConfig(categories: [], response: .init(total: 0, items: []))
+        startConfig.fetchError = APIError.requestFailed("Expected date format: YYYY-MM-DD for start_date")
+        let startVM = ClassificationViewModel(api: MockAPI(startConfig))
+        await startVM.loadAll()
+        XCTAssertTrue(startVM.errorText.contains("Expected date format: YYYY-MM-DD"))
+        XCTAssertTrue(startVM.errorText.contains("start_date"))
+
+        var endConfig = MockAPIConfig(categories: [], response: .init(total: 0, items: []))
+        endConfig.fetchError = APIError.requestFailed("Expected date format: YYYY-MM-DD for end_date")
+        let endVM = ClassificationViewModel(api: MockAPI(endConfig))
+        await endVM.loadAll()
+        XCTAssertTrue(endVM.errorText.contains("Expected date format: YYYY-MM-DD"))
+        XCTAssertTrue(endVM.errorText.contains("end_date"))
     }
 
     @MainActor

@@ -465,6 +465,52 @@ final class APIClientTests: XCTestCase {
         }
     }
 
+    func testFetchTransactionsDateValidationErrorPayloadReturnsFriendlyMessageForStartDate() async {
+        // #R010-T03
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/v1/transactions")
+            let response = try self.makeHTTPResponse(for: request, statusCode: 422)
+            let body = """
+            {"detail":[{"type":"string_pattern_mismatch","loc":["query","start_date"],"msg":"String should match pattern"}]}
+            """
+            return (response, Data(body.utf8))
+        }
+
+        let client = makeClient()
+        do {
+            _ = try await client.fetchTransactions(TransactionFetchOptions(startDate: "202"))
+            XCTFail("Expected APIError.requestFailed")
+        } catch APIError.requestFailed(let message) {
+            XCTAssertEqual(message, "Expected date format: YYYY-MM-DD for start_date")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testFetchTransactionsDateValidationErrorPayloadReturnsFriendlyMessageForEndDate() async {
+        // #R010-T03
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/v1/transactions")
+            let response = try self.makeHTTPResponse(for: request, statusCode: 422)
+            let body = """
+            {"detail":[{"type":"string_pattern_mismatch","loc":["query","end_date"],"msg":"String should match pattern"}]}
+            """
+            return (response, Data(body.utf8))
+        }
+
+        let client = makeClient()
+        do {
+            _ = try await client.fetchTransactions(TransactionFetchOptions(endDate: "202"))
+            XCTFail("Expected APIError.requestFailed")
+        } catch APIError.requestFailed(let message) {
+            XCTAssertEqual(message, "Expected date format: YYYY-MM-DD for end_date")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testLoopbackHostDetectionForTLS() {
         // #R020-T03
         XCTAssertTrue(LocalClassifierTLS.isLoopbackHost("127.0.0.1"))

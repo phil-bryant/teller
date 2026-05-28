@@ -1938,6 +1938,66 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertEqual(params["min_amount"], 10)
         self.assertEqual(params["max_amount"], 100)
 
+    def test_transactions_endpoint_rejects_invalid_start_date_with_friendly_format_message(self):
+        #R075-T02
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
+            query_params={"start_date": "2026-13-01"},
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=request,
+                search="",
+                status="",
+                only_unclassified=False,
+                match_state="",
+                only_unmoved_match=False,
+                start_date="2026-13-01",
+                end_date=None,
+                institution_id="",
+                min_amount=None,
+                max_amount=None,
+                include_total=True,
+                count_only=False,
+                limit=10,
+                offset=0,
+            )
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn("Expected date format: YYYY-MM-DD", str(ctx.exception.detail))
+        self.assertIn("start_date", str(ctx.exception.detail))
+
+    def test_transactions_endpoint_rejects_invalid_end_date_with_friendly_format_message(self):
+        #R075-T03
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
+            query_params={"end_date": "2026-00-15"},
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=request,
+                search="",
+                status="",
+                only_unclassified=False,
+                match_state="",
+                only_unmoved_match=False,
+                start_date=None,
+                end_date="2026-00-15",
+                institution_id="",
+                min_amount=None,
+                max_amount=None,
+                include_total=True,
+                count_only=False,
+                limit=10,
+                offset=0,
+            )
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn("Expected date format: YYYY-MM-DD", str(ctx.exception.detail))
+        self.assertIn("end_date", str(ctx.exception.detail))
+
 
 if __name__ == "__main__":
     unittest.main()

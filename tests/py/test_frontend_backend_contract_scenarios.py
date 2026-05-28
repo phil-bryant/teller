@@ -158,6 +158,34 @@ class ClassificationApiHttpContractTests(unittest.TestCase):
         self.assertEqual(params["min_amount"], Decimal(query["min_amount"]))
         self.assertEqual(params["max_amount"], Decimal(query["max_amount"]))
 
+    def test_transactions_http_rejects_malformed_start_date_with_friendly_message(self):
+        #R075-T02
+        app = create_app()
+        client = TestClient(app)
+        headers = {"X-Teller-Write-Token": "test-write-token"}
+        response = client.get(
+            "/v1/transactions",
+            params={"start_date": "202", "count_only": "true"},
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 422)
+        payload = response.json()
+        self.assertEqual(payload["detail"], "Expected date format: YYYY-MM-DD for start_date")
+
+    def test_transactions_http_rejects_malformed_end_date_with_friendly_message(self):
+        #R075-T03
+        app = create_app()
+        client = TestClient(app)
+        headers = {"X-Teller-Write-Token": "test-write-token"}
+        response = client.get(
+            "/v1/transactions",
+            params={"end_date": "202", "count_only": "true"},
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 422)
+        payload = response.json()
+        self.assertEqual(payload["detail"], "Expected date format: YYYY-MM-DD for end_date")
+
     def test_message_search_date_only_end_matches_contract(self):
         #R062-T08
         scenarios = _load_contract_scenarios()

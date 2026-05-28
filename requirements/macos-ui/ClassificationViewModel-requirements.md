@@ -74,10 +74,11 @@ Tests:
 - R085-T01: Save a category draft and verify the category list reloads, editor selection updates to the saved id, and status text reflects the save result.
 
 R090  Statement: Forward advanced transaction filter state to every transaction fetch.
-Design: `ClassificationViewModel` stores `transactionStartDate`, `transactionEndDate`, `transactionInstitutionId`, `transactionMinAmount`, and `transactionMaxAmount`. `loadAll()`, `loadMore()`, and `refreshTransactionTotal()` include these values in `TransactionFetchOptions` on every `fetchTransactions` call.
+Design: `ClassificationViewModel` stores `transactionStartDate`, `transactionEndDate`, `transactionInstitutionId`, `transactionMinAmount`, and `transactionMaxAmount`. `loadAll()`, `loadMore()`, and `refreshTransactionTotal()` include these values in `TransactionFetchOptions` on every `fetchTransactions` call. When transaction fetch fails due to invalid `start_date` / `end_date`, `errorText` surfaces a user-facing message that includes the expected format `YYYY-MM-DD`.
 Tests:
 - R090-T01: Set advanced transaction filters and invoke `loadAll()`; verify the mock API receives the filter values on the fetch call.
 - R090-T02: Change advanced transaction filters in the UI and verify `loadAll()` runs without pressing Refresh.
+- R090-T03: Simulate transaction date validation failure and verify `errorText` includes expected date format guidance (`YYYY-MM-DD`).
 
 R095  Statement: Debounce structured email search criteria to the Mailcart search API.
 Design: `ClassificationViewModel` stores `mailcartSearchSubject`, `mailcartSearchSender`, `mailcartSearchBody`, `mailcartSearchStartDate`, and `mailcartSearchEndDate`. `searchMailcartIfNeeded()` trims each field, debounces when any field is non-empty, calls `searchMessages(criteria:limit:)` with an `EmailSearchCriteria` bundle, and clears results when all fields are empty.
@@ -102,3 +103,4 @@ Tests:
 - 2026-05-26: Added R090 (advanced transaction filter state on fetch) and R095 (structured debounced email search).
 - 2026-05-26: Split `ClassificationViewModel` concerns into extension files and added R085 traceability for behavior-preserving decomposition.
 - 2026-05-27: Added R100 for stale match-snapshot recovery (reload + retry by `match_id`) on confirm/override/no-email actions.
+- 2026-05-27: Extended R090 with explicit transaction date-format error surfacing in `errorText`.

@@ -105,9 +105,11 @@ Tests:
 - R072-T02: Call with `include_total=false` and verify only the list query runs with an estimated `total`.
 
 R075  Statement: Accept and enforce advanced transaction scalar filters used by the macOS client.
-Design: `/v1/transactions` accepts optional `start_date`, `end_date`, `institution_id`, `min_amount`, and `max_amount` query parameters. Unknown-parameter validation must treat these as first-class supported keys. Count/list SQL must apply each filter when present so API behavior matches frontend query serialization contract.
+Design: `/v1/transactions` accepts optional `start_date`, `end_date`, `institution_id`, `min_amount`, and `max_amount` query parameters. Unknown-parameter validation must treat these as first-class supported keys. Count/list SQL must apply each filter when present so API behavior matches frontend query serialization contract. Invalid `start_date` / `end_date` values must return a user-facing detail string that explicitly includes the expected date format (`YYYY-MM-DD`) and identifies whether the failing field is `start_date` or `end_date`, instead of surfacing raw validation-object payloads.
 Tests:
 - R075-T01: Call `/v1/transactions` over HTTPS with advanced filters and verify request succeeds and filter params reach SQL execution bindings.
+- R075-T02: Call `/v1/transactions` with malformed `start_date` and verify request fails with a date-format detail string that includes `YYYY-MM-DD` and `start_date`.
+- R075-T03: Call `/v1/transactions` with malformed `end_date` and verify request fails with a date-format detail string that includes `YYYY-MM-DD` and `end_date`.
 
 R062  Statement: Proxy Mailcart search for ad-hoc candidate discovery from structured criteria fields only.
 Design: `/v1/matchy/messages/search` accepts structured criteria query params (`subject`, `sender`, `body`, `start_date`, `end_date`) plus `limit` (1-100, default 25), composes a Mailcart query string (`subject:... sender:... body:... from:... to:...`), and proxies to Mailcart `/v1/messages/search?query=...&limit=...`. The legacy `query` parameter is unsupported and must be rejected as an unknown query parameter (400). Response remains `{query, items: [{email_message_id, subject, from, received_at, snippet}]}` mapped from Mailcart's `{messages: [{message_id, sender, preview, received_at, body_text}]}` envelope. Requests with no structured criteria return 422. Upstream payloads missing a `messages` array (or legacy `items` array) surface as 502. The static `/search` route must be registered before `/v1/matchy/messages/{email_message_id}` so Starlette does not treat the literal path segment `search` as a message id (which would return an `EmailMessage` shape and break macOS client decoding).
@@ -134,6 +136,7 @@ Tests:
 - 2026-05-27: Clarified R040 runtime token cache semantics and explicit restart requirement after write-token rotation.
 - 2026-05-27: Tightened R062 to structured-search-only input and removed legacy `query` support.
 - 2026-05-27: Added R075 advanced transaction scalar filters and R062-T08 date-only HTTP contract coverage.
+- 2026-05-27: Extended R075 with explicit friendly date-format validation behavior for malformed `start_date`/`end_date`.
 
 - 2026-05-25: Expanded R040 authz boundary to all `/v1/*` endpoints (read and write) with shared token enforcement.
 - 2026-04-22: Initial reverse-engineered requirements for `src/teller/teller_classification_api.py`.

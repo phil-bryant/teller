@@ -25,10 +25,11 @@ Tests:
 - R005-T01: Send multiple updates and verify one batched POST payload is sent with all requested mutations.
 
 R010  Statement: Enforce shared JSON request semantics and explicit API error propagation.
-Design: Shared `send(...)` methods set JSON headers, decode typed responses, and raise `APIError.requestFailed` on non-2xx responses.
+Design: Shared `send(...)` methods set JSON headers, decode typed responses, and raise `APIError.requestFailed` on non-2xx responses. When the API returns a JSON error envelope, the client extracts a user-facing detail message (prefer `detail` text over raw JSON payloads). For transaction date validation failures (`start_date` / `end_date`), surfaced errors must include the expected date format `YYYY-MM-DD`.
 Tests:
 - R010-T01: Return a non-2xx response and verify the thrown error includes server-provided message text.
 - R010-T02: Validate a second non-2xx API failure path to preserve explicit server-message propagation behavior.
+- R010-T03: Return a transaction date validation error payload and verify the thrown error message is user-friendly and includes `YYYY-MM-DD` rather than raw JSON.
 
 R040  Statement: Support category lifecycle mutations from the macOS classification UI.
 Design: `ClassificationAPI` declares `createCategory(...)`, `updateCategory(...)`, and `deleteCategory(...)`; `APIClient` implements these by encoding `CategoryMutationRequest` for create/update and targeting `/v1/categories` REST endpoints.
@@ -83,3 +84,4 @@ Tests:
 - 2026-05-26: Extended R001 for `include_total` / `count_only` query parameters (API R072).
 - 2026-05-27: Added R045-T03 traceability for default write-token resolution failure behavior.
 - 2026-05-27: Added R065 shared contract-scenario corpus conformance tests for APIClient and UI test fixture parity.
+- 2026-05-27: Extended R010 with JSON detail extraction and friendly `YYYY-MM-DD` messaging for transaction date validation errors.

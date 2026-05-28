@@ -6,6 +6,9 @@ from types import SimpleNamespace
 from typing import Dict, List, Literal
 
 from fastapi import FastAPI, HTTPException, Path, Query, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy import String, bindparam, cast, func, select, text
 from sqlalchemy.exc import DataError
 
@@ -45,6 +48,27 @@ from teller.classification.schemas import (
 from teller.classification.text import _display_label
 from teller.teller_db import get_session
 from teller.teller_mailcart_client import MailcartError, get_mailcart_client
+
+_EXPECTED_DATE_FORMAT = "YYYY-MM-DD"
+
+
+def _date_format_error_detail(field_name: str) -> str:
+    return f"Expected date format: {_EXPECTED_DATE_FORMAT} for {field_name}"
+
+
+def _friendly_date_validation_detail(errors: list[dict]) -> str | None:
+    for err in errors:
+        if not isinstance(err, dict):
+            continue
+        loc = err.get("loc")
+        if not isinstance(loc, (list, tuple)) or len(loc) < 2:
+            continue
+        if loc[0] != "query":
+            continue
+        field_name = loc[1]
+        if field_name in {"start_date", "end_date"}:
+            return _date_format_error_detail(str(field_name))
+    return None
 
 
 def _resolve_bindings(bindings=None):
@@ -214,7 +238,7 @@ def _register_transaction_routes(app: FastAPI, bindings) -> None:
             try:
                 return date.fromisoformat(normalized)
             except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid query parameter value: {field_name}")
+                raise HTTPException(status_code=400, detail=_date_format_error_detail(field_name))
         # Direct endpoint invocations in unit tests may pass FastAPI Query marker objects.
         return None
 
@@ -770,6 +794,15 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
 def create_app(bindings=None) -> FastAPI:
     resolved_bindings = _resolve_bindings(bindings)
     app = FastAPI(title="Teller Classification API", version="0.1.0")
+
+    @app.exception_handler(RequestValidationError)
+    async def _request_validation_error_handler(request: Request, exc: RequestValidationError):
+        if request.url.path == "/v1/transactions":
+            friendly_detail = _friendly_date_validation_detail(exc.errors())
+            if friendly_detail is not None:
+                return JSONResponse(status_code=422, content={"detail": friendly_detail})
+        return await request_validation_exception_handler(request, exc)
+
     _register_health_routes(app)
     _register_category_routes(app, resolved_bindings)
     _register_transaction_routes(app, resolved_bindings)

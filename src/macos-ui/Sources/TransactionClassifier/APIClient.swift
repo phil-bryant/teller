@@ -300,9 +300,48 @@ actor APIClient: ClassificationAPI {
         let (data, response) = try await session.data(for: req)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         guard (200...299).contains(http.statusCode) else {
-            throw APIError.requestFailed(String(data: data, encoding: .utf8) ?? "Server error \(http.statusCode)")
+            let fallbackMessage = String(data: data, encoding: .utf8) ?? "Server error \(http.statusCode)"
+            throw APIError.requestFailed(APIClient.errorMessage(from: data) ?? fallbackMessage)
         }
         return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    private static func errorMessage(from data: Data) -> String? {
+        guard !data.isEmpty else { return nil }
+        guard
+            let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let detail = payload["detail"]
+        else {
+            return nil
+        }
+        if let detailText = detail as? String {
+            return detailText
+        }
+        guard let detailArray = detail as? [[String: Any]] else {
+            return nil
+        }
+        if let dateMessage = dateValidationMessage(from: detailArray) {
+            return dateMessage
+        }
+        return detailArray.first?["msg"] as? String
+    }
+
+    private static func dateValidationMessage(from detailArray: [[String: Any]]) -> String? {
+        for detail in detailArray {
+            guard let loc = detail["loc"] as? [Any], loc.count >= 2 else {
+                continue
+            }
+            guard (loc[0] as? String) == "query" else {
+                continue
+            }
+            guard let fieldName = loc[1] as? String else {
+                continue
+            }
+            if fieldName == "start_date" || fieldName == "end_date" {
+                return "Expected date format: YYYY-MM-DD for \(fieldName)"
+            }
+        }
+        return nil
     }
 
     // #R020: URLSession delegate pins loopback HTTPS to the local classifier cert.
