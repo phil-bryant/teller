@@ -78,12 +78,13 @@ Tests:
 - R055-T02: Trigger unknown `match_id` transitions and verify runtime 404 behavior remains unchanged.
 
 R060  Statement: List latest-run email candidates for a transaction with Mailcart-enriched metadata.
-Design: `/v1/matchy/transactions/{transaction_id}/candidates` resolves the most recent `transaction_email_match_run` for the transaction, selects rows from `transaction_email_candidate` ordered by `score DESC, email_received_at DESC NULLS LAST, candidate_id ASC`, and merges per-id subject, sender, and preview/body_text from Mailcart's `GET /v1/messages/{id}` into the UI-facing `{subject, from, snippet}` fields; per-id Mailcart failures degrade to `mailcart_error` on the row rather than failing the whole request. Returns an empty array when no match runs exist for the transaction.
+Design: `/v1/matchy/transactions/{transaction_id}/candidates` resolves the most recent `transaction_email_match_run` for the transaction, selects rows from `transaction_email_candidate` ordered by `score DESC, email_received_at DESC NULLS LAST, candidate_id ASC`, and merges per-id subject, sender, and preview/body_text from Mailcart's `GET /v1/messages/{id}` into the UI-facing `{subject, from, snippet}` fields; per-id Mailcart failures degrade to `mailcart_error` on the row rather than failing the whole request. The candidate set is the union of the latest run's candidates plus any active (`active = TRUE`) `transaction_email_match` email for the transaction that is not already present in that run (e.g. a manual override against a searched email): each such active email is appended as a synthetic candidate row (no `candidate_id`/score) and enriched through the same Mailcart path so the linked email always renders in the review UI; synthetic rows are skipped by the candidate metadata cache write. Returns an empty array only when there are neither latest-run candidates nor an active matched email.
 Tests:
 - R060-T01: Seed multiple match runs and verify only the latest run's candidates are returned, sorted by score descending; verify empty array when no runs exist; verify empty array when the latest run has no candidates.
 - R060-T02: Provide Mailcart subject/from/snippet and verify they appear merged onto each candidate row.
 - R060-T03: Simulate per-id Mailcart failure for one candidate and verify the row returns with `mailcart_error` populated rather than the request 502ing.
 - R060-T04: Provide Mailcart in its real per-message shape (`{message_id, sender, preview, body_text}`) and verify the rows are mapped onto `{email_message_id, from, snippet}` correctly.
+- R060-T05: With an active matched email absent from the latest run, verify it is included as an enriched candidate row (deduped when already present, and returned even when no run exists).
 
 R061  Statement: Proxy the full Mailcart message body for the review UI right pane.
 Design: `/v1/matchy/messages/{email_message_id}` validates the identifier as URL-safe base64 (Microsoft Graph IDs) and proxies a GET to Mailcart's `/v1/messages/{id}`, returning `{email_message_id, subject, from, to, received_at, html_body, text_body, snippet}` (mapped from Mailcart's `{message_id, sender, recipients, preview, html_body, text_body}` envelope). Mailcart 404 surfaces as classifier 404; other upstream failures surface as 502. Base URL comes from env `MAILCART_SERVICE_BASE_URL` (defaults to `https://127.0.0.1:8788`) and must use HTTPS; invalid/non-HTTPS configuration surfaces as 503. Optional bearer token from `MAILCART_SERVICE_TOKEN` is only attached when set.
@@ -111,8 +112,8 @@ Tests:
 - R075-T02: Call `/v1/transactions` with malformed `start_date` and verify request fails with a date-format detail string that includes `YYYY-MM-DD` and `start_date`.
 - R075-T03: Call `/v1/transactions` with malformed `end_date` and verify request fails with a date-format detail string that includes `YYYY-MM-DD` and `end_date`.
 
-R062  Statement: Proxy Mailcart search for ad-hoc candidate discovery from structured criteria fields only.
-Design: `/v1/matchy/messages/search` accepts structured criteria query params (`subject`, `sender`, `body`, `start_date`, `end_date`) plus `limit` (1-100, default 25), composes a Mailcart query string (`subject:... sender:... body:... from:... to:...`), and proxies to Mailcart `/v1/messages/search?query=...&limit=...`. The legacy `query` parameter is unsupported and must be rejected as an unknown query parameter (400). Response remains `{query, items: [{email_message_id, subject, from, received_at, snippet}]}` mapped from Mailcart's `{messages: [{message_id, sender, preview, received_at, body_text}]}` envelope. Requests with no structured criteria return 422. Upstream payloads missing a `messages` array (or legacy `items` array) surface as 502. The static `/search` route must be registered before `/v1/matchy/messages/{email_message_id}` so Starlette does not treat the literal path segment `search` as a message id (which would return an `EmailMessage` shape and break macOS client decoding).
+R062  Statement: Proxy Mailcart search for scoped candidate discovery from structured criteria fields only.
+Design: `/v1/matchy/messages/search` accepts structured criteria query params (`subject`, `sender`, `body`, `start_date`, `end_date`) plus `limit` (1-100, default 25), normalizes internal whitespace for text fields, composes a Mailcart query string (`subject:... sender:... body:... from:... to:...`), and proxies to Mailcart `/v1/messages/search?query=...&limit=...`. Scoped filters are combined with AND in composed-query order, and `from`/`to` boundaries are inclusive as date filters. The legacy `query` parameter is unsupported and must be rejected as an unknown query parameter (400). Response remains `{query, items: [{email_message_id, subject, from, received_at, snippet}]}` mapped from Mailcart's `{messages: [{message_id, sender, preview, received_at, body_text}]}` envelope. Requests with no structured criteria return 422. Upstream payloads missing a `messages` array (or legacy `items` array) surface as 502. The static `/search` route must be registered before `/v1/matchy/messages/{email_message_id}` so Starlette does not treat the literal path segment `search` as a message id (which would return an `EmailMessage` shape and break macOS client decoding). Case-insensitive and spacing-variant text matching semantics are provided by Mailcart for each scoped field.
 Tests:
 - R062-T01: Provide a fake Mailcart payload and verify each hit is proxied to the response; verify a malformed upstream response surfaces 502.
 - R062-T02: Provide Mailcart's real `{messages: [...]}` envelope and verify each hit is mapped to the UI-facing `{email_message_id, from, snippet}` shape.
@@ -122,6 +123,7 @@ Tests:
 - R062-T06: Call search with legacy `query` parameter and verify request validation fails with 400 unknown-parameter error.
 - R062-T07: Call search with no structured criteria and verify request validation fails with 422.
 - R062-T08: Call search with date-only criteria (`end_date` or `start_date`) over HTTPS and verify response is 200 with composed query summary.
+- R062-T09: Call search with structured criteria containing repeated whitespace and verify the forwarded composed query collapses internal whitespace while preserving scoped AND composition.
 
 R071  Statement: Clear a human-reviewed match and return the transaction to unmatched.
 Design: Match-review mutation endpoints include `/v1/matchy/matches/{match_id}/clear` and `/v1/matchy/transactions/{transaction_id}/clear`. Each deactivates the transaction's active `transaction_email_match` row (`active = FALSE`), records an audit row, and returns `MatchReviewActionResponse`. After clear, `/v1/transactions` no longer exposes a `match` field for that transaction (it qualifies for `match_state=unmatched`). Unknown `match_id` returns 404; clearing when no active match exists returns 404. OpenAPI documents `404` on both endpoints.
@@ -129,6 +131,12 @@ Tests:
 - R071-T01: Seed a human-confirmed active match, call clear by `match_id`, and verify the row is deactivated and the transaction list omits match metadata.
 - R071-T02: Seed a transaction with an active match but no caller-supplied `match_id`, call clear by `transaction_id`, and verify the same deactivation behavior.
 - R071-T03: Call clear for an unknown `match_id` or a transaction with no active match and verify 404.
+
+R073  Statement: Support manual unmatched override for valid email ids outside the latest candidate run.
+Design: Add `/v1/matchy/transactions/{transaction_id}/override` as a transaction-level mutation that creates a `human_overrode_ai_match` row with the supplied `email_message_id`, while preserving posted-transaction existence, no-active-match conflict guards, email-id validation, and audit logging. Unlike `/override-candidate` and `/confirm-candidate`, this endpoint does not enforce latest-run candidate membership and returns 409 for the same write conflicts.
+Tests:
+- R073-T01: Register `/v1/matchy/transactions/{transaction_id}/override` in the app route set.
+- R073-T02: Create a transaction-level override using an email id absent from latest candidates and verify match creation succeeds without calling candidate-membership guard.
 
 ## Changelog
 
@@ -151,3 +159,5 @@ Tests:
 - 2026-05-19: Added R071 (clear match mutation endpoints to return transactions to unmatched).
 - 2026-05-19: Extended R062 with route-registration ordering so `/v1/matchy/messages/search` is not shadowed by `/{email_message_id}`.
 - 2026-05-27: Extended R062 with throttling-proxy traceability (`R062-T04`) for wrapped upstream 429 behavior.
+- 2026-05-28: Added R073 for manual transaction-level override (`/v1/matchy/transactions/{transaction_id}/override`) that bypasses latest-candidate membership checks.
+- 2026-05-28: Extended R060 so the candidates endpoint unions the active matched email (even when absent from the latest run) as an enriched synthetic candidate row; added R060-T05.

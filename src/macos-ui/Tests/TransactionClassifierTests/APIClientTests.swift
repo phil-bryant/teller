@@ -256,6 +256,33 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(byTransaction.transaction_id, "txn_clear")
     }
 
+    func testOverrideTransactionUsesPutOverrideEndpoint() async throws {
+        // #R066-T01
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertEqual(request.url?.path, "/v1/matchy/transactions/txn_override/override")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
+            let body = try self.requestBodyData(request)
+            let payload = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+            XCTAssertEqual(payload?["email_message_id"] as? String, "msg_search_only")
+            XCTAssertEqual(payload?["note"] as? String, "manual override")
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            let responseBody = """
+            {"match_id":88,"transaction_id":"txn_override","state":"human_overrode_ai_match","selected_by":"human","updated_at":"now"}
+            """
+            return (response, Data(responseBody.utf8))
+        }
+
+        let client = makeClient()
+        let response = try await client.overrideTransaction(
+            transactionId: "txn_override",
+            emailMessageId: "msg_search_only",
+            note: "manual override"
+        )
+        XCTAssertEqual(response.transaction_id, "txn_override")
+        XCTAssertEqual(response.match_id, 88)
+    }
+
     func testSearchMessagesUsesSearchEndpointAndDecodesEnvelope() async throws {
         // #R062-T01
         URLProtocolStub.requestHandler = { request in
@@ -381,6 +408,37 @@ final class APIClientTests: XCTestCase {
         let client = makeClient()
         _ = try await client.searchMessages(
             criteria: EmailSearchCriteria(receivedEndDate: "2026-04-18"),
+            limit: 25
+        )
+    }
+
+    func testSearchMessagesNormalizesWhitespaceInStructuredCriteria() async throws {
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/v1/matchy/messages/search")
+            guard let requestURL = request.url,
+                  let components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false) else {
+                throw APIError.invalidResponse
+            }
+            let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+            XCTAssertEqual(query["subject"], "DoorDash order")
+            XCTAssertEqual(query["sender"], "receipts@doordash.com")
+            XCTAssertEqual(query["body"], "total charged")
+            XCTAssertEqual(query["limit"], "25")
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            let body = """
+            {"query":"subject:DoorDash order sender:receipts@doordash.com body:total charged","items":[]}
+            """
+            return (response, Data(body.utf8))
+        }
+
+        let client = makeClient()
+        _ = try await client.searchMessages(
+            criteria: EmailSearchCriteria(
+                subject: "  DoorDash   order ",
+                sender: " receipts@doordash.com ",
+                body: " total   charged "
+            ),
             limit: 25
         )
     }

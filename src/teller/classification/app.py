@@ -14,6 +14,7 @@ from sqlalchemy.exc import DataError
 
 from teller.classification import auth, mailcart, services
 from teller.classification.constants import (
+    _ACTIVE_MATCH_EMAILS_SQL,
     _EMAIL_MESSAGE_ID_PATTERN,
     _EMAIL_SEARCH_QUERY_PATTERN,
     _LATEST_MATCH_RUN_SQL,
@@ -88,6 +89,7 @@ def _resolve_bindings(bindings=None):
         _transition_match_state=services._transition_match_state,
         _deactivate_match=services._deactivate_match,
         _create_transaction_match=services._create_transaction_match,
+        _create_transaction_match_allowing_non_candidate_email=services._create_transaction_match_allowing_non_candidate_email,
         _ensure_posted_transaction=services._ensure_posted_transaction,
         _read_active_match_for_transaction=services._read_active_match_for_transaction,
         _enrich_candidates_with_mailcart=mailcart._enrich_candidates_with_mailcart,
@@ -433,7 +435,8 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
     def _search_text(value: object) -> str:
         if not isinstance(value, str):
             return ""
-        return value.strip()
+        # Normalize user-entered whitespace so scoped search behavior is stable.
+        return " ".join(value.strip().split())
 
     def _search_date(value: object) -> str | None:
         if isinstance(value, date):
@@ -467,6 +470,16 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
         if parts:
             return " ".join(parts)
         return ""
+
+    def _has_structured_search_criteria(
+        *,
+        subject: str,
+        sender: str,
+        body: str,
+        start_date: str | None,
+        end_date: str | None,
+    ) -> bool:
+        return bool(subject or sender or body or start_date is not None or end_date is not None)
 
     @app.get(
         "/v1/matchy/review",
@@ -651,6 +664,32 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
             raise
 
     @app.put(
+        "/v1/matchy/transactions/{transaction_id}/override",
+        response_model=MatchReviewActionResponse,
+        responses={
+            400: {"model": ApiError, "description": "Malformed request body or invalid email message identifier"},
+            404: {"model": ApiError, "description": "Unknown transaction"},
+            409: {"model": ApiError, "description": "Transaction already has an active match or email link conflict"},
+        },
+    )
+    def override_transaction(request: Request, transaction_id: str, body: MatchOverrideMutation):
+        bindings._require_write_access(request)
+        try:
+            with bindings.get_session() as session:
+                return bindings._create_transaction_match_allowing_non_candidate_email(
+                    session=session,
+                    transaction_id=transaction_id,
+                    email_message_id=body.email_message_id,
+                    to_state="human_overrode_ai_match",
+                    actor="human",
+                    note=body.note or "Overridden from Teller review UI",
+                )
+        except HTTPException as exc:
+            if exc.status_code == 422:
+                raise HTTPException(status_code=409, detail=exc.detail)
+            raise
+
+    @app.put(
         "/v1/matchy/transactions/{transaction_id}/no-email",
         response_model=MatchReviewActionResponse,
         responses={
@@ -699,13 +738,23 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
     def list_match_candidates(request: Request, transaction_id: str):
         bindings._require_authenticated_access(request)
         with bindings.get_session() as session:
+            # A missing run is a common pre-match state for newly loaded transactions, but the
+            # transaction can still carry an active human-linked match (e.g. a manual override
+            # against a searched email). Build the candidate set as the union of the latest run's
+            # candidates plus any active matched email so the UI can always display the linked email.
             latest = session.execute(_LATEST_MATCH_RUN_SQL, {"transaction_id": transaction_id}).fetchone()
-            if not latest:
-                # A missing run is a common pre-match state for newly loaded transactions.
-                # Return an empty candidate set so the UI can render this as "no candidates yet"
-                # instead of surfacing a transport-level error.
-                return []
-            candidate_rows = session.execute(_LATEST_RUN_CANDIDATES_SQL, {"match_run_id": latest[0]}).mappings().all()
+            candidate_rows = []
+            if latest:
+                candidate_rows = list(
+                    session.execute(_LATEST_RUN_CANDIDATES_SQL, {"match_run_id": latest[0]}).mappings().all()
+                )
+            seen_email_ids = {row["email_message_id"] for row in candidate_rows}
+            active_rows = session.execute(_ACTIVE_MATCH_EMAILS_SQL, {"transaction_id": transaction_id}).mappings().all()
+            for active in active_rows:
+                email_id = active["email_message_id"]
+                if email_id and email_id not in seen_email_ids:
+                    candidate_rows.append(services._active_match_candidate_row_payload(email_id))
+                    seen_email_ids.add(email_id)
             if not candidate_rows:
                 return []
             return bindings._enrich_candidates_with_mailcart(session, candidate_rows)
@@ -735,13 +784,29 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
         unknown_params = sorted(set(request.query_params.keys()) - allowed_query_params)
         if unknown_params:
             raise HTTPException(status_code=400, detail=f"Unknown query parameters: {', '.join(unknown_params)}")
+        normalized_subject = _search_text(subject)
+        normalized_sender = _search_text(sender)
+        normalized_body = _search_text(body)
+        normalized_start_date = _search_date(start_date)
+        normalized_end_date = _search_date(end_date)
         effective_query = _effective_email_search_query(
-            subject=_search_text(subject),
-            sender=_search_text(sender),
-            body=_search_text(body),
-            start_date=_search_date(start_date),
-            end_date=_search_date(end_date),
+            subject=normalized_subject,
+            sender=normalized_sender,
+            body=normalized_body,
+            start_date=normalized_start_date,
+            end_date=normalized_end_date,
         )
+        if not _has_structured_search_criteria(
+            subject=normalized_subject,
+            sender=normalized_sender,
+            body=normalized_body,
+            start_date=normalized_start_date,
+            end_date=normalized_end_date,
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="At least one structured search criterion is required",
+            )
         client = bindings.get_mailcart_client()
         try:
             payload = client.search(query=effective_query, limit=limit)

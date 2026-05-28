@@ -121,6 +121,7 @@ class ClassificationApiHttpContractTests(unittest.TestCase):
             ("put", "/v1/matchy/matches/1/clear", None),
             ("put", "/v1/matchy/transactions/txn_1/confirm-candidate", {"email_message_id": "msg_1", "note": "confirm"}),
             ("put", "/v1/matchy/transactions/txn_1/override-candidate", {"email_message_id": "msg_1", "note": "override"}),
+            ("put", "/v1/matchy/transactions/txn_1/override", {"email_message_id": "msg_1", "note": "override"}),
             ("put", "/v1/matchy/transactions/txn_1/no-email", None),
             ("put", "/v1/matchy/transactions/txn_1/clear", None),
             ("get", "/v1/matchy/transactions/txn_1/candidates", None),
@@ -200,6 +201,29 @@ class ClassificationApiHttpContractTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["query"], expected_query)
         self.assertEqual(response.json()["items"], [])
+
+    def test_message_search_scoped_and_normalized_matches_contract(self):
+        scenarios = _load_contract_scenarios()
+        scenario = scenarios["classificationApi"]["messageSearch"]["scopedAndNormalized"]
+        expected_query = scenario["effective_query"]
+
+        class _Mailcart:
+            def __init__(self):
+                self.calls = []
+
+            def search(self, query, limit):
+                self.calls.append({"query": query, "limit": limit})
+                return {"messages": []}
+
+        mailcart = _Mailcart()
+        app = create_app()
+        client = TestClient(app)
+        headers = {"X-Teller-Write-Token": "test-write-token"}
+        with patch("teller.teller_classification_api.get_mailcart_client", return_value=mailcart):
+            response = client.get("/v1/matchy/messages/search", params=scenario["query"], headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["query"], expected_query)
+        self.assertEqual(mailcart.calls, [{"query": expected_query, "limit": 25}])
 
 
 if __name__ == "__main__":

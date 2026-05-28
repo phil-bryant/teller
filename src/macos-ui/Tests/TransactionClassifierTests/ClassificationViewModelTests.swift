@@ -21,6 +21,7 @@ struct MockAPIConfig {
     var saveError: Error?
     var confirmTransactionCandidateError: Error?
     var overrideTransactionCandidateError: Error?
+    var overrideMatchResponseTransactionId: String?
     var markTransactionNoEmailError: Error?
 }
 
@@ -45,6 +46,7 @@ actor MockAPI: ClassificationAPI {
     var confirmedMatchIds: [Int] = []
     var confirmedTransactionCandidateCalls: [(transactionId: String, emailMessageId: String, note: String?)] = []
     var overriddenMatchCalls: [(matchId: Int, emailMessageId: String, note: String?)] = []
+    var overriddenTransactionCalls: [(transactionId: String, emailMessageId: String, note: String?)] = []
     var overriddenTransactionCandidateCalls: [(transactionId: String, emailMessageId: String, note: String?)] = []
     var markedNoEmailMatchIds: [Int] = []
     var markedNoEmailTransactionIds: [String] = []
@@ -54,6 +56,7 @@ actor MockAPI: ClassificationAPI {
     var saveError: Error?
     var confirmTransactionCandidateError: Error?
     var overrideTransactionCandidateError: Error?
+    var overrideMatchResponseTransactionId: String?
     var markTransactionNoEmailError: Error?
 
     init(_ config: MockAPIConfig) {
@@ -71,6 +74,7 @@ actor MockAPI: ClassificationAPI {
         self.saveError = config.saveError
         self.confirmTransactionCandidateError = config.confirmTransactionCandidateError
         self.overrideTransactionCandidateError = config.overrideTransactionCandidateError
+        self.overrideMatchResponseTransactionId = config.overrideMatchResponseTransactionId
         self.markTransactionNoEmailError = config.markTransactionNoEmailError
     }
 
@@ -176,11 +180,18 @@ actor MockAPI: ClassificationAPI {
     }
     func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
         overriddenMatchCalls.append((matchId, emailMessageId, note))
-        return .init(match_id: matchId, transaction_id: "txn_overridden", state: "human_overrode_ai_match", selected_by: "human", updated_at: "now")
+        let transactionId = overrideMatchResponseTransactionId
+            ?? response.items.first(where: { $0.match?.match_id == matchId })?.transaction_id
+            ?? "txn_overridden"
+        return .init(match_id: matchId, transaction_id: transactionId, state: "human_overrode_ai_match", selected_by: "human", updated_at: "now")
     }
     func overrideTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
         overriddenTransactionCandidateCalls.append((transactionId, emailMessageId, note))
         if let overrideTransactionCandidateError { throw overrideTransactionCandidateError }
+        return .init(match_id: 0, transaction_id: transactionId, state: "human_overrode_ai_match", selected_by: "human", updated_at: "now")
+    }
+    func overrideTransaction(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        overriddenTransactionCalls.append((transactionId, emailMessageId, note))
         return .init(match_id: 0, transaction_id: transactionId, state: "human_overrode_ai_match", selected_by: "human", updated_at: "now")
     }
     func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse {
@@ -202,6 +213,9 @@ actor MockAPI: ClassificationAPI {
     }
     func recordedOverrideTransactionCandidateCalls() -> [(transactionId: String, emailMessageId: String, note: String?)] {
         overriddenTransactionCandidateCalls
+    }
+    func recordedOverrideTransactionCalls() -> [(transactionId: String, emailMessageId: String, note: String?)] {
+        overriddenTransactionCalls
     }
     func searchMessages(criteria: EmailSearchCriteria, limit: Int) async throws -> EmailSearchResponse {
         searchCalls.append((criteria, limit))
@@ -542,6 +556,37 @@ final class ClassificationViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testCanConfirmAndOverrideRequireLatestCandidateForUnmatchedTransaction() {
+        // #R110-T01
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        vm.transactions = [sampleTransaction("txn_unmatched", classification: nil)]
+        vm.candidates = []
+        vm.mailcartSearchResults = [
+            EmailSearchHit(email_message_id: "msg_search_only", subject: "Tacombi", from: "noreply@doordash.com", received_at: "2026-05-24T00:00:00+00:00", snippet: "receipt")
+        ] // Simulates selecting from ad-hoc search results, not latest candidates.
+        vm.selection = ["txn_unmatched"]
+        vm.selectedCandidateId = "msg_search_only"
+        XCTAssertTrue(vm.isOverrideTargetSearchHitOnly)
+        XCTAssertFalse(vm.canConfirmSelectedMatch)
+        XCTAssertTrue(vm.canOverrideSelectedMatch)
+    }
+
+    @MainActor
+    func testCanConfirmSelectedMatchStaysEnabledWhenSelectedEmailWouldBeOverride() {
+        // #R105-T01
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        vm.transactions = [
+            sampleTransactionWithMatch(id: "txn_cursor", matchId: 1716, emailId: "msg_active", confidence: 0.95, count: 1),
+        ]
+        vm.selection = ["txn_cursor"]
+        vm.selectedCandidateId = "msg_different"
+        XCTAssertTrue(vm.canConfirmSelectedMatch)
+        XCTAssertTrue(vm.canOverrideSelectedMatch)
+    }
+
+    @MainActor
     func testCanClearSelectedMatchWhenActiveMatchExists() {
         // #R035-T02
         let api = MockAPI(categories: [], response: .init(total: 0, items: []))
@@ -603,14 +648,106 @@ final class ClassificationViewModelTests: XCTestCase {
 
         await vm.overrideSelectedMatch()
 
-        let transactionCalls = await api.recordedOverrideTransactionCandidateCalls()
+        let transactionCalls = await api.recordedOverrideTransactionCalls()
         let matchCalls = await api.recordedOverriddenMatchCalls()
         XCTAssertEqual(transactionCalls.count, 1)
-        XCTAssertEqual(matchCalls.count, 1)
-        XCTAssertEqual(matchCalls.first?.matchId, 91)
-        XCTAssertEqual(matchCalls.first?.emailMessageId, "msg_override")
-        XCTAssertEqual(vm.matchReviewStatusText, "Overrode match 91")
+        XCTAssertEqual(transactionCalls.first?.transactionId, "txn_stale")
+        XCTAssertEqual(transactionCalls.first?.emailMessageId, "msg_override")
+        XCTAssertEqual(matchCalls.count, 0)
+        XCTAssertEqual(vm.matchReviewStatusText, "Assigned email to txn_stale")
         XCTAssertTrue(vm.matchReviewErrorText.isEmpty)
+    }
+
+    @MainActor
+    func testConfirmSelectedMatchDoesNotOverrideWhenDifferentEmailIsSelected() async {
+        // #R105-T02
+        var matchedSpec = SampleMatchSpec(id: "txn_matched", matchId: 1716, emailId: "msg_active", confidence: 0.9, count: 1)
+        matchedSpec.state = "ai_candidate_uncertain"
+        let matched = sampleTransactionWithMatch(matchedSpec)
+        let api = MockAPI(categories: [], response: .init(total: 1, items: [matched]))
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_matched"]
+        vm.selectedCandidateId = "msg_tacombi"
+
+        await vm.confirmSelectedMatch()
+
+        let confirmed = await api.recordedConfirmedMatchIds()
+        let overridden = await api.recordedOverriddenMatchCalls()
+        XCTAssertEqual(confirmed, [1716])
+        XCTAssertTrue(overridden.isEmpty)
+        XCTAssertEqual(vm.matchReviewStatusText, "Confirmed match 1716")
+        XCTAssertTrue(vm.matchReviewErrorText.isEmpty)
+    }
+
+    @MainActor
+    func testConfirmSelectedMatchRejectsSearchOnlyEmailForUnmatchedTransaction() async {
+        // #R110-T02
+        let api = MockAPI(categories: [], response: .init(total: 1, items: [sampleTransaction("txn_unmatched", classification: nil)]))
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_unmatched"]
+        vm.candidates = []
+        vm.mailcartSearchResults = [
+            EmailSearchHit(email_message_id: "msg_search_only", subject: "Tacombi", from: "noreply@doordash.com", received_at: "2026-05-24T00:00:00+00:00", snippet: "receipt")
+        ]
+        vm.selectedCandidateId = "msg_search_only"
+
+        await vm.confirmSelectedMatch()
+
+        let transactionCalls = await api.recordedConfirmTransactionCandidateCalls()
+        XCTAssertTrue(transactionCalls.isEmpty)
+        XCTAssertEqual(vm.matchReviewStatusText, "Match confirm failed")
+        XCTAssertTrue(vm.matchReviewErrorText.contains("not a candidate"))
+    }
+
+    @MainActor
+    func testOverrideSelectedMatchAllowsSearchOnlyEmailForUnmatchedTransaction() async {
+        // #R110-T03
+        let api = MockAPI(categories: [], response: .init(total: 1, items: [sampleTransaction("txn_unmatched", classification: nil)]))
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_unmatched"]
+        vm.candidates = []
+        vm.mailcartSearchResults = [
+            EmailSearchHit(email_message_id: "msg_search_only", subject: "Tacombi", from: "noreply@doordash.com", received_at: "2026-05-24T00:00:00+00:00", snippet: "receipt")
+        ]
+        vm.selectedCandidateId = "msg_search_only"
+
+        await vm.overrideSelectedMatch()
+
+        let candidateCalls = await api.recordedOverrideTransactionCandidateCalls()
+        let overrideAnyCalls = await api.recordedOverrideTransactionCalls()
+        XCTAssertTrue(candidateCalls.isEmpty)
+        XCTAssertEqual(overrideAnyCalls.count, 1)
+        XCTAssertEqual(overrideAnyCalls.first?.transactionId, "txn_unmatched")
+        XCTAssertEqual(overrideAnyCalls.first?.emailMessageId, "msg_search_only")
+        XCTAssertTrue(vm.matchReviewStatusText.contains("Assigned email to"))
+        XCTAssertTrue(vm.matchReviewErrorText.isEmpty)
+    }
+
+    @MainActor
+    func testOverrideSelectedMatchFailsWhenMatchIdTargetsDifferentTransaction() async {
+        // #R115-T01
+        var matchedSpec = SampleMatchSpec(id: "txn_matched", matchId: 1716, emailId: "msg_active", confidence: 0.9, count: 1)
+        matchedSpec.state = "ai_no_match_found"
+        let matched = sampleTransactionWithMatch(matchedSpec)
+        var config = MockAPIConfig(categories: [], response: .init(total: 1, items: [matched]))
+        config.overrideMatchResponseTransactionId = "txn_other"
+        let api = MockAPI(config)
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_matched"]
+        vm.matchOverrideEmailMessageId = "msg_search_only"
+
+        await vm.overrideSelectedMatch()
+
+        let matchCalls = await api.recordedOverriddenMatchCalls()
+        let transactionCalls = await api.recordedOverrideTransactionCalls()
+        XCTAssertEqual(matchCalls.count, 1)
+        XCTAssertEqual(transactionCalls.count, 0)
+        XCTAssertEqual(vm.matchReviewStatusText, "Match override failed")
+        XCTAssertTrue(vm.matchReviewErrorText.contains("different transaction"))
     }
 
     @MainActor
@@ -706,6 +843,69 @@ final class ClassificationViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testMailcartSearchResultsPersistWhenTransactionSelectionChanges() async {
+        // #R116-T01
+        let hit = EmailSearchHit(email_message_id: "msg_doordash", subject: "DoorDash", from: "noreply@doordash.com",
+                                 received_at: "2026-05-25T12:00:00+00:00", snippet: "receipt")
+        let txnA = sampleTransaction("txn_a", classification: nil)
+        let txnB = sampleTransaction("txn_b", classification: nil)
+        var config = MockAPIConfig(categories: [], response: .init(total: 2, items: [txnA, txnB]))
+        config.searchResponse = .init(query: "body:doordash", items: [hit])
+        config.candidatesByTransactionId = ["txn_a": [], "txn_b": []]
+        let api = MockAPI(config)
+        let vm = ClassificationViewModel(api: api)
+        vm.transactions = [txnA, txnB]
+        vm.mailcartSearchBody = "doordash"
+        await vm.searchMailcartIfNeeded()
+        XCTAssertEqual(vm.mailcartSearchResults.map(\.email_message_id), ["msg_doordash"])
+
+        vm.selection = ["txn_a"]
+        await vm.selectedTransactionDidChange()
+        XCTAssertEqual(vm.mailcartSearchResults.map(\.email_message_id), ["msg_doordash"])
+        XCTAssertEqual(vm.mailcartSearchBody, "doordash")
+
+        vm.selection = ["txn_b"]
+        await vm.selectedTransactionDidChange()
+        XCTAssertEqual(vm.mailcartSearchResults.map(\.email_message_id), ["msg_doordash"])
+    }
+
+    @MainActor
+    func testSelectingSearchHitDuringCandidateLoadIsNotClobberedAndOverrideUsesIt() async {
+        // #R116-T02
+        let hit = EmailSearchHit(email_message_id: "msg_search_only", subject: "Tacombi", from: "noreply@doordash.com",
+                                 received_at: "2026-05-24T00:00:00+00:00", snippet: "receipt")
+        let txn = sampleTransaction("txn_unmatched", classification: nil)
+        var config = MockAPIConfig(categories: [], response: .init(total: 1, items: [txn]))
+        config.searchResponse = .init(query: "body:doordash", items: [hit])
+        // Latest run returns an unrelated AI candidate that would otherwise auto-select.
+        config.candidatesByTransactionId = ["txn_unmatched": [sampleCandidate(emailId: "msg_ai_candidate", isSelectedByAi: true)]]
+        config.candidatesDelayNanoseconds = 80_000_000
+        let api = MockAPI(config)
+        let vm = ClassificationViewModel(api: api)
+        vm.transactions = [txn]
+        vm.mailcartSearchBody = "doordash"
+        await vm.searchMailcartIfNeeded()
+        XCTAssertEqual(vm.mailcartSearchResults.map(\.email_message_id), ["msg_search_only"])
+
+        vm.selection = ["txn_unmatched"]
+        let loadTask = Task { await vm.selectedTransactionDidChange() }
+        // Simulate the user clicking the persisted search hit while candidates are still loading.
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        vm.selectedCandidateId = "msg_search_only"
+        await loadTask.value
+
+        XCTAssertEqual(vm.selectedCandidateId, "msg_search_only")
+
+        await vm.overrideSelectedMatch()
+        let overrideAnyCalls = await api.recordedOverrideTransactionCalls()
+        let candidateCalls = await api.recordedOverrideTransactionCandidateCalls()
+        XCTAssertTrue(candidateCalls.isEmpty)
+        XCTAssertEqual(overrideAnyCalls.count, 1)
+        XCTAssertEqual(overrideAnyCalls.first?.emailMessageId, "msg_search_only")
+        XCTAssertEqual(overrideAnyCalls.first?.transactionId, "txn_unmatched")
+    }
+
+    @MainActor
     func testSearchMailcartSurfacesApiFailure() async {
         // #R040-T02 #R095-T02
         var config = MockAPIConfig(categories: [], response: .init(total: 0, items: []))
@@ -716,6 +916,24 @@ final class ClassificationViewModelTests: XCTestCase {
         await vm.searchMailcartIfNeeded()
         XCTAssertTrue(vm.mailcartSearchResults.isEmpty)
         XCTAssertTrue(vm.mailcartSearchErrorText.contains("search failed"))
+    }
+
+    @MainActor
+    func testSearchMailcartNormalizesWhitespaceBeforeApiCall() async {
+        // #R095-T03
+        var config = MockAPIConfig(categories: [], response: .init(total: 0, items: []))
+        config.searchResponse = .init(query: "subject:DoorDash order sender:receipts@doordash.com body:total charged", items: [])
+        let api = MockAPI(config)
+        let vm = ClassificationViewModel(api: api)
+        vm.mailcartSearchSubject = "  DoorDash   order "
+        vm.mailcartSearchSender = " receipts@doordash.com "
+        vm.mailcartSearchBody = " total   charged "
+        await vm.searchMailcartIfNeeded()
+        let calls = await api.recordedSearchCalls()
+        XCTAssertEqual(calls.count, 1)
+        XCTAssertEqual(calls.first?.criteria.subject, "DoorDash order")
+        XCTAssertEqual(calls.first?.criteria.sender, "receipts@doordash.com")
+        XCTAssertEqual(calls.first?.criteria.body, "total charged")
     }
 
     @MainActor

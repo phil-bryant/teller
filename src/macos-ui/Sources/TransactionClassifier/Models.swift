@@ -257,10 +257,16 @@ struct EmailSearchCriteria: Sendable, Equatable {
     }
 
     func normalized() -> EmailSearchCriteria {
-        EmailSearchCriteria(
-            subject: subject.trimmingCharacters(in: .whitespacesAndNewlines),
-            sender: sender.trimmingCharacters(in: .whitespacesAndNewlines),
-            body: body.trimmingCharacters(in: .whitespacesAndNewlines),
+        func normalizedSearchText(_ value: String) -> String {
+            value
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .split(whereSeparator: \.isWhitespace)
+                .joined(separator: " ")
+        }
+        return EmailSearchCriteria(
+            subject: normalizedSearchText(subject),
+            sender: normalizedSearchText(sender),
+            body: normalizedSearchText(body),
             receivedStartDate: receivedStartDate.trimmingCharacters(in: .whitespacesAndNewlines),
             receivedEndDate: receivedEndDate.trimmingCharacters(in: .whitespacesAndNewlines)
         )

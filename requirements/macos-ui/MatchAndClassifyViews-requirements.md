@@ -85,16 +85,19 @@ Tests:
 - R072-T01: Open Match & Classify and verify the match-state picker and only-unmoved toggle are defined in `CandidatesPane` and omitted from `MatchAndClassifyTransactionsPane`.
 
 R071  Statement: Expose advanced email search fields for subject, body, sender, and date range.
-Design: The candidates pane `Search Email` section provides subject, body, sender, and date start/end fields (`YYYY-MM-DD`) with stable accessibility identifiers (`mailcart-search-subject-field`, `mailcart-search-body-field`, `mailcart-search-sender-field`, `mailcart-search-start-date-field`, `mailcart-search-end-date-field`). Date labels use user-facing copy `Start date` and `End date`. Any field change debounces into the existing Mailcart search path.
+Design: The candidates pane `Search Email` section provides subject, body, sender, and date start/end fields (`YYYY-MM-DD`) with stable accessibility identifiers (`mailcart-search-subject-field`, `mailcart-search-body-field`, `mailcart-search-sender-field`, `mailcart-search-start-date-field`, `mailcart-search-end-date-field`). Date labels use user-facing copy `Start date` and `End date`. A guidance hint clarifies that subject/body/sender are scoped filters, start/end dates are inclusive, and filled filters are ANDed. Any field change debounces into the existing Mailcart search path. Search hits remain visible when the user changes the selected transaction (ClassificationViewModel R116).
 Tests:
 - R071-T01: Open Match & Classify and verify subject/body/sender/start-date/end-date fields render under `Search Email`.
 - R071-T02: Enter a subject filter that matches one fixture search hit and verify the hit row appears and can be selected to load the email body.
 - R071-T03: Exercise sender search with a fixture sender value and verify the expected hit row appears.
 - R071-T04: Exercise sender search with a non-matching sender value and verify no fixture hit rows remain visible.
 - R071-T05: Exercise email search by `Body keyword`, `Start date`, and `End date` and verify each filter changes fixture hits as expected.
+- R071-T06: Verify `mailcart-search-contract-hint` renders guidance that scoped filters are ANDed and date bounds are inclusive.
+- R071-T07: After a successful body-keyword search, select a different transaction and verify the same search hit rows remain listed without retyping criteria.
 
 ## Changelog
 
+- 2026-05-28: Extended R071 so email search hits persist across transaction selection (R071-T07, ViewModel R116).
 - 2026-05-27: Added explicit positive/negative sender regression requirements (R071-T03/R071-T04) and split remaining body/date checks into R071-T05.
 - 2026-05-27: Moved Next Unclassified into the Transactions actions row (left of Refresh) and moved Undo into the Classification action row (right of Clear); added R015-T03 and R068-T03.
 - 2026-05-27: Restored sender search control, relabeled email date fields to `Start date`/`End date`, and expanded R071-T03 coverage to include sender + date bounds.

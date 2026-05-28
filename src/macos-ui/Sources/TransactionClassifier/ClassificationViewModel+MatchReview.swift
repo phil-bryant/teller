@@ -15,6 +15,7 @@ extension ClassificationViewModel {
     // #R085: Match-review logic is split into this focused extension without behavior changes.
     // #R090: Match-review composition preserves advanced transaction filter forwarding behavior.
     // #R095: Match-review extension owns structured debounced Mailcart search criteria behavior.
+    // #R116: Mailcart search results persist across transaction selection changes.
     // #R100: Match-review extension owns stale snapshot reload-and-retry fallback behavior.
     /// Triggered whenever the primary selected transaction changes. Loads the candidate set + email
     /// for the primary transaction so the right pane stays in sync with the left pane.
@@ -29,9 +30,8 @@ extension ClassificationViewModel {
             return
         }
         if lastLoadedCandidatesTransactionId == row.transaction_id, !candidates.isEmpty { return }
-        // Clear pane state eagerly to prevent stale candidate/email content while loading.
+        // Clear transaction-scoped pane state eagerly; Mailcart search is global (R116).
         candidates = []
-        mailcartSearchResults = []
         selectedCandidateId = nil
         selectedEmail = nil
         candidatesErrorText = ""
@@ -86,6 +86,11 @@ extension ClassificationViewModel {
                 matchReviewStatusText = "Confirmed match \(matchId)"
             } else if let transactionId = primaryTransaction?.transaction_id,
                       let emailId = overrideTargetEmailMessageId {
+                guard !isOverrideTargetSearchHitOnly else {
+                    matchReviewErrorText = "Selected email is not a candidate for this transaction's latest match run. Choose an email from candidates."
+                    matchReviewStatusText = "Match confirm failed"
+                    return
+                }
                 do {
                     let response = try await api.confirmTransactionCandidate(
                         transactionId: transactionId,
@@ -124,17 +129,35 @@ extension ClassificationViewModel {
         }
         let trimmedNote = matchOverrideNote.trimmingCharacters(in: .whitespacesAndNewlines)
         let note = trimmedNote.isEmpty ? "Overridden in Teller UI" : trimmedNote
+        let selectedTransactionIdAtActionStart = primaryTransaction?.transaction_id
         do {
             if let matchId = selectedMatchId {
-                _ = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: note)
+                let response = try await api.overrideMatch(matchId: matchId, emailMessageId: emailId, note: note)
+                if let selectedTransactionIdAtActionStart,
+                   response.transaction_id != selectedTransactionIdAtActionStart {
+                    lastLoadedCandidatesTransactionId = nil
+                    await loadAll()
+                    matchReviewErrorText = "Override targeted a different transaction than selected. Please retry."
+                    matchReviewStatusText = "Match override failed"
+                    return
+                }
                 matchReviewStatusText = "Overrode match \(matchId)"
             } else if let transactionId = primaryTransaction?.transaction_id {
                 do {
-                    let response = try await api.overrideTransactionCandidate(
-                        transactionId: transactionId,
-                        emailMessageId: emailId,
-                        note: note
-                    )
+                    let response: MatchReviewActionResponse
+                    if isOverrideTargetInLatestCandidateSet {
+                        response = try await api.overrideTransactionCandidate(
+                            transactionId: transactionId,
+                            emailMessageId: emailId,
+                            note: note
+                        )
+                    } else {
+                        response = try await api.overrideTransaction(
+                            transactionId: transactionId,
+                            emailMessageId: emailId,
+                            note: note
+                        )
+                    }
                     matchReviewStatusText = "Assigned email to \(response.transaction_id)"
                 } catch {
                     guard _isActiveMatchConflict(error) else { throw error }
@@ -232,11 +255,20 @@ extension ClassificationViewModel {
                   current.transaction_id == row.transaction_id else { return }
             candidates = rows
             lastLoadedCandidatesTransactionId = row.transaction_id
-            let activeEmailId = row.match?.email_message_id
-            let preferred = rows.first(where: { $0.email_message_id == activeEmailId })?.email_message_id
-                ?? rows.first(where: { $0.is_selected_by_ai })?.email_message_id
-                ?? rows.first?.email_message_id
-            selectedCandidateId = preferred
+            // #R116: Don't clobber a selection the user made (e.g. a persisted search hit) while
+            // candidates were loading. Only auto-pick a preferred candidate when there is no current
+            // valid selection, so override keeps targeting the email the user actually chose.
+            let currentSelectionIsValid = selectedCandidateId.map { id in
+                rows.contains(where: { $0.email_message_id == id })
+                    || mailcartSearchResults.contains(where: { $0.email_message_id == id })
+            } ?? false
+            if !currentSelectionIsValid {
+                let activeEmailId = row.match?.email_message_id
+                let preferred = rows.first(where: { $0.email_message_id == activeEmailId })?.email_message_id
+                    ?? rows.first(where: { $0.is_selected_by_ai })?.email_message_id
+                    ?? rows.first?.email_message_id
+                selectedCandidateId = preferred
+            }
             await selectedCandidateDidChange()
         } catch {
             guard candidatesLoadToken == token,

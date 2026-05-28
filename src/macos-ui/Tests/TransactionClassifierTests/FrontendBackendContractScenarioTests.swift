@@ -14,17 +14,28 @@ final class FrontendBackendContractScenarioTests: XCTestCase {
             }
 
             struct MessageSearch: Decodable {
-                struct DateOnlyScenario: Decodable {
+                struct MessageSearchScenario: Decodable {
                     let query: [String: String]
                     let effective_query: String
                 }
 
-                let dateOnlyEnd: DateOnlyScenario
-                let dateOnlyStart: DateOnlyScenario
+                let scopedAndNormalized: MessageSearchScenario
+                let dateOnlyEnd: MessageSearchScenario
+                let dateOnlyStart: MessageSearchScenario
+            }
+
+            struct MatchReview: Decodable {
+                struct OverrideAny: Decodable {
+                    let path: String
+                    let body: [String: String]
+                }
+
+                let overrideAny: OverrideAny
             }
 
             let transactions: Transactions
             let messageSearch: MessageSearch
+            let matchReview: MatchReview
         }
 
         let classificationApi: ClassificationApi
@@ -69,6 +80,30 @@ final class FrontendBackendContractScenarioTests: XCTestCase {
             throw APIError.invalidResponse
         }
         return response
+    }
+
+    private func requestBodyData(_ request: URLRequest) throws -> Data {
+        if let body = request.httpBody {
+            return body
+        }
+        guard let stream = request.httpBodyStream else {
+            throw APIError.invalidResponse
+        }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 1024)
+        while stream.hasBytesAvailable {
+            let read = stream.read(&buffer, maxLength: buffer.count)
+            if read < 0 {
+                throw stream.streamError ?? APIError.invalidResponse
+            }
+            if read == 0 {
+                break
+            }
+            data.append(buffer, count: read)
+        }
+        return data
     }
 
     func testTransactionAdvancedFilterSerializationMatchesContractCorpus() async throws {
@@ -133,6 +168,42 @@ final class FrontendBackendContractScenarioTests: XCTestCase {
         XCTAssertEqual(response.query, scenario.effective_query)
     }
 
+    func testScopedMessageSearchSerializationMatchesContractCorpus() async throws {
+        let scenarios = try loadScenarios()
+        let scenario = scenarios.classificationApi.messageSearch.scopedAndNormalized
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "GET")
+            XCTAssertEqual(request.url?.path, "/v1/matchy/messages/search")
+            guard let requestURL = request.url,
+                  let components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false) else {
+                throw APIError.invalidResponse
+            }
+            let query = Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+            XCTAssertEqual(query["subject"], "DoorDash order")
+            XCTAssertEqual(query["sender"], "receipts@doordash.com")
+            XCTAssertEqual(query["body"], "total charged")
+            XCTAssertEqual(query["start_date"], "2026-04-01")
+            XCTAssertEqual(query["end_date"], "2026-04-30")
+            XCTAssertEqual(query["limit"], "25")
+            let response = try self.makeHTTPResponse(for: request)
+            let body = "{\"query\":\"\(scenario.effective_query)\",\"items\":[]}"
+            return (response, Data(body.utf8))
+        }
+
+        let client = makeClient()
+        let response = try await client.searchMessages(
+            criteria: EmailSearchCriteria(
+                subject: scenario.query["subject"] ?? "",
+                sender: scenario.query["sender"] ?? "",
+                body: scenario.query["body"] ?? "",
+                receivedStartDate: scenario.query["start_date"] ?? "",
+                receivedEndDate: scenario.query["end_date"] ?? ""
+            ),
+            limit: Int(scenario.query["limit"] ?? "25") ?? 25
+        )
+        XCTAssertEqual(response.query, scenario.effective_query)
+    }
+
     func testFixtureSearchQuerySummaryMatchesBackendContractCorpus() async throws {
         // #R065-T03
         let scenarios = try loadScenarios()
@@ -143,5 +214,45 @@ final class FrontendBackendContractScenarioTests: XCTestCase {
             limit: Int(scenario.query["limit"] ?? "25") ?? 25
         )
         XCTAssertEqual(response.query, scenario.effective_query)
+    }
+
+    func testFixtureScopedSearchQuerySummaryMatchesBackendContractCorpus() async throws {
+        let scenarios = try loadScenarios()
+        let scenario = scenarios.classificationApi.messageSearch.scopedAndNormalized
+        let fixture = UITestingFixtureAPI()
+        let response = try await fixture.searchMessages(
+            criteria: EmailSearchCriteria(
+                subject: scenario.query["subject"] ?? "",
+                sender: scenario.query["sender"] ?? "",
+                body: scenario.query["body"] ?? "",
+                receivedStartDate: scenario.query["start_date"] ?? "",
+                receivedEndDate: scenario.query["end_date"] ?? ""
+            ),
+            limit: Int(scenario.query["limit"] ?? "25") ?? 25
+        )
+        XCTAssertEqual(response.query, scenario.effective_query)
+    }
+
+    func testOverrideAnyRouteSerializationMatchesContractCorpus() async throws {
+        // #R066-T01
+        let scenarios = try loadScenarios()
+        let scenario = scenarios.classificationApi.matchReview.overrideAny
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertEqual(request.url?.path, scenario.path)
+            let body = try self.requestBodyData(request)
+            let payload = try JSONSerialization.jsonObject(with: body) as? [String: String]
+            XCTAssertEqual(payload?["email_message_id"], scenario.body["email_message_id"])
+            XCTAssertEqual(payload?["note"], scenario.body["note"])
+            let response = try self.makeHTTPResponse(for: request)
+            return (response, Data("{\"match_id\":7,\"transaction_id\":\"txn_unmatched\",\"state\":\"human_overrode_ai_match\",\"selected_by\":\"human\",\"updated_at\":\"now\"}".utf8))
+        }
+
+        let client = makeClient()
+        _ = try await client.overrideTransaction(
+            transactionId: "txn_unmatched",
+            emailMessageId: scenario.body["email_message_id"] ?? "",
+            note: scenario.body["note"]
+        )
     }
 }

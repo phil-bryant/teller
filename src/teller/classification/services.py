@@ -299,6 +299,26 @@ def _read_active_match_for_transaction(session, transaction_id: str) -> Dict[str
     return dict(row)
 
 
+def _active_match_candidate_row_payload(email_message_id: str) -> Dict[str, Any]:
+    # Candidate-row shape for an active matched email that is not part of the latest match run
+    # (e.g. a manual override against a searched email). It carries no candidate_id/score so the
+    # Mailcart enrichment path treats it as a cold row and fills subject/sender/snippet, and the
+    # cache-write step skips it (no candidate_id to update).
+    return {
+        "candidate_id": None,
+        "email_message_id": email_message_id,
+        "score": 0.0,
+        "reason_json": {},
+        "email_received_at": None,
+        "is_selected_by_ai": False,
+        "is_unmatched_email_priority": False,
+        "cached_subject": None,
+        "cached_sender": None,
+        "cached_snippet": None,
+        "cached_fetched_at": None,
+    }
+
+
 def _insert_match_audit(session, match_id: int, from_state: Optional[str], to_state: str, actor: str, note: Optional[str]) -> None:
     session.execute(
         text(
@@ -520,6 +540,7 @@ def _create_transaction_match(
     ensure_candidate_for_transaction_fn=_ensure_candidate_for_transaction,
     insert_match_audit_fn=_insert_match_audit,
     validate_email_message_id_fn=_validate_email_message_id,
+    require_latest_candidate: bool = True,
 ) -> MatchReviewActionResponse:
     ensure_posted_transaction_fn(session, transaction_id)
     ensure_no_active_match_fn(session, transaction_id)
@@ -530,7 +551,8 @@ def _create_transaction_match(
         if not email_message_id:
             raise HTTPException(status_code=422, detail="email_message_id is required")
         validate_email_message_id_fn(email_message_id)
-        ensure_candidate_for_transaction_fn(session, transaction_id, email_message_id)
+        if require_latest_candidate:
+            ensure_candidate_for_transaction_fn(session, transaction_id, email_message_id)
     try:
         inserted = session.execute(
             text(
@@ -581,4 +603,34 @@ def _create_transaction_match(
         state=to_state,
         selected_by=actor,
         updated_at=updated_at,
+    )
+
+
+def _create_transaction_match_allowing_non_candidate_email(
+    session,
+    transaction_id: str,
+    to_state: str,
+    actor: str,
+    note: Optional[str],
+    email_message_id: str,
+    ai_confidence: Optional[float] = None,
+    *,
+    ensure_posted_transaction_fn=_ensure_posted_transaction,
+    ensure_no_active_match_fn=_ensure_no_active_match,
+    insert_match_audit_fn=_insert_match_audit,
+    validate_email_message_id_fn=_validate_email_message_id,
+) -> MatchReviewActionResponse:
+    return _create_transaction_match(
+        session=session,
+        transaction_id=transaction_id,
+        to_state=to_state,
+        actor=actor,
+        note=note,
+        email_message_id=email_message_id,
+        ai_confidence=ai_confidence,
+        ensure_posted_transaction_fn=ensure_posted_transaction_fn,
+        ensure_no_active_match_fn=ensure_no_active_match_fn,
+        insert_match_audit_fn=insert_match_audit_fn,
+        validate_email_message_id_fn=validate_email_message_id_fn,
+        require_latest_candidate=False,
     )

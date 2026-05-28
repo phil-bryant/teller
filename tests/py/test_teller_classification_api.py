@@ -16,6 +16,7 @@ from teller.teller_classification_api import (
     _estimate_transaction_total,
     _category_params,
     _create_transaction_match,
+    _create_transaction_match_allowing_non_candidate_email,
     _deactivate_match,
     _display_label,
     _transition_match_state,
@@ -1261,6 +1262,92 @@ class MatchCandidateProxyTests(unittest.TestCase):
         body = endpoint(request=self._authorized_request(), transaction_id="txn_no_candidates")
         self.assertEqual(body, [])
 
+    @patch("teller.teller_classification_api.get_session")
+    def test_list_candidates_includes_active_match_email_absent_from_run(self, get_session_mock):
+        #R060-T05
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
+        session = _FakeSession(rows=[
+            _Result(row=(9,)),
+            _Result(rows=[{
+                "candidate_id": 21, "email_message_id": "msg_run",
+                "score": 0.8, "reason_json": {}, "email_received_at": None,
+                "is_selected_by_ai": True, "is_unmatched_email_priority": False,
+            }]),
+            _Result(rows=[{
+                "email_message_id": "msg_override",
+                "state": "human_overrode_ai_match",
+                "selected_by": "human",
+            }]),
+        ])
+        get_session_mock.return_value = _SessionContext(session)
+        self._install_mailcart_client(_FakeMailcartClient(messages={
+            "msg_run": {"subject": "Run candidate", "from": "run@example.com", "snippet": "run"},
+            "msg_override": {"subject": "Overridden receipt", "from": "store@example.com", "snippet": "total"},
+        }))
+
+        body = endpoint(request=self._authorized_request(), transaction_id="txn_override")
+
+        ids = [row.email_message_id for row in body]
+        self.assertIn("msg_run", ids)
+        self.assertIn("msg_override", ids)
+        override_row = next(row for row in body if row.email_message_id == "msg_override")
+        self.assertEqual(override_row.subject, "Overridden receipt")
+        self.assertEqual(override_row.sender, "store@example.com")
+        self.assertFalse(override_row.is_selected_by_ai)
+        self.assertIsNone(override_row.mailcart_error)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_list_candidates_returns_active_match_email_when_no_run_exists(self, get_session_mock):
+        #R060-T05
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
+        session = _FakeSession(rows=[
+            _Result(row=None),
+            _Result(rows=[{
+                "email_message_id": "msg_override",
+                "state": "human_overrode_ai_match",
+                "selected_by": "human",
+            }]),
+        ])
+        get_session_mock.return_value = _SessionContext(session)
+        self._install_mailcart_client(_FakeMailcartClient(messages={
+            "msg_override": {"subject": "Overridden receipt", "from": "store@example.com", "snippet": "total"},
+        }))
+
+        body = endpoint(request=self._authorized_request(), transaction_id="txn_override")
+
+        self.assertEqual([row.email_message_id for row in body], ["msg_override"])
+        self.assertEqual(body[0].subject, "Overridden receipt")
+        self.assertIsNone(body[0].mailcart_error)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_list_candidates_does_not_duplicate_active_email_already_in_run(self, get_session_mock):
+        #R060-T05
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/transactions/{transaction_id}/candidates", "GET")
+        session = _FakeSession(rows=[
+            _Result(row=(9,)),
+            _Result(rows=[{
+                "candidate_id": 21, "email_message_id": "msg_shared",
+                "score": 0.8, "reason_json": {}, "email_received_at": None,
+                "is_selected_by_ai": True, "is_unmatched_email_priority": False,
+            }]),
+            _Result(rows=[{
+                "email_message_id": "msg_shared",
+                "state": "human_confirmed_ai_match",
+                "selected_by": "human",
+            }]),
+        ])
+        get_session_mock.return_value = _SessionContext(session)
+        self._install_mailcart_client(_FakeMailcartClient(messages={
+            "msg_shared": {"subject": "Shared", "from": "x@example.com", "snippet": "s"},
+        }))
+
+        body = endpoint(request=self._authorized_request(), transaction_id="txn_shared")
+
+        self.assertEqual([row.email_message_id for row in body], ["msg_shared"])
+
     def test_get_message_proxies_body_and_metadata(self):
         #R061-T01
         app = create_app()
@@ -1442,6 +1529,34 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertEqual([hit.email_message_id for hit in body.items], ["msg_structured"])
         self.assertEqual(client.search_calls, [{"query": body.query, "limit": 5}])
 
+    def test_search_messages_normalizes_whitespace_within_structured_fields(self):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
+        client = _FakeMailcartClient(search_payload={"messages": []})
+        self._install_mailcart_client(client)
+        body = endpoint(
+            request=SimpleNamespace(
+                headers={"x-teller-write-token": "test-write-token"},
+                query_params={
+                    "subject": "  DoorDash   order   ",
+                    "sender": "  RECEIPTS@DOORDASH.COM ",
+                    "body": "  total    charged ",
+                    "limit": "7",
+                },
+            ),
+            subject="  DoorDash   order   ",
+            sender="  RECEIPTS@DOORDASH.COM ",
+            body="  total    charged ",
+            start_date=None,
+            end_date=None,
+            limit=7,
+        )
+        self.assertEqual(
+            body.query,
+            "subject:DoorDash order sender:RECEIPTS@DOORDASH.COM body:total charged",
+        )
+        self.assertEqual(client.search_calls, [{"query": body.query, "limit": 7}])
+
     def test_search_messages_rejects_legacy_query_parameter(self):
         #R062-T06
         app = create_app()
@@ -1471,21 +1586,22 @@ class MatchCandidateProxyTests(unittest.TestCase):
         endpoint = self._route_endpoint(app, "/v1/matchy/messages/search", "GET")
         client = _FakeMailcartClient(search_payload={"messages": []})
         self._install_mailcart_client(client)
-        body = endpoint(
-            request=SimpleNamespace(
-                headers={"x-teller-write-token": "test-write-token"},
-                query_params={"limit": "5"},
-            ),
-            subject="",
-            sender="",
-            body="",
-            start_date=None,
-            end_date=None,
-            limit=5,
-        )
-        self.assertEqual(body.query, "")
-        self.assertEqual(body.items, [])
-        self.assertEqual(client.search_calls, [{"query": "", "limit": 5}])
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=SimpleNamespace(
+                    headers={"x-teller-write-token": "test-write-token"},
+                    query_params={"limit": "5"},
+                ),
+                subject="",
+                sender="",
+                body="",
+                start_date=None,
+                end_date=None,
+                limit=5,
+            )
+        self.assertEqual(ctx.exception.status_code, 422)
+        self.assertIn("structured search criterion", str(ctx.exception.detail))
+        self.assertEqual(client.search_calls, [])
 
     def test_search_messages_accepts_date_only_structured_criteria(self):
         #R062-T08
@@ -1605,11 +1721,13 @@ class MatchCandidateProxyTests(unittest.TestCase):
 
     def test_matchy_extension_endpoints_register_with_app(self):
         #R060-T01
+        #R073-T01
         app = create_app()
         route_paths = {route.path for route in app.routes}
         self.assertIn("/v1/matchy/transactions/{transaction_id}/candidates", route_paths)
         self.assertIn("/v1/matchy/transactions/{transaction_id}/confirm-candidate", route_paths)
         self.assertIn("/v1/matchy/transactions/{transaction_id}/override-candidate", route_paths)
+        self.assertIn("/v1/matchy/transactions/{transaction_id}/override", route_paths)
         self.assertIn("/v1/matchy/transactions/{transaction_id}/no-email", route_paths)
         self.assertIn("/v1/matchy/transactions/{transaction_id}/clear", route_paths)
         self.assertIn("/v1/matchy/matches/{match_id:int}/clear", route_paths)
@@ -1646,6 +1764,40 @@ class MatchCandidateProxyTests(unittest.TestCase):
         ensure_posted_mock.assert_called_once()
         ensure_no_active_mock.assert_called_once()
         ensure_candidate_mock.assert_called_once()
+        insert_audit_mock.assert_called_once()
+        self.assertEqual(session.commits, 1)
+
+    @patch("teller.teller_classification_api._insert_match_audit")
+    @patch("teller.teller_classification_api._ensure_candidate_for_transaction")
+    @patch("teller.teller_classification_api._ensure_no_active_match")
+    @patch("teller.teller_classification_api._ensure_posted_transaction")
+    def test_create_transaction_match_override_allows_non_candidate_email(
+        self,
+        ensure_posted_mock,
+        ensure_no_active_mock,
+        ensure_candidate_mock,
+        insert_audit_mock,
+    ):
+        #R073-T02
+        session = _FakeSession(
+            rows=[
+                _Result(row={"match_id": 101, "updated_at": datetime.now(timezone.utc)}),
+            ]
+        )
+        response = _create_transaction_match_allowing_non_candidate_email(
+            session=session,
+            transaction_id="txn_1",
+            email_message_id="msg_search_only",
+            to_state="human_overrode_ai_match",
+            actor="human",
+            note="Overridden from Teller review UI",
+        )
+        self.assertEqual(response.match_id, 101)
+        self.assertEqual(response.transaction_id, "txn_1")
+        self.assertEqual(response.state, "human_overrode_ai_match")
+        ensure_posted_mock.assert_called_once()
+        ensure_no_active_mock.assert_called_once()
+        ensure_candidate_mock.assert_not_called()
         insert_audit_mock.assert_called_once()
         self.assertEqual(session.commits, 1)
 

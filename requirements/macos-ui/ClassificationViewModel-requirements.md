@@ -81,16 +81,41 @@ Tests:
 - R090-T03: Simulate transaction date validation failure and verify `errorText` includes expected date format guidance (`YYYY-MM-DD`).
 
 R095  Statement: Debounce structured email search criteria to the Mailcart search API.
-Design: `ClassificationViewModel` stores `mailcartSearchSubject`, `mailcartSearchSender`, `mailcartSearchBody`, `mailcartSearchStartDate`, and `mailcartSearchEndDate`. `searchMailcartIfNeeded()` trims each field, debounces when any field is non-empty, calls `searchMessages(criteria:limit:)` with an `EmailSearchCriteria` bundle, and clears results when all fields are empty.
+Design: `ClassificationViewModel` stores `mailcartSearchSubject`, `mailcartSearchSender`, `mailcartSearchBody`, `mailcartSearchStartDate`, and `mailcartSearchEndDate`. `searchMailcartIfNeeded()` normalizes text criteria (trim + collapse internal whitespace), debounces when any field is non-empty, calls `searchMessages(criteria:limit:)` with an `EmailSearchCriteria` bundle, and clears results when all fields are empty. The UI keeps explicit scoped labels (Subject/Body keyword/Sender), with inclusive start/end-date filtering and AND semantics when multiple fields are filled.
 Tests:
 - R095-T01: Set non-empty structured email search fields, await search, and verify results populate from the API response.
 - R095-T02: Simulate a structured search API failure and verify `mailcartSearchErrorText` is set and results clear.
+- R095-T03: Enter text search fields with repeated whitespace and verify emitted structured criteria collapse internal whitespace before API calls.
 
 R100  Statement: Recover from stale transaction-match snapshots during confirm/override/no-email actions.
 Design: `confirmSelectedMatch()`, `overrideSelectedMatch()`, and `markSelectedMatchNoEmail()` first use transaction-level mutation endpoints when `selectedMatchId` is unavailable; if the API responds that the transaction already has an active match, the view model reloads transactions and retries with the match-id endpoint so stale `unmatched` rows do not block user actions.
 Tests:
 - R100-T01: Start from a stale row with no match metadata, make confirm return "already has an active match", and verify the view model reloads then confirms by refreshed `match_id`.
 - R100-T02: Start from a stale row with no match metadata, make override return "already has an active match", and verify the view model reloads then overrides by refreshed `match_id`.
+
+R105  Statement: Route confirm-vs-override actions by selected email intent when a transaction already has an active match.
+Design: When `selectedMatchId` exists, `canConfirmSelectedMatch` remains true so the primary action stays available. `confirmSelectedMatch()` is a pure state-confirm action and must call `confirmMatch(...)` for existing matches; it must not change the linked email. Changing the linked email requires explicit `overrideSelectedMatch()` / `overrideMatch(...)` intent.
+Tests:
+- R105-T01: Select a transaction with an active match, select a different candidate email, and verify `canConfirmSelectedMatch` remains true while `canOverrideSelectedMatch` is true.
+- R105-T02: Invoke `confirmSelectedMatch()` in that state and verify the view model calls `confirmMatch(...)` (not `overrideMatch(...)`) and reports confirm success status.
+
+R110  Statement: Keep unmatched confirm candidate-scoped while allowing unmatched override for search-hit-only emails.
+Design: For unmatched transactions (`selectedMatchId == nil`), when the current override target comes from ad-hoc search hits and is not present in `candidates` for the latest loaded match run ("search-hit-only"), `canConfirmSelectedMatch` is false and confirm short-circuits with a user-facing candidate-mismatch error. `canOverrideSelectedMatch` remains true when an email id is selected; override routes to the transaction-level override endpoint so operators can attach a valid searched email even when it was not returned by the latest candidate run. Non-search-hit flows preserve stale-snapshot recovery behavior in R100.
+Tests:
+- R110-T01: Select an unmatched transaction with no loaded candidates, choose a search-only email id, and verify `canConfirmSelectedMatch` is false while `canOverrideSelectedMatch` remains true.
+- R110-T02: Invoke `confirmSelectedMatch()` in that state and verify no transaction-level confirm API call is made and `matchReviewErrorText` explains candidate-run mismatch.
+- R110-T03: Invoke `overrideSelectedMatch()` in that state and verify the view model calls the transaction-level override endpoint (not `overrideTransactionCandidate`) and reports successful assignment status.
+
+R115  Statement: Override must never silently retarget a different transaction than the one selected.
+Design: When `overrideSelectedMatch()` uses the `match_id` path (`selectedMatchId != nil`) and `overrideMatch(...)` returns a `transaction_id` that differs from the transaction selected when the action began, the view model does not attempt any compensating write (no fallback to transaction-level override). It reloads transactions, surfaces a user-facing error indicating the override targeted a different transaction, and sets `matchReviewStatusText` to the failure state so no incorrect link is silently created.
+Tests:
+- R115-T01: With an active-match transaction whose `overrideMatch(...)` response resolves to a different `transaction_id`, invoke `overrideSelectedMatch()` and verify exactly one `overrideMatch` call, zero transaction-level override calls, a failed status, and an error mentioning a different transaction.
+
+R116  Statement: Mailcart search results persist across transaction selection, and a search-hit selection made while candidates load is not clobbered.
+Design: `selectedTransactionDidChange()` reloads candidates and clears transaction-scoped selection (`candidates`, `selectedCandidateId`, `selectedEmail`) but does not clear `mailcartSearchResults`, `mailcartSearchErrorText`, or structured search field state. Operators can search email first, then pick a transaction, and still see the same search hits without re-editing criteria. Because candidate loading is asynchronous, `loadCandidatesForPrimaryTransaction()` only auto-selects a preferred candidate when there is no current valid selection; if the user has already selected a candidate row or a current search hit while the fetch was in flight, that selection is preserved so Override/Confirm keep targeting the email the user chose.
+Tests:
+- R116-T01: Populate `mailcartSearchResults` via `searchMailcartIfNeeded()`, change `selection` to another transaction, await `selectedTransactionDidChange()`, and verify search results and criteria are unchanged.
+- R116-T02: Start `selectedTransactionDidChange()` with a delayed candidate fetch, select a persisted search hit while the fetch is in flight, await completion, and verify `selectedCandidateId` stays the search hit and `overrideSelectedMatch()` routes the transaction-level override for that email.
 
 ## Changelog
 
@@ -104,3 +129,7 @@ Tests:
 - 2026-05-26: Split `ClassificationViewModel` concerns into extension files and added R085 traceability for behavior-preserving decomposition.
 - 2026-05-27: Added R100 for stale match-snapshot recovery (reload + retry by `match_id`) on confirm/override/no-email actions.
 - 2026-05-27: Extended R090 with explicit transaction date-format error surfacing in `errorText`.
+- 2026-05-28: Added R105 to enforce explicit action semantics: Confirm does not change linked email; Override is required to change linked email.
+- 2026-05-28: Updated R110 so unmatched override is allowed for search-hit-only emails via the transaction-level override endpoint while confirm stays candidate-scoped.
+- 2026-05-28: Added R115 to forbid silent override retargeting when the `match_id` response resolves to a different transaction.
+- 2026-05-28: Added R116 so Mailcart search results survive transaction selection changes and a search-hit selection made during async candidate loading is not clobbered (override keeps targeting the chosen email).

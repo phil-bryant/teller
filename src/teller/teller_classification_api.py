@@ -75,6 +75,7 @@ from teller.classification.services import (
     _category_params,
     _create_category,
     _create_transaction_match as _create_transaction_match_impl,
+    _create_transaction_match_allowing_non_candidate_email as _create_transaction_match_allowing_non_candidate_email_impl,
     _deactivate_match as _deactivate_match_impl,
     _ensure_candidate_for_transaction,
     _ensure_exists,
@@ -142,6 +143,14 @@ def _create_transaction_match(*args, **kwargs):
     kwargs.setdefault("insert_match_audit_fn", _insert_match_audit)
     kwargs.setdefault("validate_email_message_id_fn", _validate_email_message_id)
     return _create_transaction_match_impl(*args, **kwargs)
+
+
+def _create_transaction_match_allowing_non_candidate_email(*args, **kwargs):
+    kwargs.setdefault("ensure_posted_transaction_fn", _ensure_posted_transaction)
+    kwargs.setdefault("ensure_no_active_match_fn", _ensure_no_active_match)
+    kwargs.setdefault("insert_match_audit_fn", _insert_match_audit)
+    kwargs.setdefault("validate_email_message_id_fn", _validate_email_message_id)
+    return _create_transaction_match_allowing_non_candidate_email_impl(*args, **kwargs)
 
 
 def _enrich_candidates_with_mailcart(session, candidate_rows):

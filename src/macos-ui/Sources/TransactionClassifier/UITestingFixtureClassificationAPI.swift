@@ -200,27 +200,59 @@ actor UITestingFixtureAPI: ClassificationAPI {
     }
 
     func fetchCandidates(transactionId: String) async throws -> [MatchCandidateRow] {
-        guard matchFixtureEnabled, transactionId == Self.matchFixtureTransactionId else {
-            return []
+        var result: [MatchCandidateRow] = []
+        if matchFixtureEnabled, transactionId == Self.matchFixtureTransactionId {
+            result.append(
+                MatchCandidateRow(
+                    email_message_id: Self.matchFixtureEmailId,
+                    score: 0.92,
+                    reason_json: nil,
+                    email_received_at: "2026-04-20T10:00:00+00:00",
+                    is_selected_by_ai: true,
+                    is_unmatched_email_priority: false,
+                    subject: "Your Coffee Roasters receipt",
+                    from: "receipts@coffee.example.com",
+                    snippet: "Order Total $16.24",
+                    mailcart_error: nil
+                )
+            )
         }
-        return [
-            MatchCandidateRow(
-                email_message_id: Self.matchFixtureEmailId,
-                score: 0.92,
-                reason_json: nil,
-                email_received_at: "2026-04-20T10:00:00+00:00",
-                is_selected_by_ai: true,
-                is_unmatched_email_priority: false,
-                subject: "Your Coffee Roasters receipt",
-                from: "receipts@coffee.example.com",
-                snippet: "Order Total $16.24",
-                mailcart_error: nil
-            ),
-        ]
+        // Mirror backend R060: the transaction's active matched email is always surfaced as a
+        // candidate (deduped), even when it was never part of a generated run (e.g. a manual
+        // override against a searched email), so the linked email stays visible in the review UI.
+        if let row = rows.first(where: { $0.transaction_id == transactionId }),
+           let activeEmailId = row.match?.email_message_id,
+           !activeEmailId.isEmpty,
+           !result.contains(where: { $0.email_message_id == activeEmailId }) {
+            let message = fixtureEmailMessage(for: activeEmailId)
+            result.append(
+                MatchCandidateRow(
+                    email_message_id: activeEmailId,
+                    score: 0,
+                    reason_json: nil,
+                    email_received_at: message.received_at,
+                    is_selected_by_ai: false,
+                    is_unmatched_email_priority: false,
+                    subject: message.subject,
+                    from: message.from,
+                    snippet: message.snippet,
+                    mailcart_error: nil
+                )
+            )
+        }
+        return result
     }
 
     func fetchMessage(emailMessageId: String) async throws -> EmailMessage {
-        if matchFixtureEnabled, emailMessageId == Self.matchFixtureEmailId {
+        fixtureEmailMessage(for: emailMessageId)
+    }
+
+    // Deterministic message lookup shared by `fetchMessage` and the active-match candidate row.
+    // Unknown ids synthesize a generic message so any actively linked email renders a body,
+    // mirroring the real backend where Mailcart proxies the linked message.
+    private func fixtureEmailMessage(for emailMessageId: String) -> EmailMessage {
+        switch emailMessageId {
+        case Self.matchFixtureEmailId:
             return EmailMessage(
                 email_message_id: Self.matchFixtureEmailId,
                 subject: "Your Coffee Roasters receipt",
@@ -231,8 +263,7 @@ actor UITestingFixtureAPI: ClassificationAPI {
                 text_body: Self.wideReceiptTextBody(orderTotalLine: "Order Total $16.24"),
                 snippet: "Order Total $16.24"
             )
-        }
-        if emailMessageId == Self.searchFixtureEmailId {
+        case Self.searchFixtureEmailId:
             return EmailMessage(
                 email_message_id: Self.searchFixtureEmailId,
                 subject: "Transit card payment confirmed",
@@ -243,8 +274,7 @@ actor UITestingFixtureAPI: ClassificationAPI {
                 text_body: "Thanks for riding with us.\nCharge posted: $44.10\nReference: txn_003",
                 snippet: "Charge posted: $44.10"
             )
-        }
-        if emailMessageId == "msg_override_fixture" {
+        case "msg_override_fixture":
             return EmailMessage(
                 email_message_id: "msg_override_fixture",
                 subject: "Override candidate fixture",
@@ -255,23 +285,30 @@ actor UITestingFixtureAPI: ClassificationAPI {
                 text_body: "This fixture exists for override-action coverage.",
                 snippet: "fixture override candidate"
             )
-        }
-        if emailMessageId.hasPrefix("manual_") {
+        default:
+            if emailMessageId.hasPrefix("manual_") {
+                return EmailMessage(
+                    email_message_id: emailMessageId,
+                    subject: "Manual fixture message",
+                    from: "manual@example.com",
+                    to: "you@example.com",
+                    received_at: "2026-04-22T09:00:00+00:00",
+                    html_body: nil,
+                    text_body: "Synthetic manual message for UI testing.",
+                    snippet: "Synthetic manual message"
+                )
+            }
             return EmailMessage(
                 email_message_id: emailMessageId,
-                subject: "Manual fixture message",
-                from: "manual@example.com",
+                subject: "Linked email \(emailMessageId)",
+                from: "linked@example.com",
                 to: "you@example.com",
-                received_at: "2026-04-22T09:00:00+00:00",
+                received_at: "2026-04-18T08:00:00+00:00",
                 html_body: nil,
-                text_body: "Synthetic manual message for UI testing.",
-                snippet: "Synthetic manual message"
+                text_body: "Linked email body for \(emailMessageId).",
+                snippet: "Linked email \(emailMessageId)"
             )
         }
-        guard matchFixtureEnabled else {
-            throw APIError.requestFailed("Unknown fixture email \(emailMessageId)")
-        }
-        throw APIError.requestFailed("Unknown fixture email \(emailMessageId)")
     }
 
     func searchMessages(criteria: EmailSearchCriteria, limit: Int) async throws -> EmailSearchResponse {
@@ -292,18 +329,23 @@ actor UITestingFixtureAPI: ClassificationAPI {
             ),
         ]
         let normalized = criteria.normalized()
+        func normalizedComparableText(_ value: String?) -> String {
+            let raw = (value ?? "").lowercased()
+            let collapsedWhitespace = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            return collapsedWhitespace.filter { $0.isLetter || $0.isNumber }
+        }
         let filtered = allHits.filter { hit in
             guard normalized.hasActiveFilter else { return true }
             if !normalized.subject.isEmpty,
-               !(hit.subject ?? "").lowercased().contains(normalized.subject.lowercased()) {
+               !normalizedComparableText(hit.subject).contains(normalizedComparableText(normalized.subject)) {
                 return false
             }
             if !normalized.sender.isEmpty,
-               !(hit.from ?? "").lowercased().contains(normalized.sender.lowercased()) {
+               !normalizedComparableText(hit.from).contains(normalizedComparableText(normalized.sender)) {
                 return false
             }
             if !normalized.body.isEmpty,
-               !(hit.snippet ?? "").lowercased().contains(normalized.body.lowercased()) {
+               !normalizedComparableText(hit.snippet).contains(normalizedComparableText(normalized.body)) {
                 return false
             }
             if !normalized.receivedStartDate.isEmpty {
@@ -406,6 +448,10 @@ actor UITestingFixtureAPI: ClassificationAPI {
             emailMessageId: emailMessageId,
             preserveMatchId: false
         )
+    }
+
+    func overrideTransaction(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        try await overrideTransactionCandidate(transactionId: transactionId, emailMessageId: emailMessageId, note: note)
     }
 
     func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse {

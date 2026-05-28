@@ -248,6 +248,13 @@ def main() -> int:
             "transaction_id",
             transaction_id,
         )
+        set_path_param_example(
+            paths,
+            "/v1/matchy/transactions/{transaction_id}/override",
+            "put",
+            "transaction_id",
+            transaction_id,
+        )
         candidate_body = {
             "email_message_id": match_override_email,
             "note": "Schemathesis seeded candidate",
@@ -263,6 +270,15 @@ def main() -> int:
             "/v1/matchy/transactions/{transaction_id}/override-candidate",
             "put",
             candidate_body,
+        )
+        set_json_body_example(
+            paths,
+            "/v1/matchy/transactions/{transaction_id}/override",
+            "put",
+            {
+                "email_message_id": match_override_email,
+                "note": "Schemathesis seeded override",
+            },
         )
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(schema, fh)

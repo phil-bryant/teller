@@ -33,6 +33,7 @@ protocol ClassificationAPI: Sendable {
     // #R050: Clear human-reviewed matches by match id or transaction id.
     func clearMatch(matchId: Int) async throws -> MatchReviewActionResponse
     func confirmTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
+    func overrideTransaction(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func overrideTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse
     func clearTransactionMatch(transactionId: String) async throws -> MatchReviewActionResponse
@@ -95,6 +96,13 @@ extension ClassificationAPI {
         _ = emailMessageId
         _ = note
         throw APIError.unsupportedOperation("Transaction candidate override")
+    }
+
+    func overrideTransaction(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        _ = transactionId
+        _ = emailMessageId
+        _ = note
+        throw APIError.unsupportedOperation("Transaction override")
     }
 
     func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse {
@@ -230,6 +238,13 @@ actor APIClient: ClassificationAPI {
         guard let data = try? JSONEncoder().encode(body) else { throw APIError.encodeFailed }
         let encoded = transactionId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? transactionId
         return try await send(path: "/v1/matchy/transactions/\(encoded)/override-candidate", method: "PUT", body: data)
+    }
+
+    func overrideTransaction(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
+        let body = MatchOverrideRequest(email_message_id: emailMessageId, note: note)
+        guard let data = try? JSONEncoder().encode(body) else { throw APIError.encodeFailed }
+        let encoded = transactionId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? transactionId
+        return try await send(path: "/v1/matchy/transactions/\(encoded)/override", method: "PUT", body: data)
     }
 
     func markTransactionNoEmail(transactionId: String) async throws -> MatchReviewActionResponse {

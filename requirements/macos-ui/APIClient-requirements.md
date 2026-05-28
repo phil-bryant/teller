@@ -60,9 +60,10 @@ Tests:
 - R063-T01: Call `fetchTransactions` with advanced filter options and verify all five parameters appear on the request URL.
 
 R064  Statement: Encode structured email search criteria on Mailcart search requests.
-Design: `searchMessages(criteria:limit:)` sends optional `subject`, `sender`, `body`, `start_date`, and `end_date` query parameters from `EmailSearchCriteria` when non-empty, in addition to `limit`.
+Design: `searchMessages(criteria:limit:)` sends optional `subject`, `sender`, `body`, `start_date`, and `end_date` query parameters from `EmailSearchCriteria` when non-empty, in addition to `limit`. Text criteria are normalized by trimming and collapsing internal whitespace before request serialization. Fields remain strictly scoped (`subject`/`sender`/`body`) and are combined by the backend using AND semantics.
 Tests:
 - R064-T01: Call `searchMessages` with populated criteria and verify all structured search parameters appear on the request URL.
+- R064-T02: Call `searchMessages` with extra internal whitespace in text criteria and verify serialized query values collapse to single-space tokens.
 
 R065  Statement: Keep frontend request serialization and UI test fixtures aligned with backend contract scenarios.
 Design: Contract scenario corpus in `tests/contracts/frontend_backend_contract_scenarios.json` is consumed by Swift tests to verify `APIClient` query serialization and `UITestingFixtureClassificationAPI` query-summary behavior for critical transaction and email-search flows.
@@ -70,6 +71,11 @@ Tests:
 - R065-T01: Validate advanced transaction filter query serialization against corpus scenarios.
 - R065-T02: Validate date-only message search serialization against corpus scenarios.
 - R065-T03: Validate fixture search query summary parity against corpus expected query strings.
+
+R066  Statement: Support unmatched transaction override against explicit email ids.
+Design: `ClassificationAPI` declares `overrideTransaction(transactionId:emailMessageId:note:)`; `APIClient` issues `PUT /v1/matchy/transactions/{transaction_id}/override` with `MatchOverrideRequest` JSON body and decodes `MatchReviewActionResponse`.
+Tests:
+- R066-T01: Call `overrideTransaction(...)` and verify request path/body match contract and decode success response.
 
 ## Changelog
 
@@ -85,3 +91,4 @@ Tests:
 - 2026-05-27: Added R045-T03 traceability for default write-token resolution failure behavior.
 - 2026-05-27: Added R065 shared contract-scenario corpus conformance tests for APIClient and UI test fixture parity.
 - 2026-05-27: Extended R010 with JSON detail extraction and friendly `YYYY-MM-DD` messaging for transaction date validation errors.
+- 2026-05-28: Added R066 for unmatched transaction override endpoint support (`/v1/matchy/transactions/{transaction_id}/override`).

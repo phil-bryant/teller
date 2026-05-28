@@ -489,6 +489,10 @@ private struct CandidatesPane: View {
                             .textFieldStyle(.roundedBorder)
                             .accessibilityIdentifier("mailcart-search-end-date-field")
                     }
+                    Text("Subject/body/sender are field-specific filters. Dates are inclusive. Filled filters are combined with AND.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("mailcart-search-contract-hint")
                     if !viewModel.mailcartSearchErrorText.isEmpty {
                         Text(viewModel.mailcartSearchErrorText)
                             .font(.caption)

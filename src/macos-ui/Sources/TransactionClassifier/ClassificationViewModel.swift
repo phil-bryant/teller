@@ -227,6 +227,18 @@ final class ClassificationViewModel {
         return selectedCandidateId
     }
 
+    var isOverrideTargetInLatestCandidateSet: Bool {
+        guard let target = overrideTargetEmailMessageId else { return false }
+        return candidates.contains(where: { $0.email_message_id == target })
+    }
+
+    var isOverrideTargetSearchHitOnly: Bool {
+        guard let target = overrideTargetEmailMessageId else { return false }
+        let inCandidates = candidates.contains(where: { $0.email_message_id == target })
+        let inSearchHits = mailcartSearchResults.contains(where: { $0.email_message_id == target })
+        return inSearchHits && !inCandidates
+    }
+
     var canOverrideSelectedMatch: Bool {
         guard let candidateId = overrideTargetEmailMessageId else { return false }
         if selectedMatchId != nil {
@@ -237,7 +249,7 @@ final class ClassificationViewModel {
 
     var canConfirmSelectedMatch: Bool {
         if selectedMatchId != nil { return true }
-        return primaryTransaction != nil && overrideTargetEmailMessageId != nil
+        return primaryTransaction != nil && overrideTargetEmailMessageId != nil && !isOverrideTargetSearchHitOnly
     }
 
     var canMarkSelectedMatchNoEmail: Bool {

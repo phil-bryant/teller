@@ -231,6 +231,23 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
         )
     }
 
+    func testAdvancedEmailSearchShowsScopedAndInclusiveContractHint() throws {
+        // #R071-T06
+        let source = try Self.loadViewSource()
+        XCTAssertTrue(
+            source.contains(#".accessibilityIdentifier("mailcart-search-contract-hint")"#),
+            "Search Email section must expose a stable contract hint identifier."
+        )
+        XCTAssertTrue(
+            source.contains("Dates are inclusive"),
+            "Search Email hint must clarify date bound inclusivity."
+        )
+        XCTAssertTrue(
+            source.contains("combined with AND"),
+            "Search Email hint must clarify multi-field AND behavior."
+        )
+    }
+
     func testAdvancedFilterScenariosAreInSmokeSuite() throws {
         // #R070-T02 #R071-T02 #R090-T02
         let source = try Self.loadUITestSource()

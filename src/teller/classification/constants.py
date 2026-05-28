@@ -239,6 +239,19 @@ _LATEST_RUN_CANDIDATES_SQL = text(
 """
 )
 
+_ACTIVE_MATCH_EMAILS_SQL = text(
+    """
+    SELECT email_message_id,
+           state::text AS state,
+           selected_by::text AS selected_by
+      FROM teller.transaction_email_match
+     WHERE transaction_id = :transaction_id
+       AND active = TRUE
+       AND email_message_id IS NOT NULL
+     ORDER BY selected_at DESC, match_id DESC
+"""
+)
+
 _UPDATE_CANDIDATE_CACHE_SQL = text(
     """
     UPDATE teller.transaction_email_candidate

@@ -44,6 +44,10 @@ def _fetch_cold_candidates(client, candidate_rows: List[Dict[str, Any]], cold_in
     with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="mailcart-enrich") as pool:
         for index, candidate, metadata in pool.map(_fetch_one, cold_indexes):
             cold_results[index] = candidate
+            # Synthetic active-match rows have no candidate_id row to cache against; skip the
+            # persistence cache update for them while still returning the enriched payload.
+            if candidate_rows[index].get("candidate_id") is None:
+                continue
             if metadata and isinstance(metadata, dict):
                 if metadata.get("_negative"):
                     cache_updates.append(
