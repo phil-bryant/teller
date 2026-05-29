@@ -28,11 +28,11 @@
        1      1      5      0       1 init@36-36@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
       10      1     64      1      10 init@38-47@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
        4      2     32      1       4 normalize@62-65@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-       1      1     18      1       1 init@143-143@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-      22      1     77      4      22 transactionFetchOptions@146-167@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-       3      3     30      1       3 matchedEmailCount@211-213@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-       8      2     49      0       8 syncPickerToSelection@276-283@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-       5      1     63      1       5 setCategories@286-290@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+       1      1     18      1       1 init@156-156@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+      22      1     77      4      22 transactionFetchOptions@159-180@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+       3      3     30      1       3 matchedEmailCount@224-226@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+       8      2     49      0       8 syncPickerToSelection@289-296@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+       5      1     63      1       5 setCategories@299-303@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
       36      3    206      0      36 loadAll@26-61@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
       22      3    107      0      22 reloadCategories@63-84@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
       10      2     54      0      11 refreshTransactionTotal@87-97@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
@@ -41,9 +41,9 @@
        4      1     16      0       4 consumePendingScrollSelectionTransactionId@128-131@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
        6      3     64      1       6 loadStatusText@133-138@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
        8      3     65      1       8 mergeTransactions@140-147@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
-       6      3     40      1       6 detectAppLaunchMode@11-16@./src/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift
-       8      3     44      1       8 buildDefaultViewModel@19-26@./src/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift
-       8      3     50      1       8 buildDefaultConnectViewModel@29-36@./src/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift
+       6      3     40      1       6 detectAppLaunchMode@12-17@./src/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift
+       8      3     44      1       8 buildDefaultViewModel@40-47@./src/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift
+       8      3     50      1       8 buildDefaultConnectViewModel@50-57@./src/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift
       16      6    202      2      16 rankedCategoryOptions@9-24@./src/macos-ui/Sources/TransactionClassifier/CategoryTypeaheadSupport.swift
       13      6    161      2      13 fuzzyCategoryScore@26-38@./src/macos-ui/Sources/TransactionClassifier/CategoryTypeaheadSupport.swift
        3      1     33      1       3 normalizeSearchText@40-42@./src/macos-ui/Sources/TransactionClassifier/CategoryTypeaheadSupport.swift
@@ -243,15 +243,15 @@
       11      7     55      2      11 stateLabel@351-361@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
       10      6     51      1      10 stateColor@363-372@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
       15      6     60      1      15 handleSearchEmailTab@535-549@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       6      2     48      2       6 scrollToAmountLine@895-900@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       5      1     27      1       5 mouseDown@943-947@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       3      1     14      0       3 makeCoordinator@954-956@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-      10      1     77      1      10 makeNSView@958-967@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       9      3     68      2       9 updateNSView@969-977@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       3      1     13      1       3 init@983-985@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       4      1     24      2       4 webView@987-990@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       6      3     52      1       6 scrollToAmount@992-997@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-      11      2     83      1      11 formattedDateString@1036-1046@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+      10      3     68      2      10 scrollToAmountLine@895-904@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       5      1     27      1       5 mouseDown@947-951@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       3      1     14      0       3 makeCoordinator@958-960@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+      10      1     77      1      10 makeNSView@962-971@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       9      3     68      2       9 updateNSView@973-981@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       3      1     13      1       3 init@987-989@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       4      1     24      2       4 webView@991-994@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       6      3     52      1       6 scrollToAmount@996-1001@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+      11      2     83      1      11 formattedDateString@1040-1050@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
        3      1     21      1       3 snapshotAmount@42-44@./src/macos-ui/Tests/TransactionClassifierSnapshotTests/SnapshotFixtureData.swift
        8      1     40      0       9 testEmptyStateSnapshot@21-29@./src/macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift
        6      1     30      0       7 testLoadedSelectionSnapshot@32-38@./src/macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift
@@ -477,9 +477,9 @@ NLOC    Avg.NLOC  AvgCCN  Avg.token  function_cnt    file
     211       9.7     2.1       60.6        11     ./src/macos-ui/Sources/TransactionClassifier/ConnectView.swift
      43      19.0     1.5      110.5         2     ./src/macos-ui/Sources/TransactionClassifier/ConnectWebFlowHTML.swift
     149      12.9     2.1       83.7        11     ./src/macos-ui/Sources/TransactionClassifier/CrashReporterService.swift
-    216       6.8     1.5       42.2         8     ./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+    226       6.8     1.5       42.2         8     ./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
     115      14.0     2.4       77.4         8     ./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
-     29       7.3     3.0       44.7         3     ./src/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift
+     43       7.3     3.0       44.7         3     ./src/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift
      44       0.0     0.0        0.0         0     ./src/macos-ui/Sources/TransactionClassifier/ConnectWebFlowStyles.swift
      51      11.2     4.5      130.8         4     ./src/macos-ui/Sources/TransactionClassifier/CategoryTypeaheadSupport.swift
     374       7.5     2.0       60.3        44     ./src/macos-ui/Sources/TransactionClassifier/APIClient.swift
@@ -502,7 +502,7 @@ NLOC    Avg.NLOC  AvgCCN  Avg.token  function_cnt    file
      65       9.7     3.2       64.2         6     ./src/macos-ui/Sources/TransactionClassifier/LocalClassifierTLS.swift
      65      12.0     3.0       64.5         2     ./src/macos-ui/Sources/TransactionClassifier/ContentView.swift
      88      11.4     3.1       92.3         7     ./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+ClassificationActions.swift
-    947       7.7     2.5       63.1        15     ./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+    951       8.0     2.5       64.5        15     ./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
      29       3.0     1.0       21.0         1     ./src/macos-ui/Tests/TransactionClassifierSnapshotTests/SnapshotFixtureData.swift
     269      10.9     1.4       58.8        21     ./src/macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift
     197       8.9     1.1       52.0        21     ./src/macos-ui/Tests/TransactionClassifierTests/ConnectViewModelTests.swift
@@ -526,4 +526,4 @@ No thresholds exceeded (cyclomatic_complexity > 10 or length > 60 or nloc > 1000
 ==========================================================================================
 Total nloc   Avg.NLOC  AvgCCN  Avg.token   Fun Cnt  Warning cnt   Fun Rt   nloc Rt
 ------------------------------------------------------------------------------------------
-      8344      11.9     2.0       79.4      469            0      0.00    0.00
+      8372      11.9     2.0       79.4      469            0      0.00    0.00
