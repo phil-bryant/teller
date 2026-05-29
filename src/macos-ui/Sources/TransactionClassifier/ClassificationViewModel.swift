@@ -112,6 +112,7 @@ final class ClassificationViewModel {
     var candidatesErrorText = ""
     var selectedCandidateId: String?
     var selectedEmail: EmailMessage?
+    var selectedEmailTransactionId: String?
     var emailBusy = false
     var emailErrorText = ""
     var mailcartSearchSubject = ""
@@ -132,6 +133,7 @@ final class ClassificationViewModel {
     var pendingScrollSelectionTransactionId: String?
     var lastLoadedCandidatesTransactionId: String?
     var mailcartSearchTaskToken: UUID?
+    var cachedEmailsByMessageId: [String: EmailMessage] = [:]
     /// Token issued for each in-flight candidate fetch. Late-arriving responses for a transaction
     /// the user has already moved away from are dropped so the candidates pane never shows stale
     /// data from a previously-selected row (the "HomeAgain showing DoorDash candidates" bug).

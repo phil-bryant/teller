@@ -30,6 +30,7 @@ extension ClassificationViewModel {
             candidates = []
             selectedCandidateId = nil
             selectedEmail = nil
+            selectedEmailTransactionId = nil
             lastLoadedCandidatesTransactionId = nil
             return
         }
@@ -37,7 +38,10 @@ extension ClassificationViewModel {
         // Clear transaction-scoped pane state eagerly; Mailcart search is global (R116).
         candidates = []
         selectedCandidateId = nil
-        selectedEmail = nil
+        if selectedEmailTransactionId != row.transaction_id {
+            selectedEmail = nil
+            selectedEmailTransactionId = nil
+        }
         candidatesErrorText = ""
         emailErrorText = ""
         await loadCandidatesForPrimaryTransaction()
@@ -356,9 +360,18 @@ extension ClassificationViewModel {
             let message = try await api.fetchMessage(emailMessageId: candidateId)
             guard emailLoadToken == token, selectedCandidateId == candidateId else { return }
             selectedEmail = message
+            selectedEmailTransactionId = primaryTransaction?.transaction_id
+            cachedEmailsByMessageId[candidateId] = message
         } catch {
             guard emailLoadToken == token, selectedCandidateId == candidateId else { return }
+            if let cached = cachedEmailsByMessageId[candidateId] {
+                selectedEmail = cached
+                selectedEmailTransactionId = primaryTransaction?.transaction_id
+                emailErrorText = ""
+                return
+            }
             selectedEmail = nil
+            selectedEmailTransactionId = nil
             emailErrorText = error.localizedDescription
         }
     }

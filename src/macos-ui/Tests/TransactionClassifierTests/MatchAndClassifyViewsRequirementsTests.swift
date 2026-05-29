@@ -339,6 +339,27 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
             "Advanced email search smoke scenario must retain hit rows after switching transactions."
         )
     }
+
+    func testMatchActionsBarUsesCompactButtonLabelsInOrder() throws {
+        // #R045-T02
+        let source = try Self.loadViewSource()
+        let barStart = try XCTUnwrap(source.range(of: "private struct MatchActionsBar"))
+        let barEnd = try XCTUnwrap(source.range(of: "private final class NonFocusStealingWebView")).lowerBound
+        let barSource = String(source[barStart.lowerBound..<barEnd])
+        for label in ["Confirm", "Override", "No-email", "Clear"] {
+            XCTAssertTrue(
+                barSource.contains(#"Button("\#(label)")"#),
+                "Match action bar must expose a \(label) button."
+            )
+        }
+        let confirmIndex = try lowerBound(of: #".accessibilityIdentifier("match-confirm-button")"#, in: barSource)
+        let overrideIndex = try lowerBound(of: #".accessibilityIdentifier("match-override-button")"#, in: barSource)
+        let noEmailIndex = try lowerBound(of: #".accessibilityIdentifier("match-no-email-button")"#, in: barSource)
+        let clearIndex = try lowerBound(of: #".accessibilityIdentifier("match-clear-button")"#, in: barSource)
+        XCTAssertLessThan(confirmIndex, overrideIndex, "Confirm must precede Override.")
+        XCTAssertLessThan(overrideIndex, noEmailIndex, "Override must precede No-email.")
+        XCTAssertLessThan(noEmailIndex, clearIndex, "No-email must precede Clear.")
+    }
 }
 
 private extension MatchAndClassifyViewsRequirementsTests {

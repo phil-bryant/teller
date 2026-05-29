@@ -40,10 +40,11 @@ Tests:
 - R035-T01: Unit-test amount variant generation and text line selection helpers.
 - R035-T02: Select a wide receipt email candidate and verify the order total amount is scrolled into view horizontally and vertically.
 
-R045  Statement: Match action bar exposes a Clear control to the right of Mark no-email.
-Design: `MatchActionsBar` renders Confirm, Override with this email, Mark no-email, then Clear in that order. Clear is bound to `clearSelectedMatch()` and disabled when `canClearSelectedMatch` is false. On success the transaction list reloads and the row shows the unmatched badge (no active human-reviewed match).
+R045  Statement: Match action bar exposes Confirm, Override, No-email, and Clear controls in that order.
+Design: `MatchActionsBar` renders four buttons with user-facing labels `Confirm`, `Override`, `No-email`, and `Clear`, bound respectively to `confirmSelectedMatch()`, `overrideSelectedMatch()`, `markSelectedMatchNoEmail()`, and `clearSelectedMatch()`. Each button uses a stable accessibility identifier (`match-confirm-button`, `match-override-button`, `match-no-email-button`, `match-clear-button`). Confirm disables when `canConfirmSelectedMatch` is false; Override when `canOverrideSelectedMatch` is false; No-email when `canMarkSelectedMatchNoEmail` is false; Clear when `canClearSelectedMatch` is false. On successful Clear, the transaction list reloads and the row shows the unmatched badge (no active human-reviewed match).
 Tests:
 - R045-T01: Select a transaction with a human-reviewed match, tap Clear, and verify the row badge returns to unmatched and the button is disabled for transactions with no clearable match.
+- R045-T02: Open Match & Classify with a selected transaction and verify the match action bar renders buttons labeled Confirm, Override, No-email, and Clear in that order.
 
 R050  Statement: Manual row selection in long transaction lists must not auto-recenter the list.
 Design: `MatchAndClassifyTransactionsPane` only applies programmatic list scrolling when `ClassificationViewModel` marks a pending scroll target (for keyboard navigation actions such as Next Unclassified). User-initiated row clicks update selection without forcing `.scrollPosition` recentering.
@@ -102,9 +103,15 @@ Design: `EmailSection` exposes a segmented body-mode picker (`email-body-mode-pi
 Tests:
 - R075-T01: In fixture mode with an email that has both html and text bodies, verify the default view is rendered HTML, switch to Raw and verify text-body raw output, then select a different email and verify mode resets to rendered.
 
+R076  Statement: Confirming a selected candidate preserves right-pane email rendering continuity.
+Design: When `Confirm` succeeds for a transaction whose selected candidate still resolves to the same email message id, `EmailSection` keeps showing the previously loaded body while refresh/reload completes. This flow must not replace rendered content with the `email-error` banner for transient post-confirm message refetch failures.
+Tests:
+- R076-T01: Select a transaction with a loaded candidate email body, press Confirm, and verify the right pane keeps showing email body content while `email-error` remains hidden.
+
 ## Changelog
 
-- 2026-05-29: Added R075 for Rendered/Raw email body mode, including per-email reset to Rendered and Raw text-first fallback semantics.
+- 2026-05-29: Updated R045 to require compact match action bar labels (`Confirm`, `Override`, `No-email`, `Clear`) with stable accessibility identifiers; added R045-T02.
+- 2026-05-29: Added R076 to require post-confirm email-pane continuity (keep rendered body visible; do not surface `email-error` for transient refetch failures).
 - 2026-05-28: Added explicit Search Email keyboard Tab order contract and coverage (R071-T08/R071-T09).
 - 2026-05-28: Extended R071 so email search hits persist across transaction selection (R071-T07, ViewModel R116).
 - 2026-05-27: Added explicit positive/negative sender regression requirements (R071-T03/R071-T04) and split remaining body/date checks into R071-T05.

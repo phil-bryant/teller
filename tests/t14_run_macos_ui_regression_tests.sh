@@ -49,6 +49,7 @@ XCUITEST_SCENARIOS=(
   "candidatesAndEmailPane"
   "emailSearch"
   "matchActions"
+  "confirmPreservesEmailRendering"
   "nextUnclassifiedScrollsIntoView"
   #R070: Verify long-list manual row selection does not auto-recenter scroll.
   "longListManualSelectionDoesNotRecenter"
@@ -74,8 +75,8 @@ XCUITEST_SCENARIOS=(
   "advancedEmailSearch"
 )
 XCUITEST_SMOKE_SUITE="TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite"
-XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-32}"
-XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-32}"
+XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-33}"
+XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-33}"
 
 if [[ $# -gt 1 ]]; then
   echo "❌ Usage: $0 [scenario-selector]"

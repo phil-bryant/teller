@@ -3,7 +3,7 @@ import XCTest
 
 final class TransactionClassifierUITests: XCTestCase {
     private static var app: XCUIApplication!
-    private static let scenarioCount = 32
+    private static let scenarioCount = 33
 
     /// Maximum bounds only; condition polling exits immediately once state is ready.
     private let waitTimeout: TimeInterval = 2
@@ -35,6 +35,7 @@ final class TransactionClassifierUITests: XCTestCase {
         "candidatesAndEmailPane",
         "emailSearch",
         "matchActions",
+        "confirmPreservesEmailRendering",
         "nextUnclassifiedScrollsIntoView",
         "longListManualSelectionDoesNotRecenter",
         "helpMenuListsHotkeys",
@@ -164,35 +165,37 @@ final class TransactionClassifierUITests: XCTestCase {
                 runEmailSearchScenario()
             case 16: // #R045-T01
                 runMatchActionsScenario()
-            case 17: // #R025-T01
+            case 17: // #R076-T01
+                runConfirmPreservesEmailRenderingScenario()
+            case 18: // #R025-T01
                 runNextUnclassifiedScrollsIntoViewScenario()
-            case 18: // #R070-T01
+            case 19: // #R070-T01
                 runLongListManualSelectionDoesNotRecenterScenario()
-            case 19: // #R035-T01
+            case 20: // #R035-T01
                 runHelpMenuListsHotkeysScenario()
-            case 20: // #R001-T01 #R025-T01
+            case 21: // #R001-T01 #R025-T01
                 runConnectTabLoadsConnectionsScenario()
-            case 21: runConnectDeleteCancelScenario()
-            case 22: // #R010-T01
+            case 22: runConnectDeleteCancelScenario()
+            case 23: // #R010-T01
                 runConnectDeleteConfirmScenario()
-            case 23: // #R015-T01 #R080-T01
+            case 24: // #R015-T01 #R080-T01
                 runConnectAddAndEditButtonsScenario()
-            case 24: // #R055-T01 #R060-T01
+            case 25: // #R055-T01 #R060-T01
                 runConnectTabHidesNextUnclassifiedScenario()
-            case 25: // #R065-T01
+            case 26: // #R065-T01
                 runConnectTabHidesUndoScenario()
-            case 26: runManageCategoriesLoadAndToolbarScenario()
-            case 27: // #R055-T01 #R060-T01
+            case 27: runManageCategoriesLoadAndToolbarScenario()
+            case 28: // #R055-T01 #R060-T01
                 runManageCategoriesHidesNextUnclassifiedScenario()
-            case 28:
-                runManageCategoryEditAndSaveScenario()
             case 29:
+                runManageCategoryEditAndSaveScenario()
+            case 30:
                 runManageCategoryDeleteScenario()
-            case 30: // #R055-T01
+            case 31: // #R055-T01
                 runMatchStatePickerAllValuesScenario()
-            case 31: // #R070 #R090-T02
+            case 32: // #R070 #R090-T02
                 runAdvancedTransactionFilterScenario()
-            case 32: // #R071-T02 #R071-T03 #R071-T04 #R071-T05 #R071-T09 #R095-T01
+            case 33: // #R071-T02 #R071-T03 #R071-T04 #R071-T05 #R071-T09 #R095-T01
                 runAdvancedEmailSearchScenario()
             default: break
             }
@@ -739,6 +742,39 @@ final class TransactionClassifierUITests: XCTestCase {
         uiElement("candidate-row-msg_receipt_001").click()
         uiElement("match-confirm-button").click()
         XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { elementText(uiElement("match-review-status")).contains("Confirmed") })
+    }
+
+    private func runConfirmPreservesEmailRenderingScenario() {
+        ensureMatchAndClassifyTab()
+        selectTransactionRow("txn_001", label: "Coffee Roasters")
+        let candidateRow = uiElement("candidate-row-msg_receipt_001")
+        XCTAssertTrue(waitForElement(candidateRow, timeout: waitTimeout * 3))
+        candidateRow.click()
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 3) {
+                uiElement("email-body-html").exists || uiElement("email-body-text").exists
+            },
+            "Expected a loaded rendered email body before confirm."
+        )
+
+        uiElement("match-confirm-button").click()
+        XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { elementText(uiElement("match-review-status")).contains("Confirmed") })
+        ensureUnclassifiedFilterDisabled()
+        selectTransactionRow("txn_002", label: "Electric Utility Co")
+        selectTransactionRow("txn_001", label: "Coffee Roasters")
+
+        // Confirm should not cause the pane to swap to an error banner while refreshing.
+        for _ in 0..<12 {
+            XCTAssertFalse(
+                uiElement("email-error").exists,
+                "Email pane showed `email-error` after confirm instead of preserving rendered content."
+            )
+            XCTAssertTrue(
+                uiElement("email-body-html").exists || uiElement("email-body-text").exists,
+                "Email body disappeared after confirm; expected rendering continuity."
+            )
+            RunLoop.current.run(until: Date().addingTimeInterval(pollInterval))
+        }
     }
 
     private func runHelpMenuListsHotkeysScenario() {

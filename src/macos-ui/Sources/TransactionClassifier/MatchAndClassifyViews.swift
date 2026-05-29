@@ -756,6 +756,7 @@ private struct EmailSection: View {
                 Spacer()
                 if viewModel.emailBusy { BusyIndicator() }
             }
+            // #R076: Post-confirm refetch must not replace rendered email body with the error banner.
             if !viewModel.emailErrorText.isEmpty {
                 Text(viewModel.emailErrorText)
                     .font(.caption).foregroundStyle(.red)
@@ -905,6 +906,7 @@ private struct EmailBodyTextScrollView: View {
 }
 
 private struct MatchActionsBar: View {
+    // #R045: Match action bar renders Confirm, Override, No-email, and Clear controls.
     @Bindable var viewModel: ClassificationViewModel
 
     var body: some View {
@@ -923,13 +925,12 @@ private struct MatchActionsBar: View {
                 Button("Confirm") { Task { await viewModel.confirmSelectedMatch() } }
                     .disabled(!viewModel.canConfirmSelectedMatch)
                     .accessibilityIdentifier("match-confirm-button")
-                Button("Override with this email") { Task { await viewModel.overrideSelectedMatch() } }
+                Button("Override") { Task { await viewModel.overrideSelectedMatch() } }
                     .disabled(!viewModel.canOverrideSelectedMatch)
                     .accessibilityIdentifier("match-override-button")
-                Button("Mark no-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
+                Button("No-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
                     .disabled(!viewModel.canMarkSelectedMatchNoEmail)
                     .accessibilityIdentifier("match-no-email-button")
-                // #R045: Clear match control sits to the right of Mark no-email in the action bar.
                 Button("Clear") { Task { await viewModel.clearSelectedMatch() } }
                     .disabled(!viewModel.canClearSelectedMatch)
                     .accessibilityIdentifier("match-clear-button")

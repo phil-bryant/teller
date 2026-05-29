@@ -16,6 +16,7 @@ actor UITestingFixtureAPI: ClassificationAPI {
     private let matchFixtureEnabled: Bool
     private var nextCategoryId = 200
     private var nextMatchId = 900
+    private var transientFetchFailuresAfterConfirm = 0
     private var categories: [CategoryOption] = UITestingFixtureAPI.seedCategories()
     private var rows: [TransactionRow] = UITestingFixtureAPI.seedTransactions()
 
@@ -244,7 +245,11 @@ actor UITestingFixtureAPI: ClassificationAPI {
     }
 
     func fetchMessage(emailMessageId: String) async throws -> EmailMessage {
-        fixtureEmailMessage(for: emailMessageId)
+        if transientFetchFailuresAfterConfirm > 0 {
+            transientFetchFailuresAfterConfirm -= 1
+            throw APIError.requestFailed("String should match pattern '^[A-Za-z0-9_\\-=]+$'")
+        }
+        return fixtureEmailMessage(for: emailMessageId)
     }
 
     // Deterministic message lookup shared by `fetchMessage` and the active-match candidate row.
@@ -396,11 +401,13 @@ actor UITestingFixtureAPI: ClassificationAPI {
         guard let row = rows.first(where: { $0.match?.match_id == matchId }) else {
             throw APIError.requestFailed("Match \(matchId) not found in fixture.")
         }
+        let targetEmailMessageId = emailMessageId ?? row.match?.email_message_id ?? Self.matchFixtureEmailId
+        transientFetchFailuresAfterConfirm = 100
         return try updateMatch(
             on: row.transaction_id,
             state: "human_confirmed_ai_match",
             selectedBy: "human",
-            emailMessageId: emailMessageId ?? row.match?.email_message_id ?? Self.matchFixtureEmailId
+            emailMessageId: targetEmailMessageId
         )
     }
 
@@ -461,6 +468,7 @@ actor UITestingFixtureAPI: ClassificationAPI {
 
     func confirmTransactionCandidate(transactionId: String, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
         _ = note
+        transientFetchFailuresAfterConfirm = 100
         return try updateMatch(
             on: transactionId,
             state: "human_confirmed_ai_match",
