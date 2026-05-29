@@ -430,7 +430,28 @@ final class TransactionClassifierUITests: XCTestCase {
             "Expected fixture candidate row after selecting txn_001."
         )
         XCTAssertTrue(waitForElement(uiElement("email-subject"), timeout: waitTimeout * 3))
-        XCTAssertTrue(uiElement("email-body-text").exists || uiElement("email-body-html").exists)
+        XCTAssertTrue(waitForElement(uiElement("email-body-mode-picker"), timeout: waitTimeout))
+        XCTAssertTrue(uiElement("email-body-mode-rendered").exists)
+        XCTAssertTrue(uiElement("email-body-mode-raw").exists)
+        XCTAssertTrue(waitForElement(uiElement("email-body-html"), timeout: waitTimeout * 3))
+        uiElement("email-body-mode-raw").click()
+        XCTAssertTrue(waitForElement(uiElement("email-body-raw-text"), timeout: waitTimeout * 3))
+
+        let subjectField = uiElement("mailcart-search-subject-field")
+        clearField(subjectField)
+        pasteText("Transit", into: subjectField)
+        XCTAssertTrue(waitForElement(uiElement("mailcart-hit-row-msg_search_001"), timeout: waitTimeout * 3))
+        uiElement("mailcart-hit-row-msg_search_001").click()
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) {
+                elementText(uiElement("email-subject")).contains("Transit")
+            }
+        )
+        XCTAssertTrue(
+            waitForElement(uiElement("email-body-html"), timeout: waitTimeout * 3),
+            "Selecting a different email should reset body mode to Rendered."
+        )
+        clearField(subjectField)
         XCTAssertTrue(uiElement("candidates-list").exists)
     }
 

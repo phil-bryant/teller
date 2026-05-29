@@ -53,6 +53,52 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
         )
     }
 
+    func testEmailSectionExposesBodyModePickerAndRawRenderedIdentifiers() throws {
+        // #R075-T01
+        let source = try Self.loadViewSource()
+        XCTAssertTrue(
+            source.contains(#".accessibilityIdentifier("email-body-mode-picker")"#),
+            "Email section must expose a body mode picker identifier."
+        )
+        XCTAssertTrue(
+            source.contains(#".accessibilityIdentifier("email-body-mode-rendered")"#),
+            "Rendered segment must expose a stable identifier."
+        )
+        XCTAssertTrue(
+            source.contains(#".accessibilityIdentifier("email-body-mode-raw")"#),
+            "Raw segment must expose a stable identifier."
+        )
+        XCTAssertTrue(
+            source.contains(#".onChange(of: viewModel.selectedEmail?.email_message_id)"#),
+            "Body mode must reset when selected email changes."
+        )
+        XCTAssertTrue(
+            source.contains(#".accessibilityIdentifier("email-body-raw-text")"#),
+            "Raw mode must expose text-first raw body identifier."
+        )
+        XCTAssertTrue(
+            source.contains(#".accessibilityIdentifier("email-body-raw-html")"#),
+            "Raw mode must expose html-source fallback identifier."
+        )
+    }
+
+    func testCandidatesAndEmailPaneScenarioCoversRawModeAndReset() throws {
+        // #R075-T01
+        let source = try Self.loadUITestSource()
+        XCTAssertTrue(
+            source.contains(#"uiElement("email-body-mode-raw").click()"#),
+            "Smoke scenario must toggle the body mode to Raw."
+        )
+        XCTAssertTrue(
+            source.contains(#"waitForElement(uiElement("email-body-raw-text"), timeout: waitTimeout * 3)"#),
+            "Smoke scenario must verify raw mode text-first output."
+        )
+        XCTAssertTrue(
+            source.contains(#"waitForElement(uiElement("email-body-html"), timeout: waitTimeout * 3)"#),
+            "Smoke scenario must verify rendered html is visible after selecting another email."
+        )
+    }
+
     func testTransactionsPaneOwnsTransactionFilterControls() throws {
         // #R005-T02 #R005-T03 #R005-T04
         let source = try Self.loadViewSource()

@@ -253,62 +253,92 @@ actor UITestingFixtureAPI: ClassificationAPI {
     private func fixtureEmailMessage(for emailMessageId: String) -> EmailMessage {
         switch emailMessageId {
         case Self.matchFixtureEmailId:
-            return EmailMessage(
-                email_message_id: Self.matchFixtureEmailId,
-                subject: "Your Coffee Roasters receipt",
-                from: "receipts@coffee.example.com",
-                to: "you@example.com",
-                received_at: "2026-04-20T10:00:00+00:00",
-                html_body: nil,
-                text_body: Self.wideReceiptTextBody(orderTotalLine: "Order Total $16.24"),
-                snippet: "Order Total $16.24"
-            )
+            return fixtureMatchEmailMessage()
         case Self.searchFixtureEmailId:
-            return EmailMessage(
-                email_message_id: Self.searchFixtureEmailId,
-                subject: "Transit card payment confirmed",
-                from: "alerts@transit.example.com",
-                to: "you@example.com",
-                received_at: "2026-04-18T08:15:00+00:00",
-                html_body: nil,
-                text_body: "Thanks for riding with us.\nCharge posted: $44.10\nReference: txn_003",
-                snippet: "Charge posted: $44.10"
-            )
+            return fixtureSearchEmailMessage()
         case "msg_override_fixture":
-            return EmailMessage(
-                email_message_id: "msg_override_fixture",
-                subject: "Override candidate fixture",
-                from: "override@example.com",
-                to: "you@example.com",
-                received_at: "2026-04-21T11:00:00+00:00",
-                html_body: nil,
-                text_body: "This fixture exists for override-action coverage.",
-                snippet: "fixture override candidate"
-            )
+            return fixtureOverrideEmailMessage()
         default:
             if emailMessageId.hasPrefix("manual_") {
-                return EmailMessage(
-                    email_message_id: emailMessageId,
-                    subject: "Manual fixture message",
-                    from: "manual@example.com",
-                    to: "you@example.com",
-                    received_at: "2026-04-22T09:00:00+00:00",
-                    html_body: nil,
-                    text_body: "Synthetic manual message for UI testing.",
-                    snippet: "Synthetic manual message"
-                )
+                return fixtureManualEmailMessage(id: emailMessageId)
             }
-            return EmailMessage(
-                email_message_id: emailMessageId,
-                subject: "Linked email \(emailMessageId)",
-                from: "linked@example.com",
-                to: "you@example.com",
-                received_at: "2026-04-18T08:00:00+00:00",
-                html_body: nil,
-                text_body: "Linked email body for \(emailMessageId).",
-                snippet: "Linked email \(emailMessageId)"
-            )
+            return fixtureLinkedEmailMessage(id: emailMessageId)
         }
+    }
+
+    private func fixtureMatchEmailMessage() -> EmailMessage {
+        EmailMessage(
+            email_message_id: Self.matchFixtureEmailId,
+            subject: "Your Coffee Roasters receipt",
+            from: "receipts@coffee.example.com",
+            to: "you@example.com",
+            received_at: "2026-04-20T10:00:00+00:00",
+            html_body: """
+            <html><body>
+            <h1>Coffee Roasters receipt</h1>
+            <p>Order Total <strong>$16.24</strong></p>
+            </body></html>
+            """,
+            text_body: Self.wideReceiptTextBody(orderTotalLine: "Order Total $16.24"),
+            snippet: "Order Total $16.24"
+        )
+    }
+
+    private func fixtureSearchEmailMessage() -> EmailMessage {
+        EmailMessage(
+            email_message_id: Self.searchFixtureEmailId,
+            subject: "Transit card payment confirmed",
+            from: "alerts@transit.example.com",
+            to: "you@example.com",
+            received_at: "2026-04-18T08:15:00+00:00",
+            html_body: """
+            <html><body>
+            <p>Thanks for riding with us.</p>
+            <p>Charge posted: <em>$44.10</em></p>
+            </body></html>
+            """,
+            text_body: "Thanks for riding with us.\nCharge posted: $44.10\nReference: txn_003",
+            snippet: "Charge posted: $44.10"
+        )
+    }
+
+    private func fixtureOverrideEmailMessage() -> EmailMessage {
+        EmailMessage(
+            email_message_id: "msg_override_fixture",
+            subject: "Override candidate fixture",
+            from: "override@example.com",
+            to: "you@example.com",
+            received_at: "2026-04-21T11:00:00+00:00",
+            html_body: nil,
+            text_body: "This fixture exists for override-action coverage.",
+            snippet: "fixture override candidate"
+        )
+    }
+
+    private func fixtureManualEmailMessage(id: String) -> EmailMessage {
+        EmailMessage(
+            email_message_id: id,
+            subject: "Manual fixture message",
+            from: "manual@example.com",
+            to: "you@example.com",
+            received_at: "2026-04-22T09:00:00+00:00",
+            html_body: nil,
+            text_body: "Synthetic manual message for UI testing.",
+            snippet: "Synthetic manual message"
+        )
+    }
+
+    private func fixtureLinkedEmailMessage(id: String) -> EmailMessage {
+        EmailMessage(
+            email_message_id: id,
+            subject: "Linked email \(id)",
+            from: "linked@example.com",
+            to: "you@example.com",
+            received_at: "2026-04-18T08:00:00+00:00",
+            html_body: nil,
+            text_body: "Linked email body for \(id).",
+            snippet: "Linked email \(id)"
+        )
     }
 
     func searchMessages(criteria: EmailSearchCriteria, limit: Int) async throws -> EmailSearchResponse {
@@ -361,7 +391,8 @@ actor UITestingFixtureAPI: ClassificationAPI {
         return EmailSearchResponse(query: normalized.querySummary, items: Array(filtered.prefix(max(0, limit))))
     }
 
-    func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+    func confirmMatch(matchId: Int, emailMessageId: String?, note: String?) async throws -> MatchReviewActionResponse {
+        _ = note
         guard let row = rows.first(where: { $0.match?.match_id == matchId }) else {
             throw APIError.requestFailed("Match \(matchId) not found in fixture.")
         }
@@ -369,7 +400,7 @@ actor UITestingFixtureAPI: ClassificationAPI {
             on: row.transaction_id,
             state: "human_confirmed_ai_match",
             selectedBy: "human",
-            emailMessageId: row.match?.email_message_id ?? Self.matchFixtureEmailId
+            emailMessageId: emailMessageId ?? row.match?.email_message_id ?? Self.matchFixtureEmailId
         )
     }
 

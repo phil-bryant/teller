@@ -97,8 +97,14 @@ Tests:
 - R071-T08: Verify Search Email field declaration order keeps Tab traversal as Subject -> Body keyword -> Sender -> Start date -> End date.
 - R071-T09: In macOS UI regression, focus Subject and press Tab repeatedly; verify focus advances to Body keyword, Sender, then Start date.
 
+R075  Statement: Email body viewer supports Rendered and Raw modes.
+Design: `EmailSection` exposes a segmented body-mode picker (`email-body-mode-picker`) with `Rendered` and `Raw` options (`email-body-mode-rendered`, `email-body-mode-raw`). The default mode is `Rendered` and must reset to `Rendered` when a different email message is selected. In `Rendered` mode, `html_body` is shown via `EmailBodyWebView` and `text_body` is the fallback. In `Raw` mode, body display prefers `text_body`; if plain text is absent, the UI shows raw `html_body` source in monospaced selectable text (not interpreted HTML).
+Tests:
+- R075-T01: In fixture mode with an email that has both html and text bodies, verify the default view is rendered HTML, switch to Raw and verify text-body raw output, then select a different email and verify mode resets to rendered.
+
 ## Changelog
 
+- 2026-05-29: Added R075 for Rendered/Raw email body mode, including per-email reset to Rendered and Raw text-first fallback semantics.
 - 2026-05-28: Added explicit Search Email keyboard Tab order contract and coverage (R071-T08/R071-T09).
 - 2026-05-28: Extended R071 so email search hits persist across transaction selection (R071-T07, ViewModel R116).
 - 2026-05-27: Added explicit positive/negative sender regression requirements (R071-T03/R071-T04) and split remaining body/date checks into R071-T05.

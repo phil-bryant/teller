@@ -732,11 +732,27 @@ private struct ClassifySection: View {
 
 private struct EmailSection: View {
     @Bindable var viewModel: ClassificationViewModel
+    @State private var bodyDisplayMode: EmailBodyDisplayMode = .rendered
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text("Email").font(.headline)
+                if viewModel.selectedEmail != nil {
+                    // #R075: Email pane body mode toggle supports Rendered and Raw views.
+                    Picker("", selection: $bodyDisplayMode) {
+                        Text("Rendered")
+                            .tag(EmailBodyDisplayMode.rendered)
+                            .accessibilityIdentifier("email-body-mode-rendered")
+                        Text("Raw")
+                            .tag(EmailBodyDisplayMode.raw)
+                            .accessibilityIdentifier("email-body-mode-raw")
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 190)
+                    .accessibilityIdentifier("email-body-mode-picker")
+                }
                 Spacer()
                 if viewModel.emailBusy { ProgressView().controlSize(.small) }
             }
@@ -748,7 +764,11 @@ private struct EmailSection: View {
             if let email = viewModel.selectedEmail {
                 EmailHeaderView(email: email)
                 Divider()
-                EmailBodyContent(email: email, scrollToAmount: viewModel.primaryTransaction?.amount)
+                EmailBodyContent(
+                    email: email,
+                    displayMode: bodyDisplayMode,
+                    scrollToAmount: viewModel.primaryTransaction?.amount
+                )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.selection.count > 1 {
                 ContentUnavailableView("Multi-select \(viewModel.selection.count) transactions",
@@ -766,6 +786,9 @@ private struct EmailSection: View {
                                        description: Text("Pick a transaction from the left pane to see its email candidates and classify it."))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        }
+        .onChange(of: viewModel.selectedEmail?.email_message_id) { _, _ in
+            bodyDisplayMode = .rendered
         }
     }
 }
@@ -797,20 +820,40 @@ private struct EmailHeaderView: View {
 // #R035: Scroll the email body pane so the selected transaction amount is visible after load.
 private struct EmailBodyContent: View {
     let email: EmailMessage
+    let displayMode: EmailBodyDisplayMode
     let scrollToAmount: Decimal?
 
     var body: some View {
-        if let html = email.html_body, !html.isEmpty {
-            EmailBodyWebView(htmlBody: html, scrollToAmount: scrollToAmount)
-                .accessibilityIdentifier("email-body-html")
-        } else if let text = email.text_body, !text.isEmpty {
-            EmailBodyTextScrollView(text: text, scrollToAmount: scrollToAmount)
-                .accessibilityIdentifier("email-body-text")
-        } else {
-            ContentUnavailableView("Empty body", systemImage: "doc.text",
-                                   description: Text("Mailcart returned no html_body or text_body for this message."))
+        switch displayMode {
+        case .rendered:
+            if let html = email.html_body, !html.isEmpty {
+                EmailBodyWebView(htmlBody: html, scrollToAmount: scrollToAmount)
+                    .accessibilityIdentifier("email-body-html")
+            } else if let text = email.text_body, !text.isEmpty {
+                EmailBodyTextScrollView(text: text, scrollToAmount: scrollToAmount)
+                    .accessibilityIdentifier("email-body-text")
+            } else {
+                ContentUnavailableView("Empty body", systemImage: "doc.text",
+                                       description: Text("Mailcart returned no html_body or text_body for this message."))
+            }
+        case .raw:
+            if let text = email.text_body, !text.isEmpty {
+                EmailBodyTextScrollView(text: text, scrollToAmount: scrollToAmount)
+                    .accessibilityIdentifier("email-body-raw-text")
+            } else if let html = email.html_body, !html.isEmpty {
+                EmailBodyTextScrollView(text: html, scrollToAmount: nil)
+                    .accessibilityIdentifier("email-body-raw-html")
+            } else {
+                ContentUnavailableView("Empty body", systemImage: "doc.text",
+                                       description: Text("Mailcart returned no html_body or text_body for this message."))
+            }
         }
     }
+}
+
+private enum EmailBodyDisplayMode: String, CaseIterable {
+    case rendered
+    case raw
 }
 
 private struct EmailBodyTextScrollView: View {
