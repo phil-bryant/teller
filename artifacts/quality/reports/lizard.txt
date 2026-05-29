@@ -28,11 +28,11 @@
        1      1      5      0       1 init@36-36@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
       10      1     64      1      10 init@38-47@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
        4      2     32      1       4 normalize@62-65@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-       1      1     18      1       1 init@156-156@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-      22      1     77      4      22 transactionFetchOptions@159-180@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-       3      3     30      1       3 matchedEmailCount@224-226@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-       8      2     49      0       8 syncPickerToSelection@289-296@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
-       5      1     63      1       5 setCategories@299-303@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+       1      1     18      1       1 init@158-158@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+      22      1     77      4      22 transactionFetchOptions@161-182@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+       3      3     30      1       3 matchedEmailCount@226-228@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+       8      2     49      0       8 syncPickerToSelection@291-298@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+       5      1     63      1       5 setCategories@301-305@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
       36      3    206      0      36 loadAll@26-61@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
       22      3    107      0      22 reloadCategories@63-84@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
       10      2     54      0      11 refreshTransactionTotal@87-97@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
@@ -102,61 +102,61 @@
       13      3     48      1      13 updateStatusFromServer@181-193@./src/macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift
       10      4     50      0      10 refreshSetupStatus@195-204@./src/macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift
        3      1     21      1       3 fixtureAmount@5-7@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       7      2     50      1       7 init@22-28@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      11      3     65      1      11 applyFixtureMatches@30-40@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       6      1    153      0       6 seedCategories@42-47@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      22      1    997      0      22 seedTransactions@49-70@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       8      1    205      0       8 fixtureMatches@72-79@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      12      1     50      1      12 wideReceiptTextBody@81-92@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      13      3     81      2      13 displayLabel@94-106@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       3      1     20      0       3 isoNow@108-110@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       4      1     16      0       4 nextFixtureMatchId@112-115@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      33      4    161      5      36 updateMatch@117-152@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       3      1     13      0       3 fetchCategories@154-156@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       4      1     35      1       4 deleteCategory@158-161@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      18      1    101      1      18 createCategory@163-180@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      19      2    126      2      19 updateCategory@182-200@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      40      3    203      1      43 fetchCandidates@202-244@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       3      1     19      1       3 fetchMessage@246-248@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      15      6     66      1      15 fixtureEmailMessage@253-267@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      17      1     53      0      17 fixtureMatchEmailMessage@269-285@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      17      1     46      0      17 fixtureSearchEmailMessage@287-303@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      12      1     42      0      12 fixtureOverrideEmailMessage@305-316@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      12      1     45      1      12 fixtureManualEmailMessage@318-329@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      12      1     45      1      12 fixtureLinkedEmailMessage@331-342@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       5      2     59      1       5 normalizedComparableText@362-366@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      45      9    291      2      49 searchMessages@344-392@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      12      2     87      3      12 confirmMatch@394-405@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      12      2     77      3      12 overrideMatch@407-418@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      11      2     66      1      11 markMatchNoEmail@420-430@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      14      2     84      1      14 clearMatch@432-445@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      14      2     86      1      14 clearTransactionMatch@447-460@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      10      1     48      3      10 confirmTransactionCandidate@462-471@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      10      1     48      3      10 overrideTransactionCandidate@473-482@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       3      1     37      3       3 overrideTransaction@484-486@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       9      1     37      1       9 markTransactionNoEmail@488-496@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       7      2     52      1       7 fetchTransactions@498-504@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      10      4    109      1      10 filterRows@506-515@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       5      4     54      2       5 rowMatchesClassificationAndMovedState@517-521@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      12      4     55      2      12 rowMatchesMatchState@523-534@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-       5      3     52      2       5 rowMatchesSearch@536-540@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      13      6    183      2      13 rowMatchesAdvancedFilters@542-554@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      15      3    138      2      15 paginate@556-570@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
-      21      3    134      1      21 saveClassifications@572-592@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       7      2     50      1       7 init@23-29@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      11      3     65      1      11 applyFixtureMatches@31-41@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       6      1    153      0       6 seedCategories@43-48@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      22      1    997      0      22 seedTransactions@50-71@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       8      1    205      0       8 fixtureMatches@73-80@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      12      1     50      1      12 wideReceiptTextBody@82-93@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      13      3     81      2      13 displayLabel@95-107@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       3      1     20      0       3 isoNow@109-111@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       4      1     16      0       4 nextFixtureMatchId@113-116@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      33      4    161      5      36 updateMatch@118-153@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       3      1     13      0       3 fetchCategories@155-157@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       4      1     35      1       4 deleteCategory@159-162@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      18      1    101      1      18 createCategory@164-181@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      19      2    126      2      19 updateCategory@183-201@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      40      3    203      1      43 fetchCandidates@203-245@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       7      2     36      1       7 fetchMessage@247-253@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      15      6     66      1      15 fixtureEmailMessage@258-272@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      17      1     53      0      17 fixtureMatchEmailMessage@274-290@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      17      1     46      0      17 fixtureSearchEmailMessage@292-308@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      12      1     42      0      12 fixtureOverrideEmailMessage@310-321@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      12      1     45      1      12 fixtureManualEmailMessage@323-334@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      12      1     45      1      12 fixtureLinkedEmailMessage@336-347@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       5      2     59      1       5 normalizedComparableText@367-371@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      45      9    291      2      49 searchMessages@349-397@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      14      2     94      3      14 confirmMatch@399-412@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      12      2     77      3      12 overrideMatch@414-425@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      11      2     66      1      11 markMatchNoEmail@427-437@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      14      2     84      1      14 clearMatch@439-452@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      14      2     86      1      14 clearTransactionMatch@454-467@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      11      1     51      3      11 confirmTransactionCandidate@469-479@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      10      1     48      3      10 overrideTransactionCandidate@481-490@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       3      1     37      3       3 overrideTransaction@492-494@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       9      1     37      1       9 markTransactionNoEmail@496-504@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       7      2     52      1       7 fetchTransactions@506-512@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      10      4    109      1      10 filterRows@514-523@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       5      4     54      2       5 rowMatchesClassificationAndMovedState@525-529@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      12      4     55      2      12 rowMatchesMatchState@531-542@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+       5      3     52      2       5 rowMatchesSearch@544-548@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      13      6    183      2      13 rowMatchesAdvancedFilters@550-562@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      15      3    138      2      15 paginate@564-578@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+      21      3    134      1      21 saveClassifications@580-600@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
        8      1     28      0       8 loadSnapshot@6-13@./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureSetupAPI.swift
-      18      3     69      0      19 selectedTransactionDidChange@26-44@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      25      7    130      0      25 searchMailcartIfNeeded@47-71@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      10      4     62      1      10 _isActiveMatchConflict@73-82@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      44     10    199      0      44 confirmSelectedMatch@84-127@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      22      4     93      2      22 confirmExistingMatch@129-150@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      41      7    155      0      41 overrideSelectedMatch@152-192@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      17      2     74      4      17 overrideExistingMatch@194-210@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      26      5    129      3      26 overrideUnmatchedTransaction@212-237@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-       4      1     12      0       4 clearOverrideInputs@239-242@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      30      7    137      0      30 markSelectedMatchNoEmail@244-273@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      23      4     96      0      23 clearSelectedMatch@276-298@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      38     10    236      0      41 loadCandidatesForPrimaryTransaction@300-340@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
-      23      6    103      0      23 selectedCandidateDidChange@342-364@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      22      4     83      0      23 selectedTransactionDidChange@26-48@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      25      7    130      0      25 searchMailcartIfNeeded@51-75@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      10      4     62      1      10 _isActiveMatchConflict@77-86@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      44     10    199      0      44 confirmSelectedMatch@88-131@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      22      4     93      2      22 confirmExistingMatch@133-154@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      41      7    155      0      41 overrideSelectedMatch@156-196@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      17      2     74      4      17 overrideExistingMatch@198-214@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      26      5    129      3      26 overrideUnmatchedTransaction@216-241@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+       4      1     12      0       4 clearOverrideInputs@243-246@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      30      7    137      0      30 markSelectedMatchNoEmail@248-277@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      23      4     96      0      23 clearSelectedMatch@280-302@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      38     10    236      0      41 loadCandidatesForPrimaryTransaction@304-344@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+      32      7    139      0      32 selectedCandidateDidChange@346-377@./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
        9      1     50      3       9 init@32-40@./src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift
       40      7    150      0      40 fetchStatus@42-81@./src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift
        3      1     16      0       3 fetchContexts@83-85@./src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift
@@ -243,15 +243,15 @@
       11      7     55      2      11 stateLabel@351-361@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
       10      6     51      1      10 stateColor@363-372@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
       15      6     60      1      15 handleSearchEmailTab@535-549@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-      10      3     68      2      10 scrollToAmountLine@895-904@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       5      1     27      1       5 mouseDown@947-951@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       3      1     14      0       3 makeCoordinator@958-960@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-      10      1     77      1      10 makeNSView@962-971@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       9      3     68      2       9 updateNSView@973-981@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       3      1     13      1       3 init@987-989@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       4      1     24      2       4 webView@991-994@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-       6      3     52      1       6 scrollToAmount@996-1001@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
-      11      2     83      1      11 formattedDateString@1040-1050@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+      10      3     68      2      10 scrollToAmountLine@896-905@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       5      1     27      1       5 mouseDown@948-952@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       3      1     14      0       3 makeCoordinator@959-961@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+      10      1     77      1      10 makeNSView@963-972@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       9      3     68      2       9 updateNSView@974-982@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       3      1     13      1       3 init@988-990@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       4      1     24      2       4 webView@992-995@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+       6      3     52      1       6 scrollToAmount@997-1002@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
+      11      2     83      1      11 formattedDateString@1041-1051@./src/macos-ui/Sources/TransactionClassifier/MatchAndClassifyViews.swift
        3      1     21      1       3 snapshotAmount@42-44@./src/macos-ui/Tests/TransactionClassifierSnapshotTests/SnapshotFixtureData.swift
        8      1     40      0       9 testEmptyStateSnapshot@21-29@./src/macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift
        6      1     30      0       7 testLoadedSelectionSnapshot@32-38@./src/macos-ui/Tests/TransactionClassifierSnapshotTests/ContentViewSnapshotTests.swift
@@ -461,15 +461,16 @@
        7      1     44      0       8 testAdvancedTransactionFilterScenarioExercisesEachScalarControl@305-312@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
       14      1     93      0      15 testAdvancedEmailSearchScenarioExercisesSenderBodyAndDateFilters@314-328@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
       11      1     34      0      12 testAdvancedEmailSearchScenarioPersistsHitsAcrossTransactionSelection@330-341@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      12      1     65      0      12 loadViewSource@345-356@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      11      1     60      0      11 loadUITestSource@358-368@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      10      1     32      1      10 assertNoSharedToolbar@372-381@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-       5      1     59      1       5 transactionsPaneSource@383-387@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      30      2     76      1      30 assertTransactionsPaneContainsFilterControls@389-418@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      51      1    227      1      54 assertTransactionsPaneFilterControlOrdering@420-473@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      20      1     70      1      20 assertTransactionsPaneUsesSharedFieldWidths@475-494@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-       3      2     37      2       3 lowerBound@496-498@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      16      1    133      1      18 assertSearchEmailFieldTabOrder@500-517@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      19      2    147      0      20 testMatchActionsBarUsesCompactButtonLabelsInOrder@343-362@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      12      1     65      0      12 loadViewSource@366-377@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      11      1     60      0      11 loadUITestSource@379-389@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      10      1     32      1      10 assertNoSharedToolbar@393-402@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+       5      1     59      1       5 transactionsPaneSource@404-408@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      30      2     76      1      30 assertTransactionsPaneContainsFilterControls@410-439@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      51      1    227      1      54 assertTransactionsPaneFilterControlOrdering@441-494@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      20      1     70      1      20 assertTransactionsPaneUsesSharedFieldWidths@496-515@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+       3      2     37      2       3 lowerBound@517-519@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      16      1    133      1      18 assertSearchEmailFieldTabOrder@521-538@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
 46 file analyzed.
 ==============================================================
 NLOC    Avg.NLOC  AvgCCN  Avg.token  function_cnt    file
@@ -477,16 +478,16 @@ NLOC    Avg.NLOC  AvgCCN  Avg.token  function_cnt    file
     211       9.7     2.1       60.6        11     ./src/macos-ui/Sources/TransactionClassifier/ConnectView.swift
      43      19.0     1.5      110.5         2     ./src/macos-ui/Sources/TransactionClassifier/ConnectWebFlowHTML.swift
     149      12.9     2.1       83.7        11     ./src/macos-ui/Sources/TransactionClassifier/CrashReporterService.swift
-    226       6.8     1.5       42.2         8     ./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
+    228       6.8     1.5       42.2         8     ./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel.swift
     115      14.0     2.4       77.4         8     ./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+TransactionLoading.swift
      43       7.3     3.0       44.7         3     ./src/macos-ui/Sources/TransactionClassifier/UITestingSupport.swift
      44       0.0     0.0        0.0         0     ./src/macos-ui/Sources/TransactionClassifier/ConnectWebFlowStyles.swift
      51      11.2     4.5      130.8         4     ./src/macos-ui/Sources/TransactionClassifier/CategoryTypeaheadSupport.swift
     374       7.5     2.0       60.3        44     ./src/macos-ui/Sources/TransactionClassifier/APIClient.swift
     184      17.3     3.1       69.3         9     ./src/macos-ui/Sources/TransactionClassifier/ConnectViewModel.swift
-    539      12.5     2.2      102.6        42     ./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
+    547      12.7     2.2      103.3        42     ./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureClassificationAPI.swift
      11       8.0     1.0       28.0         1     ./src/macos-ui/Sources/TransactionClassifier/UITestingFixtureSetupAPI.swift
-    324      24.7     5.4      115.0        13     ./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
+    337      25.7     5.5      118.8        13     ./src/macos-ui/Sources/TransactionClassifier/ClassificationViewModel+MatchReview.swift
     360      17.4     3.5      117.0        19     ./src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift
     226       5.6     2.0       44.4         5     ./src/macos-ui/Sources/TransactionClassifier/CategoryManagerViews.swift
      54       4.5     1.2       21.5         4     ./src/macos-ui/Sources/TransactionClassifier/TransactionClassifierApp.swift
@@ -519,11 +520,11 @@ NLOC    Avg.NLOC  AvgCCN  Avg.token  function_cnt    file
      30      13.0     1.5       99.0         2     ./src/macos-ui/Tests/TransactionClassifierTests/UITestingFixtureClassificationAPITests.swift
     231      18.9     2.1      149.5        10     ./src/macos-ui/Tests/TransactionClassifierTests/FrontendBackendContractScenarioTests.swift
      40       7.0     1.4       46.2         5     ./src/macos-ui/Tests/TransactionClassifierTests/LocalClassifierTLSTests.swift
-    465      16.3     1.2       71.4        28     ./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+    484      16.4     1.2       74.0        29     ./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
 
 ===========================================================================================================
 No thresholds exceeded (cyclomatic_complexity > 10 or length > 60 or nloc > 1000000 or parameter_count > 5)
 ==========================================================================================
 Total nloc   Avg.NLOC  AvgCCN  Avg.token   Fun Cnt  Warning cnt   Fun Rt   nloc Rt
 ------------------------------------------------------------------------------------------
-      8372      11.9     2.0       79.4      469            0      0.00    0.00
+      8414      11.9     2.0       79.7      470            0      0.00    0.00
