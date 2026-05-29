@@ -82,10 +82,10 @@ Design: Smoke coverage must validate that selecting an already-visible deep-list
 Tests:
 - R070-T01: Load a long fixture list, verify it requires scrolling to span top-to-bottom rows, scroll to middle-list rows, select one or more visible middle rows, and verify row frame position remains effectively unchanged after each selection.
 
-R075  Statement: Default smoke profile must complete the Match & Classify return pass after the Connect and Manage Categories tabs.
-Design: Keep `XCUITEST_SMOKE_DEFAULT_STEPS` at `1-17,19-32` so the default run exercises Match & Classify (1-19), then Connect (20-25) and Manage Categories (26-29), then returns to Match & Classify for scenarios 30-32 (`matchStatePickerAllValues`, `advancedTransactionFilter`, `advancedEmailSearch`). The `extended/full` profile remains `1-32` (additionally including scenario 18).
+R075  Statement: Default run must execute every smoke-suite scenario; speed is achieved by removing artificial delays, never by skipping scenarios.
+Design: Set `XCUITEST_SMOKE_DEFAULT_STEPS` to the full `1-32` so the default run exercises Match & Classify (1-19), then Connect (20-25) and Manage Categories (26-29), then returns to Match & Classify for scenarios 30-32 (`matchStatePickerAllValues`, `advancedTransactionFilter`, `advancedEmailSearch`), and never silently drops scenario 18 (`longListManualSelectionDoesNotRecenter`). All profiles (`smoke`, `extended`, `full`) resolve to `1-32`; the in-process Swift fallback (`smokeDefaultSteps`) likewise defaults to the full scenario set.
 Tests:
-- R075-T01: Run script with default smoke profile and verify `XCUITEST_STEPS` includes the return-pass scenarios (`1-17,19-32`).
+- R075-T01: Run script with default smoke profile and verify `XCUITEST_STEPS` includes the full scenario set (`1-32`).
 - R075-T02: Run script with `XCUITEST_PROFILE=extended` and verify `XCUITEST_STEPS` includes `1-32`.
 
 R080  Statement: Connect Add/Edit smoke coverage must verify the in-sheet ESC back-navigation hint.
@@ -94,12 +94,13 @@ Tests:
 - R080-T01: Run smoke scenario 23 and verify both Add and Edit flows render the ESC hint copy.
 
 R085  Statement: UI smoke execution must not add artificial interaction delays.
-Design: The smoke suite and runner must avoid deliberate sleeps/backoff inserted only to slow interactions (for example, fixed post-click `sleep` calls). Keep polling/event waits condition-driven and minimal.
+Design: The smoke suite and runner must avoid deliberate sleeps/backoff inserted only to slow interactions (for example, fixed post-click `sleep` calls). Keep polling/event waits condition-driven and minimal. This is enforced for both `tests/t14_run_macos_ui_regression_tests.sh` (shell `sleep N`) and `src/macos-ui/UITests/TransactionClassifierUITests.swift` (`sleep(`/`usleep`/`Thread.sleep`/`Task.sleep`/`DispatchQueue.asyncAfter`); the bats guard copies the Swift suite into the fixture and greps it so reintroduced delays fail the gate. Tab selection polls all locator candidates together rather than paying a per-locator timeout in series, the post-success grace (`XCUITEST_SUCCESS_GRACE_SECONDS`) defaults to 1s, and the app-side Mailcart search debounce collapses to 0 under `TELLER_UI_TEST_MODE=1` (overridable via `TELLER_MAILCART_DEBOUNCE_MS`) so automation does not pay the 250ms production debounce.
 Tests:
-- R085-T01: Verify `tests/t14_run_macos_ui_regression_tests.sh` and `src/macos-ui/UITests/TransactionClassifierUITests.swift` contain no fixed `sleep` calls used as post-click delay padding.
+- R085-T01: Verify `tests/t14_run_macos_ui_regression_tests.sh` and `src/macos-ui/UITests/TransactionClassifierUITests.swift` contain no fixed `sleep`/`usleep`/`asyncAfter` calls used as interaction delay padding.
 
 ## Changelog
 
+- 2026-05-29: Made the default run execute every scenario (`XCUITEST_SMOKE_DEFAULT_STEPS=1-32` and full Swift `smokeDefaultSteps`) so coverage is never traded for speed (R075); sped up the suite by removing real delays instead of skipping tests: single-pass tab-locator polling, `XCUITEST_SUCCESS_GRACE_SECONDS` default 1s, and a zero Mailcart debounce under UI-test mode; extended R085 enforcement to scan the Swift smoke suite for `sleep`/`usleep`/`asyncAfter` padding.
 - 2026-05-29: Restored the default smoke profile to `1-17,19-32` so it returns to Match & Classify (scenarios 30-32) after the Connect/Manage Categories tabs (R075); hardened R020 grace-kill to trigger only on the final `** TEST SUCCEEDED **` marker and keep heartbeat progress visible.
 - 2026-05-28: Updated R020 to require prompt exit after a post-success `xcodebuild` linger and added `XCUITEST_SUCCESS_GRACE_SECONDS` behavior (R020-T03).
 - 2026-05-28: Updated R075 to keep default smoke profile fast (`1-17,19-29`) and move scenarios 31-32 to explicit/extended runs; added R085 to forbid artificial fixed-delay pacing in smoke interactions.

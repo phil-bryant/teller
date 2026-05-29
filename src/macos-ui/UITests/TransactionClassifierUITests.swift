@@ -10,6 +10,79 @@ final class TransactionClassifierUITests: XCTestCase {
     private let launchTimeout: TimeInterval = 5
     private let pollInterval: TimeInterval = 0.05
 
+    // MARK: - Timing instrumentation
+    // Measured per-scenario timing so suite speed is observed, not estimated. Defaults on;
+    // set TELLER_UI_TEST_TIMING=0 to silence. Negligible overhead (DispatchTime + print).
+    private static let timingEnabled = ProcessInfo.processInfo.environment["TELLER_UI_TEST_TIMING"] != "0"
+    private static var scenarioTimingsMs: [(step: Int, name: String, ms: Double)] = []
+    private static var appLaunchMs: Double = 0
+
+    /// Scenario labels mirror the runner's `XCUITEST_SCENARIOS` order so timing lines are greppable.
+    private static let scenarioNames: [String] = [
+        "matchAndClassifyShellLoads",
+        "searchFilter",
+        "unclassifiedFilterAutoRefresh",
+        "matchStatePicker",
+        "onlyUnmovedToggle",
+        "refreshButton",
+        "selectionShowsTransactionId",
+        "nextUnclassifiedShortcut",
+        "loadMoreButton",
+        "applyCategory",
+        "clearSelection",
+        "undoRestoresUnclassified",
+        "undoRestoresPriorCategory",
+        "candidatesAndEmailPane",
+        "emailSearch",
+        "matchActions",
+        "nextUnclassifiedScrollsIntoView",
+        "longListManualSelectionDoesNotRecenter",
+        "helpMenuListsHotkeys",
+        "connectTabLoadsConnections",
+        "connectDeleteCancel",
+        "connectDeleteConfirm",
+        "connectAddAndEditButtons",
+        "connectTabHidesNextUnclassified",
+        "connectTabHidesUndo",
+        "manageCategoriesLoadAndToolbar",
+        "manageCategoriesHidesNextUnclassified",
+        "manageCategoryEditAndSave",
+        "manageCategoryDelete",
+        "matchStatePickerAllValues",
+        "advancedTransactionFilter",
+        "advancedEmailSearch",
+    ]
+
+    private static func scenarioName(_ step: Int) -> String {
+        (step >= 1 && step <= scenarioNames.count) ? scenarioNames[step - 1] : "scenario\(step)"
+    }
+
+    private func timed(_ step: Int, _ name: String, _ body: () -> Void) {
+        guard Self.timingEnabled else {
+            body()
+            return
+        }
+        let start = DispatchTime.now()
+        body()
+        let ms = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000
+        Self.scenarioTimingsMs.append((step, name, ms))
+        print(String(format: "⏱ t14 scenario %02d %@: %.0f ms", step, name as NSString, ms))
+    }
+
+    private static func printTimingSummary() {
+        guard timingEnabled, !scenarioTimingsMs.isEmpty else { return }
+        let sorted = scenarioTimingsMs.sorted { $0.ms > $1.ms }
+        print("⏱ t14 timing summary (slowest first)")
+        for entry in sorted {
+            print(String(format: "   %02d %-38@ %7.0f ms", entry.step, entry.name as NSString, entry.ms))
+        }
+        let total = scenarioTimingsMs.reduce(0) { $0 + $1.ms }
+        print(String(
+            format: "⏱ t14 scenarios total: %.0f ms over %d scenarios; app launch: %.0f ms",
+            total, scenarioTimingsMs.count, appLaunchMs
+        ))
+    }
+
     private var unclassifiedFilterDisabled = false
     private var activeTab: ActiveTab = .matchAndClassify
 
@@ -28,16 +101,24 @@ final class TransactionClassifierUITests: XCTestCase {
         app.launchEnvironment["TELLER_UI_TEST_MATCH_FIXTURE"] = "1"
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_API_URL")
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_HTTP_PROXY")
+        let launchStart = DispatchTime.now()
         app.launch()
+        appLaunchMs = Double(DispatchTime.now().uptimeNanoseconds - launchStart.uptimeNanoseconds) / 1_000_000
+        if timingEnabled {
+            print(String(format: "⏱ t14 app launch: %.0f ms", appLaunchMs))
+        }
     }
 
     override func setUpWithError() throws {
         continueAfterFailure = false
         try super.setUpWithError()
-        XCTAssertTrue(
-            waitForElement(uiElement("search-field"), timeout: launchTimeout),
-            "Fixture list did not finish loading."
-        )
+        let readyStart = DispatchTime.now()
+        let ready = waitForElement(uiElement("search-field"), timeout: launchTimeout)
+        if Self.timingEnabled {
+            let ms = Double(DispatchTime.now().uptimeNanoseconds - readyStart.uptimeNanoseconds) / 1_000_000
+            print(String(format: "⏱ t14 fixture-ready wait: %.0f ms", ms))
+        }
+        XCTAssertTrue(ready, "Fixture list did not finish loading.")
     }
     
     func testRecordedFlow() throws {
@@ -45,6 +126,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     override class func tearDown() {
+        printTimingSummary()
         app?.terminate()
         app = nil
         super.tearDown()
@@ -53,6 +135,8 @@ final class TransactionClassifierUITests: XCTestCase {
     func testMacOSUISmokeSuite() throws {
         let selectedSteps = Self.parseSelectedSteps(from: Self.resolvedStepsRaw())
         for step in 1...Self.scenarioCount where selectedSteps.contains(step) {
+            // Numbered #Rxxx-T## traceability tags must remain inside this test function (t04).
+            timed(step, Self.scenarioName(step)) {
             switch step {
             case 1: // #R001-T01 #R025-T01
                 runMatchAndClassifyShellLoadsScenario()
@@ -112,6 +196,7 @@ final class TransactionClassifierUITests: XCTestCase {
                 runAdvancedEmailSearchScenario()
             default: break
             }
+            }
         }
     }
 
@@ -167,10 +252,14 @@ final class TransactionClassifierUITests: XCTestCase {
         // #R055
         ensureMatchAndClassifyTab()
         ensureUnclassifiedFilterDisabled()
-        clearSearchField(uiElement("search-field"))
+        // ensureAllTransactionsLoadedIntoList clears the search field itself; avoid a redundant clear.
         ensureAllTransactionsLoadedIntoList()
 
         selectMatchStateFilter("All matches")
+        // Prior scenarios may leave the long list scrolled mid-way; re-selecting the
+        // already-active filter does not reset scroll, so top rows can be virtualized
+        // out of the tree. Anchor back to the top before asserting top-of-list rows.
+        scrollTransactionListToTop()
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout * 3))
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_004"), timeout: waitTimeout * 3))
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_005"), timeout: waitTimeout * 3))
@@ -197,7 +286,8 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertFalse(uiElement("transaction-row-txn_001").exists)
         XCTAssertFalse(uiElement("transaction-row-txn_007").exists)
 
-        selectMatchStateFilter("All matches")
+        // Selecting a concrete filter replaces the prior one outright, so no intermediate
+        // "All matches" reset is needed here; dropping it removes one full menu open/close cycle.
         selectMatchStateFilter("Confirmed")
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout))
         XCTAssertFalse(uiElement("transaction-row-txn_007").exists)
@@ -324,7 +414,9 @@ final class TransactionClassifierUITests: XCTestCase {
         var outOfViewConfirmed = false
         for _ in 0..<12 {
             list.scroll(byDeltaX: 0, deltaY: -800)
-            if !topRow.isHittable {
+            // Use `exists`: a virtualized-away row leaves the tree, so this is immediate,
+            // whereas `isHittable` triggers a ~2s implicit find-retry before returning false.
+            if !topRow.exists {
                 outOfViewConfirmed = true
                 break
             }
@@ -364,7 +456,9 @@ final class TransactionClassifierUITests: XCTestCase {
         var scrolledTopRowOutOfView = false
         for _ in 0..<8 {
             list.scroll(byDeltaX: 0, deltaY: -700)
-            if !firstRow.isHittable {
+            // `exists` is immediate for a virtualized-away row; `isHittable` would pay a
+            // ~2s implicit find-retry each iteration before reporting the row is gone.
+            if !firstRow.exists {
                 scrolledTopRowOutOfView = true
                 break
             }
@@ -824,13 +918,14 @@ final class TransactionClassifierUITests: XCTestCase {
             app.tabGroups.buttons[name],
             app.staticTexts[name],
         ]
-        for candidate in candidates {
-            if waitForElement(candidate, timeout: 1) {
-                candidate.click()
-                return
-            }
+        // Poll all locator types together so the first available control clicks
+        // immediately, instead of paying a full per-locator timeout in series.
+        guard waitUntil(timeout: waitTimeout, condition: { candidates.contains { $0.exists } }),
+              let candidate = candidates.first(where: { $0.exists }) else {
+            XCTFail("Unable to select tab \(name)")
+            return
         }
-        XCTFail("Unable to select tab \(name)")
+        candidate.click()
     }
 
     private func dismissOpenMenus() {
@@ -900,10 +995,11 @@ final class TransactionClassifierUITests: XCTestCase {
             toggle.click()
         }
         unclassifiedFilterDisabled = true
-        if waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout * 4) {
+        if waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout) {
             return
         }
-        // Returning from other tabs can leave filters reloading longer than a single toggle wait.
+        // Returning from other tabs can leave the list stale until an explicit refresh; fall back
+        // promptly instead of burning the full wait budget on a reload that a toggle won't trigger.
         uiElement("refresh-button").click()
         XCTAssertTrue(
             waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout * 4),
@@ -1037,8 +1133,18 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func replaceText(in element: XCUIElement, with text: String) {
-        clearField(element)
-        pasteText(text, into: element)
+        // Select-all then paste-over replaces existing content in a single focus pass:
+        // click + ⌘A + ⌘V (3 synthesized events) instead of clear (click+⌘A+delete) plus a
+        // second click + ⌘V (5 events). Each saved event is ~0.35s of XCUITest idle wait.
+        element.click()
+        app.typeKey("a", modifierFlags: .command)
+        if text.isEmpty {
+            app.typeKey(.delete, modifierFlags: [])
+            return
+        }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        app.typeKey("v", modifierFlags: .command)
     }
 
     private func clearSearchField(_ searchField: XCUIElement) {
@@ -1060,6 +1166,18 @@ final class TransactionClassifierUITests: XCTestCase {
             if !loadMore.exists || !loadMore.isEnabled { break }
             loadMore.click()
             _ = waitUntil(timeout: 1) { !loadMore.exists || loadMore.isEnabled }
+        }
+    }
+
+    /// Scrolls the transaction list back to the top until the first fixture row is rendered.
+    /// Uses `exists` (not `isHittable`) so probing a virtualized-away row is immediate.
+    private func scrollTransactionListToTop() {
+        let list = app.scrollViews["transaction-list"].firstMatch
+        guard list.exists else { return }
+        let firstRow = uiElement("transaction-row-txn_001")
+        for _ in 0..<12 {
+            if firstRow.exists { return }
+            list.scroll(byDeltaX: 0, deltaY: 700)
         }
     }
 
@@ -1099,9 +1217,7 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private static var smokeDefaultSteps: Set<Int> {
-        var steps = Set(1...17)
-        steps.formUnion(19...29)
-        return steps
+        Set(1...scenarioCount)
     }
 
     private static func resolvedStepsRaw() -> String? {

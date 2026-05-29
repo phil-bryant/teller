@@ -8,6 +8,10 @@ setup() {
   mkdir -p "${FIXTURE_ROOT}/src/macos-ui"
   mkdir -p "${FIXTURE_ROOT}/src/scripts"
   copy_script_to_fixture "src/scripts/macos_ui_swift_lock.sh"
+  #R085: Make the Swift smoke suite available so delay-padding guards can scan it.
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/UITests"
+  cp "$(repo_root)/src/macos-ui/UITests/TransactionClassifierUITests.swift" \
+    "${FIXTURE_ROOT}/src/macos-ui/UITests/TransactionClassifierUITests.swift"
 }
 
 teardown() {
@@ -191,7 +195,7 @@ EOF
   [ "$status" -eq 0 ]
   grep "swift" "${CALLS_LOG}"
   grep "xcodebuild" "${CALLS_LOG}"
-  [[ "$output" == *"1-17,19-32"* ]]
+  [[ "$output" == *"1-32"* ]]
 }
 
 @test "extended profile includes advanced filter scenarios" {
@@ -321,8 +325,14 @@ EOF
   [ "$status" -ne 0 ]
 }
 
-@test "runner avoids fixed sleep-based interaction padding" {
+@test "runner and swift suite avoid fixed sleep-based interaction padding" {
   #R085-T01
   run grep -nE '(^|[^[:alnum:]_])sleep[[:space:]]+[0-9]' "${FIXTURE_ROOT}/t14_run_macos_ui_regression_tests.sh"
+  [ "$status" -ne 0 ]
+
+  # The Swift smoke suite must also stay free of fixed interaction delays
+  # (sleep()/usleep/Thread.sleep/Task.sleep/DispatchQueue.asyncAfter padding).
+  run grep -nE 'sleep\(|usleep|asyncAfter' \
+    "${FIXTURE_ROOT}/src/macos-ui/UITests/TransactionClassifierUITests.swift"
   [ "$status" -ne 0 ]
 }

@@ -28,7 +28,7 @@ XCUITEST_DESTINATION="${XCUITEST_DESTINATION:-platform=macOS}"
 XCUITEST_DERIVED_DATA_PATH="${XCUITEST_DERIVED_DATA_PATH:-./src/macos-ui/.derivedData-ui-tests}"
 XCUITEST_RESULT_BUNDLE_PATH="${XCUITEST_RESULT_BUNDLE_PATH:-./artifacts/macos-ui-regression/xcuitest-results.xcresult}"
 XCUITEST_PROFILE="${XCUITEST_PROFILE:-smoke}"
-XCUITEST_SUCCESS_GRACE_SECONDS="${XCUITEST_SUCCESS_GRACE_SECONDS:-5}"
+XCUITEST_SUCCESS_GRACE_SECONDS="${XCUITEST_SUCCESS_GRACE_SECONDS:-1}"
 #R050: Crash-reporter verification remains a standalone lane (script 11).
 #R040: Support selecting specific smoke-suite scenario steps by numeric indices.
 XCUITEST_SCENARIOS=(
@@ -74,7 +74,7 @@ XCUITEST_SCENARIOS=(
   "advancedEmailSearch"
 )
 XCUITEST_SMOKE_SUITE="TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite"
-XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-17,19-32}"
+XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-32}"
 XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-32}"
 
 if [[ $# -gt 1 ]]; then

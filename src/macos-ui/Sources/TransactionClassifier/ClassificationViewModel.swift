@@ -138,7 +138,20 @@ final class ClassificationViewModel {
     var candidatesLoadToken: UUID?
     /// Token for the in-flight per-candidate email fetch (same rationale as `candidatesLoadToken`).
     var emailLoadToken: UUID?
-    static let mailcartSearchDebounceNanoseconds: UInt64 = 250_000_000
+    static let mailcartSearchDebounceDefaultMilliseconds: UInt64 = 175
+    /// Debounce window for Mailcart search input. Defaults to 250ms in production but is tunable so
+    /// UI/automation runs do not pay a fixed per-keystroke delay. `TELLER_MAILCART_DEBOUNCE_MS`
+    /// overrides explicitly; otherwise UI-test mode collapses the debounce to zero.
+    static var mailcartSearchDebounceNanoseconds: UInt64 {
+        let environment = ProcessInfo.processInfo.environment
+        if let raw = environment["TELLER_MAILCART_DEBOUNCE_MS"], let milliseconds = UInt64(raw) {
+            return milliseconds * 1_000_000
+        }
+        if environment["TELLER_UI_TEST_MODE"] == "1" {
+            return 0
+        }
+        return mailcartSearchDebounceDefaultMilliseconds * 1_000_000
+    }
 
     init(api: any ClassificationAPI = APIClient()) { self.api = api }
 

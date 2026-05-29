@@ -117,7 +117,7 @@ private struct MatchAndClassifyTransactionsPane: View {
                     .font(.headline)
                 Spacer()
                 if viewModel.busy {
-                    ProgressView().controlSize(.small)
+                    BusyIndicator()
                 }
                 Text("\(viewModel.transactions.count) / \(viewModel.totalTransactions)")
                     .font(.caption)
@@ -433,7 +433,7 @@ private struct CandidatesPane: View {
                     .font(.headline)
                 Spacer()
                 if viewModel.candidatesBusy {
-                    ProgressView().controlSize(.small)
+                    BusyIndicator()
                 }
                 Text("\(viewModel.candidates.count)")
                     .font(.caption)
@@ -518,7 +518,7 @@ private struct CandidatesPane: View {
                             .foregroundStyle(.red)
                     }
                     if viewModel.mailcartSearchBusy {
-                        HStack { ProgressView().controlSize(.small); Text("Searching…").font(.caption) }
+                        HStack { BusyIndicator(); Text("Searching…").font(.caption) }
                     }
                     ForEach(viewModel.mailcartSearchResults) { hit in
                         SearchHitRowView(hit: hit)
@@ -754,7 +754,7 @@ private struct EmailSection: View {
                     .accessibilityIdentifier("email-body-mode-picker")
                 }
                 Spacer()
-                if viewModel.emailBusy { ProgressView().controlSize(.small) }
+                if viewModel.emailBusy { BusyIndicator() }
             }
             if !viewModel.emailErrorText.isEmpty {
                 Text(viewModel.emailErrorText)
@@ -894,8 +894,12 @@ private struct EmailBodyTextScrollView: View {
 
     private func scrollToAmountLine(proxy: ScrollViewProxy, amountLineIndex: Int?) {
         guard amountLineIndex != nil else { return }
-        withAnimation(.easeInOut(duration: 0.2)) {
+        if uiTestingActive {
             proxy.scrollTo(Self.amountLineScrollId, anchor: .center)
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                proxy.scrollTo(Self.amountLineScrollId, anchor: .center)
+            }
         }
     }
 }
