@@ -108,7 +108,7 @@ final class TransactionClassifierUITests: XCTestCase {
                 runMatchStatePickerAllValuesScenario()
             case 31: // #R070 #R090-T02
                 runAdvancedTransactionFilterScenario()
-            case 32: // #R071-T02 #R071-T03 #R071-T04 #R071-T05 #R095-T01
+            case 32: // #R071-T02 #R071-T03 #R071-T04 #R071-T05 #R071-T09 #R095-T01
                 runAdvancedEmailSearchScenario()
             default: break
             }
@@ -524,7 +524,6 @@ final class TransactionClassifierUITests: XCTestCase {
         clearField(uiElement("mailcart-search-start-date-field"))
         clearField(uiElement("mailcart-search-end-date-field"))
 
-        // #R071-T09: Tab traversal should follow Subject -> Body keyword -> Sender -> Start date.
         uiElement("mailcart-search-subject-field").click()
         app.typeKey(.tab, modifierFlags: [])
         app.typeText("body-tab-probe")
