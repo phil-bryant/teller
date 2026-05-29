@@ -20,6 +20,7 @@ extension ClassificationViewModel {
     // #R090: Transaction-loading extension forwards advanced filters on every fetch call.
     // #R095: Transaction-loading composition preserves structured debounced Mailcart search behavior.
     // #R100: Transaction-loading composition preserves stale match snapshot recovery behavior.
+    // #R117: Transaction-loading composition preserves no-email confirm guard behavior.
     // #R001: Load categories and first-page transactions; clear busy before side-pane fetches (R075/R080).
     // #R080: Optional stderr profiling when TELLER_UI_PROFILE_TRANSACTION_LIST=true.
     func loadAll() async {

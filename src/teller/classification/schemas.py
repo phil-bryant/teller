@@ -266,3 +266,24 @@ class MatchOverrideMutation(BaseModel):
     @classmethod
     def validate_note(cls, value: Optional[str]):
         return _validate_text_field("note", value)
+
+
+class MatchConfirmMutation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email_message_id: Optional[
+        Annotated[
+            str,
+            StringConstraints(min_length=1, max_length=_EMAIL_MESSAGE_ID_MAX_LENGTH, pattern=_EMAIL_MESSAGE_ID_PATTERN),
+        ]
+    ] = None
+    note: Optional[Annotated[str, StringConstraints(max_length=800, pattern=r"^[\x20-\x7E]*$")]] = None
+
+    @field_validator("email_message_id")
+    @classmethod
+    def validate_email_message_id(cls, value: Optional[str]):
+        return _validate_text_field("email_message_id", value)
+
+    @field_validator("note")
+    @classmethod
+    def validate_note(cls, value: Optional[str]):
+        return _validate_text_field("note", value)

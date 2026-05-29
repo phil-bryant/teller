@@ -20,6 +20,7 @@ extension ClassificationViewModel {
     // #R090: Category-editor composition preserves advanced transaction filter forwarding behavior.
     // #R095: Category-editor composition preserves structured debounced Mailcart search behavior.
     // #R100: Category-editor composition preserves stale match snapshot recovery behavior.
+    // #R117: Category-editor composition preserves no-email confirm guard behavior.
     func beginNewCategoryDraft() {
         categoryEditorSelection = []
         categoryEditorDraft = CategoryDraft()

@@ -50,7 +50,8 @@ _TRANSACTION_COUNT_SQL = text(
                 SELECT tem.match_id, tem.state::text AS state, tem.selected_by::text AS selected_by,
                        tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence,
                        ROW_NUMBER() OVER (
-                           ORDER BY tem.ai_confidence DESC NULLS LAST,
+                           ORDER BY CASE WHEN tem.selected_by = 'human' THEN 0 ELSE 1 END,
+                                    tem.ai_confidence DESC NULLS LAST,
                                     tem.selected_at DESC,
                                     tem.match_id DESC
                        ) AS rn
@@ -112,7 +113,8 @@ _TRANSACTION_LIST_SQL = text(
                        tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence,
                        COUNT(*) OVER ()::INT AS match_count,
                        ROW_NUMBER() OVER (
-                           ORDER BY tem.ai_confidence DESC NULLS LAST,
+                           ORDER BY CASE WHEN tem.selected_by = 'human' THEN 0 ELSE 1 END,
+                                    tem.ai_confidence DESC NULLS LAST,
                                     tem.selected_at DESC,
                                     tem.match_id DESC
                        ) AS rn

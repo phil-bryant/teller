@@ -283,6 +283,54 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(response.match_id, 88)
     }
 
+    func testConfirmMatchWithoutCandidateSendsNoRequestBody() async throws {
+        // #R067-T01
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertEqual(request.url?.path, "/v1/matchy/matches/55/confirm")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
+            XCTAssertNil(request.httpBody)
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            let responseBody = """
+            {"match_id":55,"transaction_id":"txn_confirm","state":"human_confirmed_ai_match","selected_by":"human","updated_at":"now"}
+            """
+            return (response, Data(responseBody.utf8))
+        }
+
+        let client = makeClient()
+        let response = try await client.confirmMatch(matchId: 55)
+        XCTAssertEqual(response.match_id, 55)
+        XCTAssertEqual(response.state, "human_confirmed_ai_match")
+    }
+
+    func testConfirmMatchWithCandidatePayloadUsesConfirmEndpoint() async throws {
+        // #R067-T02
+        URLProtocolStub.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertEqual(request.url?.path, "/v1/matchy/matches/56/confirm")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-Teller-Write-Token"), "test-write-token")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+            let body = try self.requestBodyData(request)
+            let payload = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+            XCTAssertEqual(payload?["email_message_id"] as? String, "msg_candidate")
+            XCTAssertEqual(payload?["note"] as? String, "confirm no-email candidate")
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            let responseBody = """
+            {"match_id":56,"transaction_id":"txn_confirm","state":"human_confirmed_ai_match","selected_by":"human","updated_at":"now"}
+            """
+            return (response, Data(responseBody.utf8))
+        }
+
+        let client = makeClient()
+        let response = try await client.confirmMatch(
+            matchId: 56,
+            emailMessageId: "msg_candidate",
+            note: "confirm no-email candidate"
+        )
+        XCTAssertEqual(response.match_id, 56)
+        XCTAssertEqual(response.state, "human_confirmed_ai_match")
+    }
+
     func testSearchMessagesUsesSearchEndpointAndDecodesEnvelope() async throws {
         // #R062-T01
         URLProtocolStub.requestHandler = { request in

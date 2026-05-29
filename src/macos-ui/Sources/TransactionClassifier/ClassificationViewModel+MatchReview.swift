@@ -20,6 +20,7 @@ extension ClassificationViewModel {
     // #R095: Match-review extension owns structured debounced Mailcart search criteria behavior.
     // #R116: Mailcart search results persist across transaction selection changes.
     // #R100: Match-review extension owns stale snapshot reload-and-retry fallback behavior.
+    // #R117: Match-review extension preserves confirmed semantics for no-email candidate confirms.
     /// Triggered whenever the primary selected transaction changes. Loads the candidate set + email
     /// for the primary transaction so the right pane stays in sync with the left pane.
     func selectedTransactionDidChange() async {
@@ -85,8 +86,8 @@ extension ClassificationViewModel {
         let note = trimmedNote.isEmpty ? nil : trimmedNote
         do {
             if let matchId = selectedMatchId {
-                _ = try await api.confirmMatch(matchId: matchId)
-                matchReviewStatusText = "Confirmed match \(matchId)"
+                guard let status = try await confirmExistingMatch(matchId: matchId, note: note) else { return }
+                matchReviewStatusText = status
             } else if let transactionId = primaryTransaction?.transaction_id,
                       let emailId = overrideTargetEmailMessageId {
                 guard !isOverrideTargetSearchHitOnly else {
@@ -123,6 +124,29 @@ extension ClassificationViewModel {
             matchReviewErrorText = error.localizedDescription
             matchReviewStatusText = "Match confirm failed"
         }
+    }
+
+    private func confirmExistingMatch(matchId: Int, note: String?) async throws -> String? {
+        guard selectedTransactionMatch?.state == "ai_no_match_found" else {
+            _ = try await api.confirmMatch(matchId: matchId)
+            return "Confirmed match \(matchId)"
+        }
+        guard let emailId = overrideTargetEmailMessageId else {
+            matchReviewErrorText = "Select a candidate before confirming."
+            matchReviewStatusText = "Match confirm failed"
+            return nil
+        }
+        guard isOverrideTargetInLatestCandidateSet else {
+            matchReviewErrorText = "Selected email is not a candidate for this transaction's latest match run. Choose an email from candidates."
+            matchReviewStatusText = "Match confirm failed"
+            return nil
+        }
+        _ = try await api.confirmMatch(
+            matchId: matchId,
+            emailMessageId: emailId,
+            note: note ?? "Confirmed from Teller review UI"
+        )
+        return "Confirmed match \(matchId)"
     }
 
     func overrideSelectedMatch() async {

@@ -77,6 +77,12 @@ Design: `ClassificationAPI` declares `overrideTransaction(transactionId:emailMes
 Tests:
 - R066-T01: Call `overrideTransaction(...)` and verify request path/body match contract and decode success response.
 
+R067  Statement: Support match-id confirm with explicit candidate email for no-email transitions.
+Design: `ClassificationAPI` supports confirm-by-match-id with an optional `email_message_id` + optional note payload so the no-email confirm path can remain confirm semantics. `APIClient` sends `PUT /v1/matchy/matches/{match_id}/confirm` with no body for ordinary confirms and with `MatchOverrideRequest` JSON when a candidate email is provided, then decodes `MatchReviewActionResponse`.
+Tests:
+- R067-T01: Call confirm-by-match-id without a candidate and verify `PUT /v1/matchy/matches/{match_id}/confirm` sends no JSON body.
+- R067-T02: Call confirm-by-match-id with candidate email/note and verify the same endpoint sends the expected payload and decodes a confirmed-state response.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `APIClient.swift` based on classifier app behavior.
@@ -92,3 +98,4 @@ Tests:
 - 2026-05-27: Added R065 shared contract-scenario corpus conformance tests for APIClient and UI test fixture parity.
 - 2026-05-27: Extended R010 with JSON detail extraction and friendly `YYYY-MM-DD` messaging for transaction date validation errors.
 - 2026-05-28: Added R066 for unmatched transaction override endpoint support (`/v1/matchy/transactions/{transaction_id}/override`).
+- 2026-05-29: Added R067 for match-id confirm requests that optionally include candidate email payloads for no-email confirm transitions.

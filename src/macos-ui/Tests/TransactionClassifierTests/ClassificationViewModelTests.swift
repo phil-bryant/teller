@@ -44,6 +44,7 @@ actor MockAPI: ClassificationAPI {
     var clearedMatchIds: [Int] = []
     var clearedTransactionIds: [String] = []
     var confirmedMatchIds: [Int] = []
+    var confirmedMatchCalls: [(matchId: Int, emailMessageId: String?, note: String?)] = []
     var confirmedTransactionCandidateCalls: [(transactionId: String, emailMessageId: String, note: String?)] = []
     var overriddenMatchCalls: [(matchId: Int, emailMessageId: String, note: String?)] = []
     var overriddenTransactionCalls: [(transactionId: String, emailMessageId: String, note: String?)] = []
@@ -169,7 +170,8 @@ actor MockAPI: ClassificationAPI {
         clearedTransactionIds.append(transactionId)
         return .init(match_id: 0, transaction_id: transactionId, state: "human_confirmed_ai_match", selected_by: "human", updated_at: "now")
     }
-    func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+    func confirmMatch(matchId: Int, emailMessageId: String?, note: String?) async throws -> MatchReviewActionResponse {
+        confirmedMatchCalls.append((matchId, emailMessageId, note))
         confirmedMatchIds.append(matchId)
         return .init(match_id: matchId, transaction_id: "txn_confirmed", state: "human_confirmed_ai_match", selected_by: "human", updated_at: "now")
     }
@@ -205,6 +207,7 @@ actor MockAPI: ClassificationAPI {
     }
     func recordedClearedMatchIds() -> [Int] { clearedMatchIds }
     func recordedConfirmedMatchIds() -> [Int] { confirmedMatchIds }
+    func recordedConfirmMatchCalls() -> [(matchId: Int, emailMessageId: String?, note: String?)] { confirmedMatchCalls }
     func recordedConfirmTransactionCandidateCalls() -> [(transactionId: String, emailMessageId: String, note: String?)] {
         confirmedTransactionCandidateCalls
     }
@@ -252,6 +255,37 @@ private func sampleTransactionWithMatch(_ spec: SampleMatchSpec) -> TransactionR
 
 private func sampleTransactionWithMatch(id: String, matchId: Int, emailId: String, confidence: Double, count: Int) -> TransactionRow {
     sampleTransactionWithMatch(SampleMatchSpec(id: id, matchId: matchId, emailId: emailId, confidence: confidence, count: count))
+}
+
+private func sampleTransactionWithNoEmailMatch(
+    id: String,
+    matchId: Int,
+    count: Int = 1,
+    classification: TransactionCategory? = nil
+) -> TransactionRow {
+    let match = TransactionMatchInfo(
+        match_id: matchId,
+        email_message_id: nil,
+        state: "ai_no_match_found",
+        ai_confidence: nil,
+        selected_by: "human",
+        moved_to_matchy_at: nil,
+        match_count: count
+    )
+    return TransactionRow(
+        transaction_id: id,
+        account_id: "acc",
+        institution_id: "inst_alpha",
+        account_last_four: "1111",
+        date: "2026-05-06",
+        amount: Decimal(200),
+        description: id,
+        status: "posted",
+        transaction_type_code: "card_payment",
+        teller_category: nil,
+        classification: classification,
+        match: match
+    )
 }
 
 private func sampleCandidate(emailId: String, isSelectedByAi: Bool) -> MatchCandidateRow {
@@ -587,6 +621,20 @@ final class ClassificationViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testCanConfirmSelectedMatchIsEnabledForNoEmailMatchWithCandidateSelection() {
+        // #R117-T01
+        let api = MockAPI(categories: [], response: .init(total: 0, items: []))
+        let vm = ClassificationViewModel(api: api)
+        vm.transactions = [
+            sampleTransactionWithNoEmailMatch(id: "txn_no_email", matchId: 1717),
+        ]
+        vm.candidates = [sampleCandidate(emailId: "msg_candidate", isSelectedByAi: true)]
+        vm.selection = ["txn_no_email"]
+        vm.selectedCandidateId = "msg_candidate"
+        XCTAssertTrue(vm.canConfirmSelectedMatch)
+    }
+
+    @MainActor
     func testCanClearSelectedMatchWhenActiveMatchExists() {
         // #R035-T02
         let api = MockAPI(categories: [], response: .init(total: 0, items: []))
@@ -677,6 +725,33 @@ final class ClassificationViewModelTests: XCTestCase {
         XCTAssertEqual(confirmed, [1716])
         XCTAssertTrue(overridden.isEmpty)
         XCTAssertEqual(vm.matchReviewStatusText, "Confirmed match 1716")
+        XCTAssertTrue(vm.matchReviewErrorText.isEmpty)
+    }
+
+    @MainActor
+    func testConfirmSelectedMatchForNoEmailStateUsesConfirmSemantics() async {
+        // #R117-T02
+        let noEmail = sampleTransactionWithNoEmailMatch(id: "txn_no_email", matchId: 1718)
+        let api = MockAPI(categories: [], response: .init(total: 1, items: [noEmail]))
+        let vm = ClassificationViewModel(api: api)
+        await vm.loadAll()
+        vm.selection = ["txn_no_email"]
+        vm.candidates = [sampleCandidate(emailId: "msg_candidate", isSelectedByAi: true)]
+        vm.selectedCandidateId = "msg_candidate"
+
+        await vm.confirmSelectedMatch()
+
+        let confirmed = await api.recordedConfirmedMatchIds()
+        let confirmCalls = await api.recordedConfirmMatchCalls()
+        let overridden = await api.recordedOverriddenMatchCalls()
+        let transactionCalls = await api.recordedConfirmTransactionCandidateCalls()
+        XCTAssertEqual(confirmed, [1718])
+        XCTAssertEqual(confirmCalls.count, 1)
+        XCTAssertEqual(confirmCalls.first?.matchId, 1718)
+        XCTAssertEqual(confirmCalls.first?.emailMessageId, "msg_candidate")
+        XCTAssertTrue(overridden.isEmpty)
+        XCTAssertTrue(transactionCalls.isEmpty)
+        XCTAssertEqual(vm.matchReviewStatusText, "Confirmed match 1718")
         XCTAssertTrue(vm.matchReviewErrorText.isEmpty)
     }
 

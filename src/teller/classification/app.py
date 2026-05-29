@@ -36,6 +36,7 @@ from teller.classification.schemas import (
     EmailMessage,
     EmailSearchResponse,
     MatchCandidateRow,
+    MatchConfirmMutation,
     MatchOverrideMutation,
     MatchReviewActionResponse,
     MatchReviewListResponse,
@@ -546,15 +547,38 @@ def _register_matchy_routes(app: FastAPI, bindings) -> None:
             409: {"model": ApiError, "description": "Match state transition conflicts with current state"},
         },
     )
-    def confirm_match(request: Request, match_id: int):
+    def confirm_match(request: Request, match_id: int, body: MatchConfirmMutation | None = None):
         bindings._require_write_access(request)
         with bindings.get_session() as session:
+            row = bindings._read_match_row(session, match_id)
+            email_message_id = getattr(body, "email_message_id", None)
+            note = getattr(body, "note", None) or "Confirmed from Teller review UI"
+            if row["state"] == "ai_no_match_found":
+                if not email_message_id:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="email_message_id is required when confirming an ai_no_match_found match",
+                    )
+                bindings._ensure_candidate_for_transaction(session, row["transaction_id"], email_message_id)
+                return bindings._transition_match_state(
+                    session=session,
+                    match_id=match_id,
+                    to_state="human_confirmed_ai_match",
+                    actor="human",
+                    note=note,
+                    email_message_id=email_message_id,
+                )
+            if email_message_id is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="email_message_id is only supported when confirming an ai_no_match_found match",
+                )
             return bindings._transition_match_state(
                 session=session,
                 match_id=match_id,
                 to_state="human_confirmed_ai_match",
                 actor="human",
-                note="Confirmed from Teller review UI",
+                note=note,
             )
 
     @app.put(

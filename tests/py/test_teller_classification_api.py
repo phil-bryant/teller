@@ -1086,6 +1086,93 @@ class ClassificationApiTests(unittest.TestCase):
                 clear_endpoint(request=self._authorized_request(), match_id=999)
             self.assertEqual(clear_ctx.exception.status_code, 404)
 
+    @patch("teller.teller_classification_api.get_session")
+    @patch("teller.teller_classification_api._transition_match_state")
+    @patch("teller.teller_classification_api._ensure_candidate_for_transaction")
+    @patch("teller.teller_classification_api._read_match_row")
+    def test_confirm_match_accepts_candidate_for_no_email_state(self, read_match_row_mock, ensure_candidate_mock, transition_mock, get_session_mock):
+        #R074-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/matches/{match_id:int}/confirm", "PUT")
+        session = _FakeSession(rows=[])
+        get_session_mock.return_value = _SessionContext(session)
+        read_match_row_mock.return_value = {
+            "match_id": 44,
+            "transaction_id": "txn_no_email",
+            "email_message_id": None,
+            "state": "ai_no_match_found",
+            "selected_by": "human",
+        }
+        transition_mock.return_value = SimpleNamespace(
+            match_id=44,
+            transaction_id="txn_no_email",
+            state="human_confirmed_ai_match",
+            selected_by="human",
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        response = endpoint(
+            request=self._authorized_request(),
+            match_id=44,
+            body=SimpleNamespace(email_message_id="msg_candidate", note="confirm candidate"),
+        )
+
+        self.assertEqual(response.state, "human_confirmed_ai_match")
+        ensure_candidate_mock.assert_called_once_with(session, "txn_no_email", "msg_candidate")
+        transition_kwargs = transition_mock.call_args.kwargs
+        self.assertEqual(transition_kwargs["match_id"], 44)
+        self.assertEqual(transition_kwargs["to_state"], "human_confirmed_ai_match")
+        self.assertEqual(transition_kwargs["email_message_id"], "msg_candidate")
+
+    @patch("teller.teller_classification_api.get_session")
+    @patch("teller.teller_classification_api._read_match_row")
+    def test_confirm_match_requires_email_for_no_email_state(self, read_match_row_mock, get_session_mock):
+        #R074-T02
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/matches/{match_id:int}/confirm", "PUT")
+        session = _FakeSession(rows=[])
+        get_session_mock.return_value = _SessionContext(session)
+        read_match_row_mock.return_value = {
+            "match_id": 45,
+            "transaction_id": "txn_no_email",
+            "email_message_id": None,
+            "state": "ai_no_match_found",
+            "selected_by": "human",
+        }
+
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(request=self._authorized_request(), match_id=45)
+        self.assertEqual(ctx.exception.status_code, 409)
+
+    @patch("teller.teller_classification_api.get_session")
+    @patch("teller.teller_classification_api._ensure_candidate_for_transaction")
+    @patch("teller.teller_classification_api._read_match_row")
+    def test_confirm_match_rejects_non_candidate_for_no_email_state(self, read_match_row_mock, ensure_candidate_mock, get_session_mock):
+        #R074-T03
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/matchy/matches/{match_id:int}/confirm", "PUT")
+        session = _FakeSession(rows=[])
+        get_session_mock.return_value = _SessionContext(session)
+        read_match_row_mock.return_value = {
+            "match_id": 46,
+            "transaction_id": "txn_no_email",
+            "email_message_id": None,
+            "state": "ai_no_match_found",
+            "selected_by": "human",
+        }
+        ensure_candidate_mock.side_effect = HTTPException(
+            status_code=409,
+            detail="email_message_id is not a candidate for the latest match run of this transaction",
+        )
+
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(
+                request=self._authorized_request(),
+                match_id=46,
+                body=SimpleNamespace(email_message_id="msg_non_candidate", note="bad candidate"),
+            )
+        self.assertEqual(ctx.exception.status_code, 409)
+
 class _FakeMailcartClient:
     def __init__(self, *, messages=None, message_errors=None, search_payload=None, search_error=None):
         self._messages = dict(messages or {})
@@ -1912,6 +1999,40 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertIn("only_unmoved_match", list_sql)
         self.assertEqual(list_params["match_state"], "human_confirmed_ai_match")
         self.assertEqual(list_params["only_unmoved_match"], True)
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_endpoint_prefers_human_representative_match_over_ai_confidence(self, get_session_mock):
+        #R076-T01
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        session = _FakeSession(
+            rows=[
+                _Result(rows=[]),
+                _Result(scalar=0),
+            ]
+        )
+        get_session_mock.return_value = _SessionContext(session)
+        request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
+            query_params={"search": "", "status": "", "only_unclassified": "false",
+                          "match_state": "", "limit": "10", "offset": "0"}
+        )
+        endpoint(
+            request=request,
+            search="",
+            status="",
+            only_unclassified=False,
+            match_state="",
+            only_unmoved_match=False,
+            include_total=True,
+            count_only=False,
+            limit=10,
+            offset=0,
+        )
+        list_sql, _ = session.calls[0]
+        self.assertIn("selected_by", list_sql)
+        self.assertIn("CASE", list_sql)
+        self.assertIn("human", list_sql)
 
     @patch("teller.teller_classification_api.get_session")
     def test_transactions_endpoint_filters_unmatched_match_state(self, get_session_mock):

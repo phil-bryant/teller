@@ -117,6 +117,12 @@ Tests:
 - R116-T01: Populate `mailcartSearchResults` via `searchMailcartIfNeeded()`, change `selection` to another transaction, await `selectedTransactionDidChange()`, and verify search results and criteria are unchanged.
 - R116-T02: Start `selectedTransactionDidChange()` with a delayed candidate fetch, select a persisted search hit while the fetch is in flight, await completion, and verify `selectedCandidateId` stays the search hit and `overrideSelectedMatch()` routes the transaction-level override for that email.
 
+R117  Statement: Confirm on an active no-email match must preserve confirmed semantics for the selected latest-run candidate.
+Design: When the primary transaction has an active `ai_no_match_found` match row, `canConfirmSelectedMatch` is true only when the selected/typed target email is present in `candidates` for the latest loaded run. `confirmSelectedMatch()` must not route through override semantics for that flow. It must call the confirm mutation path with the selected candidate so resulting state is `human_confirmed_ai_match` and the UI surfaces confirmed status/badge semantics.
+Tests:
+- R117-T01: Select a transaction with an active `ai_no_match_found` match row plus a candidate selection and verify `canConfirmSelectedMatch` is true.
+- R117-T02: Invoke `confirmSelectedMatch()` in that state and verify it does not call `overrideMatch(...)`, calls the confirm path with the selected candidate id, and reports confirm success status.
+
 ## Changelog
 
 - 2026-04-23: Added Swift-side requirements for `ClassificationViewModel.swift` to replace prior plan-only coverage.
@@ -133,3 +139,4 @@ Tests:
 - 2026-05-28: Updated R110 so unmatched override is allowed for search-hit-only emails via the transaction-level override endpoint while confirm stays candidate-scoped.
 - 2026-05-28: Added R115 to forbid silent override retargeting when the `match_id` response resolves to a different transaction.
 - 2026-05-28: Added R116 so Mailcart search results survive transaction selection changes and a search-hit selection made during async candidate loading is not clobbered (override keeps targeting the chosen email).
+- 2026-05-29: Updated R117 so no-email candidate confirm preserves confirmed semantics (`human_confirmed_ai_match`) and forbids routing confirm through override semantics.

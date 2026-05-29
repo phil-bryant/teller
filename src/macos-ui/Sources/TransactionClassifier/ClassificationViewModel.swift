@@ -20,6 +20,7 @@ import Observation
 // #R115: Shared match review state guards against override retargeting a different transaction.
 // #R116: Shared Mailcart state preserves search results and user selection across transaction changes.
 // #R100: Shared match action state supports stale snapshot reload-and-retry behavior.
+// #R117: Shared match review state enables no-email confirm only for selected latest-run candidates.
 
 struct UndoAction { let prior: [String: TransactionCategory?] }
 struct CategoryDraft: Equatable {
@@ -252,7 +253,14 @@ final class ClassificationViewModel {
     }
 
     var canConfirmSelectedMatch: Bool {
-        if selectedMatchId != nil { return true }
+        if let match = selectedTransactionMatch {
+            if match.state == "ai_no_match_found" {
+                return primaryTransaction != nil
+                    && overrideTargetEmailMessageId != nil
+                    && isOverrideTargetInLatestCandidateSet
+            }
+            return true
+        }
         return primaryTransaction != nil && overrideTargetEmailMessageId != nil && !isOverrideTargetSearchHitOnly
     }
 

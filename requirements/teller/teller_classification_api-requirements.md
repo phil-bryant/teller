@@ -138,6 +138,18 @@ Tests:
 - R073-T01: Register `/v1/matchy/transactions/{transaction_id}/override` in the app route set.
 - R073-T02: Create a transaction-level override using an email id absent from latest candidates and verify match creation succeeds without calling candidate-membership guard.
 
+R074  Statement: Confirm an existing no-email match by supplying a latest-run candidate email while preserving confirmed semantics.
+Design: `PUT /v1/matchy/matches/{match_id}/confirm` accepts an optional mutation body for the no-email flow. When the current active row state is `ai_no_match_found`, confirm requires a valid `email_message_id` that belongs to the transaction's latest candidate run, then transitions that same match row to `human_confirmed_ai_match` with the supplied email and audit logging. Missing or unsupported candidate-email usage for this path is surfaced as `409` conflict semantics. For non-no-email states, confirm behavior remains body-less state confirmation.
+Tests:
+- R074-T01: Confirm a no-email match with a latest-run candidate email and verify response state is `human_confirmed_ai_match` and `email_message_id` is set.
+- R074-T02: Confirm a no-email match without `email_message_id` and verify request fails with explicit `409` conflict detail.
+- R074-T03: Confirm a no-email match with a non-candidate email and verify request fails with candidate-membership conflict detail.
+
+R076  Statement: Representative match selection for `/v1/transactions` must prioritize human-reviewed outcomes over AI-confidence ordering.
+Design: In the active-match lateral selection used by list/count SQL, rows selected by `human` rank ahead of `ai` rows even when AI rows have higher `ai_confidence`. Within human rows, most recent actions (`selected_at`, then `match_id`) remain tie-breakers. This preserves user-intent visibility for multi-email transactions while still returning `match_count`.
+Tests:
+- R076-T01: Seed one high-confidence AI row plus one human-reviewed row on the same transaction and verify `/v1/transactions` surfaces the human-reviewed row as representative.
+
 ## Changelog
 
 - 2026-05-26: Added R072 (`include_total`, `count_only`) and optimized active-match lateral + `match_count` window aggregation for `/v1/transactions`.
@@ -161,3 +173,5 @@ Tests:
 - 2026-05-27: Extended R062 with throttling-proxy traceability (`R062-T04`) for wrapped upstream 429 behavior.
 - 2026-05-28: Added R073 for manual transaction-level override (`/v1/matchy/transactions/{transaction_id}/override`) that bypasses latest-candidate membership checks.
 - 2026-05-28: Extended R060 so the candidates endpoint unions the active matched email (even when absent from the latest run) as an enriched synthetic candidate row; added R060-T05.
+- 2026-05-29: Added R074 so match-id confirm can transition active no-email rows to `human_confirmed_ai_match` using a validated latest-run candidate email.
+- 2026-05-29: Added R076 so `/v1/transactions` representative active-match selection prefers human-reviewed rows over AI-confidence ordering in multi-email scenarios.

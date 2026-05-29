@@ -60,6 +60,7 @@ from teller.classification.schemas import (
     EmailSearchHit,
     EmailSearchResponse,
     MatchCandidateRow,
+    MatchConfirmMutation,
     MatchOverrideMutation,
     MatchReviewActionResponse,
     MatchReviewListResponse,
@@ -124,7 +125,9 @@ from teller.teller_mailcart_client import get_mailcart_client
 #R071: Compatibility facade re-exports clear/deactivate match helper bindings.
 #R072: Compatibility facade re-exports include_total/count_only pagination helper.
 #R073: Compatibility facade re-exports unmatched manual transaction override helper bindings.
+#R074: Compatibility facade re-exports no-email confirm-with-candidate mutation schema/support.
 #R075: Compatibility facade re-exports advanced transaction scalar filter support.
+#R076: Compatibility facade re-exports human-priority representative match ranking SQL helpers.
 def _transition_match_state(*args, **kwargs):
     kwargs.setdefault("read_match_row_fn", _read_match_row)
     kwargs.setdefault("insert_match_audit_fn", _insert_match_audit)

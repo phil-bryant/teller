@@ -27,7 +27,8 @@ protocol ClassificationAPI: Sendable {
     func createCategory(_ category: CategoryMutationRequest) async throws -> CategoryOption
     func updateCategory(id: Int, category: CategoryMutationRequest) async throws -> CategoryOption
     func deleteCategory(id: Int) async throws -> CategoryDeleteResponse
-    func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse
+    // #R067: Confirm existing matches with optional candidate payload for no-email transitions.
+    func confirmMatch(matchId: Int, emailMessageId: String?, note: String?) async throws -> MatchReviewActionResponse
     func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse
     func markMatchNoEmail(matchId: Int) async throws -> MatchReviewActionResponse
     // #R050: Clear human-reviewed matches by match id or transaction id.
@@ -64,7 +65,13 @@ extension ClassificationAPI {
     }
 
     func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
+        try await confirmMatch(matchId: matchId, emailMessageId: nil, note: nil)
+    }
+
+    func confirmMatch(matchId: Int, emailMessageId: String?, note: String?) async throws -> MatchReviewActionResponse {
         _ = matchId
+        _ = emailMessageId
+        _ = note
         throw APIError.unsupportedOperation("Match confirmation")
     }
 
@@ -209,8 +216,14 @@ actor APIClient: ClassificationAPI {
         try await send(path: "/v1/categories/\(id)", method: "DELETE")
     }
 
-    func confirmMatch(matchId: Int) async throws -> MatchReviewActionResponse {
-        try await send(path: "/v1/matchy/matches/\(matchId)/confirm", method: "PUT")
+    // #R067: PUT /v1/matchy/matches/{match_id}/confirm supports optional email/note payload.
+    func confirmMatch(matchId: Int, emailMessageId: String?, note: String?) async throws -> MatchReviewActionResponse {
+        if let emailMessageId {
+            let body = MatchOverrideRequest(email_message_id: emailMessageId, note: note)
+            guard let data = try? JSONEncoder().encode(body) else { throw APIError.encodeFailed }
+            return try await send(path: "/v1/matchy/matches/\(matchId)/confirm", method: "PUT", body: data)
+        }
+        return try await send(path: "/v1/matchy/matches/\(matchId)/confirm", method: "PUT")
     }
 
     func overrideMatch(matchId: Int, emailMessageId: String, note: String?) async throws -> MatchReviewActionResponse {
