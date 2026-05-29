@@ -26,10 +26,11 @@ Tests:
 - R015-T01: Set `SNAPSHOT_RECORD=true` and verify environment variable is propagated for snapshot update mode.
 
 R020  Statement: Run XCUITest smoke suite when enabled and prerequisites are present.
-Design: When `RUN_XCUITESTS=true`, validate project/tool availability and execute `xcodebuild test` against configured project/scheme/destination.
+Design: When `RUN_XCUITESTS=true`, validate project/tool availability and execute `xcodebuild test` against configured project/scheme/destination. If `xcodebuild` prints the authoritative end-of-run marker `** TEST SUCCEEDED **` but then lingers, treat it as a post-success hang: allow a short grace period (`XCUITEST_SUCCESS_GRACE_SECONDS`) and then end the lingering process so the gate returns promptly. The grace timer must start only on `** TEST SUCCEEDED **` (never on intermediate suite-pass lines) so it can never terminate a run before completion, and heartbeat progress output must remain visible while the suite runs.
 Tests:
 - R020-T01: Set `RUN_XCUITESTS=true` and verify `xcodebuild test` invocation path executes.
 - R020-T02: Point `XCUITEST_PROJECT` to a missing path and verify explicit non-zero failure.
+- R020-T03: Simulate an `xcodebuild test` command that prints `** TEST SUCCEEDED **` and hangs; verify the runner exits successfully after grace without waiting for the full timeout.
 
 R025  Statement: Support a snapshot-only gate for fast pre-merge feedback.
 Design: Allow `RUN_SNAPSHOT_TESTS=true` with `RUN_XCUITESTS=false` so snapshot coverage runs while XCUITest smoke lane is explicitly skipped.
@@ -81,11 +82,11 @@ Design: Smoke coverage must validate that selecting an already-visible deep-list
 Tests:
 - R070-T01: Load a long fixture list, verify it requires scrolling to span top-to-bottom rows, scroll to middle-list rows, select one or more visible middle rows, and verify row frame position remains effectively unchanged after each selection.
 
-R075  Statement: Default smoke profile must prioritize fast feedback while keeping advanced filters opt-in.
-Design: Keep `XCUITEST_SMOKE_DEFAULT_STEPS` at the core scenario set (`1-17,19-29`) for fast regression cadence; run advanced filter scenarios 31-32 via explicit selector or `extended/full` profile.
+R075  Statement: Default smoke profile must complete the Match & Classify return pass after the Connect and Manage Categories tabs.
+Design: Keep `XCUITEST_SMOKE_DEFAULT_STEPS` at `1-17,19-32` so the default run exercises Match & Classify (1-19), then Connect (20-25) and Manage Categories (26-29), then returns to Match & Classify for scenarios 30-32 (`matchStatePickerAllValues`, `advancedTransactionFilter`, `advancedEmailSearch`). The `extended/full` profile remains `1-32` (additionally including scenario 18).
 Tests:
-- R075-T01: Run script with default smoke profile and verify `XCUITEST_STEPS` does not include `31-32`.
-- R075-T02: Run script with `XCUITEST_PROFILE=extended` and verify `XCUITEST_STEPS` includes `31-32`.
+- R075-T01: Run script with default smoke profile and verify `XCUITEST_STEPS` includes the return-pass scenarios (`1-17,19-32`).
+- R075-T02: Run script with `XCUITEST_PROFILE=extended` and verify `XCUITEST_STEPS` includes `1-32`.
 
 R080  Statement: Connect Add/Edit smoke coverage must verify the in-sheet ESC back-navigation hint.
 Design: Smoke scenario `connectAddAndEditButtons` opens both Add and Edit Connect sheets and asserts `Press ESC to go back.` is visible before dismissing each sheet with Escape.
@@ -99,6 +100,8 @@ Tests:
 
 ## Changelog
 
+- 2026-05-29: Restored the default smoke profile to `1-17,19-32` so it returns to Match & Classify (scenarios 30-32) after the Connect/Manage Categories tabs (R075); hardened R020 grace-kill to trigger only on the final `** TEST SUCCEEDED **` marker and keep heartbeat progress visible.
+- 2026-05-28: Updated R020 to require prompt exit after a post-success `xcodebuild` linger and added `XCUITEST_SUCCESS_GRACE_SECONDS` behavior (R020-T03).
 - 2026-05-28: Updated R075 to keep default smoke profile fast (`1-17,19-29`) and move scenarios 31-32 to explicit/extended runs; added R085 to forbid artificial fixed-delay pacing in smoke interactions.
 - 2026-05-27: Added R075 to require smoke defaults include scenarios 31-32 for advanced transaction and email filter regressions.
 - 2026-05-27: Added R080 requiring Connect Add/Edit smoke coverage to assert the in-sheet ESC back-navigation hint.

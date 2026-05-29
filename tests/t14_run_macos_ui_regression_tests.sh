@@ -28,6 +28,7 @@ XCUITEST_DESTINATION="${XCUITEST_DESTINATION:-platform=macOS}"
 XCUITEST_DERIVED_DATA_PATH="${XCUITEST_DERIVED_DATA_PATH:-./src/macos-ui/.derivedData-ui-tests}"
 XCUITEST_RESULT_BUNDLE_PATH="${XCUITEST_RESULT_BUNDLE_PATH:-./artifacts/macos-ui-regression/xcuitest-results.xcresult}"
 XCUITEST_PROFILE="${XCUITEST_PROFILE:-smoke}"
+XCUITEST_SUCCESS_GRACE_SECONDS="${XCUITEST_SUCCESS_GRACE_SECONDS:-5}"
 #R050: Crash-reporter verification remains a standalone lane (script 11).
 #R040: Support selecting specific smoke-suite scenario steps by numeric indices.
 XCUITEST_SCENARIOS=(
@@ -73,7 +74,7 @@ XCUITEST_SCENARIOS=(
   "advancedEmailSearch"
 )
 XCUITEST_SMOKE_SUITE="TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite"
-XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-17,19-29}"
+XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-17,19-32}"
 XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-32}"
 
 if [[ $# -gt 1 ]]; then
@@ -105,6 +106,7 @@ run_with_timeout() {
   set +e
   "$TIMEOUT_HELPER_PYTHON" - "$timeout_seconds" "$timeout_label" "$TIMEOUT_HEARTBEAT_SECONDS" "$@" <<'PY'
 import os
+import select
 import signal
 import subprocess
 import sys
@@ -114,16 +116,30 @@ timeout_seconds = int(sys.argv[1])
 timeout_label = sys.argv[2]
 heartbeat_seconds = int(sys.argv[3])
 command = sys.argv[4:]
+success_grace_seconds = int(os.environ.get("TIMEOUT_SUCCESS_GRACE_SECONDS", "0") or "0")
 if timeout_seconds <= 0:
     timeout_seconds = 1
 if heartbeat_seconds < 0:
     heartbeat_seconds = 0
+if success_grace_seconds < 0:
+    success_grace_seconds = 0
 
-proc = subprocess.Popen(command, preexec_fn=os.setsid)
+proc = subprocess.Popen(
+    command,
+    preexec_fn=os.setsid,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    text=True,
+    encoding="utf-8",
+    errors="replace",
+    bufsize=1,
+)
 start = time.monotonic()
 next_heartbeat_at = heartbeat_seconds
+marker_seen_at = None
 while True:
-    elapsed = int(time.monotonic() - start)
+    now = time.monotonic()
+    elapsed = int(now - start)
     if elapsed >= timeout_seconds:
       os.killpg(proc.pid, signal.SIGTERM)
       try:
@@ -132,13 +148,38 @@ while True:
           os.killpg(proc.pid, signal.SIGKILL)
           proc.wait()
       raise SystemExit(124)
-    try:
-      proc.wait(timeout=1)
+
+    if marker_seen_at is not None and success_grace_seconds > 0 and (now - marker_seen_at) >= success_grace_seconds:
+      os.killpg(proc.pid, signal.SIGTERM)
+      try:
+          proc.wait(timeout=5)
+      except subprocess.TimeoutExpired:
+          os.killpg(proc.pid, signal.SIGKILL)
+          proc.wait()
+      print(
+          f"ℹ️  {timeout_label} reported success; stopping lingering xcodebuild after {success_grace_seconds}s grace.",
+          flush=True,
+      )
+      raise SystemExit(0)
+
+    readable, _, _ = select.select([proc.stdout], [], [], 1)
+    if readable:
+      line = proc.stdout.readline()
+      if line:
+          sys.stdout.write(line)
+          sys.stdout.flush()
+          # Only the authoritative end-of-run marker may start the grace timer,
+          # so the kill can never fire before xcodebuild's final success line.
+          if "** TEST SUCCEEDED **" in line:
+              marker_seen_at = marker_seen_at or time.monotonic()
+      elif proc.poll() is not None:
+          raise SystemExit(proc.returncode)
+    elif proc.poll() is not None:
       raise SystemExit(proc.returncode)
-    except subprocess.TimeoutExpired:
-      if heartbeat_seconds > 0 and elapsed >= next_heartbeat_at:
-          print(f"⏳ Still running {timeout_label} ({elapsed}s elapsed)...", flush=True)
-          next_heartbeat_at += heartbeat_seconds
+
+    if heartbeat_seconds > 0 and marker_seen_at is None and elapsed >= next_heartbeat_at:
+      print(f"⏳ Still running {timeout_label} ({elapsed}s elapsed)...", flush=True)
+      next_heartbeat_at += heartbeat_seconds
 PY
   local status=$?
   set -e
@@ -264,7 +305,8 @@ if [[ "$RUN_XCUITESTS" == "true" ]]; then
   if [[ -n "$XCUITEST_SELECTED_NUMBERS" ]]; then
     echo "ℹ️  Using XCUITest profile '${XCUITEST_PROFILE}' with scenarios: ${XCUITEST_SELECTOR_RAW}"
     export XCUITEST_STEPS="$XCUITEST_SELECTED_NUMBERS"
-    run_with_timeout "$XCUITEST_TIMEOUT_SECONDS" "macOS XCUITest smoke suite" \
+    TIMEOUT_SUCCESS_GRACE_SECONDS="$XCUITEST_SUCCESS_GRACE_SECONDS" \
+      run_with_timeout "$XCUITEST_TIMEOUT_SECONDS" "macOS XCUITest smoke suite" \
       xcodebuild test \
         -project "$XCUITEST_PROJECT" \
         -scheme "$XCUITEST_SCHEME" \
@@ -273,7 +315,8 @@ if [[ "$RUN_XCUITESTS" == "true" ]]; then
         -resultBundlePath "$XCUITEST_RESULT_BUNDLE_PATH" \
         -only-testing:"${XCUITEST_SMOKE_SUITE}"
   else
-    run_with_timeout "$XCUITEST_TIMEOUT_SECONDS" "macOS XCUITest smoke suite" \
+    TIMEOUT_SUCCESS_GRACE_SECONDS="$XCUITEST_SUCCESS_GRACE_SECONDS" \
+      run_with_timeout "$XCUITEST_TIMEOUT_SECONDS" "macOS XCUITest smoke suite" \
       xcodebuild test \
         -project "$XCUITEST_PROJECT" \
         -scheme "$XCUITEST_SCHEME" \

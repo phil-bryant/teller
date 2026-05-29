@@ -207,12 +207,12 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
     }
 
     func testAdvancedEmailSearchFieldsExposeAccessibilityIdentifiers() throws {
-        // #R071-T01
+        // #R071-T01 #R071-T08
         let source = try Self.loadViewSource()
         for identifier in [
             "mailcart-search-subject-field",
-            "mailcart-search-sender-field",
             "mailcart-search-body-field",
+            "mailcart-search-sender-field",
             "mailcart-search-start-date-field",
             "mailcart-search-end-date-field",
         ] {
@@ -229,6 +229,7 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
             source.contains(#"TextField("End date", text: $viewModel.mailcartSearchEndDate)"#),
             "Search Email section must label received-end as End date."
         )
+        try assertSearchEmailFieldTabOrder(in: source)
     }
 
     func testAdvancedEmailSearchShowsScopedAndInclusiveContractHint() throws {
@@ -265,7 +266,7 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
     }
 
     func testAdvancedEmailSearchScenarioExercisesSenderBodyAndDateFilters() throws {
-        // #R071-T03 #R071-T04 #R071-T05
+        // #R071-T03 #R071-T04 #R071-T05 #R071-T09
         let source = try Self.loadUITestSource()
         XCTAssertTrue(source.contains(#"pasteText("alerts@transit.example.com", into: uiElement("mailcart-search-sender-field"))"#))
         XCTAssertTrue(source.contains(#"pasteText("nobody@nope.example.com", into: uiElement("mailcart-search-sender-field"))"#))
@@ -274,6 +275,10 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
         XCTAssertTrue(source.contains(#"pasteText("Charge posted", into: uiElement("mailcart-search-body-field"))"#))
         XCTAssertTrue(source.contains(#"replaceText(in: uiElement("mailcart-search-start-date-field"), with: "2026-04-19")"#))
         XCTAssertTrue(source.contains(#"replaceText(in: uiElement("mailcart-search-end-date-field"), with: "2026-04-18")"#))
+        XCTAssertTrue(source.contains(#"app.typeKey(.tab, modifierFlags: [])"#))
+        XCTAssertTrue(source.contains(#"app.typeText("body-tab-probe")"#))
+        XCTAssertTrue(source.contains(#"app.typeText("sender-tab-probe")"#))
+        XCTAssertTrue(source.contains(#"Tab from Sender should route typing to Start date."#))
     }
 
     func testAdvancedEmailSearchScenarioPersistsHitsAcrossTransactionSelection() throws {
@@ -444,5 +449,24 @@ private extension MatchAndClassifyViewsRequirementsTests {
 
     func lowerBound(of needle: String, in source: String) throws -> String.Index {
         try XCTUnwrap(source.range(of: needle)?.lowerBound, "Expected snippet in transactions pane: \(needle)")
+    }
+
+    func assertSearchEmailFieldTabOrder(in source: String) throws {
+        let subjectIdentifier = #".accessibilityIdentifier("mailcart-search-subject-field")"#
+        let bodyIdentifier = #".accessibilityIdentifier("mailcart-search-body-field")"#
+        let senderIdentifier = #".accessibilityIdentifier("mailcart-search-sender-field")"#
+        let startDateIdentifier = #".accessibilityIdentifier("mailcart-search-start-date-field")"#
+        let endDateIdentifier = #".accessibilityIdentifier("mailcart-search-end-date-field")"#
+
+        let subjectIndex = try lowerBound(of: subjectIdentifier, in: source)
+        let bodyIndex = try lowerBound(of: bodyIdentifier, in: source)
+        let senderIndex = try lowerBound(of: senderIdentifier, in: source)
+        let startDateIndex = try lowerBound(of: startDateIdentifier, in: source)
+        let endDateIndex = try lowerBound(of: endDateIdentifier, in: source)
+
+        XCTAssertLessThan(subjectIndex, bodyIndex, "Search Email Tab order must move Subject -> Body keyword.")
+        XCTAssertLessThan(bodyIndex, senderIndex, "Search Email Tab order must move Body keyword -> Sender.")
+        XCTAssertLessThan(senderIndex, startDateIndex, "Search Email Tab order must move Sender -> Start date.")
+        XCTAssertLessThan(startDateIndex, endDateIndex, "Search Email Tab order must move Start date -> End date.")
     }
 }

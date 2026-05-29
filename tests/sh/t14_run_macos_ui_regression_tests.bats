@@ -110,6 +110,39 @@ EOF
   [[ "$output" == *"XCUITest project not found"* ]]
 }
 
+@test "XCUITest runner exits promptly after post-success linger" {
+  #R020-T03
+  mkdir -p "${FIXTURE_ROOT}/src/macos-ui/TransactionClassifierUIAutomation.xcodeproj"
+  cat > "${STUB_BIN}/swift" <<EOF
+#!/usr/bin/env bash
+echo swift "\$@" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/swift"
+  cat > "${STUB_BIN}/xcodebuild" <<EOF
+#!/usr/bin/env bash
+echo xcodebuild "\$@" >> "${CALLS_LOG}"
+if [[ "\$1" == "-checkFirstLaunchStatus" ]]; then
+  exit 0
+fi
+if [[ "\$1" == "-license" && "\$2" == "check" ]]; then
+  exit 0
+fi
+printf '%s\n' "** TEST SUCCEEDED **"
+while true; do
+  :
+done
+EOF
+  chmod +x "${STUB_BIN}/xcodebuild"
+  run bash -c "cd '${FIXTURE_ROOT}' && \
+    export PATH='${STUB_BIN}:'\${PATH} && \
+    RUN_SNAPSHOT_TESTS=false RUN_XCUITESTS=true \
+    XCUITEST_TIMEOUT_SECONDS=8 XCUITEST_SUCCESS_GRACE_SECONDS=1 \
+    ./t14_run_macos_ui_regression_tests.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"reported success; stopping lingering xcodebuild"* ]]
+}
+
 @test "XCUITest can be disabled while snapshot runs" {
   #R025-T01
   cat > "${STUB_BIN}/swift" <<EOF
@@ -158,7 +191,7 @@ EOF
   [ "$status" -eq 0 ]
   grep "swift" "${CALLS_LOG}"
   grep "xcodebuild" "${CALLS_LOG}"
-  [[ "$output" == *"1-17,19-29"* ]]
+  [[ "$output" == *"1-17,19-32"* ]]
 }
 
 @test "extended profile includes advanced filter scenarios" {

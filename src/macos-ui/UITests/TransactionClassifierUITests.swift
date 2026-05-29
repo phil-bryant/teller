@@ -524,6 +524,38 @@ final class TransactionClassifierUITests: XCTestCase {
         clearField(uiElement("mailcart-search-start-date-field"))
         clearField(uiElement("mailcart-search-end-date-field"))
 
+        // #R071-T09: Tab traversal should follow Subject -> Body keyword -> Sender -> Start date.
+        uiElement("mailcart-search-subject-field").click()
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText("body-tab-probe")
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout) {
+                elementText(uiElement("mailcart-search-body-field")).contains("body-tab-probe")
+            },
+            "Tab from Subject should route typing to Body keyword."
+        )
+        clearField(uiElement("mailcart-search-body-field"))
+
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText("sender-tab-probe")
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout) {
+                elementText(uiElement("mailcart-search-sender-field")).contains("sender-tab-probe")
+            },
+            "Tab from Body keyword should route typing to Sender."
+        )
+        clearField(uiElement("mailcart-search-sender-field"))
+
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText("2026-04-19")
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout) {
+                elementText(uiElement("mailcart-search-start-date-field")).contains("2026-04-19")
+            },
+            "Tab from Sender should route typing to Start date."
+        )
+        clearField(uiElement("mailcart-search-start-date-field"))
+
         pasteText("Transit", into: uiElement("mailcart-search-subject-field"))
         XCTAssertTrue(waitForElement(uiElement("mailcart-hit-row-msg_search_001"), timeout: waitTimeout * 3))
         uiElement("mailcart-hit-row-msg_search_001").click()

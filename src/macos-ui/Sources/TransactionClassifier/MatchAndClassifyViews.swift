@@ -388,6 +388,15 @@ private struct ConfidencePill: View {
 
 private struct CandidatesPane: View {
     @Bindable var viewModel: ClassificationViewModel
+    @FocusState private var searchEmailFocus: SearchEmailFocusField?
+
+    private enum SearchEmailFocusField: Hashable {
+        case subject
+        case body
+        case sender
+        case startDate
+        case endDate
+    }
 
     // The full set of email_message_ids matchy has actively linked to the selected transaction.
     // When matchy ties multiple emails to one transaction, every one of them should render with
@@ -474,19 +483,29 @@ private struct CandidatesPane: View {
                 Section("Search Email") {
                     TextField("Subject", text: $viewModel.mailcartSearchSubject)
                         .textFieldStyle(.roundedBorder)
+                        .focused($searchEmailFocus, equals: .subject)
+                        .onKeyPress(.tab) { handleSearchEmailTab(from: .subject) }
                         .accessibilityIdentifier("mailcart-search-subject-field")
                     TextField("Body keyword", text: $viewModel.mailcartSearchBody)
                         .textFieldStyle(.roundedBorder)
+                        .focused($searchEmailFocus, equals: .body)
+                        .onKeyPress(.tab) { handleSearchEmailTab(from: .body) }
                         .accessibilityIdentifier("mailcart-search-body-field")
                     TextField("Sender", text: $viewModel.mailcartSearchSender)
                         .textFieldStyle(.roundedBorder)
+                        .focused($searchEmailFocus, equals: .sender)
+                        .onKeyPress(.tab) { handleSearchEmailTab(from: .sender) }
                         .accessibilityIdentifier("mailcart-search-sender-field")
                     HStack(spacing: 8) {
                         TextField("Start date", text: $viewModel.mailcartSearchStartDate)
                             .textFieldStyle(.roundedBorder)
+                            .focused($searchEmailFocus, equals: .startDate)
+                            .onKeyPress(.tab) { handleSearchEmailTab(from: .startDate) }
                             .accessibilityIdentifier("mailcart-search-start-date-field")
                         TextField("End date", text: $viewModel.mailcartSearchEndDate)
                             .textFieldStyle(.roundedBorder)
+                            .focused($searchEmailFocus, equals: .endDate)
+                            .onKeyPress(.tab) { handleSearchEmailTab(from: .endDate) }
                             .accessibilityIdentifier("mailcart-search-end-date-field")
                     }
                     Text("Subject/body/sender are field-specific filters. Dates are inclusive. Filled filters are combined with AND.")
@@ -511,6 +530,22 @@ private struct CandidatesPane: View {
             .accessibilityIdentifier("candidates-list")
         }
         .padding(8)
+    }
+
+    private func handleSearchEmailTab(from field: SearchEmailFocusField) -> KeyPress.Result {
+        switch field {
+        case .subject:
+            searchEmailFocus = .body
+        case .body:
+            searchEmailFocus = .sender
+        case .sender:
+            searchEmailFocus = .startDate
+        case .startDate:
+            searchEmailFocus = .endDate
+        case .endDate:
+            return .ignored
+        }
+        return .handled
     }
 }
 
