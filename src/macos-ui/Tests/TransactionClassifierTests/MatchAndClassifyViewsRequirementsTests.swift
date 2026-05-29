@@ -360,6 +360,19 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
         XCTAssertLessThan(overrideIndex, noEmailIndex, "Override must precede No-email.")
         XCTAssertLessThan(noEmailIndex, clearIndex, "No-email must precede Clear.")
     }
+
+    func testClassifySectionOmitsRedundantTransactionHeader() throws {
+        // #R030-T01
+        let source = try Self.loadViewSource()
+        XCTAssertFalse(
+            source.contains("selected-transaction-header"),
+            "ClassifySection must not render a redundant transaction id beside classification actions."
+        )
+        XCTAssertTrue(
+            source.contains(#".accessibilityIdentifier("selection-count")"#),
+            "ClassifySection must keep selection-count visible."
+        )
+    }
 }
 
 private extension MatchAndClassifyViewsRequirementsTests {

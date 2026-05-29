@@ -29,10 +29,10 @@ Design: The transaction list scroll binding only honors view-model-issued pendin
 Tests:
 - R025-T01: With the Unclassified filter off and all fixture pages loaded, scroll the list so the top row is off-screen, trigger Next Unclassified, and verify the newly-selected row becomes hittable in the viewport.
 
-R030  Statement: Detail pane header includes the selected transaction's identifier.
-Design: The detail pane renders `Text("Transaction \(selected.transaction_id)")` as its primary header instead of a generic "Transaction" label so the active transaction identifier is always visible.
+R030  Statement: Classification action row must not duplicate the selected transaction identifier.
+Design: `ClassifySection` shows `N selected` beside the `Transaction Classification` heading and omits a redundant `Transaction <transaction_id>` label from the Apply/Clear/Undo row so action buttons are not crowded. The selected transaction id remains visible on the corresponding row in `MatchAndClassifyTransactionsPane`.
 Tests:
-- R030-T01: Select a fixture row and verify the detail pane header displays `Transaction <transaction_id>` matching the selected row.
+- R030-T01: Select a fixture row and verify `selection-count` shows one selected while the transaction list row contains the selected transaction id and `selected-transaction-header` is absent.
 
 R035  Statement: When a candidate email body loads, scroll the body pane so the selected transaction's amount is visible.
 Design: `EmailBodyContent` receives `scrollToAmount` from the primary transaction. HTML bodies use `EmailBodyWebView` with a navigation delegate that runs `scrollIntoView({ block: 'center', inline: 'center' })` on the best amount match after load; plain-text bodies use `ScrollViewReader` to center the matching line. Amount search prefers lines containing total keywords and uses absolute-value variants (`$15.19`, `15.19`, etc.).
@@ -110,6 +110,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-29: Updated R030 so classification actions no longer duplicate the transaction id beside Apply/Clear/Undo.
 - 2026-05-29: Updated R045 to require compact match action bar labels (`Confirm`, `Override`, `No-email`, `Clear`) with stable accessibility identifiers; added R045-T02.
 - 2026-05-29: Added R076 to require post-confirm email-pane continuity (keep rendered body visible; do not surface `email-error` for transient refetch failures).
 - 2026-05-28: Added explicit Search Email keyboard Tab order contract and coverage (R071-T08/R071-T09).

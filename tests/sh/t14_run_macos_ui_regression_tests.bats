@@ -195,7 +195,7 @@ EOF
   [ "$status" -eq 0 ]
   grep "swift" "${CALLS_LOG}"
   grep "xcodebuild" "${CALLS_LOG}"
-  [[ "$output" == *"1-32"* ]]
+  [[ "$output" == *"1-33"* ]]
 }
 
 @test "extended profile includes advanced filter scenarios" {
@@ -218,7 +218,7 @@ EOF
     XCUITEST_PROFILE=extended \
     ./t14_run_macos_ui_regression_tests.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"1-32"* ]]
+  [[ "$output" == *"1-33"* ]]
 }
 
 @test "passes xcodebuild project scheme destination and derived data overrides" {

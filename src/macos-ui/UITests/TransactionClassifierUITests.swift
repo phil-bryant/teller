@@ -325,10 +325,10 @@ final class TransactionClassifierUITests: XCTestCase {
     }
 
     private func runSelectionShowsTransactionIdScenario() {
-        // #R030
         ensureMatchAndClassifyTab()
         selectTransactionRow("txn_001", label: "Coffee Roasters")
-        assertSelectedTransactionId("txn_001", requireHeaderMatch: false)
+        assertSelectedTransactionId("txn_001")
+        XCTAssertFalse(uiElement("selected-transaction-header").exists)
     }
 
     private func runNextUnclassifiedShortcutScenario() {
@@ -1056,26 +1056,22 @@ final class TransactionClassifierUITests: XCTestCase {
         assertSelectedTransactionId(transactionId)
     }
 
-    private func assertSelectedTransactionId(_ transactionId: String, requireHeaderMatch: Bool = true) {
+    private func assertSelectedTransactionId(_ transactionId: String) {
         let row = uiElement("transaction-row-\(transactionId)")
         XCTAssertTrue(waitForElement(row, timeout: waitTimeout))
-        if requireHeaderMatch {
-            XCTAssertTrue(
-                waitUntil(timeout: waitTimeout * 2) { isPrimarySelection(transactionId) },
-                "Expected transaction \(transactionId) to become the primary selected row."
-            )
-        } else {
-            XCTAssertTrue(elementText(uiElement("selection-count")).contains("1"))
-        }
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) { isPrimarySelection(transactionId) },
+            "Expected transaction \(transactionId) to become the primary selected row."
+        )
         XCTAssertTrue(elementText(row).contains(transactionId))
     }
 
     private func isPrimarySelection(_ transactionId: String) -> Bool {
         let selectionCount = uiElement("selection-count")
-        let selectedHeader = uiElement("selected-transaction-header")
+        let row = uiElement("transaction-row-\(transactionId)")
         return elementText(selectionCount).contains("1")
-            && selectedHeader.exists
-            && elementText(selectedHeader).contains(transactionId)
+            && row.exists
+            && elementText(row).contains(transactionId)
     }
 
     private func elementText(_ element: XCUIElement) -> String {

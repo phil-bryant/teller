@@ -27,7 +27,7 @@ Tests:
 
 ## Changelog
 
-- 2026-05-29: Match action bar button labels updated to Confirm, Override, No-email, Clear (see MatchAndClassifyViews R045).
+- 2026-05-29: Match action bar button labels updated to Confirm, Override, No-email, Clear (see MatchAndClassifyViews R045); R030 no longer duplicates transaction id in classification actions.
 - 2026-04-23: Added Swift-side requirements for `ContentView.swift` from macOS classifier implementation.
 - 2026-04-23: Added R020 (auto-refresh on Unclassified toggle), R025 (scroll-to-selection), and R030 (detail header includes transaction id).
 - 2026-05-19: Added R035 (auto-scroll email body to transaction amount).

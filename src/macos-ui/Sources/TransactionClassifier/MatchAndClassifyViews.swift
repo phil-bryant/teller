@@ -696,6 +696,7 @@ private struct ClassifySection: View {
                 await viewModel.selectedCategoryDidChange(committedCategoryId: committedCategoryId)
             }
             Group {
+                // #R030: Classification actions omit a redundant transaction-id label; selection is visible in the list row.
                 HStack(spacing: 8) {
                     Button("Apply to Selected") { Task { await viewModel.saveSelection() } }
                         .keyboardShortcut(.return, modifiers: .command)
@@ -709,20 +710,13 @@ private struct ClassifySection: View {
                         .disabled(viewModel.undoStack.isEmpty)
                         .accessibilityIdentifier("undo-button")
                     Spacer()
-                    if let selected = viewModel.primaryTransaction {
-                        if let klass = selected.classification {
-                            Text("Current: \(klass.display_label)")
-                                .font(.caption)
-                                .foregroundStyle(.blue)
-                                .lineLimit(1)
-                                .accessibilityIdentifier("selected-assigned-category")
-                        }
-                        // #R030: Detail pane header includes the selected transaction identifier.
-                        Text("Transaction \(selected.transaction_id)")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                    if let selected = viewModel.primaryTransaction,
+                       let klass = selected.classification {
+                        Text("Current: \(klass.display_label)")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
                             .lineLimit(1)
-                            .accessibilityIdentifier("selected-transaction-header")
+                            .accessibilityIdentifier("selected-assigned-category")
                     }
                 }
             }
