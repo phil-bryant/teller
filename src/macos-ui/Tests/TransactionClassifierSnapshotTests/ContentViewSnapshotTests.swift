@@ -38,6 +38,17 @@ final class ContentViewSnapshotTests: XCTestCase {
     }
 
     @MainActor
+    func testLoadedSelectionNarrowSnapshot() async {
+        await assertContentSnapshotAtSize(
+            named: "loaded-selection-narrow",
+            size: CGSize(width: 860, height: 720)
+        ) { viewModel in
+            viewModel.selection = ["txn_001"]
+            viewModel.selectionDidChange()
+        }
+    }
+
+    @MainActor
     func testErrorBannerSnapshot() async {
         await assertContentSnapshot(named: "error-banner") { viewModel in
             viewModel.errorText = "Fixture load failed"
@@ -94,6 +105,39 @@ final class ContentViewSnapshotTests: XCTestCase {
                 .frame(width: 1120, height: 720)
         )
         view.frame = NSRect(x: 0, y: 0, width: 1120, height: 720)
+        view.layoutSubtreeIfNeeded()
+
+        assertSnapshot(
+            of: normalizeRecursiveDescription(snapshotRecursiveDescription(view)),
+            as: .lines,
+            named: named,
+            record: Self.snapshotRecordMode
+        )
+    }
+
+    @MainActor
+    private func assertContentSnapshotAtSize(
+        named: String,
+        size: CGSize,
+        configure: (ClassificationViewModel) -> Void
+    ) async {
+        let viewModel = ClassificationViewModel(api: SnapshotFixtureAPI())
+        viewModel.onlyUnclassified = false
+        await viewModel.loadAll()
+        configure(viewModel)
+
+        let view = NSHostingView(
+            rootView: ContentView(
+                viewModel: viewModel,
+                connectViewModel: ConnectViewModel(
+                    api: SnapshotFixtureConnectAPI(),
+                    setupAPI: SnapshotFixtureSetupAPI()
+                ),
+                autoLoadOnAppear: false
+            )
+                .frame(width: size.width, height: size.height)
+        )
+        view.frame = NSRect(x: 0, y: 0, width: size.width, height: size.height)
         view.layoutSubtreeIfNeeded()
 
         assertSnapshot(

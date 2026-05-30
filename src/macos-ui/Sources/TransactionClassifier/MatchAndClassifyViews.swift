@@ -133,7 +133,7 @@ private struct MatchAndClassifyTransactionsPane: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             // #R070: Advanced transaction filters stay with the transaction list they affect.
-            HStack(spacing: 8) {
+            WrappingControlRow {
                 TextField("Start date", text: $viewModel.transactionStartDate)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: dateFieldWidth)
@@ -151,10 +151,8 @@ private struct MatchAndClassifyTransactionsPane: View {
                 .labelsHidden()
                 .frame(width: institutionPickerWidth)
                 .accessibilityIdentifier("transaction-institution-picker")
-                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: 8) {
+            WrappingControlRow {
                 TextField("End date", text: $viewModel.transactionEndDate)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: dateFieldWidth)
@@ -166,12 +164,9 @@ private struct MatchAndClassifyTransactionsPane: View {
                 Toggle("Unclassified", isOn: $viewModel.onlyUnclassified)
                     .toggleStyle(.switch)
                     .accessibilityIdentifier("only-unclassified-toggle")
-                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             // #R068: Transaction pagination and reload actions belong beside the transaction list.
-            HStack(spacing: 8) {
-                Spacer()
+            WrappingControlRow(rowAlignment: .trailing) {
                 Button("Next Unclassified") { viewModel.nextUnclassified() }
                     .keyboardShortcut("]", modifiers: .command)
                     .accessibilityIdentifier("next-unclassified-button")
@@ -181,7 +176,6 @@ private struct MatchAndClassifyTransactionsPane: View {
                     .disabled(!viewModel.canLoadMore || viewModel.busy)
                     .accessibilityIdentifier("load-more-button")
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             // SwiftUI's ScrollViewReader does not reliably scroll `List` on macOS 14
             // (Apple Developer Forum #758880), so the transaction list is a
             // ScrollView + LazyVStack bound to `.scrollPosition(id:anchor:)` which gives
@@ -237,6 +231,128 @@ private struct MatchAndClassifyTransactionsPane: View {
             }
         }
         .padding(8)
+    }
+}
+
+private enum WrappingRowAlignment {
+    case leading
+    case trailing
+}
+
+private struct WrappingControlRow<Content: View>: View {
+    let rowAlignment: WrappingRowAlignment
+    @ViewBuilder var content: Content
+
+    init(
+        rowAlignment: WrappingRowAlignment = .leading,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.rowAlignment = rowAlignment
+        self.content = content()
+    }
+
+    var body: some View {
+        WrappingFlowLayout(spacing: 8, rowAlignment: rowAlignment) {
+            content
+        }
+        .frame(
+            maxWidth: .infinity,
+            alignment: rowAlignment == .trailing ? .trailing : .leading
+        )
+    }
+}
+
+private struct WrappingFlowLayout: Layout {
+    let spacing: CGFloat
+    let rowAlignment: WrappingRowAlignment
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout Void
+    ) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        let rows = buildRows(for: subviews, maxWidth: maxWidth)
+        return CGSize(
+            width: rows.map(\.width).max() ?? 0,
+            height: totalHeight(for: rows)
+        )
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout Void
+    ) {
+        let maxWidth = bounds.width > 0 ? bounds.width : (proposal.width ?? .infinity)
+        let rows = buildRows(for: subviews, maxWidth: maxWidth)
+        var y = bounds.minY
+        for row in rows {
+            let rowStartX: CGFloat
+            switch rowAlignment {
+            case .leading:
+                rowStartX = bounds.minX
+            case .trailing:
+                rowStartX = bounds.maxX - row.width
+            }
+            var x = rowStartX
+            for item in row.items {
+                subviews[item.index].place(
+                    at: CGPoint(x: x, y: y),
+                    anchor: .topLeading,
+                    proposal: ProposedViewSize(width: item.size.width, height: item.size.height)
+                )
+                x += item.size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private func totalHeight(for rows: [FlowRow]) -> CGFloat {
+        guard !rows.isEmpty else { return 0 }
+        return rows.reduce(0) { $0 + $1.height } + (CGFloat(rows.count - 1) * spacing)
+    }
+
+    private func buildRows(for subviews: Subviews, maxWidth: CGFloat) -> [FlowRow] {
+        guard !subviews.isEmpty else { return [] }
+        var rows: [FlowRow] = []
+        var currentItems: [FlowItem] = []
+        var currentWidth: CGFloat = 0
+        var currentHeight: CGFloat = 0
+        let constrainedWidth = max(0, maxWidth)
+        let shouldWrap = constrainedWidth.isFinite
+
+        for (index, subview) in subviews.enumerated() {
+            let size = subview.sizeThatFits(.unspecified)
+            let itemWidth = size.width
+            let additionalWidth = currentItems.isEmpty ? itemWidth : (spacing + itemWidth)
+            if shouldWrap, !currentItems.isEmpty, currentWidth + additionalWidth > constrainedWidth {
+                rows.append(FlowRow(items: currentItems, width: currentWidth, height: currentHeight))
+                currentItems = []
+                currentWidth = 0
+                currentHeight = 0
+            }
+            currentItems.append(FlowItem(index: index, size: size))
+            currentWidth += currentItems.count == 1 ? itemWidth : additionalWidth
+            currentHeight = max(currentHeight, size.height)
+        }
+
+        if !currentItems.isEmpty {
+            rows.append(FlowRow(items: currentItems, width: currentWidth, height: currentHeight))
+        }
+        return rows
+    }
+
+    private struct FlowItem {
+        let index: Int
+        let size: CGSize
+    }
+
+    private struct FlowRow {
+        let items: [FlowItem]
+        let width: CGFloat
+        let height: CGFloat
     }
 }
 

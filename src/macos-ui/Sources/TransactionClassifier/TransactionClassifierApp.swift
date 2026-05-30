@@ -16,7 +16,8 @@ struct TransactionClassifierApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(viewModel: viewModel, connectViewModel: connectViewModel)
-                .frame(minWidth: 1120, minHeight: 720)
+                // Match & Classify pane mins: 240 + 220 + 320, plus a small split-divider allowance.
+                .frame(minWidth: 800, minHeight: 720)
                 .onAppear {
                     if detectAppLaunchMode() == .normal {
                         activateTransactionClassifierForInput()

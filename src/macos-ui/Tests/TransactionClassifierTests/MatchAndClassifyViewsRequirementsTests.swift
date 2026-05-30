@@ -422,6 +422,10 @@ private extension MatchAndClassifyViewsRequirementsTests {
 
     func assertTransactionsPaneContainsFilterControls(in paneSource: String) {
         XCTAssertTrue(
+            paneSource.contains("WrappingControlRow"),
+            "Transactions pane controls should use responsive wrapping rows."
+        )
+        XCTAssertTrue(
             paneSource.contains(#".accessibilityIdentifier("search-field")"#),
             "Transactions pane must own the search field."
         )
@@ -493,16 +497,10 @@ private extension MatchAndClassifyViewsRequirementsTests {
             unclassifiedIndex,
             "Transactions pane must keep Unclassified toggle on a row below amount controls."
         )
-
-        let betweenSearchAndStart = String(paneSource[searchIndex..<startDateIndex])
-        XCTAssertTrue(
-            betweenSearchAndStart.contains("HStack(spacing: 8) {"),
-            "A new row boundary must separate search row from date+amount row."
-        )
-        let betweenInstitutionAndEnd = String(paneSource[institutionIndex..<endDateIndex])
-        XCTAssertTrue(
-            betweenInstitutionAndEnd.contains("HStack(spacing: 8) {"),
-            "A new row boundary must separate row 2 controls from row 3 controls."
+        XCTAssertGreaterThanOrEqual(
+            paneSource.components(separatedBy: "WrappingControlRow").count - 1,
+            3,
+            "Transactions pane should define responsive wrapping rows for filters and actions."
         )
     }
 

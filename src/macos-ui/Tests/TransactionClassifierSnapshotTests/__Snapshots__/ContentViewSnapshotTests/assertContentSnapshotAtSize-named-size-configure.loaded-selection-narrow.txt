@@ -1,0 +1,122 @@
+[   AF    ! W U ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentV21TransactionClassifier11ContentViewVS_12_FrameLayout__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorGVS_P10$hashAppKitTabViewGVs15LazyMapSequenceVS_22_VariadicView_ChildrenVS_7TabItem____ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+    [   AF    !     ] h=-&- v=-&- NSTabView 0xaddr f=(...) b=(-)
+      [   AF    ! W   ] h=-&- v=-&- _TtGC7SwiftUI13NSHostingViewVS_14_ViewList_View_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+        [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashSystemSplitView__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+          [   A     !     ] h=-&- v=-&- NSView 0xaddr f=(...) b=(-)
+            [   AF    !     ] h=-&- v=-&- NSSplitView 0xaddr f=(...) b=(-)
+              [   A     !     ] h=--- v=--- _NSSplitViewItemViewWrapper 0xaddr f=(...) b=(-)
+                [   AF    ! W   ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentVS_14_ViewList_ViewGVS_22NavigationPaneModifierVS_21ContainerStyleContext___ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    !     ] h=--- v=--- SwiftUI.KeyViewProxy 0xaddr f=(...) b=(-)
+                  [   AF    !     ] h=--- v=--- SwiftUI.KeyViewProxy 0xaddr f=(...) b=(-)
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorGVVS_P10$hashAppKitPopUpAdaptor12PlatformViewGVS_23PickerCurrentValueLabelGVVS_24PickerStyleConfiguration7ContentSS__SS_____ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- _TtGCVV7SwiftUIP10$hashAppKitPopUpAdaptor12PlatformView18SwiftUIPopupButtonGVS_23PickerCurrentValueLabelGVVS_24PickerStyleConfiguration7ContentSS__SS____ 0xaddr "All institutions" f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_17AppKitPopUpButton_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashSwitch__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   A     !     ] h=-&- v=-&- _TtC7SwiftUIP33_1246D37251EA3A918B392E2B95F8B7EF14PlatformSwitch 0xaddr "0" f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitSwitch_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   A     ! W   ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView17PlatformContainer 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=--- v=--- SwiftUI.HostingScrollView 0xaddr f=(...) b=(-)
+                      [   AF    !     ] h=-&- v=-&- NSClipView 0xaddr f=(...) b=(-)
+                        [   AF    !     ] h=--- v=--- _TtC7SwiftUIP33_6B9589E2B2301F373BAB5CF17408C38412DocumentView 0xaddr f=(...) b=(-)
+                          [   AF    ! W   ] h=--- v=--- _TtCC7SwiftUI17HostingScrollView22PlatformGroupContainer 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [  HAF    ! W   ] h=--- v=--- NSScroller 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+              [   A     !     ] h=--- v=--- _NSSplitViewItemViewWrapper 0xaddr f=(...) b=(-)
+                [   AF    ! W   ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentVS_14_ViewList_ViewGVS_22NavigationPaneModifierVS_21ContainerStyleContext___ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    !     ] h=--- v=--- SwiftUI.KeyViewProxy 0xaddr f=(...) b=(-)
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorGVVS_P10$hashAppKitPopUpAdaptor12PlatformViewGVS_23PickerCurrentValueLabelGVVS_24PickerStyleConfiguration7ContentSS__SS_____ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- _TtGCVV7SwiftUIP10$hashAppKitPopUpAdaptor12PlatformView18SwiftUIPopupButtonGVS_23PickerCurrentValueLabelGVVS_24PickerStyleConfiguration7ContentSS__SS____ 0xaddr "All matches" f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_17AppKitPopUpButton_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashCheckbox__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- SwiftUI.FocusRingNSButton 0xaddr f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_12AppKitButton_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_24OutlineListRepresentableGOS_19SelectionManagerBoxSS___ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF O  !     ] h=-&- v=-&- SwiftUI.ListCoreScrollView 0xaddr f=(...) b=(-)
+                      [   A     !     ] h=--- v=--- _NSScrollViewContentBackgroundView 0xaddr f=(...) b=(-)
+                        [   A     !     ] h=--- v=--- NSVisualEffectView 0xaddr f=(...) b=(-)
+                      [   A     ! W   ] h=--- v=--- _TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B12BackdropView 0xaddr f=(...) b=(-) => <CABackdropLayer: 0xaddr>
+                      [   AF    !     ] h=-&- v=-&- SwiftUI.ListCoreClipView 0xaddr f=(...) b=(-)
+                        [   AF    !     ] h=-&- v=-&- SwiftUI.SwiftUIOutlineListView 0xaddr f=(...) b=(-)
+                      [   A     !     ] h=--- v=--- NSScrollPocket 0xaddr f=(...) b=(-)
+                        [   A     ! W   ] h=--- v=--- _TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PocketMask 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                          [   A     ! W   ] h=--- v=--- NSView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                            [  HA     ! W   ] h=--- v=--- NSView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                        [  HA     ! W   ] h=--- v=--- _TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B10PocketBlur 0xaddr f=(...) b=(-) => <CABackdropLayer: 0xaddr>
+                        [  HA     !     ] h=--- v=--- NSHardPocketView 0xaddr f=(...) b=(-)
+                          [  hA     ! W   ] h=--- v=--- _TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B12BackdropView 0xaddr f=(...) b=(-) => <CABackdropLayer: 0xaddr>
+                          [  hA     !     ] h=--- v=--- _NSScrollViewContentBackgroundView 0xaddr f=(...) b=(-)
+                            [  hA     !     ] h=--- v=--- NSVisualEffectView 0xaddr f=(...) b=(-)
+                        [   A     ! W   ] h=--- v=--- _TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B19LuminanceAdjustment 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                          [   A     ! W   ] h=--- v=--- NSView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                            [   A     ! W   ] h=--- v=--- NSView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                              [  HA     ! W   ] h=--- v=--- _TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B12BackdropView 0xaddr f=(...) b=(-) => <CABackdropLayer: 0xaddr>
+                              [   A     ! W   ] h=--- v=--- _NSScrollViewContentBackgroundView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                                [   A     !     ] h=--- v=--- NSVisualEffectView 0xaddr f=(...) b=(-)
+                            [   A     ! W   ] h=--- v=--- NSView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                              [   A     ! W   ] h=--- v=--- NSView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                              [   A     ! W   ] h=--- v=--- NSView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                        [   A     ! W   ] h=--- v=--- NSView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                          [   A     ! W   ] h=--- v=--- _TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B21AdditionalDimmingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [    F    !     ] h=--- v=--- _NSScrollViewFloatingSubviewsContainerView 0xaddr f=(...) b=(-)
+                        [   AF    !P    ] h=--- v=--- SwiftUI.ListTableRowView 0xaddr f=(...) b=(-)
+                          [   A     !     ] h=--- v=--- NSBannerView 0xaddr f=(...) b=(-)
+                            [  HA     !     ] h=--- v=--- NSHardPocketView 0xaddr f=(...) b=(-)
+                              [  hA     ! W   ] h=--- v=--- _TtCC6AppKit14NSScrollPocketP33_EC3F85FAB7755D56E669206D2B17725B12BackdropView 0xaddr f=(...) b=(-) => <CABackdropLayer: 0xaddr>
+                              [  hA     !     ] h=--- v=--- _NSScrollViewContentBackgroundView 0xaddr f=(...) b=(-)
+                                [  hA     !     ] h=--- v=--- NSVisualEffectView 0xaddr f=(...) b=(-)
+                            [   A    v!     ] h=-&- v=-&- _NSBannerDecorationView 0xaddr f=(...) b=(-)
+                          [   AF    !     ] h=-&- v=-&- _NSTableRowSeparatorDrawingView 0xaddr f=(...) b=(-)
+                          [   A     !P    ] h=--- v=--- SwiftUI.ListTableHeaderView 0xaddr f=(...) b=(-)
+                            [   AF    ! W   ] h=-&- v=-&- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentVS_14_ViewList_ViewVS_24HeaderForSectionModifier__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [  HAF    ! W   ] h=--- v=--- NSScroller 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+              [   A     !     ] h=--- v=--- _NSSplitViewItemViewWrapper 0xaddr f=(...) b=(-)
+                [   AF    ! W   ] h=--- v=--- _TtGC7SwiftUI13NSHostingViewGVS_15ModifiedContentVS_14_ViewList_ViewGVS_22NavigationPaneModifierVS_21ContainerStyleContext___ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    !     ] h=--- v=--- SwiftUI.KeyViewProxy 0xaddr f=(...) b=(-)
+                  [   AF    !     ] h=--- v=--- SwiftUI.KeyViewProxy 0xaddr f=(...) b=(-)
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   A     ! W   ] h=--- v=--- _TtGC7SwiftUI22AppKitPlatformViewHostGVS_P10$hashPlatformViewRepresentableAdaptorVS_P10$hashPlatformTextFieldAdaptor__ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                    [   AF    !     ] h=-&- v=-&- SwiftUI.AppKitTextField 0xaddr f=(...) b=(-)
+                      [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_P10$hashAppKitTextField_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                      [   AF    !     ] h=--- v=--- AppKit.NSSimpleLabel 0xaddr f=(...) b=(-)
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+                  [   AF    ! W   ] h=--- v=--- _TtC7SwiftUIP33_B9E8471D77A01696E0731B43A95A934614_FocusRingView 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+              [   A     !     ] h=--- v=--- NSSplitDividerView 0xaddr f=(...) b=(-)
+              [   A     !     ] h=--- v=--- NSSplitDividerView 0xaddr f=(...) b=(-)
+      [   AF    !     ] h=--- v=--- NSSegmentedControl 0xaddr f=(...) b=(-)
+        [   AF    ! W   ] h=--- v=--- _TtGC6AppKit18_NSCoreHostingViewVS_22AppKitSegmentedControl_ 0xaddr f=(...) b=(-) => <NSViewBackingLayer: 0xaddr>
+A=autoresizesSubviews, C=canDrawConcurrently, D=needsDisplay, F=flipped, G=gstate, H=hidden (h=by ancestor), L=needsLayout (l=child needsLayout), U=needsUpdateConstraints (u=child needsUpdateConstraints), O=opaque, P=preservesContentDuringLiveResize, S=scaled/rotated, W=wantsLayer (w=ancestor wantsLayer), V=needsVibrancy (v=allowsVibrancy), #=has surface
