@@ -27,6 +27,7 @@ private struct MatchAndClassifyMainContent: View {
 
     var body: some View {
         GeometryReader { proxy in
+            // #R120: Layout switches between 3-pane and 2-pane stacked mode by available height.
             let useTwoPaneStackedEmail = proxy.size.height >= stackedEmailMinimumHeight
             let dividerMetrics = horizontalDividerMetrics(useTwoPaneStackedEmail: useTwoPaneStackedEmail)
             VStack(alignment: .leading, spacing: 8) {
@@ -39,6 +40,7 @@ private struct MatchAndClassifyMainContent: View {
                         )
                         .modifier(PaneWidthReporter(id: "transactions"))
                     if useTwoPaneStackedEmail {
+                        // #R120: In taller windows, stack candidates/email in a right-side vertical split.
                         VSplitView {
                             CandidatesPane(viewModel: viewModel)
                                 .frame(minHeight: 500, maxHeight: .infinity, alignment: .top)
@@ -48,6 +50,7 @@ private struct MatchAndClassifyMainContent: View {
                         .frame(minWidth: 500, idealWidth: 700, minHeight: 1000)
                         .modifier(PaneWidthReporter(id: "right-stack"))
                     } else {
+                        // #R120: In shorter windows, render separate middle/right panes.
                         CandidatesPane(viewModel: viewModel)
                             .frame(minWidth: 220, idealWidth: 320)
                             .modifier(PaneWidthReporter(id: "candidates"))
@@ -67,6 +70,7 @@ private struct MatchAndClassifyMainContent: View {
                             transactionsPanePreferredWidth = measuredTransactionsWidth
                             hasInitializedTransactionsPaneWidth = true
                         }
+                        // #R120: Persist transactions-pane width across mode switches/divider drags.
                         // Persist explicit user divider changes on divider 1.
                         if hoveredDividerIndex == 0 {
                             transactionsPanePreferredWidth = measuredTransactionsWidth
@@ -727,6 +731,7 @@ private struct CandidatesPane: View {
                     .accessibilityIdentifier("match-review-only-unmoved-toggle")
             }
             DisclosureGroup(isExpanded: $searchEmailExpanded) {
+                // #R071: Advanced email search fields expose subject/body/sender/date criteria.
                 VStack(alignment: .leading, spacing: 6) {
                     TextField("Subject", text: $viewModel.mailcartSearchSubject)
                         .textFieldStyle(.roundedBorder)
@@ -770,11 +775,13 @@ private struct CandidatesPane: View {
                 }
                 .padding(.top, 4)
             } label: {
+                // #R065: Search controls are grouped under user-facing "Search Email" disclosure copy.
                 Text("Search Email")
                     .font(.subheadline.weight(.semibold))
             }
             .accessibilityIdentifier("search-email-disclosure")
             HStack(spacing: 8) {
+                // #R045: Match action row exposes Confirm, Override, No-email, and Clear in order.
                 Button("Confirm") { Task { await viewModel.confirmSelectedMatch() } }
                     .disabled(!viewModel.canConfirmSelectedMatch)
                     .accessibilityIdentifier("match-confirm-button")
@@ -816,6 +823,11 @@ private struct CandidatesPane: View {
                 }
             }
             .accessibilityIdentifier("candidates-list")
+        }
+        .onAppear {
+            if detectAppLaunchMode() == .uiTesting {
+                searchEmailExpanded = true
+            }
         }
         .padding(8)
     }

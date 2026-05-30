@@ -325,13 +325,13 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
     func testAdvancedEmailSearchScenarioExercisesSenderBodyAndDateFilters() throws {
         // #R071-T03 #R071-T04 #R071-T05 #R071-T09
         let source = try Self.loadUITestSource()
-        XCTAssertTrue(source.contains(#"pasteText("alerts@transit.example.com", into: uiElement("mailcart-search-sender-field"))"#))
-        XCTAssertTrue(source.contains(#"pasteText("nobody@nope.example.com", into: uiElement("mailcart-search-sender-field"))"#))
+        XCTAssertTrue(source.contains(#"pasteText("alerts@transit.example.com", into: senderField)"#))
+        XCTAssertTrue(source.contains(#"pasteText("nobody@nope.example.com", into: senderField)"#))
         XCTAssertTrue(source.contains(#"!uiElement("mailcart-hit-row-msg_search_001").exists"#))
         XCTAssertTrue(source.contains(#"!uiElement("mailcart-hit-row-msg_search_002").exists"#))
-        XCTAssertTrue(source.contains(#"pasteText("Charge posted", into: uiElement("mailcart-search-body-field"))"#))
-        XCTAssertTrue(source.contains(#"replaceText(in: uiElement("mailcart-search-start-date-field"), with: "2026-04-19")"#))
-        XCTAssertTrue(source.contains(#"replaceText(in: uiElement("mailcart-search-end-date-field"), with: "2026-04-18")"#))
+        XCTAssertTrue(source.contains(#"pasteText("Charge posted", into: bodyField)"#))
+        XCTAssertTrue(source.contains(#"replaceText(in: startDateField, with: "2026-04-19")"#))
+        XCTAssertTrue(source.contains(#"replaceText(in: endDateField, with: "2026-04-18")"#))
         XCTAssertTrue(source.contains(#"app.typeKey(.tab, modifierFlags: [])"#))
         XCTAssertTrue(source.contains(#"app.typeText("body-tab-probe")"#))
         XCTAssertTrue(source.contains(#"app.typeText("sender-tab-probe")"#))
