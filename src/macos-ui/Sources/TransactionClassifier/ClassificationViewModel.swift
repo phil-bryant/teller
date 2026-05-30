@@ -104,7 +104,6 @@ final class ClassificationViewModel {
 
     var matchReviewStateFilter = ""
     var matchReviewOnlyUnmoved = false
-    var matchOverrideEmailMessageId = ""
     var matchReviewStatusText = "Ready"
     var matchReviewErrorText = ""
     var candidates: [MatchCandidateRow] = []
@@ -242,9 +241,7 @@ final class ClassificationViewModel {
     }
 
     var overrideTargetEmailMessageId: String? {
-        let trimmedTyped = matchOverrideEmailMessageId.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedTyped.isEmpty { return trimmedTyped }
-        return selectedCandidateId
+        selectedCandidateId
     }
 
     var isOverrideTargetInLatestCandidateSet: Bool {

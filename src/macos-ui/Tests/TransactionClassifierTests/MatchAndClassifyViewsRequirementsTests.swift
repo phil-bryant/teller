@@ -250,11 +250,22 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
             undoIndex,
             "Undo must be declared to the right of Clear in classification actions row."
         )
+        let transactionsPaneStart = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyTransactionsPane"))
+        let transactionsPaneEnd = try XCTUnwrap(source.range(of: "private enum WrappingRowAlignment")).lowerBound
+        let transactionsPaneSource = String(source[transactionsPaneStart.lowerBound..<transactionsPaneEnd])
+        XCTAssertTrue(
+            transactionsPaneSource.contains("ClassifySection(viewModel: viewModel)"),
+            "Transactions pane must render ClassifySection below list actions."
+        )
     }
 
     func testAdvancedEmailSearchFieldsExposeAccessibilityIdentifiers() throws {
         // #R071-T01 #R071-T08
         let source = try Self.loadViewSource()
+        XCTAssertTrue(
+            source.contains(#".accessibilityIdentifier("search-email-disclosure")"#),
+            "Search Email controls must be grouped under search-email-disclosure."
+        )
         for identifier in [
             "mailcart-search-subject-field",
             "mailcart-search-body-field",
@@ -340,25 +351,77 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
         )
     }
 
-    func testMatchActionsBarUsesCompactButtonLabelsInOrder() throws {
-        // #R045-T02
+    func testCandidatesPaneUsesCompactMatchActionButtonsAndOrdering() throws {
+        // #R045-T02 #R045-T03 #R045-T04
         let source = try Self.loadViewSource()
-        let barStart = try XCTUnwrap(source.range(of: "private struct MatchActionsBar"))
-        let barEnd = try XCTUnwrap(source.range(of: "private final class NonFocusStealingWebView")).lowerBound
-        let barSource = String(source[barStart.lowerBound..<barEnd])
+        let paneStart = try XCTUnwrap(source.range(of: "private struct CandidatesPane"))
+        let paneEnd = try XCTUnwrap(source.range(of: "private struct CandidateRowView")).lowerBound
+        let paneSource = String(source[paneStart.lowerBound..<paneEnd])
         for label in ["Confirm", "Override", "No-email", "Clear"] {
             XCTAssertTrue(
-                barSource.contains(#"Button("\#(label)")"#),
-                "Match action bar must expose a \(label) button."
+                paneSource.contains(#"Button("\#(label)")"#),
+                "Candidates pane must expose a \(label) match action button."
             )
         }
-        let confirmIndex = try lowerBound(of: #".accessibilityIdentifier("match-confirm-button")"#, in: barSource)
-        let overrideIndex = try lowerBound(of: #".accessibilityIdentifier("match-override-button")"#, in: barSource)
-        let noEmailIndex = try lowerBound(of: #".accessibilityIdentifier("match-no-email-button")"#, in: barSource)
-        let clearIndex = try lowerBound(of: #".accessibilityIdentifier("match-clear-button")"#, in: barSource)
+        let confirmIndex = try lowerBound(of: #".accessibilityIdentifier("match-confirm-button")"#, in: paneSource)
+        let overrideIndex = try lowerBound(of: #".accessibilityIdentifier("match-override-button")"#, in: paneSource)
+        let noEmailIndex = try lowerBound(of: #".accessibilityIdentifier("match-no-email-button")"#, in: paneSource)
+        let clearIndex = try lowerBound(of: #".accessibilityIdentifier("match-clear-button")"#, in: paneSource)
         XCTAssertLessThan(confirmIndex, overrideIndex, "Confirm must precede Override.")
         XCTAssertLessThan(overrideIndex, noEmailIndex, "Override must precede No-email.")
         XCTAssertLessThan(noEmailIndex, clearIndex, "No-email must precede Clear.")
+        let noteIndex = try lowerBound(of: #".accessibilityIdentifier("override-note-field")"#, in: paneSource)
+        let emailsSectionIndex = try lowerBound(of: #"Section("Emails")"#, in: paneSource)
+        XCTAssertLessThan(
+            clearIndex,
+            noteIndex,
+            "Note field must render below the match action row."
+        )
+        XCTAssertLessThan(
+            noteIndex,
+            emailsSectionIndex,
+            "Emails list section must render below note."
+        )
+        XCTAssertFalse(
+            paneSource.contains("override-email-message-id-field"),
+            "Manual override email-message-id field must not be present."
+        )
+        XCTAssertFalse(
+            source.contains("private struct MatchActionsBar"),
+            "Standalone MatchActionsBar should not exist after compact CandidatesPane ownership refactor."
+        )
+    }
+
+    func testMainContentUsesResponsiveTwoPaneThreePaneSplitSwitch() throws {
+        // #R120-T01 #R120-T02 #R120-T03
+        let source = try Self.loadViewSource()
+        let mainStart = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyMainContent"))
+        let statusBarStart = try XCTUnwrap(source.range(of: "private struct MatchAndClassifyStatusBar")).lowerBound
+        let mainSource = String(source[mainStart.lowerBound..<statusBarStart])
+        XCTAssertTrue(
+            mainSource.contains("GeometryReader { proxy in"),
+            "Main content must compute layout mode from available geometry."
+        )
+        XCTAssertTrue(
+            mainSource.contains("proxy.size.height >= stackedEmailMinimumHeight"),
+            "Main content must derive two-pane mode from stackedEmailMinimumHeight threshold."
+        )
+        XCTAssertTrue(
+            mainSource.contains("if useTwoPaneStackedEmail {"),
+            "Main content must branch between two-pane and three-pane layouts."
+        )
+        XCTAssertTrue(
+            mainSource.contains("VSplitView {"),
+            "Two-pane branch must render a right-side vertical split."
+        )
+        XCTAssertTrue(
+            mainSource.contains("transactionsPanePreferredWidth"),
+            "Transactions pane width must be persisted state."
+        )
+        XCTAssertTrue(
+            mainSource.contains("useTwoPaneStackedEmail) { _, _ in"),
+            "Mode switches must snapshot transactions pane width to avoid resize pops."
+        )
     }
 
     func testClassifySectionOmitsRedundantTransactionHeader() throws {

@@ -20,7 +20,6 @@ archive/backup_extracts
 bin/*
 .cursor/rules/*
 artifacts/classification-persistence/
-artifacts/security/reports/
 artifacts/security/
 artifacts/security-dast/
 artifacts/macos-ui-regression/

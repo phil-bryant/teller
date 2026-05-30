@@ -13,10 +13,10 @@ Tests:
 - R005-T04: Verify `Start date` and `End date` use the same explicit width token and `Min amount`/`Max amount` use the same explicit width token.
 
 R015  Statement: Support detail-pane classification edits for current selection.
-Design: `ClassifySection` in the Classification pane provides category selection plus Apply/Clear/Undo actions bound to selected rows and currently chosen category. Undo is rendered immediately to the right of Clear and remains scoped to Match & Classify interactions. Classification controls are not rendered in the Transactions or Match panes.
+Design: `ClassifySection` provides category selection plus Apply/Clear/Undo actions bound to selected rows and currently chosen category. In the current layout it is rendered inside `MatchAndClassifyTransactionsPane` directly below the Next/Refresh/Load-more actions so classification remains visible while triaging the transaction list. Undo is rendered immediately to the right of Clear and remains scoped to Match & Classify interactions.
 Tests:
 - R015-T01: Select one or more rows, apply a category, then clear classification and verify row-level status updates.
-- R015-T02: Open Match & Classify and verify classification controls (`CategoryTypeaheadField`, Apply to Selected, Clear) are defined in `ClassifySection`.
+- R015-T02: Open Match & Classify and verify classification controls (`CategoryTypeaheadField`, Apply to Selected, Clear) are defined in `ClassifySection` and rendered from `MatchAndClassifyTransactionsPane`.
 - R015-T03: Open Match & Classify and verify `undo-button` is rendered in `ClassifySection` to the right of `clear-selection-button`.
 
 R020  Statement: Toggling the Unclassified filter in either direction automatically reloads the transaction list.
@@ -41,10 +41,12 @@ Tests:
 - R035-T02: Select a wide receipt email candidate and verify the order total amount is scrolled into view horizontally and vertically.
 
 R045  Statement: Match action bar exposes Confirm, Override, No-email, and Clear controls in that order.
-Design: `MatchActionsBar` renders four buttons with user-facing labels `Confirm`, `Override`, `No-email`, and `Clear`, bound respectively to `confirmSelectedMatch()`, `overrideSelectedMatch()`, `markSelectedMatchNoEmail()`, and `clearSelectedMatch()`. Each button uses a stable accessibility identifier (`match-confirm-button`, `match-override-button`, `match-no-email-button`, `match-clear-button`). Confirm disables when `canConfirmSelectedMatch` is false; Override when `canOverrideSelectedMatch` is false; No-email when `canMarkSelectedMatchNoEmail` is false; Clear when `canClearSelectedMatch` is false. On successful Clear, the transaction list reloads and the row shows the unmatched badge (no active human-reviewed match).
+Design: `CandidatesPane` renders four match action buttons with user-facing labels `Confirm`, `Override`, `No-email`, and `Clear`, bound respectively to `confirmSelectedMatch()`, `overrideSelectedMatch()`, `markSelectedMatchNoEmail()`, and `clearSelectedMatch()`. Each button uses a stable accessibility identifier (`match-confirm-button`, `match-override-button`, `match-no-email-button`, `match-clear-button`). Confirm disables when `canConfirmSelectedMatch` is false; Override when `canOverrideSelectedMatch` is false; No-email when `canMarkSelectedMatchNoEmail` is false; Clear when `canClearSelectedMatch` is false. In this compact pane layout, `Note (optional)` is rendered immediately below the match action row and the emails list renders below note. The manual `Override email message id` text field is removed; overrides target the selected candidate/search-hit email id only.
 Tests:
 - R045-T01: Select a transaction with a human-reviewed match, tap Clear, and verify the row badge returns to unmatched and the button is disabled for transactions with no clearable match.
-- R045-T02: Open Match & Classify with a selected transaction and verify the match action bar renders buttons labeled Confirm, Override, No-email, and Clear in that order.
+- R045-T02: Open Match & Classify with a selected transaction and verify `CandidatesPane` renders buttons labeled Confirm, Override, No-email, and Clear in that order.
+- R045-T03: Verify `override-note-field` is rendered after match action buttons and the `Emails` list section is rendered below note.
+- R045-T04: Verify `override-email-message-id-field` is not present in Match & Classify source.
 
 R050  Statement: Manual row selection in long transaction lists must not auto-recenter the list.
 Design: `MatchAndClassifyTransactionsPane` only applies programmatic list scrolling when `ClassificationViewModel` marks a pending scroll target (for keyboard navigation actions such as Next Unclassified). User-initiated row clicks update selection without forcing `.scrollPosition` recentering.
@@ -52,9 +54,9 @@ Tests:
 - R050-T01: With a long loaded list that requires scrolling, navigate to visible middle-list rows, click one or more of those rows, and verify each selected row frame stays effectively stable (no jump-to-center) after selection.
 
 R065  Statement: The candidates search section uses user-facing copy "Search Email".
-Design: The candidates pane search section title is `Search Email` to match end-user terminology while keeping Mailcart as an implementation detail.
+Design: The candidates pane search controls are grouped under a `DisclosureGroup` labeled `Search Email` so filters are expandable/collapsible and default to a compact state.
 Tests:
-- R065-T01: Open Match & Classify and verify the candidates pane renders a visible `Search Email` section heading above the search field.
+- R065-T01: Open Match & Classify and verify the candidates pane renders `Search Email` disclosure copy and stable identifier `search-email-disclosure`.
 
 R066  Statement: The middle pane header uses user-facing copy "Transaction - Email Match Candidates".
 Design: The candidates pane headline is `Transaction - Email Match Candidates` instead of the generic label `Candidates` so users understand the pane lists email-match options for the selected transaction.
@@ -86,7 +88,7 @@ Tests:
 - R072-T01: Open Match & Classify and verify the match-state picker and only-unmoved toggle are defined in `CandidatesPane` and omitted from `MatchAndClassifyTransactionsPane`.
 
 R071  Statement: Expose advanced email search fields for subject, body, sender, and date range.
-Design: The candidates pane `Search Email` section provides subject, body, sender, and date start/end fields (`YYYY-MM-DD`) with stable accessibility identifiers (`mailcart-search-subject-field`, `mailcart-search-body-field`, `mailcart-search-sender-field`, `mailcart-search-start-date-field`, `mailcart-search-end-date-field`). Date labels use user-facing copy `Start date` and `End date`. Keyboard Tab traversal for Search Email fields follows `Subject -> Body keyword -> Sender -> Start date -> End date`. A guidance hint clarifies that subject/body/sender are scoped filters, start/end dates are inclusive, and filled filters are ANDed. Any field change debounces into the existing Mailcart search path. Search hits remain visible when the user changes the selected transaction (ClassificationViewModel R116).
+Design: The candidates pane `Search Email` disclosure body provides subject, body, sender, and date start/end fields (`YYYY-MM-DD`) with stable accessibility identifiers (`mailcart-search-subject-field`, `mailcart-search-body-field`, `mailcart-search-sender-field`, `mailcart-search-start-date-field`, `mailcart-search-end-date-field`). Date labels use user-facing copy `Start date` and `End date`. Keyboard Tab traversal for Search Email fields follows `Subject -> Body keyword -> Sender -> Start date -> End date`. A guidance hint clarifies that subject/body/sender are scoped filters, start/end dates are inclusive, and filled filters are ANDed. Any field change debounces into the existing Mailcart search path. Search hits remain visible when the user changes the selected transaction (ClassificationViewModel R116).
 Tests:
 - R071-T01: Open Match & Classify and verify subject/body/sender/start-date/end-date fields render under `Search Email`.
 - R071-T02: Enter a subject filter that matches one fixture search hit and verify the hit row appears and can be selected to load the email body.
@@ -118,8 +120,16 @@ Design: `EmailBodyWebView` navigation delegate cancels in-webview navigation act
 Tests:
 - R079-T01: Trigger navigation delegate action for an external URL and verify policy is cancel plus external-open handoff.
 
+R120  Statement: Match & Classify layout switches between 3-pane and 2-pane modes by available vertical height.
+Design: `MatchAndClassifyMainContent` uses `GeometryReader` and a `stackedEmailMinimumHeight` threshold. Below threshold, render 3 columns (`Transactions`, `CandidatesPane`, `EmailSection`). At/above threshold, render 2 columns with a right-side `VSplitView` (`CandidatesPane` on top, `EmailSection` below). The transactions pane width is preserved across mode switches to avoid width jumps during resize.
+Tests:
+- R120-T01: Verify `MatchAndClassifyMainContent` computes `useTwoPaneStackedEmail` from `proxy.size.height >= stackedEmailMinimumHeight`.
+- R120-T02: Verify the true branch renders a right-side `VSplitView` and false branch renders separate middle/right panes.
+- R120-T03: Verify transactions pane width state is persisted and reused across mode switches.
+
 ## Changelog
 
+- 2026-05-30: Updated R015/R045/R065/R071 for the compact pane-ownership refactor (classification moved under Transactions actions; Search Email disclosure; match actions + note + emails in `CandidatesPane`; override-id field removed). Added R120 for responsive 2-pane/3-pane switching with preserved transactions-pane width.
 - 2026-05-30: Added R078/R079 for rendered-email sanitization/CSP hardening and external-only link navigation policy.
 - 2026-05-29: Updated R030 so classification actions no longer duplicate the transaction id beside Apply/Clear/Undo.
 - 2026-05-29: Updated R045 to require compact match action bar labels (`Confirm`, `Override`, `No-email`, `Clear`) with stable accessibility identifiers; added R045-T02.

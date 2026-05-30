@@ -44,7 +44,9 @@ struct ContentView: View {
                 .tag(AppTab.manageCategories)
 
             MatchAndClassifyView(viewModel: viewModel, scrollTargetId: $scrollTargetId)
-                .padding(12)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+                .padding(.top, 4)
                 .tabItem { Label("Match & Classify", systemImage: "envelope.badge.shield.half.filled") }
                 .tag(AppTab.matchAndClassify)
         }

@@ -813,7 +813,7 @@ final class ClassificationViewModelTests: XCTestCase {
         let vm = ClassificationViewModel(api: api)
         await vm.loadAll()
         vm.selection = ["txn_matched"]
-        vm.matchOverrideEmailMessageId = "msg_search_only"
+        vm.selectedCandidateId = "msg_search_only"
 
         await vm.overrideSelectedMatch()
 

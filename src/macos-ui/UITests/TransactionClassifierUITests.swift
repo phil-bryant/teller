@@ -722,8 +722,7 @@ final class TransactionClassifierUITests: XCTestCase {
 
         let note = uiElement("override-note-field")
         replaceText(in: note, with: "fixture override note")
-        let overrideId = uiElement("override-email-message-id-field")
-        replaceText(in: overrideId, with: "msg_override_fixture")
+        uiElement("candidate-row-msg_override_fixture").click()
 
         uiElement("match-override-button").click()
         XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { elementText(uiElement("match-review-status")).contains("Overrode") })

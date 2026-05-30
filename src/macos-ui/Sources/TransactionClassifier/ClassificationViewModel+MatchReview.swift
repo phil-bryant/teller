@@ -120,7 +120,6 @@ extension ClassificationViewModel {
                 return
             }
             matchReviewErrorText = ""
-            matchOverrideEmailMessageId = ""
             matchOverrideNote = ""
             lastLoadedCandidatesTransactionId = nil
             await loadAll()
@@ -155,7 +154,7 @@ extension ClassificationViewModel {
 
     func overrideSelectedMatch() async {
         guard let emailId = overrideTargetEmailMessageId, !emailId.isEmpty else {
-            matchReviewErrorText = "Select a candidate (or paste a message id) before overriding."
+            matchReviewErrorText = "Select a candidate before overriding."
             return
         }
         let trimmedNote = matchOverrideNote.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -241,7 +240,6 @@ extension ClassificationViewModel {
     }
 
     private func clearOverrideInputs() {
-        matchOverrideEmailMessageId = ""
         matchOverrideNote = ""
     }
 
@@ -291,7 +289,6 @@ extension ClassificationViewModel {
                 return
             }
             matchReviewErrorText = ""
-            matchOverrideEmailMessageId = ""
             matchOverrideNote = ""
             lastLoadedCandidatesTransactionId = nil
             await loadAll()

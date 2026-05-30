@@ -17,20 +17,165 @@ struct MatchAndClassifyView: View {
 private struct MatchAndClassifyMainContent: View {
     @Bindable var viewModel: ClassificationViewModel
     @Binding var scrollTargetId: String?
+    // Switch to 2-pane stacked mode at a moderate height; below this, keep 3-pane layout.
+    private let stackedEmailMinimumHeight: CGFloat = 840
+    private let dividerHoverTolerance: CGFloat = 8
+    @State private var paneWidths: [String: CGFloat] = [:]
+    @State private var hoveredDividerIndex: Int?
+    @State private var transactionsPanePreferredWidth: CGFloat = 378
+    @State private var hasInitializedTransactionsPaneWidth = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HSplitView {
-                MatchAndClassifyTransactionsPane(viewModel: viewModel, scrollTargetId: $scrollTargetId)
-                    .frame(minWidth: 240, idealWidth: 320)
-                CandidatesPane(viewModel: viewModel)
-                    .frame(minWidth: 220, idealWidth: 320)
-                ClassifyAndEmailPane(viewModel: viewModel)
-                    .frame(minWidth: 320, idealWidth: 420)
+        GeometryReader { proxy in
+            let useTwoPaneStackedEmail = proxy.size.height >= stackedEmailMinimumHeight
+            let dividerMetrics = horizontalDividerMetrics(useTwoPaneStackedEmail: useTwoPaneStackedEmail)
+            VStack(alignment: .leading, spacing: 8) {
+                HSplitView {
+                    MatchAndClassifyTransactionsPane(viewModel: viewModel, scrollTargetId: $scrollTargetId)
+                        .frame(
+                            minWidth: hoveredDividerIndex == 0 ? 260 : transactionsPanePreferredWidth,
+                            idealWidth: transactionsPanePreferredWidth,
+                            maxWidth: hoveredDividerIndex == 0 ? nil : transactionsPanePreferredWidth
+                        )
+                        .modifier(PaneWidthReporter(id: "transactions"))
+                    if useTwoPaneStackedEmail {
+                        VSplitView {
+                            CandidatesPane(viewModel: viewModel)
+                                .frame(minHeight: 500, maxHeight: .infinity, alignment: .top)
+                            ClassifyAndEmailPane(viewModel: viewModel)
+                                .frame(minHeight: 500, maxHeight: .infinity, alignment: .top)
+                        }
+                        .frame(minWidth: 500, idealWidth: 700, minHeight: 1000)
+                        .modifier(PaneWidthReporter(id: "right-stack"))
+                    } else {
+                        CandidatesPane(viewModel: viewModel)
+                            .frame(minWidth: 220, idealWidth: 320)
+                            .modifier(PaneWidthReporter(id: "candidates"))
+                        ClassifyAndEmailPane(viewModel: viewModel)
+                            .frame(minWidth: 280, idealWidth: 380)
+                            .modifier(PaneWidthReporter(id: "email"))
+                    }
+                }
+                .accessibilityIdentifier("match-and-classify-split")
+                .onPreferenceChange(PaneWidthPreferenceKey.self) { updatedPaneWidths in
+                    paneWidths = updatedPaneWidths
+                    if let measuredTransactionsWidth = updatedPaneWidths["transactions"],
+                       measuredTransactionsWidth > 0 {
+                        // Seed from actual rendered width to avoid snapping to the hardcoded default
+                        // when constraints change (e.g. 3-pane -> 2-pane).
+                        if !hasInitializedTransactionsPaneWidth {
+                            transactionsPanePreferredWidth = measuredTransactionsWidth
+                            hasInitializedTransactionsPaneWidth = true
+                        }
+                        // Persist explicit user divider changes on divider 1.
+                        if hoveredDividerIndex == 0 {
+                            transactionsPanePreferredWidth = measuredTransactionsWidth
+                        }
+                    }
+                }
+                .onContinuousHover { phase in
+                    switch phase {
+                    case let .active(location):
+                        hoveredDividerIndex = dividerMetrics.firstIndex(where: {
+                            abs(location.x - $0.x) <= dividerHoverTolerance
+                        })
+                    case .ended:
+                        hoveredDividerIndex = nil
+                    }
+                }
+                .onChange(of: useTwoPaneStackedEmail) { _, _ in
+                    // Capture the live pane width at mode boundary so layout switches do not
+                    // revert to an older preferred width and "pop" wider.
+                    if let measuredTransactionsWidth = paneWidths["transactions"],
+                       measuredTransactionsWidth > 0 {
+                        transactionsPanePreferredWidth = measuredTransactionsWidth
+                    }
+                }
+                .overlay(alignment: .topLeading) {
+                    if let hoveredDividerIndex,
+                       dividerMetrics.indices.contains(hoveredDividerIndex) {
+                        let metric = dividerMetrics[hoveredDividerIndex]
+                        Text(metric.label)
+                            .font(.caption2.monospacedDigit())
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay(Capsule().strokeBorder(.secondary.opacity(0.35), lineWidth: 0.5))
+                            .position(x: metric.x, y: 12)
+                            .allowsHitTesting(false)
+                    }
+                }
+                MatchAndClassifyStatusBar(viewModel: viewModel)
             }
-            .accessibilityIdentifier("match-and-classify-split")
-            MatchAndClassifyStatusBar(viewModel: viewModel)
         }
+    }
+
+    private func horizontalDividerMetrics(useTwoPaneStackedEmail: Bool) -> [PaneDividerMetric] {
+        let transactionsWidth = paneWidths["transactions"] ?? 0
+        if useTwoPaneStackedEmail {
+            let rightStackWidth = paneWidths["right-stack"] ?? 0
+            guard transactionsWidth > 0, rightStackWidth > 0 else { return [] }
+            return [
+                PaneDividerMetric(
+                    x: transactionsWidth,
+                    label: centeredDividerLabel(
+                        left: "\(Int(transactionsWidth.rounded()))px",
+                        right: "\(Int(rightStackWidth.rounded()))px"
+                    )
+                )
+            ]
+        }
+        let candidatesWidth = paneWidths["candidates"] ?? 0
+        let emailWidth = paneWidths["email"] ?? 0
+        guard transactionsWidth > 0, candidatesWidth > 0, emailWidth > 0 else { return [] }
+        return [
+            PaneDividerMetric(
+                x: transactionsWidth,
+                label: centeredDividerLabel(
+                    left: "\(Int(transactionsWidth.rounded()))px",
+                    right: "\(Int(candidatesWidth.rounded()))px"
+                )
+            ),
+            PaneDividerMetric(
+                x: transactionsWidth + candidatesWidth,
+                label: centeredDividerLabel(
+                    left: "\(Int(candidatesWidth.rounded()))px",
+                    right: "\(Int(emailWidth.rounded()))px"
+                )
+            )
+        ]
+    }
+
+    private func centeredDividerLabel(left: String, right: String) -> String {
+        let maxWidth = max(left.count, right.count)
+        let leftPadded = String(repeating: " ", count: max(0, maxWidth - left.count)) + left
+        let rightPadded = right + String(repeating: " ", count: max(0, maxWidth - right.count))
+        return "\(leftPadded) | \(rightPadded)"
+    }
+}
+
+private struct PaneDividerMetric {
+    let x: CGFloat
+    let label: String
+}
+
+private struct PaneWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: [String: CGFloat] = [:]
+
+    static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
+    }
+}
+
+private struct PaneWidthReporter: ViewModifier {
+    let id: String
+
+    func body(content: Content) -> some View {
+        content.background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: PaneWidthPreferenceKey.self, value: [id: proxy.size.width])
+            }
+        )
     }
 }
 
@@ -177,6 +322,9 @@ private struct MatchAndClassifyTransactionsPane: View {
                     .disabled(!viewModel.canLoadMore || viewModel.busy)
                     .accessibilityIdentifier("load-more-button")
             }
+            Divider()
+            ClassifySection(viewModel: viewModel)
+                .zIndex(1)
             // SwiftUI's ScrollViewReader does not reliably scroll `List` on macOS 14
             // (Apple Developer Forum #758880), so the transaction list is a
             // ScrollView + LazyVStack bound to `.scrollPosition(id:anchor:)` which gives
@@ -506,6 +654,7 @@ private struct ConfidencePill: View {
 private struct CandidatesPane: View {
     @Bindable var viewModel: ClassificationViewModel
     @FocusState private var searchEmailFocus: SearchEmailFocusField?
+    @State private var searchEmailExpanded = false
 
     private enum SearchEmailFocusField: Hashable {
         case subject
@@ -577,27 +726,8 @@ private struct CandidatesPane: View {
                 Toggle("Only unmoved", isOn: $viewModel.matchReviewOnlyUnmoved)
                     .accessibilityIdentifier("match-review-only-unmoved-toggle")
             }
-            List(selection: $viewModel.selectedCandidateId) {
-                Section {
-                    if viewModel.candidates.isEmpty && !viewModel.candidatesBusy {
-                        Text(viewModel.selectedMatchId == nil ? "Select a transaction on the left to see candidates."
-                                                              : "No candidates recorded for this transaction.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(viewModel.candidates) { candidate in
-                            CandidateRowView(candidate: candidate,
-                                             isActiveMatch: activeMatchEmailIds.contains(candidate.email_message_id),
-                                             activeBadgeLabel: activeBadgeLabel,
-                                             activeBadgeColor: activeBadgeColor)
-                                .tag(Optional(candidate.email_message_id))
-                                .accessibilityIdentifier("candidate-row-\(candidate.email_message_id)")
-                        }
-                    }
-                }
-                // #R065: Use user-facing copy "Search Email" for the search section title.
-                // #R071: Keep structured search fields under the Search Email section.
-                Section("Search Email") {
+            DisclosureGroup(isExpanded: $searchEmailExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
                     TextField("Subject", text: $viewModel.mailcartSearchSubject)
                         .textFieldStyle(.roundedBorder)
                         .focused($searchEmailFocus, equals: .subject)
@@ -636,6 +766,47 @@ private struct CandidatesPane: View {
                     }
                     if viewModel.mailcartSearchBusy {
                         HStack { BusyIndicator(); Text("Searching…").font(.caption) }
+                    }
+                }
+                .padding(.top, 4)
+            } label: {
+                Text("Search Email")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .accessibilityIdentifier("search-email-disclosure")
+            HStack(spacing: 8) {
+                Button("Confirm") { Task { await viewModel.confirmSelectedMatch() } }
+                    .disabled(!viewModel.canConfirmSelectedMatch)
+                    .accessibilityIdentifier("match-confirm-button")
+                Button("Override") { Task { await viewModel.overrideSelectedMatch() } }
+                    .disabled(!viewModel.canOverrideSelectedMatch)
+                    .accessibilityIdentifier("match-override-button")
+                Button("No-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
+                    .disabled(!viewModel.canMarkSelectedMatchNoEmail)
+                    .accessibilityIdentifier("match-no-email-button")
+                Button("Clear") { Task { await viewModel.clearSelectedMatch() } }
+                    .disabled(!viewModel.canClearSelectedMatch)
+                    .accessibilityIdentifier("match-clear-button")
+                Spacer()
+            }
+            TextField("Note (optional)", text: $viewModel.matchOverrideNote)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("override-note-field")
+            List(selection: $viewModel.selectedCandidateId) {
+                Section("Emails") {
+                    if viewModel.candidates.isEmpty && viewModel.mailcartSearchResults.isEmpty && !viewModel.candidatesBusy {
+                        Text(viewModel.selectedMatchId == nil ? "Select a transaction on the left to see emails."
+                                                              : "No emails recorded for this transaction.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(viewModel.candidates) { candidate in
+                        CandidateRowView(candidate: candidate,
+                                         isActiveMatch: activeMatchEmailIds.contains(candidate.email_message_id),
+                                         activeBadgeLabel: activeBadgeLabel,
+                                         activeBadgeColor: activeBadgeColor)
+                            .tag(Optional(candidate.email_message_id))
+                            .accessibilityIdentifier("candidate-row-\(candidate.email_message_id)")
                     }
                     ForEach(viewModel.mailcartSearchResults) { hit in
                         SearchHitRowView(hit: hit)
@@ -773,18 +944,11 @@ private struct ClassifyAndEmailPane: View {
     @Bindable var viewModel: ClassificationViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ClassifySection(viewModel: viewModel)
-                .zIndex(1)
-            Divider()
-            EmailSection(viewModel: viewModel)
-                .frame(maxHeight: .infinity)
-                .layoutPriority(-1)
-                .clipped()
-            Divider()
-            MatchActionsBar(viewModel: viewModel)
-        }
-        .padding(8)
+        EmailSection(viewModel: viewModel)
+            .frame(maxHeight: .infinity)
+            .layoutPriority(-1)
+            .clipped()
+            .padding(8)
     }
 }
 
@@ -1011,41 +1175,6 @@ private struct EmailBodyTextScrollView: View {
         } else {
             withAnimation(.easeInOut(duration: 0.2)) {
                 proxy.scrollTo(Self.amountLineScrollId, anchor: .center)
-            }
-        }
-    }
-}
-
-private struct MatchActionsBar: View {
-    // #R045: Match action bar renders Confirm, Override, No-email, and Clear controls.
-    @Bindable var viewModel: ClassificationViewModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                TextField("Override email message id (optional override)", text: $viewModel.matchOverrideEmailMessageId)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("override-email-message-id-field")
-            }
-            HStack(spacing: 8) {
-                TextField("Note (optional)", text: $viewModel.matchOverrideNote)
-                    .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("override-note-field")
-            }
-            HStack(spacing: 8) {
-                Button("Confirm") { Task { await viewModel.confirmSelectedMatch() } }
-                    .disabled(!viewModel.canConfirmSelectedMatch)
-                    .accessibilityIdentifier("match-confirm-button")
-                Button("Override") { Task { await viewModel.overrideSelectedMatch() } }
-                    .disabled(!viewModel.canOverrideSelectedMatch)
-                    .accessibilityIdentifier("match-override-button")
-                Button("No-email") { Task { await viewModel.markSelectedMatchNoEmail() } }
-                    .disabled(!viewModel.canMarkSelectedMatchNoEmail)
-                    .accessibilityIdentifier("match-no-email-button")
-                Button("Clear") { Task { await viewModel.clearSelectedMatch() } }
-                    .disabled(!viewModel.canClearSelectedMatch)
-                    .accessibilityIdentifier("match-clear-button")
-                Spacer()
             }
         }
     }
