@@ -62,6 +62,11 @@ Tests:
 - R045-T01: Run DAST with Schemathesis enabled and verify `.schemathesis/` appears under the report directory.
 - R045-T02: Verify DAST run does not create `${repo_root}/.schemathesis/`.
 
+R050  Statement: Persisted Schemathesis artifacts must redact the classifier write token.
+Design: Capture Schemathesis raw output to a temporary log, redact the live write token before writing `schemathesis.log`, redact `schemathesis-junit.xml` in place when present, and delete temporary unredacted artifacts so only redacted content persists.
+Tests:
+- R050-T01: Run DAST lane with Schemathesis enabled and verify persisted `schemathesis.log`/`schemathesis-junit.xml` do not contain the raw token and include redacted placeholder content.
+
 R025  Statement: DAST run must not leak state to the target database.
 Design: Generate a per-run `DAST_RUN_ID` tag, capture a pre-run baseline via `src/scripts/dast_baseline.py` (max IDs plus full mutable-field snapshots of `nys_snw_category`, `transaction_email_match`, `transaction_email_match_audit`, and `transaction_nys_snw_category`), embed `DAST_RUN_ID` in seeded `categorization` and `email_message_id` payloads, and install an `EXIT` trap that invokes `src/scripts/dast_cleanup.py` to restore mutated rows and delete rows inserted past the baseline (FK-safe order: match restore -> audit delete -> match delete -> classification reconcile -> category delete -> category restore). The cleanup runs both on the success path (before the integrity check) and on any failure path; the post-DAST integrity check therefore also asserts that cleanup succeeded. Cleanup refuses to apply when the recorded profile differs from the current resolved profile unless `DAST_CLEANUP_FORCE=true`, and can be disabled entirely with `DAST_SKIP_CLEANUP=true`.
 Tests:
@@ -69,6 +74,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-30: Added R050 to require token redaction for persisted Schemathesis artifacts.
 - 2026-05-10: Split former combined security lane into `07_run_static_security_tests.sh` and `23_run_dynamic_security_tests.sh`.
 - 2026-05-15: Added R025/R030/R035 for ZAP proxy resilience, lane state isolation, and startup diagnostics.
 - 2026-05-19: Removed macOS UI / XCUITest DAST integration (R025, R030, R035); DAST is Schemathesis + ZAP quick scan only.

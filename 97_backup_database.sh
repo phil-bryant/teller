@@ -9,6 +9,7 @@ TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
 #R040: Resolve the active DB profile so backups target the same database as deploy/destroy.
 DB_PROFILE_HELPER="${SCRIPT_DIR}/src/scripts/db_profile_export.sh"
 BACKUP_INCLUDE_ROLE_AUTH_DATA="${BACKUP_INCLUDE_ROLE_AUTH_DATA:-false}"
+MANIFEST_PATH=""
 
 #R005: Require backup dependencies before running dump commands.
 if ! command -v 1psa >/dev/null 2>&1; then
@@ -87,7 +88,7 @@ require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET PG_DBNAME
 
 #R020: Create backup directory with restricted permissions.
 mkdir -p "$BACKUP_DIR"
-chmod 770 "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
 
 #R045: Managed-target backup uses the profile's connection user and the direct (non-pooler) host.
 if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
@@ -129,7 +130,7 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
 
     #R045: Managed targets do not expose pg_authid; skip pg_dumpall and document the gap.
     #R035: Restrict output file permissions and print resulting paths.
-    chmod 660 "$BACKUP_PATH"
+    chmod 600 "$BACKUP_PATH"
     echo "Backup written: $BACKUP_PATH"
     echo "Globals skipped: managed target does not expose role/grant state; restore is --table scoped only."
     exit 0
@@ -143,6 +144,7 @@ DATABASE_NAME="${DATABASE_NAME:-$PG_DBNAME}"
 BACKUP_BASENAME="${PROFILE_NAME}_${DATABASE_NAME}_${TIMESTAMP}"
 BACKUP_PATH="${BACKUP_DIR}/${BACKUP_BASENAME}.dump"
 GLOBALS_BACKUP_PATH="${BACKUP_DIR}/${BACKUP_BASENAME}_globals.sql"
+MANIFEST_PATH="${BACKUP_DIR}/${BACKUP_BASENAME}.manifest.sha256"
 
 #R010: Resolve postgres password from configured 1psa item/field.
 if [ "$POSTGRES_PSA_FIELD" = "password" ]; then
@@ -169,7 +171,14 @@ fi
 PGPASSWORD="$POSTGRES_PASSWORD" pg_dumpall -U postgres --globals-only "${GLOBALS_ROLE_PASSWORD_ARGS[@]}" -f "$GLOBALS_BACKUP_PATH"
 
 #R035: Restrict output file permissions and print resulting paths.
-chmod 660 "$BACKUP_PATH"
-chmod 660 "$GLOBALS_BACKUP_PATH"
+chmod 600 "$BACKUP_PATH"
+chmod 600 "$GLOBALS_BACKUP_PATH"
+#R055: Generate and lock down SHA-256 manifest for dump/globals integrity verification.
+(
+    cd "$BACKUP_DIR" && \
+    shasum -a 256 "$(basename "$BACKUP_PATH")" "$(basename "$GLOBALS_BACKUP_PATH")" > "$(basename "$MANIFEST_PATH")"
+)
+chmod 600 "$MANIFEST_PATH"
 echo "Backup written: $BACKUP_PATH"
 echo "Globals written: $GLOBALS_BACKUP_PATH"
+echo "Manifest written: $MANIFEST_PATH"

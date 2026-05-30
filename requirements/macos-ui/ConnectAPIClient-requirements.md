@@ -37,12 +37,19 @@ Tests:
 - R025-T01: Store a token and verify `~/.teller` mode is `700` and both token and enrollment files are written with mode `400`.
 
 R030  Statement: Institution inference must remain best-effort and non-fatal.
-Design: `inferInstitutionID(...)` attempts Teller identity lookup only when cert/key files exist and returns empty string on command failures, malformed payloads, or missing institution fields.
+Design: `inferInstitutionID(...)` attempts Teller identity lookup only when cert/key files exist and returns empty string on command failures, malformed payloads, or missing institution fields. Identity lookup must avoid passing access tokens in process arguments; credential material is provided through a protected temporary config path with restrictive permissions and removed after use.
 Tests:
 - R030-T01: Omit cert/key files and verify context discovery and token storage continue without throwing.
+- R030-T02: Verify identity lookup path does not invoke curl with token in argv (`-u <token>:` style).
+
+R035  Statement: Connect session credentials must include a per-session nonce for WebView bridge binding.
+Design: `startSession(...)` for add/reconnect must generate a non-empty nonce and place it in `ConnectCredentials.sessionNonce`, so bridge payload validation can bind messages to the active session.
+Tests:
+- R035-T01: Start two sessions and verify each emitted session nonce is non-empty and unique.
 
 ## Changelog
 
+- 2026-05-30: Updated R030 to require token-safe identity lookup and added R035 for per-session nonce generation.
 - 2026-05-02: Added Swift replacement requirements for connect context/session/storage behavior previously documented for shell/token-server flows.
 - 2026-05-23: Added reconnect enrollment-ID refresh requirement to prevent stale disconnected enrollment reuse.
 - 2026-05-27: Tightened R015/R025 test traceability for trash destination prefix and enrollment file permission checks.

@@ -278,7 +278,8 @@ actor SnapshotFixtureConnectAPI: ConnectAPI {
                 credentials: ConnectCredentials(
                     applicationId: "app_snapshot",
                     environment: "development",
-                    enrollmentId: selectedContext.enrollment_id
+                    enrollmentId: selectedContext.enrollment_id,
+                    sessionNonce: "snapshot-session-nonce"
                 )
             )
         }
@@ -288,7 +289,8 @@ actor SnapshotFixtureConnectAPI: ConnectAPI {
             credentials: ConnectCredentials(
                 applicationId: "app_snapshot",
                 environment: "development",
-                enrollmentId: ""
+                enrollmentId: "",
+                sessionNonce: "snapshot-session-nonce"
             )
         )
     }

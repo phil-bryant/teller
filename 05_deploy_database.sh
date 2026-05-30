@@ -60,6 +60,11 @@ require_nonempty_env() {
     done
 }
 
+is_valid_pg_identifier() {
+    local identifier="$1"
+    [[ "$identifier" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ ]]
+}
+
 profile_exports_file="$(mktemp)"
 if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
     rm -f "$profile_exports_file"
@@ -209,11 +214,24 @@ fi
 #R025: Run admin bootstrap SQL in required order.
 #R085: Skip create_database.sql when the resolved DB already exists so re-runs against an existing
 #R085: local DB do not error. configure_database.sql is now idempotent on its own.
+#R095: Validate profile-resolved DB/user identifiers before SQL execution.
 if [[ -z "${PG_DBNAME:-}" || -z "${PG_USER:-}" ]]; then
     echo "Resolved profile is missing PG_DBNAME or PG_USER; check the 1psa item or ~/.env."
     exit 1
 fi
-prod_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql "${PSQL_OPTS[@]}" -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${PG_DBNAME}'")"
+if ! is_valid_pg_identifier "$PG_DBNAME"; then
+    echo "Resolved PG_DBNAME is not a valid PostgreSQL identifier: ${PG_DBNAME}"
+    exit 1
+fi
+if ! is_valid_pg_identifier "$PG_USER"; then
+    echo "Resolved PG_USER is not a valid PostgreSQL identifier: ${PG_USER}"
+    exit 1
+fi
+prod_exists="$(
+    #R096: Bind DB name through psql variable expansion to avoid SQL interpolation.
+    PGPASSWORD="$POSTGRES_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql "${PSQL_OPTS[@]}" -U postgres \
+        -v db_name="$PG_DBNAME" -tAc "SELECT 1 FROM pg_database WHERE datname = :'db_name'"
+)"
 if [ -z "$prod_exists" ]; then
     run_psql_postgres -v db_name="$PG_DBNAME" -f "${SQL_DIR}/create_database.sql"
 fi

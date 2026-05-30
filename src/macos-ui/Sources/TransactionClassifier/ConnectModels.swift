@@ -65,6 +65,7 @@ struct ConnectCredentials: Hashable, Sendable {
     let applicationId: String
     let environment: String
     let enrollmentId: String
+    let sessionNonce: String
 }
 
 struct ConnectStartSession: Hashable, Sendable, Identifiable {
@@ -76,6 +77,7 @@ struct ConnectStartSession: Hashable, Sendable, Identifiable {
     var applicationId: String { credentials.applicationId }
     var environment: String { credentials.environment }
     var enrollmentId: String { credentials.enrollmentId }
+    var sessionNonce: String { credentials.sessionNonce }
 
     init(
         id: UUID = UUID(),

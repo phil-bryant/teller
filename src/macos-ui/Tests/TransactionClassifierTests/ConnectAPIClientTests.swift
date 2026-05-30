@@ -221,7 +221,7 @@ final class ConnectAPIClientTests: XCTestCase {
     }
 
     func testStartSessionAddReturnsEmptyTargetKey() async throws {
-        // #R020-T02
+        // #R020-T02 #R035-T01
         let home = try makeTempHome()
         let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
         try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
@@ -231,5 +231,59 @@ final class ConnectAPIClientTests: XCTestCase {
         let session = try await client.startSession(action: .add, selectedContext: nil)
         XCTAssertEqual(session.targetKey, "")
         XCTAssertEqual(session.enrollmentId, "")
+        XCTAssertFalse(session.sessionNonce.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    func testStartSessionGeneratesUniqueNoncePerSession() async throws {
+        // #R035-T01
+        let home = try makeTempHome()
+        let tellerDir = home.appendingPathComponent(".teller", isDirectory: true)
+        try FileManager.default.createDirectory(at: tellerDir, withIntermediateDirectories: true, attributes: nil)
+        try Data("app_test\n".utf8).write(to: tellerDir.appendingPathComponent("application_id.txt"))
+        try Data("{\"current\":\"token_default\"}\n".utf8).write(to: tellerDir.appendingPathComponent("auth_token.json"))
+        try Data("enr_default\n".utf8).write(to: tellerDir.appendingPathComponent("enrollment_id.txt"))
+
+        let client = makeClient(home: home)
+        let addSession = try await client.startSession(action: .add, selectedContext: nil)
+        let reconnectContext = ConnectContext(
+            key: "default",
+            source: "default",
+            institution_id: "inst_alpha",
+            enrollment_id: "enr_default",
+            token_path: tellerDir.appendingPathComponent("auth_token.json").path,
+            enrollment_path: tellerDir.appendingPathComponent("enrollment_id.txt").path
+        )
+        let reconnectSession = try await client.startSession(action: .reconnect, selectedContext: reconnectContext)
+        XCTAssertFalse(addSession.sessionNonce.isEmpty)
+        XCTAssertFalse(reconnectSession.sessionNonce.isEmpty)
+        XCTAssertNotEqual(addSession.sessionNonce, reconnectSession.sessionNonce)
+    }
+
+    func testIdentityLookupUsesCurlConfigInsteadOfTokenInArguments() throws {
+        // #R030-T02
+        let source = try Self.loadConnectAPIClientSource()
+        XCTAssertTrue(
+            source.contains(#"process.arguments = ["--config", configFile.path]"#),
+            "Identity lookup must pass credentials via curl config file."
+        )
+        XCTAssertFalse(
+            source.contains("-u \\(token):"),
+            "Identity lookup must not pass token via curl argv."
+        )
+    }
+}
+
+private extension ConnectAPIClientTests {
+    static func loadConnectAPIClientSource() throws -> String {
+        let currentFile = URL(fileURLWithPath: #filePath)
+        let packageRoot = currentFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceFile = packageRoot
+            .appendingPathComponent("Sources")
+            .appendingPathComponent("TransactionClassifier")
+            .appendingPathComponent("ConnectAPIClient.swift")
+        return try String(contentsOf: sourceFile, encoding: .utf8)
     }
 }

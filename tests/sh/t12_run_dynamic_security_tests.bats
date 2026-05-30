@@ -77,6 +77,35 @@ EOF
   chmod +x "$target"
 }
 
+stub_schemathesis_leaks_token() {
+  cat > "${STUB_BIN}/schemathesis" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+  exit 0
+fi
+token=""
+junit_path=""
+prev=""
+for arg in "$@"; do
+  if [[ "$prev" == "--header" ]]; then
+    token="${arg##*: }"
+  fi
+  if [[ "$prev" == "--report-junit-path" ]]; then
+    junit_path="$arg"
+  fi
+  prev="$arg"
+done
+echo "schemathesis raw token=${token}"
+if [[ -n "$junit_path" ]]; then
+  printf '<testsuite><system-out>%s</system-out></testsuite>\n' "$token" > "$junit_path"
+fi
+mkdir -p .schemathesis
+printf '%s\n' "runtime-state" > .schemathesis/stub.txt
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/schemathesis"
+}
+
 teardown() {
   teardown_shell_test
 }
@@ -366,4 +395,45 @@ EOF
   [ -d "${FIXTURE_ROOT}/artifacts/security-dast/.schemathesis" ]
   [ -f "${FIXTURE_ROOT}/artifacts/security-dast/.schemathesis/stub.txt" ]
   [ ! -d "${FIXTURE_ROOT}/.schemathesis" ]
+}
+
+@test "dynamic lane redacts Schemathesis token from persisted logs and junit" {
+  #R050-T01
+  setup_shell_test
+  copy_dast_project_files
+  stub_curl_success
+  stub_schemathesis_leaks_token
+  cat > "${FIXTURE_ROOT}/tests/py/security/delete_category_contract_check.py" <<'PY'
+#!/usr/bin/env python3
+import json
+print(json.dumps({"status": "ok", "source": "stub"}))
+PY
+  chmod +x "${FIXTURE_ROOT}/tests/py/security/delete_category_contract_check.py"
+  mkdir -p "${FIXTURE_ROOT}/fake-security-venv/bin"
+  cat > "${FIXTURE_ROOT}/fake-security-venv/bin/python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-c" ]]; then
+  exit 0
+fi
+exec /usr/bin/python3 "$@"
+EOF
+  chmod +x "${FIXTURE_ROOT}/fake-security-venv/bin/python"
+  touch "${FIXTURE_ROOT}/fake-security-venv/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/fake-security-venv/bin/semgrep"
+  cp "${STUB_BIN}/schemathesis" "${FIXTURE_ROOT}/fake-security-venv/bin/schemathesis"
+  chmod +x "${FIXTURE_ROOT}/fake-security-venv/bin/schemathesis"
+  run env RUN_SAST=false RUN_DAST=true RUN_ZAP=false RUN_SCHEMATHESIS=true \
+    DAST_REUSE_EXISTING_API=true DAST_CATEGORY_INTEGRITY_STRICT=false \
+    DAST_BASE_URL="https://127.0.0.1:19801" \
+    DAST_OPENAPI_URL="https://127.0.0.1:19801/openapi.json" \
+    SECURITY_VENV_DIR="${FIXTURE_ROOT}/fake-security-venv" \
+    SECURITY_REPORT_DIR="${FIXTURE_ROOT}/artifacts/security-dast" \
+    bash "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
+  [ "$status" -eq 0 ]
+  run /usr/bin/grep -q "write-token" "${FIXTURE_ROOT}/artifacts/security-dast/schemathesis.log"
+  [ "$status" -ne 0 ]
+  run /usr/bin/grep -q "write-token" "${FIXTURE_ROOT}/artifacts/security-dast/schemathesis-junit.xml"
+  [ "$status" -ne 0 ]
+  run /usr/bin/grep -q "\\[REDACTED\\]" "${FIXTURE_ROOT}/artifacts/security-dast/schemathesis.log"
+  [ "$status" -eq 0 ]
 }

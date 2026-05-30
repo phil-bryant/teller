@@ -13,9 +13,42 @@ GLOBALS_BACKUP_PATH=""
 TABLE_NAME=""
 TABLE_SCHEMA=""
 TABLE_RELATION=""
+MANIFEST_PATH=""
 
 usage() {
     echo "Usage: $0 [--from /path/to/backup.dump] [--table table_name|schema.table_name]"
+}
+
+is_valid_pg_identifier() {
+    local identifier="$1"
+    [[ "$identifier" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ ]]
+}
+
+verify_backup_manifest() {
+    local backup_path="$1"
+    local globals_path="$2"
+    local manifest_path="$3"
+    local manifest_dir=""
+    manifest_dir="$(dirname "$manifest_path")"
+
+    if [ ! -f "$manifest_path" ]; then
+        echo "Backup integrity manifest is missing: $manifest_path"
+        echo "Recreate backup with 97_backup_database.sh to include signed hash metadata."
+        exit 1
+    fi
+
+    (
+        cd "$manifest_dir" && \
+        shasum -a 256 -c "$(basename "$manifest_path")" >/dev/null
+    ) || {
+        echo "Backup integrity check failed for dump/globals pair."
+        exit 1
+    }
+
+    if [ ! -f "$backup_path" ] || [ ! -f "$globals_path" ]; then
+        echo "Backup integrity check failed because backup inputs are missing."
+        exit 1
+    fi
 }
 
 latest_backup_path() {
@@ -165,6 +198,15 @@ if [ -n "$TABLE_NAME" ]; then
         TABLE_SCHEMA="teller"
         TABLE_RELATION="$TABLE_NAME"
     fi
+    #R101: Validate scoped restore schema/table identifiers before repair SQL.
+    if ! is_valid_pg_identifier "$TABLE_SCHEMA"; then
+        echo "Invalid schema identifier supplied to --table: ${TABLE_SCHEMA}"
+        exit 1
+    fi
+    if ! is_valid_pg_identifier "$TABLE_RELATION"; then
+        echo "Invalid table identifier supplied to --table: ${TABLE_RELATION}"
+        exit 1
+    fi
     RESTORE_TABLE_ARGS=(--schema "$TABLE_SCHEMA" --table "$TABLE_RELATION")
 fi
 
@@ -223,7 +265,12 @@ POSTGRES_PSA_FIELD="${POSTGRES_PSA_FIELD:-password}"
 TELLER_PSA_ITEM="${TELLER_PSA_ITEM:-localhost_postgres_teller}"
 TELLER_PSA_FIELD="${TELLER_PSA_FIELD:-password}"
 #R095: Honor DATABASE_NAME env override for backward compatibility, otherwise use the resolved profile DB.
+#R100: Validate full-restore DATABASE_NAME identifier before destructive checks.
 DATABASE_NAME="${DATABASE_NAME:-$PG_DBNAME}"
+if ! is_valid_pg_identifier "$DATABASE_NAME"; then
+    echo "Resolved DATABASE_NAME is not a valid PostgreSQL identifier: ${DATABASE_NAME}"
+    exit 1
+fi
 
 #R035: Run fail-fast SQL against the target database as postgres.
 run_psql_target() {
@@ -248,23 +295,29 @@ $$ LANGUAGE plpgsql;
 SQL
 
     #R060: Recreate updated_at trigger for restored table when that column exists.
+    #R101: Use parameterized SQL bindings for dynamic scoped repair table names.
     has_updated_at="$(
-        run_psql_target -tAc "
+        run_psql_target -v table_schema="$TABLE_SCHEMA" -v table_name="$TABLE_RELATION" -tAc "
             SELECT 1
             FROM information_schema.columns columns
-            WHERE columns.table_schema = 'teller'
-              AND columns.table_name = '${TABLE_RELATION}'
+            WHERE columns.table_schema = :'table_schema'
+              AND columns.table_name = :'table_name'
               AND columns.column_name = 'updated_at'
             LIMIT 1;
         "
     )"
     if [ "${has_updated_at}" = "1" ]; then
-        run_psql_target -c \
-"DROP TRIGGER IF EXISTS update_${TABLE_RELATION}_updated_at ON teller.${TABLE_RELATION};
-CREATE TRIGGER update_${TABLE_RELATION}_updated_at
-    BEFORE UPDATE ON teller.${TABLE_RELATION}
-    FOR EACH ROW
-    EXECUTE FUNCTION teller.update_updated_at();"
+        #R101: Recreate triggers through server-side identifier formatting with bound variables.
+        run_psql_target -v table_schema="$TABLE_SCHEMA" -v table_name="$TABLE_RELATION" -c \
+"SELECT format(
+    'DROP TRIGGER IF EXISTS %I ON %I.%I; CREATE TRIGGER %I BEFORE UPDATE ON %I.%I FOR EACH ROW EXECUTE FUNCTION teller.update_updated_at();',
+    'update_' || :'table_name' || '_updated_at',
+    :'table_schema',
+    :'table_name',
+    'update_' || :'table_name' || '_updated_at',
+    :'table_schema',
+    :'table_name'
+) \gexec"
     fi
 
     #R065: Reapply known table-specific DDL adjustments from deploy script.
@@ -307,19 +360,25 @@ if [ -z "$TELLER_PASSWORD" ]; then
 fi
 
 #R020: Require matching globals dump file only for full restore mode.
+#R102: Require dump/globals integrity manifest verification before globals replay.
 if [ -z "$TABLE_NAME" ]; then
     GLOBALS_BACKUP_PATH="${BACKUP_PATH%.dump}_globals.sql"
+    MANIFEST_PATH="${BACKUP_PATH%.dump}.manifest.sha256"
     if [ ! -f "$GLOBALS_BACKUP_PATH" ]; then
         echo "Matching globals backup is missing: $GLOBALS_BACKUP_PATH"
         echo "Recreate backup with 97_backup_database.sh to include roles and grants."
         exit 1
     fi
+    verify_backup_manifest "$BACKUP_PATH" "$GLOBALS_BACKUP_PATH" "$MANIFEST_PATH"
 fi
 
 #R025: Refuse full restore into db that already contains teller schema.
-database_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${DATABASE_NAME}';")"
+database_exists="$(
+    PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -v db_name="$DATABASE_NAME" -tAc \
+        "SELECT 1 FROM pg_database WHERE datname = :'db_name';"
+)"
 if [ "$database_exists" = "1" ]; then
-    schema_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d "$DATABASE_NAME" -tAc "SELECT 1 FROM information_schema.schemata WHERE schema_name='teller';")"
+    schema_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d "$DATABASE_NAME" -tAc "SELECT 1 FROM information_schema.schemata WHERE schema_name='teller';")"
     if [ "$schema_exists" = "1" ] && [ -z "$TABLE_NAME" ]; then
         echo "Schema teller already exists in ${DATABASE_NAME}; refusing full restore."
         echo "Pass --table schema.table_name to run table-scoped restore into existing schema."

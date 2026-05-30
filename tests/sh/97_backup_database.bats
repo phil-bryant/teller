@@ -20,6 +20,18 @@ echo "PG_RUNTIME_ROLE=teller_write"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  cat > "${STUB_BIN}/shasum" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-a" && "$2" == "256" ]]; then
+  shift 2
+  for path in "$@"; do
+    echo "deadbeef  ${path}"
+  done
+  exit 0
+fi
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/shasum"
 }
 
 teardown() {
@@ -37,7 +49,7 @@ teardown() {
 }
 
 @test "creates dump and globals artifacts with printed paths" {
-  #R020-T01 #R025-T01 #R030-T01 #R035-T01 #R040-T01 #R050-T01
+  #R020-T01 #R025-T01 #R030-T01 #R035-T01 #R040-T01 #R050-T01 #R055-T01 #R055-T02
   stub_cmd 1psa "echo pass"
   cat > "${STUB_BIN}/pg_dump" <<'EOF'
 #!/usr/bin/env bash
@@ -70,7 +82,14 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"Backup written:"* ]]
   [[ "$output" == *"Globals written:"* ]]
+  [[ "$output" == *"Manifest written:"* ]]
   [[ "$output" == *"local_prod_"* ]]
+  run bash -c "ls -1 '${FIXTURE_ROOT}/backups/'*.manifest.sha256"
+  [ "$status" -eq 0 ]
+  manifest_path="$output"
+  run bash -c "stat -f %Lp '${manifest_path}'"
+  [ "$status" -eq 0 ]
+  [ "$output" -eq 600 ]
 }
 
 @test "managed target writes schema-scoped dump and skips globals" {

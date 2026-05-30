@@ -4,21 +4,22 @@ import Foundation
 /// dedicated file so the embedded JS object literals do not pollute Lizard's
 /// brace counting for the renderer in `ConnectWebFlowHTML.swift`.
 enum ConnectWebFlowScript {
-    static func javaScript(appID: String, environment: String, enrollmentID: String) -> String {
+    static func javaScript(appID: String, environment: String, enrollmentID: String, sessionNonce: String) -> String {
         return """
-        \(prelude(appID: appID, environment: environment, enrollmentID: enrollmentID))
+        \(prelude(appID: appID, environment: environment, enrollmentID: enrollmentID, sessionNonce: sessionNonce))
         \(setupBlock)
         """
     }
 
-    private static func prelude(appID: String, environment: String, enrollmentID: String) -> String {
+    private static func prelude(appID: String, environment: String, enrollmentID: String, sessionNonce: String) -> String {
         return """
         const appId = \(appID);
         const environment = \(environment);
         const enrollmentId = \(enrollmentID);
+        const sessionNonce = \(sessionNonce);
         const statusEl = document.getElementById("status");
         const launcherEl = document.querySelector(".launcher");
-        const bridge = (payload) => window.webkit.messageHandlers.connectBridge.postMessage(payload);
+        const bridge = (payload) => window.webkit.messageHandlers.connectBridge.postMessage({ ...payload, nonce: sessionNonce });
         """
     }
 

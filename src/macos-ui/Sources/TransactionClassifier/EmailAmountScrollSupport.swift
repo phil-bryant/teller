@@ -107,10 +107,13 @@ func scrollToAmountJavaScript(variants: [String]) -> String? {
     """
 }
 
+// #R078: Sanitize rendered email HTML and enforce restrictive CSP before WKWebView render.
 func wrappedEmailHTML(_ htmlBody: String) -> String {
-    """
+    let sanitized = lightlySanitizedEmailHTML(htmlBody)
+    return """
     <!doctype html>
     <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; font-src data: https:; frame-src 'none'; form-action 'none'; base-uri 'none';">
     <style>
         html, body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.4; margin: 12px; color: -apple-system-label; background: transparent; }
         img { max-width: 100%; height: auto; }
@@ -118,7 +121,35 @@ func wrappedEmailHTML(_ htmlBody: String) -> String {
         a { color: -apple-system-blue; }
         pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     </style></head><body>
-    \(htmlBody)
+    \(sanitized)
     </body></html>
     """
+}
+
+func lightlySanitizedEmailHTML(_ htmlBody: String) -> String {
+    var sanitized = htmlBody
+    let patterns = [
+        #"(?is)<\s*(script|iframe|object|embed|form|base)\b[^>]*>.*?<\s*/\s*\1\s*>"#,
+        #"(?is)<\s*(script|iframe|object|embed|form|base)\b[^>]*/\s*>"#,
+        #"(?is)<\s*meta\b[^>]*http-equiv\s*=\s*['"]?refresh['"]?[^>]*>"#,
+        #"(?is)\s+on[a-z]+\s*=\s*(['"]).*?\1"#,
+        #"(?is)\s+on[a-z]+\s*=\s*[^\s>]+"#,
+    ]
+
+    for pattern in patterns {
+        sanitized = sanitized.replacingOccurrences(
+            of: pattern,
+            with: "",
+            options: .regularExpression
+        )
+    }
+
+    // Neutralize javascript: URLs while preserving visible link text.
+    sanitized = sanitized.replacingOccurrences(
+        of: #"(?is)(href|src)\s*=\s*(['"])\s*javascript:.*?\2"#,
+        with: "$1=\"#\"",
+        options: .regularExpression
+    )
+
+    return sanitized
 }

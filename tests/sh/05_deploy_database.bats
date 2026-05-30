@@ -217,17 +217,15 @@ EOF
 }
 
 @test "local deploy is idempotent when prod database already exists" {
-  #R085-T01
+  #R085-T01 #R096-T01
   export PATH="${STUB_BIN}:/usr/bin:/bin"
   cat > "${STUB_BIN}/psql" <<EOF
 #!/usr/bin/env bash
 echo "psql \$*" >> "${CALLS_LOG}"
-for arg in "\$@"; do
-  if [[ "\$arg" == "SELECT 1 FROM pg_database WHERE datname='prod'" ]]; then
-    echo "1"
-    exit 0
-  fi
-done
+if [[ "\$*" == *"SELECT 1 FROM pg_database WHERE datname = :'db_name'"* ]]; then
+  echo "1"
+  exit 0
+fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/psql"
@@ -236,6 +234,51 @@ EOF
   [ "$status" -eq 0 ]
   ! grep -F "create_database.sql" "${CALLS_LOG}"
   grep -F "configure_database.sql" "${CALLS_LOG}"
+  grep -F -- "-v db_name=prod" "${CALLS_LOG}"
+}
+
+@test "rejects invalid PG_DBNAME before deploy SQL" {
+  #R095-T01
+  export PATH="${STUB_BIN}:/usr/bin:/bin"
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "PROFILE_NAME=local"
+echo "PROFILE_TARGET=local"
+echo "PG_HOST=localhost"
+echo "PG_PORT=5432"
+echo "PG_DBNAME=bad-name!"
+echo "PG_USER=teller"
+echo "PG_SSLMODE=disable"
+echo "PG_SEARCH_PATH=teller"
+echo "PG_RUNTIME_ROLE=teller_write"
+echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  run bash "${FIXTURE_ROOT}/05_deploy_database.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"PG_DBNAME is not a valid PostgreSQL identifier"* ]]
+}
+
+@test "rejects invalid PG_USER before deploy SQL" {
+  #R095-T02
+  export PATH="${STUB_BIN}:/usr/bin:/bin"
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "PROFILE_NAME=local"
+echo "PROFILE_TARGET=local"
+echo "PG_HOST=localhost"
+echo "PG_PORT=5432"
+echo "PG_DBNAME=prod"
+echo "PG_USER=bad-user!"
+echo "PG_SSLMODE=disable"
+echo "PG_SEARCH_PATH=teller"
+echo "PG_RUNTIME_ROLE=teller_write"
+echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  run bash "${FIXTURE_ROOT}/05_deploy_database.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"PG_USER is not a valid PostgreSQL identifier"* ]]
 }
 
 @test "fails with setup guidance when db profile file is missing" {

@@ -44,8 +44,16 @@ Tests:
 - R030-T01: Render Add-session Connect HTML and verify the ESC hint text is present.
 - R030-T02: Render Edit-session Connect HTML and verify the ESC hint text is present.
 
+R035  Statement: Connect WebView bridge must accept success payloads only from trusted, session-bound context.
+Design: `ConnectWebFlowView.Coordinator` must reject bridge messages unless all of the following hold: message originates from the main frame, message origin host is in the trusted allowlist, and payload nonce matches the session nonce generated for the active Connect session.
+Tests:
+- R035-T01: Verify rendered Connect web-flow script includes session nonce wiring in bridge payloads.
+- R035-T02: Verify bridge handler enforces main-frame and trusted-origin checks before success handling.
+- R035-T03: Verify bridge handler rejects nonce-mismatched success payloads.
+
 ## Changelog
 
+- 2026-05-30: Added R035 for trusted-origin/main-frame/session-nonce bridge validation before token persistence.
 - 2026-05-02: Added Swift replacement requirements for connect UI and state-management behavior previously documented for shell/token-server UI flows.
 - 2026-05-23: Reframed Connect tab requirements around Add/Edit/Delete-first UX and plain-language status behavior.
 - 2026-05-27: Added R030 requiring an in-sheet `Press ESC to go back.` hint for both Add and Edit Connect flows.

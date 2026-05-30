@@ -18,6 +18,7 @@
 #R070: Shared helpers support reusable ShellCheck/reporting pathways.
 #R080: Shared helpers export Python bytecode cache path under artifacts/cache.
 #R090: Shared helpers support reusable medium-or-higher gate plumbing.
+#R100: Shared helpers provide reusable secret redaction for persisted Schemathesis artifacts.
 security_init_repo_root() {
   local script_path="${1:-${BASH_SOURCE[0]-$0}}"
   local script_dir
@@ -91,4 +92,32 @@ wait_for_http() {
     fi
     sleep 1
   done
+}
+
+redact_secret_in_file() {
+  local input_path="$1"
+  local output_path="$2"
+  local secret="${3:-}"
+  python3 - <<'PY' "$input_path" "$output_path" "$secret"
+import pathlib
+import sys
+
+input_path = pathlib.Path(sys.argv[1])
+output_path = pathlib.Path(sys.argv[2])
+secret = sys.argv[3]
+
+content = input_path.read_text(encoding="utf-8", errors="replace")
+if secret:
+    content = content.replace(secret, "[REDACTED]")
+output_path.write_text(content, encoding="utf-8")
+print(content, end="")
+PY
+}
+
+redact_secret_in_place() {
+  local path="$1"
+  local secret="${2:-}"
+  local tmp_path="${path}.redacted"
+  redact_secret_in_file "$path" "$tmp_path" "$secret" >/dev/null
+  mv "$tmp_path" "$path"
 }

@@ -105,8 +105,14 @@ Tests:
 - R090-T04: Run SAST lane with ShellCheck warning finding and verify gate fails.
 - R090-T05: Run SAST lane with SwiftLint warning finding and verify gate fails.
 
+R100  Statement: Dynamic Schemathesis artifacts generated from the static security lane must redact the classifier write token before persistence.
+Design: When `RUN_DAST=true` and Schemathesis runs, write raw output to temporary artifacts, redact `X-Teller-Write-Token` values via shared helper(s) in `src/scripts/security/common.sh`, persist only redacted `schemathesis.log`, redact `schemathesis-junit.xml` in place when present, and remove raw unredacted intermediates.
+Tests:
+- R100-T01: Run static lane with DAST+Schemathesis enabled and verify persisted `schemathesis.log`/`schemathesis-junit.xml` do not contain the raw token and include redacted placeholder content.
+
 ## Changelog
 
+- 2026-05-30: Added R100 to require Schemathesis token redaction for static-lane DAST artifacts.
 - 2026-05-10: Split former combined security lane into `07_run_static_security_tests.sh` and `23_run_dynamic_security_tests.sh`.
 - 2026-05-15: Added R025 to require Ruff execution and report accounting in SAST output.
 - 2026-05-15: Added R030 to enforce Ruff findings as blocking SAST gate signals.

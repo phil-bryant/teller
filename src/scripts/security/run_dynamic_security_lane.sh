@@ -18,6 +18,7 @@ echo "running DAST (Dynamic Application Security Testing)"
 #R025: Dynamic lane captures baseline and executes cleanup to avoid DB state leakage.
 #R030: Dynamic lane parses ZAP summary and enforces configurable severity threshold gate.
 #R045: Dynamic lane runs Schemathesis from report_dir to keep .schemathesis out of repo root.
+#R050: Dynamic lane redacts persisted Schemathesis token-bearing artifacts.
 REPORT_DIR="${SECURITY_REPORT_DIR:-./artifacts/security-dast}"
 RUN_SAST="${RUN_SAST:-false}"
 RUN_DAST="${RUN_DAST:-true}"
@@ -882,6 +883,7 @@ PY
       "$dast_write_token" \
       "$dast_run_id" \
       | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
+    #R050: Write raw output temporarily, then persist only token-redacted artifacts.
     local schemathesis_raw_log="${report_dir_abs}/schemathesis-raw.log"
     set +e
     (
@@ -898,21 +900,11 @@ PY
     ) > "$schemathesis_raw_log" 2>&1
     SCHEMATHESIS_EXIT=$?
     set -e
-    python3 - <<'PY' "$schemathesis_raw_log" "${report_dir_abs}/schemathesis.log" "$dast_write_token"
-import pathlib
-import sys
-
-raw_path = pathlib.Path(sys.argv[1])
-output_path = pathlib.Path(sys.argv[2])
-secret = sys.argv[3]
-
-content = raw_path.read_text(encoding="utf-8", errors="replace")
-if secret:
-    content = content.replace(secret, "[REDACTED]")
-output_path.write_text(content, encoding="utf-8")
-print(content, end="")
-PY
+    redact_secret_in_file "$schemathesis_raw_log" "${report_dir_abs}/schemathesis.log" "$dast_write_token"
     rm -f "$schemathesis_raw_log"
+    if [[ -f "${report_dir_abs}/schemathesis-junit.xml" ]]; then
+      redact_secret_in_place "${report_dir_abs}/schemathesis-junit.xml" "$dast_write_token"
+    fi
     if [[ "$SCHEMATHESIS_EXIT" -gt 1 ]]; then
       echo "❌ Schemathesis failed to execute."
       exit 1

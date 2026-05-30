@@ -71,6 +71,29 @@ final class EmailAmountScrollSupportTests: XCTestCase {
         XCTAssertTrue(script.contains("\"$15.19\""))
         XCTAssertTrue(script.contains("scrollIntoView"))
     }
+
+    func testWrappedEmailHTMLSanitizesActiveContentAndAddsCSP() {
+        // #R078-T01
+        let html = """
+        <meta http-equiv="refresh" content="0;url=https://evil.example.com">
+        <form action="https://evil.example.com"></form>
+        <iframe src="https://evil.example.com"></iframe>
+        <a href="javascript:alert('x')" onclick="alert('x')">click me</a>
+        <script>alert("x")</script>
+        <p>safe content</p>
+        """
+        let sanitized = lightlySanitizedEmailHTML(html)
+        let wrapped = wrappedEmailHTML(html)
+        XCTAssertTrue(wrapped.contains("Content-Security-Policy"))
+        XCTAssertFalse(sanitized.contains("<script"))
+        XCTAssertFalse(sanitized.contains("<iframe"))
+        XCTAssertFalse(sanitized.contains("<form"))
+        XCTAssertFalse(sanitized.contains("http-equiv=\"refresh\""))
+        XCTAssertFalse(sanitized.contains("onclick="))
+        XCTAssertFalse(sanitized.contains("javascript:"))
+        XCTAssertTrue(sanitized.contains("href=\"#\""))
+        XCTAssertTrue(wrapped.contains("<p>safe content</p>"))
+    }
 }
 
 private func decimal(

@@ -518,22 +518,33 @@ final class APIClientTests: XCTestCase {
         }
     }
 
-    func testDefaultWriteTokenFailurePathProducesMissingWriteTokenError() async {
-        // #R045-T03
+    func testDefaultWriteTokenIgnoresPathInjected1psaBinary() async {
+        // #R045-T03 #R045-T04
         let tempPath = FileManager.default.temporaryDirectory
             .appendingPathComponent("api-client-tests-path-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: tempPath, withIntermediateDirectories: true, attributes: nil)
+        let markerPath = tempPath.appendingPathComponent("path-hijack-marker.txt")
+        let fakeOnePSAPath = tempPath.appendingPathComponent("1psa")
+        let fakeOnePSAScript = """
+        #!/usr/bin/env bash
+        echo hijacked > "\(markerPath.path)"
+        echo evil-token
+        """
+        try? fakeOnePSAScript.write(to: fakeOnePSAPath, atomically: true, encoding: .utf8)
+        try? FileManager.default.setAttributes([.posixPermissions: NSNumber(value: 0o755)], ofItemAtPath: fakeOnePSAPath.path)
 
         let originalPath = ProcessInfo.processInfo.environment["PATH"] ?? ""
-        setenv("PATH", tempPath.path, 1)
+        setenv("PATH", "\(tempPath.path):\(originalPath)", 1)
         defer {
             setenv("PATH", originalPath, 1)
             try? FileManager.default.removeItem(at: tempPath)
         }
 
-        URLProtocolStub.requestHandler = { _ in
-            XCTFail("Expected request to fail before any network call")
-            throw APIError.invalidResponse
+        var capturedToken = ""
+        URLProtocolStub.requestHandler = { request in
+            capturedToken = request.value(forHTTPHeaderField: "X-Teller-Write-Token") ?? ""
+            let response = try self.makeHTTPResponse(for: request, statusCode: 200)
+            return (response, Data("[]".utf8))
         }
 
         let config = URLSessionConfiguration.ephemeral
@@ -542,13 +553,15 @@ final class APIClientTests: XCTestCase {
         let client = APIClient(baseURL: Self.testBaseURL, session: session)
 
         do {
-            _ = try await client.fetchCategories()
-            XCTFail("Expected APIError.missingWriteToken")
+            let categories = try await client.fetchCategories()
+            XCTAssertEqual(categories.count, 0)
         } catch APIError.missingWriteToken {
-            XCTAssertTrue(true)
+            // Acceptable when no trusted pinned 1psa path is installed.
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: markerPath.path), "Expected PATH-injected 1psa not to execute")
+        XCTAssertNotEqual(capturedToken, "evil-token")
     }
 
     func testSaveClassificationsNon2xxReturnsServerMessage() async {
@@ -619,10 +632,19 @@ final class APIClientTests: XCTestCase {
     }
 
     func testLoopbackHostDetectionForTLS() {
-        // #R020-T03
+        // #R020-T03 #R068-T02
         XCTAssertTrue(LocalClassifierTLS.isLoopbackHost("127.0.0.1"))
         XCTAssertTrue(LocalClassifierTLS.isLoopbackHost("localhost"))
+        XCTAssertTrue(LocalClassifierTLS.isLoopbackHost("::1"))
         XCTAssertFalse(LocalClassifierTLS.isLoopbackHost("example.com"))
+    }
+
+    func testAPIClientSourceDeclaresLoopbackOnlyHTTPSBaseURLPolicy() throws {
+        // #R068-T01 #R068-T02
+        let source = try Self.loadAPIClientSource()
+        XCTAssertTrue(source.contains("scheme == \"https\""))
+        XCTAssertTrue(source.contains("LocalClassifierTLS.isLoopbackHost(host)"))
+        XCTAssertTrue(source.contains("must target a local loopback host"))
     }
 
     func testShouldPinLocalCertOnlyForLoopbackHTTPS() {
@@ -643,5 +665,20 @@ final class APIClientTests: XCTestCase {
             throw XCTSkip("Default classifier TLS cert is not installed at \(certPath)")
         }
         XCTAssertNotNil(LocalClassifierTLS.loadPinnedCertificate(from: certPath))
+    }
+}
+
+private extension APIClientTests {
+    static func loadAPIClientSource() throws -> String {
+        let currentFile = URL(fileURLWithPath: #filePath)
+        let packageRoot = currentFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceFile = packageRoot
+            .appendingPathComponent("Sources")
+            .appendingPathComponent("TransactionClassifier")
+            .appendingPathComponent("APIClient.swift")
+        return try String(contentsOf: sourceFile, encoding: .utf8)
     }
 }

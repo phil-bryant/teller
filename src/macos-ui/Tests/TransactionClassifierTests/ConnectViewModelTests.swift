@@ -53,7 +53,8 @@ actor MockConnectAPI: ConnectAPI {
                 credentials: ConnectCredentials(
                     applicationId: "app_test",
                     environment: "development",
-                    enrollmentId: selectedContext.enrollment_id
+                    enrollmentId: selectedContext.enrollment_id,
+                    sessionNonce: "test-session-nonce"
                 )
             )
         }
@@ -63,7 +64,8 @@ actor MockConnectAPI: ConnectAPI {
             credentials: ConnectCredentials(
                 applicationId: "app_test",
                 environment: "development",
-                enrollmentId: ""
+                enrollmentId: "",
+                sessionNonce: "test-session-nonce"
             )
         )
     }
@@ -105,7 +107,7 @@ final class ConnectViewModelTests: XCTestCase {
 
     @MainActor
     func testEditStartsSessionForSelectedConnection() async {
-        // #R005-T01 #R020-T02 #R030-T02
+        // #R005-T01 #R020-T02 #R030-T02 #R035-T03
         let api = MockConnectAPI(
             status: ConnectStatusResponse(token_saved: false, saved_path: "", error: ""),
             contexts: [sampleContext(key: "suffix:inst_beta", institution: "inst_beta", enrollment: "enr_beta")]
@@ -116,6 +118,7 @@ final class ConnectViewModelTests: XCTestCase {
         await vm.startConnect(action: .reconnect)
         XCTAssertEqual(vm.activeSession?.action, .reconnect)
         XCTAssertEqual(vm.activeSession?.targetKey, "suffix:inst_beta")
+        XCTAssertEqual(vm.activeSession?.credentials.sessionNonce, "test-session-nonce")
     }
 
     @MainActor
@@ -223,5 +226,27 @@ final class ConnectViewModelTests: XCTestCase {
         XCTAssertEqual(vm.setupSnapshot?.hasApplicationID, true)
         XCTAssertEqual(vm.setupSnapshot?.hasPrivateKey, false)
         XCTAssertTrue(vm.setupStatusText.contains("Step 18 setup is"))
+    }
+
+    func testConnectViewSourceIncludesTrustedBridgeHostAndMainFrameChecks() throws {
+        // #R035-T02
+        let source = try Self.loadConnectViewSource()
+        XCTAssertTrue(source.contains("guard message.frameInfo.isMainFrame else"))
+        XCTAssertTrue(source.contains("trustedBridgeHosts.contains(originHost)"))
+    }
+}
+
+private extension ConnectViewModelTests {
+    static func loadConnectViewSource() throws -> String {
+        let currentFile = URL(fileURLWithPath: #filePath)
+        let packageRoot = currentFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceFile = packageRoot
+            .appendingPathComponent("Sources")
+            .appendingPathComponent("TransactionClassifier")
+            .appendingPathComponent("ConnectView.swift")
+        return try String(contentsOf: sourceFile, encoding: .utf8)
     }
 }

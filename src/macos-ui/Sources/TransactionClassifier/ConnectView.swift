@@ -9,6 +9,7 @@ import WebKit
 // #R020: Manual-save entry-point behavior.
 // #R025: Initial load task behavior.
 // #R030: Connect Add/Edit sheet renders explicit ESC back-navigation hint.
+// #R035: Bridge success handling requires trusted origin/main-frame/session-nonce validation.
 
 struct ConnectView: View {
     @Bindable var viewModel: ConnectViewModel
@@ -111,7 +112,9 @@ private struct ConnectWebFlowView: NSViewRepresentable {
     let onFailure: @MainActor (String) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onSuccess: onSuccess, onExit: onExit, onFailure: onFailure)
+        let coordinator = Coordinator(onSuccess: onSuccess, onExit: onExit, onFailure: onFailure)
+        coordinator.expectedSessionNonce = session.sessionNonce
+        return coordinator
     }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -151,6 +154,13 @@ private struct ConnectWebFlowView: NSViewRepresentable {
     }
 
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
+        private let trustedBridgeHosts: Set<String> = [
+            "honeydue.ai",
+            "teller.io",
+            "cdn.teller.io",
+            "connect.teller.io",
+        ]
+        var expectedSessionNonce: String = ""
         let onSuccess: @MainActor (String, String, String) -> Void
         let onExit: @MainActor () -> Void
         let onFailure: @MainActor (String) -> Void
@@ -169,6 +179,20 @@ private struct ConnectWebFlowView: NSViewRepresentable {
             _ = userContentController
             guard let payload = message.body as? [String: Any], let type = payload["type"] as? String else {
                 Task { @MainActor in onFailure("Invalid message from Connect WebView.") }
+                return
+            }
+            guard message.frameInfo.isMainFrame else {
+                Task { @MainActor in onFailure("Rejected Connect WebView message from non-main frame.") }
+                return
+            }
+            let originHost = message.frameInfo.securityOrigin.host.lowercased()
+            guard trustedBridgeHosts.contains(originHost) else {
+                Task { @MainActor in onFailure("Rejected Connect WebView message from unexpected origin.") }
+                return
+            }
+            let nonce = (payload["nonce"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard nonce == expectedSessionNonce else {
+                Task { @MainActor in onFailure("Rejected Connect WebView message with invalid session nonce.") }
                 return
             }
             switch type {

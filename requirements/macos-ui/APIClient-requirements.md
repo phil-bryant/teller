@@ -38,11 +38,12 @@ Tests:
 - R040-T02: Update and delete a category and verify PUT/DELETE requests hit `/v1/categories/{id}` and decode typed responses.
 
 R045  Statement: Resolve classifier write token from 1psa for API authentication.
-Design: `APIClient` resolves write token using `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, sends it as `X-Teller-Write-Token` on all requests (GET and non-GET), and emits explicit error when token resolution fails.
+Design: `APIClient` resolves write token from pinned trusted absolute `1psa` path candidates (`/opt/homebrew/bin/1psa`, `/usr/local/bin/1psa`) with non-group/non-world-writable permission checks, sends token as `X-Teller-Write-Token` on all requests (GET and non-GET), and emits explicit error when token resolution fails.
 Tests:
 - R045-T01: Trigger GET and non-GET calls and verify `X-Teller-Write-Token` header is attached.
 - R045-T02: Simulate missing token and verify explicit missing-token client error.
 - R045-T03: Simulate default 1psa token resolution failure and verify API calls fail with `APIError.missingWriteToken`.
+- R045-T04: Simulate PATH-injected `1psa` and verify token resolution ignores PATH hijack binaries.
 
 R050  Statement: Support clearing a human-reviewed match from the macOS Match & Classify UI.
 Design: `ClassificationAPI` declares `clearMatch(matchId:)` and `clearTransactionMatch(transactionId:)`; `APIClient` issues PUT requests to `/v1/matchy/matches/{match_id}/clear` and `/v1/matchy/transactions/{transaction_id}/clear` and decodes `MatchReviewActionResponse`.
@@ -83,8 +84,15 @@ Tests:
 - R067-T01: Call confirm-by-match-id without a candidate and verify `PUT /v1/matchy/matches/{match_id}/confirm` sends no JSON body.
 - R067-T02: Call confirm-by-match-id with candidate email/note and verify the same endpoint sends the expected payload and decodes a confirmed-state response.
 
+R068  Statement: Classifier API base URL must be HTTPS loopback-only.
+Design: `APIClient` base URL validation allows only HTTPS URLs whose hosts resolve to loopback forms (`localhost`, `127.0.0.1`, `::1`); non-loopback hosts are rejected at initialization.
+Tests:
+- R068-T01: Initialize client with non-loopback HTTPS URL and verify initialization fails fast.
+- R068-T02: Initialize client with loopback HTTPS URLs (`localhost`, `127.0.0.1`, `[::1]`) and verify initialization succeeds.
+
 ## Changelog
 
+- 2026-05-30: Updated R045 to pinned trusted 1psa path policy and added R068 loopback-only API base URL validation.
 - 2026-04-23: Added Swift-side requirements for `APIClient.swift` based on classifier app behavior.
 - 2026-04-24: Added `R040` to document category create/update/delete API client support.
 - 2026-05-09: Added `R045` for 1psa-only write-token resolution and mutation header injection.

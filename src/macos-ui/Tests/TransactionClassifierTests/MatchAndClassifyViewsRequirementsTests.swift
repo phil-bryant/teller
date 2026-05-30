@@ -373,6 +373,36 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
             "ClassifySection must keep selection-count visible."
         )
     }
+
+    func testEmailBodyWebViewNavigationDelegateCancelsInPlaceNavigationAndOpensExternalLinks() throws {
+        // #R079-T01
+        let source = try Self.loadViewSource()
+        XCTAssertTrue(
+            source.contains("decidePolicyFor navigationAction: WKNavigationAction"),
+            "Email web view coordinator must implement a navigation policy delegate."
+        )
+        XCTAssertTrue(
+            source.contains("NSWorkspace.shared.open(url)"),
+            "Email web view delegate must open clicked links externally."
+        )
+        XCTAssertTrue(
+            source.contains("decisionHandler(.cancel)"),
+            "Email web view delegate must cancel in-webview navigation."
+        )
+    }
+
+    func testRenderedEmailPathUsesWrappedSanitizedHTMLWithCSP() throws {
+        // #R078-T01
+        let source = try Self.loadViewSource()
+        XCTAssertTrue(
+            source.contains("nsView.loadHTMLString(wrappedEmailHTML(htmlBody), baseURL: nil)"),
+            "Rendered email path must route through wrapped sanitized HTML renderer."
+        )
+        XCTAssertTrue(
+            source.contains("#R078: Rendered HTML path sanitizes and wraps content with restrictive CSP."),
+            "Rendered email path must keep explicit R078 sanitization/CSP traceability."
+        )
+    }
 }
 
 private extension MatchAndClassifyViewsRequirementsTests {

@@ -13,7 +13,13 @@ enum ConnectWebFlowHTML {
         let appID = jsonLiteral(session.applicationId)
         let environment = jsonLiteral(session.environment)
         let enrollmentID = jsonLiteral(session.enrollmentId)
-        let script = ConnectWebFlowScript.javaScript(appID: appID, environment: environment, enrollmentID: enrollmentID)
+        let sessionNonce = jsonLiteral(session.sessionNonce)
+        let script = ConnectWebFlowScript.javaScript(
+            appID: appID,
+            environment: environment,
+            enrollmentID: enrollmentID,
+            sessionNonce: sessionNonce
+        )
         return Self.htmlTemplate(styles: ConnectWebFlowStyles.css, script: script)
     }
 

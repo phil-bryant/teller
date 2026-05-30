@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import WebKit
 
@@ -1084,6 +1085,7 @@ private struct EmailBodyWebView: NSViewRepresentable {
     func updateNSView(_ nsView: WKWebView, context: Context) {
         context.coordinator.scrollToAmount = scrollToAmount
         if context.coordinator.loadedHTML != htmlBody {
+            // #R078: Rendered HTML path sanitizes and wraps content with restrictive CSP.
             context.coordinator.loadedHTML = htmlBody
             nsView.loadHTMLString(wrappedEmailHTML(htmlBody), baseURL: nil)
         } else if scrollToAmount != nil {
@@ -1102,6 +1104,22 @@ private struct EmailBodyWebView: NSViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             _ = navigation
             scrollToAmount(in: webView)
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            guard let url = navigationAction.request.url else {
+                decisionHandler(.cancel)
+                return
+            }
+            // #R079: Keep untrusted email content from driving in-app navigation.
+            if navigationAction.navigationType == .linkActivated {
+                NSWorkspace.shared.open(url)
+            }
+            decisionHandler(.cancel)
         }
 
         func scrollToAmount(in webView: WKWebView) {

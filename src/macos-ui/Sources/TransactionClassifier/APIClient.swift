@@ -410,18 +410,25 @@ actor APIClient: ClassificationAPI {
         return validateHTTPSBaseURL(parsedURL, source: "TELLER_CLASSIFIER_API_URL")
     }
 
+    // #R068: Reject non-loopback API base URLs even when HTTPS.
     private static func validateHTTPSBaseURL(_ url: URL, source: String) -> URL {
         guard let scheme = url.scheme?.lowercased(), scheme == "https" else {
             fatalError("\(source) must use https:// (received: \(url.absoluteString)).")
+        }
+        guard let host = url.host, LocalClassifierTLS.isLoopbackHost(host) else {
+            fatalError("\(source) must target a local loopback host (received: \(url.absoluteString)).")
         }
         return url
     }
 
     private static func defaultWriteToken() -> String {
-        // #R045: Resolve write token exclusively from 1psa item.
+        // #R045: Resolve write token exclusively from a trusted absolute 1psa path.
+        guard let onePSAPath = resolveTrustedOnePSAPath() else {
+            return ""
+        }
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["1psa", "-p", "TELLER_CLASSIFIER_WRITE_TOKEN"]
+        process.executableURL = URL(fileURLWithPath: onePSAPath)
+        process.arguments = ["-p", "TELLER_CLASSIFIER_WRITE_TOKEN"]
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -439,5 +446,31 @@ actor APIClient: ClassificationAPI {
         } catch {
             return ""
         }
+    }
+
+    private static func resolveTrustedOnePSAPath() -> String? {
+        let candidates = [
+            "/opt/homebrew/bin/1psa",
+            "/usr/local/bin/1psa",
+        ]
+        for candidate in candidates where isTrustedExecutablePath(candidate) {
+            return candidate
+        }
+        return nil
+    }
+
+    private static func isTrustedExecutablePath(_ path: String) -> Bool {
+        let fileManager = FileManager.default
+        guard fileManager.isExecutableFile(atPath: path) else {
+            return false
+        }
+        guard let attrs = try? fileManager.attributesOfItem(atPath: path),
+              let mode = attrs[.posixPermissions] as? NSNumber else {
+            return false
+        }
+        let permissions = mode.uint16Value
+        let groupWritable = (permissions & 0o020) != 0
+        let worldWritable = (permissions & 0o002) != 0
+        return !groupWritable && !worldWritable
     }
 }

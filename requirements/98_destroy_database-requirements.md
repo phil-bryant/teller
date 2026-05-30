@@ -34,6 +34,28 @@ Design: Emit final cleanup completion line.
 Tests:
 - R025-T01: Verify successful run prints completion message.
 
+R030  Statement: Validate local database identifier before destructive local teardown SQL.
+Design: Require `LOCAL_DBNAME` (resolved from profile `PG_DBNAME`) to be a valid PostgreSQL identifier before existence checks, session termination, and drop statements.
+Tests:
+- R030-T01: Provide invalid `PG_DBNAME` and verify local destroy exits non-zero before SQL teardown.
+
+R031  Statement: Use parameterized SQL for local database-name queries and DROP statements.
+Design: Local destroy SQL touching database names (`pg_database` checks, backend termination filters, and `DROP DATABASE`) must use `psql -v` variable binding and server-side quoting/formatting instead of shell interpolation.
+Tests:
+- R031-T01: Verify local destroy uses `-v db_name=...` for DB existence and terminate queries.
+- R031-T02: Verify local `DROP DATABASE` uses server-side formatted identifier execution (`format(... ) \\gexec`).
+
+R032  Statement: Validate managed schema identifier before destructive managed schema teardown.
+Design: Require managed `SCHEMA_NAME` (from `PG_SEARCH_PATH`) to be a single valid PostgreSQL identifier and continue refusing protected schemas (`public`, `pg_catalog`, `information_schema`).
+Tests:
+- R032-T01: Provide invalid managed schema identifier and verify destroy exits non-zero before DROP.
+
+R033  Statement: Use parameterized server-side identifier formatting for managed `DROP SCHEMA`.
+Design: Managed schema drop must pass schema via `psql -v schema_name=...` and execute `DROP SCHEMA` using server-side identifier formatting (`format('%I', ...)` + `\\gexec`) rather than shell interpolation.
+Tests:
+- R033-T01: Verify managed destroy invokes parameterized `DROP SCHEMA` via formatted `\\gexec` SQL.
+
 ## Changelog
 
+- 2026-05-30: Added R030-R033 for identifier validation and parameterized local/managed destroy SQL execution.
 - 2026-04-19: Initial reverse-engineered requirements for `98_destroy_database.sh`.

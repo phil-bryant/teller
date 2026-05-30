@@ -56,6 +56,11 @@ require_nonempty_env() {
     done
 }
 
+is_valid_pg_identifier() {
+    local identifier="$1"
+    [[ "$identifier" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ ]]
+}
+
 profile_exports_file="$(mktemp)"
 if ! "$DB_PROFILE_HELPER" >"$profile_exports_file"; then
     rm -f "$profile_exports_file"
@@ -140,8 +145,14 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
     fi
 
     # On managed targets we cannot DROP DATABASE; drop the teller schema and teller roles only.
+    #R032: Validate managed schema identifier before destructive schema drop.
     SCHEMA_NAME="${PG_SEARCH_PATH:-teller}"
-    run_psql_managed -c "DROP SCHEMA IF EXISTS \"${SCHEMA_NAME}\" CASCADE;"
+    if ! is_valid_pg_identifier "$SCHEMA_NAME"; then
+        echo "Refusing to destroy invalid schema identifier: ${SCHEMA_NAME}"
+        exit 1
+    fi
+    #R033: Use parameterized server-side identifier formatting for managed DROP SCHEMA.
+    run_psql_managed -v schema_name="$SCHEMA_NAME" -c "SELECT format('DROP SCHEMA IF EXISTS %I CASCADE', :'schema_name') \gexec"
     # Drop teller roles idempotently. Order matters: drop dependent roles before parents.
     run_psql_managed -c "DROP ROLE IF EXISTS teller_write;"
     run_psql_managed -c "DROP ROLE IF EXISTS teller_read;"
@@ -173,7 +184,12 @@ fi
 
 # Use the resolved profile's DB name when available so a non-default local DB still works.
 require_nonempty_env "Local destroy profile" PG_DBNAME
+#R030: Validate local DB identifier before local teardown SQL executes.
 LOCAL_DBNAME="$PG_DBNAME"
+if ! is_valid_pg_identifier "$LOCAL_DBNAME"; then
+    echo "Refusing to destroy invalid database identifier: ${LOCAL_DBNAME}"
+    exit 1
+fi
 
 echo "ℹ️  Destroying local database via profile=${PROFILE_NAME:-local} db=${LOCAL_DBNAME}"
 
@@ -186,17 +202,25 @@ if [ "$confirmation" != "destroy" ]; then
 fi
 
 #R015: Clean dependent view and terminate sessions before database drop.
-db_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='${LOCAL_DBNAME}';")"
+#R031: Use parameterized SQL binding for local database-name queries.
+db_exists="$(
+    PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres \
+        -v db_name="$LOCAL_DBNAME" -tAc "SELECT 1 FROM pg_database WHERE datname = :'db_name';"
+)"
 if [ "$db_exists" = "1" ]; then
-    PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d "$LOCAL_DBNAME" -c "DROP VIEW IF EXISTS teller.transaction_info_view;"
-    PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='${LOCAL_DBNAME}' AND pid <> pg_backend_pid();"
+    PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d "$LOCAL_DBNAME" -c "DROP VIEW IF EXISTS teller.transaction_info_view;"
+    PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres \
+        -v db_name="$LOCAL_DBNAME" \
+        -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'db_name' AND pid <> pg_backend_pid();"
 fi
 #R020: Drop database, user, and teller roles idempotently.
-PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${LOCAL_DBNAME}\";"
-PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "DROP USER IF EXISTS teller;"
-PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "DROP ROLE IF EXISTS teller_admin;"
-PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "DROP ROLE IF EXISTS teller_write;"
-PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -d postgres -c "DROP ROLE IF EXISTS teller_read;"
+#R031: Use server-side identifier formatting for local DROP DATABASE execution.
+PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres \
+    -v db_name="$LOCAL_DBNAME" -c "SELECT format('DROP DATABASE IF EXISTS %I', :'db_name') \gexec"
+PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres -c "DROP USER IF EXISTS teller;"
+PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres -c "DROP ROLE IF EXISTS teller_admin;"
+PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres -c "DROP ROLE IF EXISTS teller_write;"
+PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres -c "DROP ROLE IF EXISTS teller_read;"
 
 #R025: Print completion status after teardown.
 echo "Cleanup complete!"

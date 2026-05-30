@@ -44,13 +44,13 @@ Tests:
 - R030-T02: Verify table-scoped restore does not run globals replay.
 
 R035  Statement: Support fail-fast SQL execution against the target database and print completion output.
-Design: Provide a shared `psql -v ON_ERROR_STOP=1` helper bound to the target database for restore-related repair SQL, and emit final restore-complete message with selected dump file path.
+Design: Provide a shared `psql -v ON_ERROR_STOP=1` helper bound to the target database for restore-related repair SQL, use parameterized `psql -v` binding for database-name lookups, and emit final restore-complete message with selected dump file path.
 Tests:
 - R035-T01: Verify helper-invoked SQL exits non-zero on SQL errors.
 - R035-T02: Verify successful run prints completion line with backup path.
 
 R040  Statement: Accept optional table-scoped restore selection.
-Design: Parse `--table <table_name|schema.table_name>` and restore only that table when provided.
+Design: Parse `--table <table_name|schema.table_name>`, require both resolved schema and relation to be valid PostgreSQL identifiers, and restore only that table when provided.
 Tests:
 - R040-T01: Run with `--table teller.transaction` and verify only that table is restored.
 - R040-T02: Run with `--table transaction` and verify teller schema-qualified restore target is used.
@@ -81,6 +81,23 @@ R065  Statement: Reapply known table-specific DDL fixups after scoped restore wh
 Design: For `teller.transaction_nys_snw_category`, recreate the transaction FK with `ON DELETE CASCADE` to match deployment invariant.
 Tests:
 - R065-T01: Scoped restore `transaction_nys_snw_category` and verify FK delete action is `CASCADE`.
+
+R100  Statement: Validate full-restore database target identifier before destructive restore checks.
+Design: Require resolved `DATABASE_NAME` (env override or profile default) to be a valid PostgreSQL identifier before database existence checks or restore commands execute.
+Tests:
+- R100-T01: Provide invalid `DATABASE_NAME` and verify restore exits non-zero before SQL checks.
+
+R101  Statement: Use parameterized SQL binding/formatting for scoped repair SQL that references dynamic table names.
+Design: `information_schema` checks and trigger DDL in scoped repair logic must use `psql -v` variables and server-side identifier formatting instead of shell SQL interpolation.
+Tests:
+- R101-T01: Verify scoped repair query binds schema/table via `-v` variables and does not interpolate raw `TABLE_RELATION` into SQL.
+- R101-T02: Provide malformed `--table` identifier and verify restore exits non-zero before repair SQL.
+
+R102  Statement: Require and verify backup integrity manifest before full restore globals replay.
+Design: In full restore mode, require sibling `*.manifest.sha256` for selected dump/globals pair and verify checksums before running globals SQL as postgres.
+Tests:
+- R102-T01: Run full restore with missing manifest and verify restore exits non-zero.
+- R102-T02: Run full restore with checksum verification failure and verify restore exits non-zero before globals replay.
 
 R070  Statement: Resolve teller password from configurable 1psa source for full-restore credential re-sync.
 Design: Read teller password via `TELLER_PSA_ITEM`/`TELLER_PSA_FIELD` with default item `localhost_postgres_teller`, and require non-empty value before restore proceeds.
@@ -116,6 +133,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-30: Added R100-R102 for identifier validation, scoped repair SQL parameterization, and full-restore manifest integrity verification.
 - 2026-05-26: Added R085/R090/R095 for profile-aware restore behavior; managed-target restore is `--table`-only with profile-resolved credentials.
 - 2026-04-21: Refined R020/R030 for table mode to skip globals requirements/replay and updated R040 table-name format.
 - 2026-04-21: Refined R025 to allow restore into existing teller schema when `--table` is provided.

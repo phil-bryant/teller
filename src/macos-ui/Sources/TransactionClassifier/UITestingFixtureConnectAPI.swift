@@ -79,7 +79,8 @@ actor UITestingFixtureConnectAPI: ConnectAPI {
                 credentials: ConnectCredentials(
                     applicationId: "app_fixture",
                     environment: "development",
-                    enrollmentId: selectedContext.enrollment_id
+                    enrollmentId: selectedContext.enrollment_id,
+                    sessionNonce: "fixture-session-nonce"
                 )
             )
         }
@@ -89,7 +90,8 @@ actor UITestingFixtureConnectAPI: ConnectAPI {
             credentials: ConnectCredentials(
                 applicationId: "app_fixture",
                 environment: "development",
-                enrollmentId: ""
+                enrollmentId: "",
+                sessionNonce: "fixture-session-nonce"
             )
         )
     }

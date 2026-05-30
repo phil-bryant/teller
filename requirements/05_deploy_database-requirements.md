@@ -115,8 +115,20 @@ Design: If `src/scripts/db_profile_export.sh` cannot resolve a profile document,
 Tests:
 - R090-T01: Run with no candidate profile file and verify deploy exits non-zero with copy-guidance text.
 
+R095  Statement: Reject invalid profile-resolved database/user identifiers before deploy SQL executes.
+Design: Validate `PG_DBNAME` and `PG_USER` against strict PostgreSQL identifier rules before any SQL invocation; exit non-zero with explicit guidance when invalid.
+Tests:
+- R095-T01: Provide invalid `PG_DBNAME` and verify deploy exits non-zero before SQL execution.
+- R095-T02: Provide invalid `PG_USER` and verify deploy exits non-zero before SQL execution.
+
+R096  Statement: Bind profile-resolved database names into SQL via `psql -v` variables rather than shell interpolation.
+Design: Database existence checks and other DB-name SQL must use `psql -v` variables (`:'db_name'`) with server-side quoting semantics; avoid direct shell interpolation into SQL text.
+Tests:
+- R096-T01: Verify DB existence query is issued with `-v db_name=...` and no inline quoted `${PG_DBNAME}` SQL interpolation.
+
 ## Changelog
 
+- 2026-05-30: Added R095/R096 for strict DB/user identifier validation and parameterized DB-name SQL binding.
 - 2026-05-23: Added R090 to require explicit DB profile setup before deploy.
 - 2026-05-21: Added R060-R085 for profile-aware deploy that supports managed PostgreSQL targets and idempotent re-runs.
 - 2026-05-13: Added R055 for ingest reconcile/audit grant application during deploy.

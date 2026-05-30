@@ -28,6 +28,7 @@ echo "running SAST (Static Application Security Testing)"
 #R070: Static lane emits detailed ShellCheck status in unsuppressed runs.
 #R080: Static lane relies on shared cache env to keep __pycache__ under artifacts/cache.
 #R090: Static lane enforces medium-or-higher blocker policy across scanners.
+#R100: Static lane redacts persisted Schemathesis token-bearing artifacts.
 REPORT_DIR="${SECURITY_REPORT_DIR:-./artifacts/security/reports}"
 RUN_SAST="${RUN_SAST:-true}"
 RUN_DAST="${RUN_DAST:-false}"
@@ -585,6 +586,8 @@ run_dast_checks() (
       "${report_dir_abs}/schemathesis-delete-category-contract.json" \
       "$dast_write_token" \
       | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
+    #R100: Write raw output temporarily, then persist only token-redacted artifacts.
+    local schemathesis_raw_log="${report_dir_abs}/schemathesis-raw.log"
     set +e
     (
       cd "$report_dir_abs"
@@ -596,9 +599,14 @@ run_dast_checks() (
         --max-examples "$schemathesis_max_examples" \
         --report junit \
         --report-junit-path "${report_dir_abs}/schemathesis-junit.xml"
-    ) | tee "${report_dir_abs}/schemathesis.log"
-    SCHEMATHESIS_EXIT=${PIPESTATUS[0]}
+    ) > "$schemathesis_raw_log" 2>&1
+    SCHEMATHESIS_EXIT=$?
     set -e
+    redact_secret_in_file "$schemathesis_raw_log" "${report_dir_abs}/schemathesis.log" "$dast_write_token"
+    rm -f "$schemathesis_raw_log"
+    if [[ -f "${report_dir_abs}/schemathesis-junit.xml" ]]; then
+      redact_secret_in_place "${report_dir_abs}/schemathesis-junit.xml" "$dast_write_token"
+    fi
     if [[ "$SCHEMATHESIS_EXIT" -gt 1 ]]; then
       echo "❌ Schemathesis failed to execute."
       exit 1

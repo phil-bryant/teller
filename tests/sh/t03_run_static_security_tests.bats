@@ -365,6 +365,30 @@ EOF
   chmod +x "${STUB_BIN}/schemathesis"
 }
 
+stub_schemathesis_leaks_token() {
+  cat > "${STUB_BIN}/schemathesis" <<'EOF'
+#!/usr/bin/env bash
+token=""
+junit_path=""
+prev=""
+for arg in "$@"; do
+  if [[ "$prev" == "--header" ]]; then
+    token="${arg##*: }"
+  fi
+  if [[ "$prev" == "--report-junit-path" ]]; then
+    junit_path="$arg"
+  fi
+  prev="$arg"
+done
+echo "schemathesis raw token=${token}"
+if [[ -n "$junit_path" ]]; then
+  printf '<testsuite><system-out>%s</system-out></testsuite>\n' "$token" > "$junit_path"
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/schemathesis"
+}
+
 stub_zap_cli_ok() {
   local path="$1"
   cat > "$path" <<'EOF'
@@ -1216,6 +1240,30 @@ EOF
     bash "${FIXTURE_ROOT}/t03_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"continuing because SCHEMATHESIS_FAIL_ON_FINDINGS=false."* ]]
+}
+
+@test "static lane redacts Schemathesis token from persisted logs and junit" {
+  #R100-T01
+  setup_shell_test
+  copy_security_project_files
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  stub_curl_success
+  stub_schemathesis_leaks_token
+  run env RUN_SAST=false RUN_DAST=true RUN_ZAP=false RUN_SCHEMATHESIS=true \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18801 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    DAST_OPENAPI_URL="http://127.0.0.1:18801/openapi.json" \
+    bash "${FIXTURE_ROOT}/t03_run_static_security_tests.sh"
+  [ "$status" -eq 0 ]
+  run /usr/bin/grep -q "write-token" "${FIXTURE_ROOT}/artifacts/security/reports/schemathesis.log"
+  [ "$status" -ne 0 ]
+  run /usr/bin/grep -q "write-token" "${FIXTURE_ROOT}/artifacts/security/reports/schemathesis-junit.xml"
+  [ "$status" -ne 0 ]
+  run /usr/bin/grep -q "\\[REDACTED\\]" "${FIXTURE_ROOT}/artifacts/security/reports/schemathesis.log"
+  [ "$status" -eq 0 ]
 }
 
 @test "prints completion line with report directory" {

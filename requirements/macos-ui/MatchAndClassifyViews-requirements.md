@@ -108,8 +108,19 @@ Design: When `Confirm` succeeds for a transaction whose selected candidate still
 Tests:
 - R076-T01: Select a transaction with a loaded candidate email body, press Confirm, and verify the right pane keeps showing email body content while `email-error` remains hidden.
 
+R078  Statement: Rendered email HTML must strip active content and enforce restrictive CSP before WKWebView render.
+Design: HTML rendering path sanitizes untrusted email HTML (removing scriptable/embedded active elements and javascript/event-handler vectors) and wraps output with a restrictive Content Security Policy that disallows script/frame/form execution.
+Tests:
+- R078-T01: Render HTML containing scripts/iframes/forms/event handlers and verify sanitized output removes active vectors and includes restrictive CSP meta.
+
+R079  Statement: Email links clicked in rendered web view must open externally and never navigate in-place.
+Design: `EmailBodyWebView` navigation delegate cancels in-webview navigation actions and opens clicked URLs via `NSWorkspace` so untrusted pages do not gain in-app web context.
+Tests:
+- R079-T01: Trigger navigation delegate action for an external URL and verify policy is cancel plus external-open handoff.
+
 ## Changelog
 
+- 2026-05-30: Added R078/R079 for rendered-email sanitization/CSP hardening and external-only link navigation policy.
 - 2026-05-29: Updated R030 so classification actions no longer duplicate the transaction id beside Apply/Clear/Undo.
 - 2026-05-29: Updated R045 to require compact match action bar labels (`Confirm`, `Override`, `No-email`, `Clear`) with stable accessibility identifiers; added R045-T02.
 - 2026-05-29: Added R076 to require post-confirm email-pane continuity (keep rendered body visible; do not surface `email-error` for transient refetch failures).

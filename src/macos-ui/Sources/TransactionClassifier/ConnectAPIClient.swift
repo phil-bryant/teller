@@ -7,6 +7,7 @@ import Foundation
 // #R020: Start-session validation behavior.
 // #R025: Permission checks and secure-write behavior.
 // #R030: Best-effort institution inference behavior.
+// #R035: Start-session emits per-session nonce for bridge binding.
 
 protocol ConnectAPI: Sendable {
     func fetchStatus() async throws -> ConnectStatusResponse
@@ -174,7 +175,8 @@ actor ConnectAPIClient: ConnectAPI {
                 credentials: ConnectCredentials(
                     applicationId: applicationID,
                     environment: environment["CONNECT_ENVIRONMENT"] ?? "development",
-                    enrollmentId: selectedContext.enrollment_id
+                    enrollmentId: selectedContext.enrollment_id,
+                    sessionNonce: UUID().uuidString
                 )
             )
         }
@@ -185,7 +187,8 @@ actor ConnectAPIClient: ConnectAPI {
             credentials: ConnectCredentials(
                 applicationId: applicationID,
                 environment: environment["CONNECT_ENVIRONMENT"] ?? "development",
-                enrollmentId: ""
+                enrollmentId: "",
+                sessionNonce: UUID().uuidString
             )
         )
     }
@@ -284,39 +287,61 @@ actor ConnectAPIClient: ConnectAPI {
         guard fileManager.fileExists(atPath: certFile.path), fileManager.fileExists(atPath: keyFile.path) else {
             return ("", "")
         }
+        guard let identityData = fetchIdentityPayloadData(token: normalizedToken) else {
+            return ("", "")
+        }
+        return parseIdentityDetails(from: identityData)
+    }
 
+    private func fetchIdentityPayloadData(token: String) -> Data? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
-        process.arguments = [
-            "-sS",
-            "--max-time", "8",
-            "--cert", certFile.path,
-            "--key", keyFile.path,
-            "-u", "\(normalizedToken):",
-            "https://api.teller.io/identity",
-        ]
         let stdout = Pipe()
         process.standardOutput = stdout
         process.standardError = Pipe()
         do {
+            let configFile = try writeIdentityCurlConfig(token: token)
+            defer { try? fileManager.removeItem(at: configFile) }
+            process.arguments = ["--config", configFile.path]
             try process.run()
             process.waitUntilExit()
             guard process.terminationStatus == 0 else {
-                return ("", "")
+                return nil
             }
-            let data = stdout.fileHandleForReading.readDataToEndOfFile()
-            guard let rows = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
-                  let first = rows.first,
-                  let account = first["account"] as? [String: Any],
-                  let institution = account["institution"] as? [String: Any] else {
-                return ("", "")
-            }
-            let institutionID = institution["id"] as? String ?? ""
-            let enrollmentID = account["enrollment_id"] as? String ?? ""
-            return (institutionID, enrollmentID)
+            return stdout.fileHandleForReading.readDataToEndOfFile()
         } catch {
+            return nil
+        }
+    }
+
+    private func writeIdentityCurlConfig(token: String) throws -> URL {
+        try ensureTellerDirectory()
+        let configFile = tellerDirectory.appendingPathComponent(".curl_identity_\(UUID().uuidString).conf")
+        let configLines = [
+            "silent",
+            "show-error",
+            "max-time = 8",
+            "cert = \"\(certFile.path)\"",
+            "key = \"\(keyFile.path)\"",
+            "user = \"\(token):\"",
+            "url = \"https://api.teller.io/identity\"",
+        ]
+        let config = configLines.joined(separator: "\n") + "\n"
+        try config.write(to: configFile, atomically: true, encoding: .utf8)
+        try fileManager.setAttributes([.posixPermissions: NSNumber(value: 0o600)], ofItemAtPath: configFile.path)
+        return configFile
+    }
+
+    private func parseIdentityDetails(from data: Data) -> (institutionID: String, enrollmentID: String) {
+        guard let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+              let first = rows.first,
+              let account = first["account"] as? [String: Any],
+              let institution = account["institution"] as? [String: Any] else {
             return ("", "")
         }
+        let institutionID = institution["id"] as? String ?? ""
+        let enrollmentID = account["enrollment_id"] as? String ?? ""
+        return (institutionID, enrollmentID)
     }
 
     private func sanitizeSuffix(_ value: String) -> String {
