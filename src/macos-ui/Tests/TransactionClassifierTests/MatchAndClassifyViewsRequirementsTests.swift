@@ -466,6 +466,22 @@ final class MatchAndClassifyViewsRequirementsTests: XCTestCase {
             "Rendered email path must keep explicit R078 sanitization/CSP traceability."
         )
     }
+
+    func testSanitizationPreservesFormWrappedReceiptAndAllowsImages() {
+        // #R078-T02
+        let html = "<form action='x'><h1>YOUR RECEIPT</h1><p>Total: $76.08</p><img src='cid:logo'></form>"
+        let sanitized = lightlySanitizedEmailHTML(html)
+        XCTAssertFalse(sanitized.contains("<form"), "Form tags must be unwrapped, not retained.")
+        XCTAssertFalse(sanitized.contains("</form>"))
+        XCTAssertTrue(sanitized.contains("<div>") && sanitized.contains("</div>"),
+                      "Form must be unwrapped to a div so its content survives.")
+        XCTAssertTrue(sanitized.contains("YOUR RECEIPT"), "Form-wrapped receipt content must survive.")
+        XCTAssertTrue(sanitized.contains("Total: $76.08"))
+        let wrapped = wrappedEmailHTML(html)
+        XCTAssertTrue(wrapped.contains("img-src data: https: http: cid:"),
+                      "CSP must permit http: and cid: images so receipts render.")
+        XCTAssertTrue(wrapped.contains("script-src 'none'"))
+    }
 }
 
 private extension MatchAndClassifyViewsRequirementsTests {

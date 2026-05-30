@@ -499,15 +499,16 @@
       11      1     36      0      12 testClassifySectionOmitsRedundantTransactionHeader@427-438@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
       15      1     49      0      16 testEmailBodyWebViewNavigationDelegateCancelsInPlaceNavigationAndOpensExternalLinks@440-455@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
       11      1     38      0      12 testRenderedEmailPathUsesWrappedSanitizedHTMLWithCSP@457-468@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      12      1     65      0      12 loadViewSource@472-483@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      11      1     60      0      11 loadUITestSource@485-495@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      10      1     32      1      10 assertNoSharedToolbar@499-508@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-       5      1     59      1       5 transactionsPaneSource@510-514@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      34      2     87      1      34 assertTransactionsPaneContainsFilterControls@516-549@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      46      1    196      1      48 assertTransactionsPaneFilterControlOrdering@551-598@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      20      1     70      1      20 assertTransactionsPaneUsesSharedFieldWidths@600-619@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-       3      2     37      2       3 lowerBound@621-623@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
-      16      1    133      1      18 assertSearchEmailFieldTabOrder@625-642@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      14      2    102      0      15 testSanitizationPreservesFormWrappedReceiptAndAllowsImages@470-484@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      12      1     65      0      12 loadViewSource@488-499@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      11      1     60      0      11 loadUITestSource@501-511@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      10      1     32      1      10 assertNoSharedToolbar@515-524@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+       5      1     59      1       5 transactionsPaneSource@526-530@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      34      2     87      1      34 assertTransactionsPaneContainsFilterControls@532-565@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      46      1    196      1      48 assertTransactionsPaneFilterControlOrdering@567-614@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      20      1     70      1      20 assertTransactionsPaneUsesSharedFieldWidths@616-635@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+       3      2     37      2       3 lowerBound@637-639@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+      16      1    133      1      18 assertSearchEmailFieldTabOrder@641-658@./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
 46 file analyzed.
 ==============================================================
 NLOC    Avg.NLOC  AvgCCN  Avg.token  function_cnt    file
@@ -557,11 +558,11 @@ NLOC    Avg.NLOC  AvgCCN  Avg.token  function_cnt    file
      30      13.0     1.5       99.0         2     ./src/macos-ui/Tests/TransactionClassifierTests/UITestingFixtureClassificationAPITests.swift
     231      18.9     2.1      149.5        10     ./src/macos-ui/Tests/TransactionClassifierTests/FrontendBackendContractScenarioTests.swift
      40       7.0     1.4       46.2         5     ./src/macos-ui/Tests/TransactionClassifierTests/LocalClassifierTLSTests.swift
-    581      17.3     1.2       75.9        33     ./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
+    595      17.2     1.2       76.6        34     ./src/macos-ui/Tests/TransactionClassifierTests/MatchAndClassifyViewsRequirementsTests.swift
 
 ===========================================================================================================
 No thresholds exceeded (cyclomatic_complexity > 10 or length > 60 or nloc > 1000000 or parameter_count > 5)
 ==========================================================================================
 Total nloc   Avg.NLOC  AvgCCN  Avg.token   Fun Cnt  Warning cnt   Fun Rt   nloc Rt
 ------------------------------------------------------------------------------------------
-      9101      12.2     2.0       80.6      507            0      0.00    0.00
+      9115      12.2     2.0       80.7      508            0      0.00    0.00
