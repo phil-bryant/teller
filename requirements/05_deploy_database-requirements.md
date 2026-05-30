@@ -81,7 +81,7 @@ Tests:
 - R055-T01: Verify deploy invokes `grant_ingest_reconcile_privileges.sql` against `prod` as teller role.
 
 R060  Statement: Resolve the active DB profile and target before deploy.
-Design: Source `src/scripts/db_profile_export.sh` to populate `PROFILE_TARGET`, `PG_HOST`, `PG_PORT`, `PG_DBNAME`, `PG_USER`, `PG_SSLMODE`, and `PG_ONEPSA_ITEM`; re-resolve as `supabase_direct` for managed deploys so DDL bypasses the transaction pooler.
+Design: Source `src/scripts/db_profile_export.sh` to populate backend metadata for the active target (PostgreSQL-family or SQLite); for managed Postgres deploys, re-resolve as `supabase_direct` so DDL bypasses the transaction pooler.
 Tests:
 - R060-T01: Set `TELLER_DB_PROFILE=supabase` and verify managed-deploy path is taken with the direct host.
 
@@ -94,6 +94,11 @@ R070  Statement: Apply schema files using the profile connection user on managed
 Design: For managed targets, run every `teller_*.sql`, the FK cascade ALTER, `create_triggers.sql`, the transaction info view, and `create_audit.sql` as the profile-supplied user (e.g. `postgres`) against the profile's database.
 Tests:
 - R070-T01: Run with managed profile and verify the same teller schema files are applied as on local.
+
+R071  Statement: Apply SQLite schema files through the existing deploy entrypoint when the active profile target is SQLite.
+Design: When `PROFILE_TARGET=sqlite`, skip Postgres credential/bootstrap steps and apply SQLite DDL from the repository schema tree using the resolved SQLite database path.
+Tests:
+- R071-T01: Run with sqlite profile and verify SQLite DDL files are executed without invoking postgres-only bootstrap commands.
 
 R075  Statement: Skip pgtap extension creation on managed targets.
 Design: Managed-deploy path omits `CREATE EXTENSION IF NOT EXISTS pgtap` because Supabase does not allow-list `pgtap`.
@@ -128,6 +133,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-30: Added R071 for SQLite deploy path under existing script entrypoint.
 - 2026-05-30: Added R095/R096 for strict DB/user identifier validation and parameterized DB-name SQL binding.
 - 2026-05-23: Added R090 to require explicit DB profile setup before deploy.
 - 2026-05-21: Added R060-R085 for profile-aware deploy that supports managed PostgreSQL targets and idempotent re-runs.

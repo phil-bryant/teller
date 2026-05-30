@@ -17,19 +17,26 @@ _DB_ENV_KEYS = (
     "TELLER_DB_ROLE",
     "TELLER_DB_SSLMODE",
     "TELLER_DB_SEARCH_PATH",
+    "TELLER_DB_SQLITE_PATH",
     "TELLER_PSA_ITEM",
 )
 
 _LOCAL_PROFILE = ResolvedProfile(
     name="local", host="localhost", port=5432, dbname="prod", user="teller",
     onepsa_item="localhost_postgres_teller", search_path="teller",
-    runtime_role="teller_write", sslmode="disable", target="local",
+    runtime_role="teller_write", sslmode="disable", target="local", sqlite_path="",
 )
 
 _SUPABASE_PROFILE = ResolvedProfile(
     name="supabase", host="db.example.supabase.co", port=5432, dbname="postgres",
     user="postgres", onepsa_item="eggnest_supabase", search_path="teller",
-    runtime_role="", sslmode="require", target="managed",
+    runtime_role="", sslmode="require", target="managed", sqlite_path="",
+)
+
+_SQLITE_PROFILE = ResolvedProfile(
+    name="sqlite", host="", port=0, dbname="", user="",
+    onepsa_item="", search_path="teller", runtime_role="",
+    sslmode="disable", target="sqlite", sqlite_path="/tmp/teller-test.sqlite3",
 )
 
 
@@ -62,7 +69,7 @@ class PasswordResolutionTests(_IsolatedEnvTest):
         empty_profile = ResolvedProfile(
             name="noitem", host="h", port=5432, dbname="d", user="u",
             onepsa_item="", search_path="teller", runtime_role="",
-            sslmode="disable", target="local",
+            sslmode="disable", target="local", sqlite_path="",
         )
         with self.assertRaises(RuntimeError):
             teller_db._read_password(empty_profile)
@@ -106,6 +113,17 @@ class EngineConstructionTests(_IsolatedEnvTest):
             teller_db.get_engine()
         connect_args = fake_create_engine.call_args.kwargs["connect_args"]
         self.assertNotIn("sslmode", connect_args)
+
+    def test_sqlite_profile_uses_sqlite_engine_without_password_lookup(self):
+        with patch("teller.teller_db.resolve_profile", return_value=_SQLITE_PROFILE), \
+             patch("teller.teller_db._read_password") as fake_read_password, \
+             patch("teller.teller_db.create_engine") as fake_create_engine, \
+             patch("teller.teller_db.event.listens_for", return_value=lambda fn: fn):
+            fake_create_engine.return_value = MagicMock(name="engine")
+            teller_db.get_engine()
+        fake_read_password.assert_not_called()
+        engine_url = fake_create_engine.call_args.args[0]
+        self.assertEqual(engine_url, "sqlite:////tmp/teller-test.sqlite3")
 
 
 class ConnectListenerTests(_IsolatedEnvTest):

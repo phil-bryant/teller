@@ -46,7 +46,7 @@ load_profile_exports_from_file() {
             key=$0
             sub(/^export[[:space:]]+/, "", key)
             sub(/=.*/, "", key)
-            if (key !~ /^(PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM)$/) {
+            if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
                 print
             }
         }
@@ -84,11 +84,35 @@ if ! load_profile_exports_from_file "$profile_exports_file"; then
     exit 1
 fi
 rm -f "$profile_exports_file"
-require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET PG_DBNAME
+require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET
+DB_DIALECT="${DB_DIALECT:-postgresql}"
+if [[ "$DB_DIALECT" != "sqlite" && "${PROFILE_TARGET:-local}" != "sqlite" ]]; then
+    require_nonempty_env "Profile resolution" PG_DBNAME
+fi
 
 #R020: Create backup directory with restricted permissions.
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
+
+#R041: Support SQLite backups through the existing backup entrypoint.
+if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
+    SQLITE_DB_PATH="${SQLITE_PATH:-}"
+    if [[ -z "$SQLITE_DB_PATH" ]]; then
+        echo "SQLite backup requires SQLITE_PATH from db profile export."
+        exit 1
+    fi
+    if [[ ! -f "$SQLITE_DB_PATH" ]]; then
+        echo "SQLite database file does not exist: $SQLITE_DB_PATH"
+        exit 1
+    fi
+    SQLITE_DB_BASENAME="$(basename "$SQLITE_DB_PATH" .sqlite3)"
+    BACKUP_BASENAME="${PROFILE_NAME}_${SQLITE_DB_BASENAME}_${TIMESTAMP}"
+    BACKUP_PATH="${BACKUP_DIR}/${BACKUP_BASENAME}.dump"
+    cp "$SQLITE_DB_PATH" "$BACKUP_PATH"
+    chmod 600 "$BACKUP_PATH"
+    echo "Backup written: $BACKUP_PATH"
+    exit 0
+fi
 
 #R045: Managed-target backup uses the profile's connection user and the direct (non-pooler) host.
 if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then

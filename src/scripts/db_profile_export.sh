@@ -49,6 +49,7 @@ except ProfileError as exc:
     print(str(exc), file=sys.stderr)
     raise SystemExit(1)
 fields = {
+    "DB_DIALECT": "sqlite" if profile.target == "sqlite" else "postgresql",
     "PROFILE_NAME": profile.name,
     "PROFILE_TARGET": profile.target,
     "PG_HOST": profile.host,
@@ -59,6 +60,7 @@ fields = {
     "PG_SEARCH_PATH": profile.search_path,
     "PG_RUNTIME_ROLE": profile.runtime_role,
     "PG_ONEPSA_ITEM": profile.onepsa_item,
+    "SQLITE_PATH": profile.sqlite_path,
 }
 for key, value in fields.items():
     print(f"{key}={shlex.quote(value)}")

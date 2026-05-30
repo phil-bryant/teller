@@ -366,3 +366,25 @@ EOF
   [[ "$calls" == *"-d postgres"* ]]
   [[ "$calls" == *"--schema teller --table transaction"* ]]
 }
+
+@test "sqlite profile restore recreates sqlite artifact from backup copy" {
+  #R086-T01
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<EOF
+#!/usr/bin/env bash
+echo "DB_DIALECT=sqlite"
+echo "PROFILE_NAME=sqlite"
+echo "PROFILE_TARGET=sqlite"
+echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  dump_path="${FIXTURE_ROOT}/backups/sqlite_snapshot.dump"
+  printf 'sqlite-bytes' > "$dump_path"
+  stub_cmd 1psa "echo pass"
+  stub_cmd psql "exit 0"
+  stub_cmd pg_restore "exit 0"
+  run bash "${FIXTURE_ROOT}/99_restore_database.sh" --from "$dump_path"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Restore complete from: ${dump_path}"* ]]
+  run bash -c "cmp '${dump_path}' '${FIXTURE_ROOT}/sqlite-dev.db'"
+  [ "$status" -eq 0 ]
+}

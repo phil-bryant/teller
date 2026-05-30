@@ -27,9 +27,10 @@ def test_build_record_always_returns_expected_shape(
         "runtime_role",
         "target",
         "sslmode",
+        "sqlite_path",
     }
     assert isinstance(result["port"], int)
-    assert result["target"] in {"local", "managed"}
+    assert result["target"] in {"local", "managed", "sqlite"}
     assert result["sslmode"] in {"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}
 
 

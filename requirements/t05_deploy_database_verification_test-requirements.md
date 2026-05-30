@@ -25,7 +25,7 @@ Tests:
 - R015-T01: Force empty password and verify output starts with `❌ FAIL:` and script exits non-zero.
 
 R020  Statement: Verify required deployed database objects exist.
-Design: Check for required roles/schema/core relations deployed by `05_deploy_database.sh` and report missing objects.
+Design: For PostgreSQL-family targets, check required roles/schema/core relations; for SQLite target, check SQLite equivalents of schema objects deployed by `05_deploy_database.sh`.
 Tests:
 - R020-T01: Drop or rename one required object in a test DB and verify it appears in failure output.
 
@@ -76,8 +76,14 @@ Design: If profile resolution fails (no `config/db-profiles.json`/candidate prof
 Tests:
 - R065-T01: Run with no candidate profile file and verify verification exits non-zero with copy-guidance text.
 
+R066  Statement: Run SQLite-specific verification checks when the active profile target is SQLite.
+Design: Use existing verification entrypoint and branch checks to SQLite metadata/objects without querying PostgreSQL catalogs.
+Tests:
+- R066-T01: Run with sqlite profile and verify sqlite verification path executes and reports pass/fail via standard output contract.
+
 ## Changelog
 
+- 2026-05-30: Added R066 for SQLite verification path behavior.
 - 2026-05-23: Added R065 to require explicit DB profile setup before verification.
 - 2026-05-22: Added R060 to confirm live TLS when the resolved profile requires SSL.
 - 2026-05-21: Added R050 and R055 for profile-aware verification on managed Postgres targets.

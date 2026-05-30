@@ -204,3 +204,34 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"pytest ok"* ]]
 }
+
+@test "sql lane runs sqlite sql tests when sqlite profile is active" {
+  #R005-T01 #R025-T01
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<EOF
+#!/usr/bin/env bash
+echo "DB_DIALECT=sqlite"
+echo "PROFILE_NAME=sqlite"
+echo "PROFILE_TARGET=sqlite"
+echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  printf 'db' > "${FIXTURE_ROOT}/sqlite-dev.db"
+  mkdir -p "${FIXTURE_ROOT}/tests/sql"
+  cat > "${FIXTURE_ROOT}/tests/sql/01_sqlite_smoke.sql" <<'EOF'
+SELECT 1;
+EOF
+  cat > "${STUB_BIN}/sqlite3" <<EOF
+#!/usr/bin/env bash
+echo "sqlite3 \$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/sqlite3"
+  run bash -c "
+    cd '${FIXTURE_ROOT}'
+    RUN_SHELL_TESTS=false RUN_PYTHON_TESTS=false RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false \
+      '${FIXTURE_ROOT}/src/scripts/run_unit_test_lanes.sh'
+  "
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"sqlite3 "* ]]
+}

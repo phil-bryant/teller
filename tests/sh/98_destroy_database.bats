@@ -161,3 +161,21 @@ EOF
   [[ "$calls" == *"-v schema_name=teller"* ]]
   [[ "$calls" == *"format('DROP SCHEMA IF EXISTS %I CASCADE', :'schema_name') \\gexec"* ]]
 }
+
+@test "sqlite profile destroy removes sqlite database file" {
+  #R026-T01
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<EOF
+#!/usr/bin/env bash
+echo "DB_DIALECT=sqlite"
+echo "PROFILE_NAME=sqlite"
+echo "PROFILE_TARGET=sqlite"
+echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  touch "${FIXTURE_ROOT}/sqlite-dev.db"
+  stub_cmd 1psa "echo pass"
+  run bash -c "printf 'destroy\n' | '${FIXTURE_ROOT}/98_destroy_database.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Cleanup complete!"* ]]
+  [ ! -f "${FIXTURE_ROOT}/sqlite-dev.db" ]
+}

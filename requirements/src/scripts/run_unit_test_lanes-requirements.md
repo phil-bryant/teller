@@ -10,7 +10,7 @@ Tests:
 - R001-T01: Verify the helper re-roots execution and respects lane toggles for shell/python/sql/swift execution.
 
 R005  Statement: Resolve DB profile exports before SQL-lane execution and fail fast on profile/preflight gaps.
-Design: Require executable `db_profile_export.sh`, evaluate profile exports, validate SQL preconditions (`pg_prove`, password, `psql`, database name, pgtap), and stop immediately when prerequisites fail.
+Design: Require executable `db_profile_export.sh`, evaluate profile exports, and run target-specific SQL-lane preflight (`pg_prove` + pgtap for PostgreSQL-family targets, sqlite preflight/tooling for SQLite target), stopping immediately on prerequisite gaps.
 Tests:
 - R005-T01: Verify SQL preflight failures surface clear diagnostics and block SQL test execution.
 
@@ -31,7 +31,7 @@ Tests:
 - R020-T02: Verify sandbox-denied Swift test startup is treated as a graceful skip path instead of a stale-cache retry loop.
 
 R025  Statement: Resolve DB profile exports before SQL lane preflight and execution.
-Design: Require executable `db_profile_export.sh`, evaluate exported variables, and use profile-derived DB settings for SQL preflight checks.
+Design: Require executable `db_profile_export.sh`, evaluate exported variables, and use profile-derived backend settings (PostgreSQL or SQLite) for SQL preflight checks.
 Tests:
 - R025-T01: Verify missing or failing DB profile export helper prevents SQL lane startup.
 

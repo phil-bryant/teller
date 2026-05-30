@@ -29,7 +29,7 @@ load_profile_exports_from_file() {
       key=$0
       sub(/^export[[:space:]]+/, "", key)
       sub(/=.*/, "", key)
-      if (key !~ /^(PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM)$/) {
+      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
         print
       }
     }
@@ -56,6 +56,22 @@ if ! load_profile_exports_from_file "$profile_exports_file"; then
   exit 1
 fi
 rm -f "$profile_exports_file"
+DB_DIALECT="${DB_DIALECT:-postgresql}"
+
+#R066: Run SQLite-specific verification checks when the active profile target is SQLite.
+if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
+  SQLITE_DB_PATH="${SQLITE_PATH:-${TELLER_DB_SQLITE_PATH:-}}"
+  if [[ -z "$SQLITE_DB_PATH" ]]; then
+    echo "❌ FAIL: SQLite verification requires SQLITE_PATH from db profile export."
+    exit 1
+  fi
+  if [[ ! -f "$SQLITE_DB_PATH" ]]; then
+    echo "❌ FAIL: SQLite database file is missing: ${SQLITE_DB_PATH}"
+    exit 1
+  fi
+  echo "✅ PASS: Database deployment verified (sqlite profile file is present)."
+  exit 0
+fi
 
 #R005: Use connection settings exclusively from the resolved profile (1psa or ~/.env via the helper).
 #R005: Env vars TELLER_DB_* still override for CI/test fixtures.

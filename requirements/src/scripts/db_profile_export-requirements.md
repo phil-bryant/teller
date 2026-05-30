@@ -5,7 +5,7 @@
 Applies to `src/scripts/db_profile_export.sh`.
 
 R001  Statement: Resolve DB profile metadata and emit shell-safe `KEY=value` exports.
-Design: Resolve the active profile through Python helper imports and print quoted export-compatible fields for host, port, database, user, sslmode, and profile metadata.
+Design: Resolve the active profile through Python helper imports and print quoted export-compatible fields for dialect, profile metadata, and backend-specific connection settings (PostgreSQL or SQLite).
 Tests:
 - R001-T01: Verify successful execution prints required export keys with shell-quoted values.
 

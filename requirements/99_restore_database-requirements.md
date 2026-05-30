@@ -119,6 +119,11 @@ Design: Source whitelisted `PROFILE_NAME`/`PROFILE_TARGET`/`PG_*` exports from t
 Tests:
 - R085-T01: Verify successful run resolves profile via helper and continues with the resolved target (local-target full restore path exercises this).
 
+R086  Statement: Support SQLite restore through the existing restore entrypoint.
+Design: When `PROFILE_TARGET=sqlite`, restore the resolved SQLite database artifact from backup while preserving existing `--from` behavior and completion output format.
+Tests:
+- R086-T01: Run with sqlite profile and verify restore recreates the SQLite artifact from selected backup path.
+
 R090  Statement: Managed-target restore refuses full restore (cannot CREATE DATABASE or replay globals) and only supports `--table` scoped restore against the direct (non-pooler) host using the profile's connection user.
 Design: When `PROFILE_TARGET=managed` and no `--table` is provided, exit non-zero with explicit guidance to re-run with `--table schema.table_name`; otherwise re-resolve via the `supabase_direct` profile, read the password from `PG_ONEPSA_ITEM` via `1psa` (with `TELLER_DB_PASSWORD` env override), and invoke `pg_restore -h <PG_HOST> -p <PG_PORT> -U <PG_USER> -d <PG_DBNAME> --clean --if-exists --schema <schema> --table <table>`.
 Tests:
@@ -133,6 +138,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-30: Added R086 for SQLite restore behavior through existing script.
 - 2026-05-30: Added R100-R102 for identifier validation, scoped repair SQL parameterization, and full-restore manifest integrity verification.
 - 2026-05-26: Added R085/R090/R095 for profile-aware restore behavior; managed-target restore is `--table`-only with profile-resolved credentials.
 - 2026-04-21: Refined R020/R030 for table mode to skip globals requirements/replay and updated R040 table-name format.

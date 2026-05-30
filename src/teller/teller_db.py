@@ -100,43 +100,55 @@ def get_engine():
     global _engine
     if _engine is None:
         profile = resolve_profile()
-        password = _read_password(profile)
-        connect_args = {
-            "host": profile.host,
-            "port": profile.port,
-            "dbname": profile.dbname,
-            "user": profile.user,
-            "password": password,
-        }
-        #R035: Apply ``sslmode`` from the profile (Supabase requires TLS).
-        if profile.sslmode and profile.sslmode != "disable":
-            connect_args["sslmode"] = profile.sslmode
-        _engine = create_engine("postgresql+psycopg2://", echo=False, connect_args=connect_args)
+        if profile.target == "sqlite":
+            sqlite_url = f"sqlite:///{profile.sqlite_path}"
+            _engine = create_engine(sqlite_url, echo=False)
 
-        #R040: On every new DBAPI connection, set the schema search path and
-        #R040: optionally adopt the runtime role. Local PostgreSQL uses
-        #R040: ``teller_write``; Supabase profiles can leave this blank to skip
-        #R040: ``SET ROLE`` entirely.
-        @event.listens_for(_engine, "connect")
-        def _on_connect(dbapi_conn, _connection_record):
-            cursor = dbapi_conn.cursor()
-            cursor.execute(
-                """
-                SELECT string_agg(quote_ident(trim(schema_name)), ',')
-                FROM unnest(string_to_array(%s, ',')) AS schema_name
-                WHERE trim(schema_name) <> ''
-                """,
-                (profile.search_path,),
-            )
-            quoted_search_path = cursor.fetchone()[0]
-            if not quoted_search_path:
-                raise RuntimeError("DB profile search_path resolved to no schema identifiers")
-            cursor.execute(f"SET search_path TO {quoted_search_path}")
-            if profile.runtime_role:
-                cursor.execute("SELECT quote_ident(%s)", (profile.runtime_role,))
-                quoted_role = cursor.fetchone()[0]
-                cursor.execute(f"SET ROLE {quoted_role}")
-            cursor.close()
+            @event.listens_for(_engine, "connect")
+            def _on_connect_sqlite(dbapi_conn, _connection_record):
+                cursor = dbapi_conn.cursor()
+                cursor.execute("PRAGMA foreign_keys = ON")
+                if profile.sqlite_path:
+                    cursor.execute("ATTACH DATABASE ? AS teller", (profile.sqlite_path,))
+                cursor.close()
+        else:
+            password = _read_password(profile)
+            connect_args = {
+                "host": profile.host,
+                "port": profile.port,
+                "dbname": profile.dbname,
+                "user": profile.user,
+                "password": password,
+            }
+            #R035: Apply ``sslmode`` from the profile (Supabase requires TLS).
+            if profile.sslmode and profile.sslmode != "disable":
+                connect_args["sslmode"] = profile.sslmode
+            _engine = create_engine("postgresql+psycopg2://", echo=False, connect_args=connect_args)
+
+            #R040: On every new DBAPI connection, set the schema search path and
+            #R040: optionally adopt the runtime role. Local PostgreSQL uses
+            #R040: ``teller_write``; Supabase profiles can leave this blank to skip
+            #R040: ``SET ROLE`` entirely.
+            @event.listens_for(_engine, "connect")
+            def _on_connect(dbapi_conn, _connection_record):
+                cursor = dbapi_conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT string_agg(quote_ident(trim(schema_name)), ',')
+                    FROM unnest(string_to_array(%s, ',')) AS schema_name
+                    WHERE trim(schema_name) <> ''
+                    """,
+                    (profile.search_path,),
+                )
+                quoted_search_path = cursor.fetchone()[0]
+                if not quoted_search_path:
+                    raise RuntimeError("DB profile search_path resolved to no schema identifiers")
+                cursor.execute(f"SET search_path TO {quoted_search_path}")
+                if profile.runtime_role:
+                    cursor.execute("SELECT quote_ident(%s)", (profile.runtime_role,))
+                    quoted_role = cursor.fetchone()[0]
+                    cursor.execute(f"SET ROLE {quoted_role}")
+                cursor.close()
 
         log.info(
             "Database engine created",
@@ -148,6 +160,8 @@ def get_engine():
             sslmode=profile.sslmode,
             search_path=profile.search_path,
             runtime_role=profile.runtime_role or None,
+            sqlite_path=profile.sqlite_path or None,
+            target=profile.target,
         )
     return _engine
 

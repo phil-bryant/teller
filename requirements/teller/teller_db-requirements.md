@@ -11,18 +11,18 @@ Tests:
 - R025-T02: With `TELLER_DB_PASSWORD` unset and a profile lacking `1psa_item`, verify a `RuntimeError` is raised.
 
 R030  Statement: Build one cached SQLAlchemy engine per process.
-Design: `get_engine()` lazily creates a `postgresql+psycopg2` engine from the resolved profile and password, caching it in module state.
+Design: `get_engine()` lazily creates a SQLAlchemy engine from the resolved profile, using PostgreSQL settings for postgres/supabase targets and SQLite settings for sqlite target, caching it in module state.
 Tests:
 - R030-T01: Patch `create_engine` and verify two `get_engine()` calls produce one engine and one underlying call.
 
 R035  Statement: Apply profile sslmode to the connection.
-Design: When profile sslmode is non-empty and not `disable`, include it in `connect_args` so Supabase TLS is enforced.
+Design: For PostgreSQL-family targets, when profile sslmode is non-empty and not `disable`, include it in `connect_args` so Supabase TLS is enforced; SQLite targets skip sslmode handling.
 Tests:
 - R035-T01: Resolve a profile with `sslmode = "require"` and verify `create_engine` receives `sslmode=require` in `connect_args`.
 - R035-T02: Resolve a profile with `sslmode = "disable"` and verify `connect_args` contains no `sslmode` key.
 
 R040  Statement: Configure session search_path and optional runtime role on connect.
-Design: A SQLAlchemy connect listener runs `SET search_path TO <search_path>`; when `runtime_role` is non-empty it also runs `SET ROLE` with `quote_ident` quoting.
+Design: PostgreSQL-family connect listener runs `SET search_path TO <search_path>` and optional `SET ROLE`; SQLite connect listener performs SQLite-specific attach/pragma setup and skips PostgreSQL session statements.
 Rationale: Local PostgreSQL uses the `teller_write` role; Supabase managed Postgres lets `runtime_role` stay empty so `SET ROLE` is skipped.
 Tests:
 - R040-T01: Drive the connect listener with `runtime_role = "teller_write"` and verify both `SET search_path` and `SET ROLE` execute against the cursor.
@@ -30,4 +30,5 @@ Tests:
 
 ## Changelog
 
+- 2026-05-30: Extended engine requirements to include SQLite target behavior.
 - 2026-05-21: Initial requirements for `teller_db` profile-aware engine factory.

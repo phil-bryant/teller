@@ -10,12 +10,6 @@ SQL_DIR="${SCRIPT_DIR}/src/sql/postgres"
 #R060: Resolve the active DB profile so we know whether to deploy locally or to a managed target.
 DB_PROFILE_HELPER="${SCRIPT_DIR}/src/scripts/db_profile_export.sh"
 
-#R005: Require 1psa before credential lookups.
-if ! command -v 1psa >/dev/null 2>&1; then
-    echo "1psa is required but was not found on PATH."
-    exit 1
-fi
-
 #R060: Read the resolved profile via the shared helper. For managed targets we force the
 #R060: "supabase_direct" profile so DDL never goes through the transaction pooler.
 #R090: Refuse deploy when profile resolution fails (no implicit local fallback).
@@ -32,7 +26,7 @@ load_profile_exports_from_file() {
             key=$0
             sub(/^export[[:space:]]+/, "", key)
             sub(/=.*/, "", key)
-            if (key !~ /^(PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM)$/) {
+            if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
                 print
             }
         }
@@ -75,14 +69,45 @@ if ! load_profile_exports_from_file "$profile_exports_file"; then
     exit 1
 fi
 rm -f "$profile_exports_file"
-require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET PG_DBNAME PG_USER
+require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET
+DB_DIALECT="${DB_DIALECT:-postgresql}"
+if [[ "$DB_DIALECT" != "sqlite" ]]; then
+    require_nonempty_env "Profile resolution" PG_DBNAME PG_USER
+fi
 PG_SSLMODE="${PG_SSLMODE:-}"
 
 #R060: Print the resolved deploy target so the operator sees where deploy is running.
-echo "ℹ️  Deploying database via profile=${PROFILE_NAME} target=${PROFILE_TARGET}${PG_HOST:+ host=${PG_HOST}}${PG_PORT:+ port=${PG_PORT}}${PG_DBNAME:+ db=${PG_DBNAME}}${PG_USER:+ user=${PG_USER}}"
+echo "ℹ️  Deploying database via profile=${PROFILE_NAME} target=${PROFILE_TARGET} dialect=${DB_DIALECT}${PG_HOST:+ host=${PG_HOST}}${PG_PORT:+ port=${PG_PORT}}${PG_DBNAME:+ db=${PG_DBNAME}}${PG_USER:+ user=${PG_USER}}"
 
 #R006: Ensure psql stops immediately on SQL errors.
 PSQL_OPTS=(-v ON_ERROR_STOP=1)
+
+#R071: Apply SQLite schema files through the existing deploy entrypoint.
+if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
+    SQLITE_DB_PATH="${SQLITE_PATH:-}"
+    if [[ -z "$SQLITE_DB_PATH" ]]; then
+        echo "SQLite deploy requires SQLITE_PATH from db profile export."
+        exit 1
+    fi
+    if ! command -v sqlite3 >/dev/null 2>&1; then
+        echo "sqlite3 is required but was not found on PATH."
+        exit 1
+    fi
+    sqlite3 "$SQLITE_DB_PATH" <<'SQL'
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS institution (
+    institution_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL
+);
+SQL
+    exit 0
+fi
+
+#R005: Require 1psa before credential lookups.
+if ! command -v 1psa >/dev/null 2>&1; then
+    echo "1psa is required but was not found on PATH."
+    exit 1
+fi
 
 if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
     #R060: Re-resolve using the direct (non-pooler) profile for DDL apply.

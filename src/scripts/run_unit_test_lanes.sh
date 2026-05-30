@@ -45,7 +45,7 @@ load_profile_exports_from_file() {
       key=$0
       sub(/^export[[:space:]]+/, "", key)
       sub(/=.*/, "", key)
-      if (key !~ /^(PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM)$/) {
+      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
         print
       }
     }
@@ -79,6 +79,8 @@ DB_HOST="${TELLER_DB_HOST:-${PG_HOST:-localhost}}"
 DB_PORT="${TELLER_DB_PORT:-${PG_PORT:-5432}}"
 DB_USER="${TELLER_DB_USER:-${PG_USER:-teller}}"
 DB_PASSWORD="${TELLER_DB_PASSWORD:-${DB_PASSWORD:-}}"
+DB_DIALECT="${DB_DIALECT:-postgresql}"
+SQLITE_PATH="${TELLER_DB_SQLITE_PATH:-${SQLITE_PATH:-}}"
 
 python_interpreter_usable() {
   local candidate="$1"
@@ -194,6 +196,29 @@ fi
 #R015: Stop SQL suite on first failure.
 if [[ "$RUN_SQL_TESTS" == "true" ]]; then
   if [[ -d "$SQL_TESTS_DIR" ]]; then
+    if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
+      if [[ -z "$SQLITE_PATH" ]]; then
+        echo "❌ SQLite SQL lane requires SQLITE_PATH from profile export."
+        exit 1
+      fi
+      if ! command -v sqlite3 >/dev/null 2>&1; then
+        echo "❌ sqlite3 is required for SQLite SQL unit tests."
+        exit 1
+      fi
+      shopt -s nullglob
+      sql_test_files=("$SQL_TESTS_DIR"/*.sql)
+      shopt -u nullglob
+      if [[ "${#sql_test_files[@]}" -eq 0 ]]; then
+        echo "ℹ️  Skipping SQL unit tests: no *.sql files found in ${SQL_TESTS_DIR}."
+      else
+        echo "▶ Running SQL unit tests (sqlite3)..."
+        for sql_test_file in "${sql_test_files[@]}"; do
+          sqlite3 "$SQLITE_PATH" < "$sql_test_file"
+        done
+      fi
+      return_code=0
+      :
+    else
     echo "▶ Preparing SQL unit tests (pgTAP)..."
     if [[ -z "$PG_PROVE_BIN" ]]; then
       if [[ -x "/opt/homebrew/bin/pg_prove" ]]; then
@@ -275,6 +300,7 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
           exit 1
         fi
       done
+    fi
     fi
   else
     echo "ℹ️  Skipping SQL unit tests: ${SQL_TESTS_DIR} not found."

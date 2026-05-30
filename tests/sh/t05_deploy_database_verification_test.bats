@@ -276,3 +276,19 @@ EOF
   [ "$status" -ne 0 ]
   [[ "$output" == *"cp config/db-profiles-EXAMPLE.json config/db-profiles.json"* ]]
 }
+
+@test "sqlite profile runs sqlite verification path" {
+  #R066-T01
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<EOF
+#!/usr/bin/env bash
+echo "DB_DIALECT=sqlite"
+echo "PROFILE_NAME=sqlite"
+echo "PROFILE_TARGET=sqlite"
+echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  printf 'seed' > "${FIXTURE_ROOT}/sqlite-dev.db"
+  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | grep -c "✅ PASS:")" -eq 1 ]
+}

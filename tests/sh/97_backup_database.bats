@@ -160,3 +160,36 @@ EOF
   [[ "$calls" == *"-n teller"* ]]
   [[ "$calls" != *"pg_dumpall "* ]]
 }
+
+@test "sqlite target backs up sqlite file without pg tools" {
+  #R041-T01
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<EOF
+#!/usr/bin/env bash
+echo "DB_DIALECT=sqlite"
+echo "PROFILE_NAME=sqlite"
+echo "PROFILE_TARGET=sqlite"
+echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  touch "${FIXTURE_ROOT}/sqlite-dev.db"
+  stub_cmd 1psa "echo pass"
+  cat > "${STUB_BIN}/pg_dump" <<EOF
+#!/usr/bin/env bash
+echo pg_dump "\$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/pg_dump"
+  cat > "${STUB_BIN}/pg_dumpall" <<EOF
+#!/usr/bin/env bash
+echo pg_dumpall "\$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/pg_dumpall"
+
+  run bash "${FIXTURE_ROOT}/97_backup_database.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Backup written:"* ]]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" != *"pg_dump "* ]]
+  [[ "$calls" != *"pg_dumpall "* ]]
+}

@@ -56,6 +56,11 @@ Tests:
 - R040-T01: Verify local-target run uses the resolved profile and the backup basename includes `<profile>_<db>_<timestamp>` (e.g. `local_prod_...`).
 - R040-T02: Verify managed-target run encodes `<profile>_<db>_<timestamp>` (e.g. `supabase_direct_postgres_...`) when the profile resolves to managed.
 
+R041  Statement: Support SQLite backups through the existing backup entrypoint.
+Design: When `PROFILE_TARGET=sqlite`, back up the resolved SQLite database file and emit the same completion lines expected by operators.
+Tests:
+- R041-T01: Verify sqlite-target run writes a timestamped backup artifact without invoking `pg_dump`/`pg_dumpall`.
+
 R045  Statement: Managed-target backup uses the profile's connection user against the direct (non-pooler) host and skips globals because managed targets do not expose role/grant state.
 Design: When `PROFILE_TARGET=managed`, re-resolve via the `supabase_direct` profile, read the connection password from `PG_ONEPSA_ITEM` via `1psa` (with `TELLER_DB_PASSWORD` env override), and run a schema-scoped `pg_dump -Fc -n <PG_SEARCH_PATH>`; skip `pg_dumpall` and print an explicit `Globals skipped:` line so the operator knows full restore is unavailable on managed targets.
 Tests:
@@ -69,6 +74,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-30: Added R041 for SQLite backup behavior through existing script.
 - 2026-05-30: Updated R020/R035 to owner-only defaults and added R055 for dump/globals manifest generation.
 - 2026-05-26: Added R040/R045/R050 for profile-aware backup behavior; managed-target schema-scoped dumps and env-override compatibility.
 - 2026-04-19: Initial reverse-engineered requirements for `97_backup_database.sh`.

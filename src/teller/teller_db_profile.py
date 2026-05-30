@@ -26,7 +26,7 @@ import structlog
 
 
 _ALLOWED_SSLMODES = {"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}
-_ALLOWED_TARGETS = {"local", "managed"}
+_ALLOWED_TARGETS = {"local", "managed", "sqlite"}
 log = structlog.get_logger()
 
 
@@ -43,6 +43,7 @@ class ResolvedProfile:
     runtime_role: str
     sslmode: str
     target: str
+    sqlite_path: str
 
 
 class ProfileError(RuntimeError):
@@ -153,6 +154,7 @@ def _record_from_fields(fields: dict[str, str]) -> dict:
         runtime_role=fields.get("runtime_role"),
         target=fields.get("target"),
         sslmode=fields.get("sslmode"),
+        sqlite_path_raw=fields.get("sqlite_path"),
     )
 
 
@@ -168,22 +170,30 @@ def _resolve_target(target: str | None) -> str:
 
 
 def _resolve_sslmode(sslmode: str | None, resolved_target: str) -> str:
+    if resolved_target == "sqlite":
+        return "disable"
     if not sslmode:
         sslmode = "require" if resolved_target == "managed" else "disable"
     return sslmode if sslmode in _ALLOWED_SSLMODES else "disable"
 
 
-def _build_record(host, port_raw, database, username, schema, runtime_role, target, sslmode) -> dict:
+def _build_record(host, port_raw, database, username, schema, runtime_role, target, sslmode, sqlite_path_raw=None) -> dict:
     resolved_target = _resolve_target(target)
+    sqlite_path = ""
+    if resolved_target == "sqlite":
+        sqlite_path = (sqlite_path_raw or database or "").strip()
+        if not sqlite_path:
+            sqlite_path = str(Path.cwd() / "teller.sqlite3")
     return {
-        "host": host or "localhost",
-        "port": _parse_port(port_raw),
-        "dbname": database or "prod",
-        "user": username or "teller",
-        "search_path": schema or "teller",
-        "runtime_role": runtime_role or "",
+        "host": "" if resolved_target == "sqlite" else (host or "localhost"),
+        "port": 0 if resolved_target == "sqlite" else _parse_port(port_raw),
+        "dbname": "" if resolved_target == "sqlite" else (database or "prod"),
+        "user": "" if resolved_target == "sqlite" else (username or "teller"),
+        "search_path": "teller" if resolved_target == "sqlite" else (schema or "teller"),
+        "runtime_role": "" if resolved_target == "sqlite" else (runtime_role or ""),
         "target": resolved_target,
         "sslmode": _resolve_sslmode(sslmode, resolved_target),
+        "sqlite_path": sqlite_path,
     }
 
 
@@ -221,6 +231,7 @@ def _profile_cache_key() -> tuple:
             "TELLER_DB_ROLE",
             "TELLER_DB_SSLMODE",
             "TELLER_DB_SEARCH_PATH",
+            "TELLER_DB_SQLITE_PATH",
             "ONEPSA_LIB_PATH",
         )
     )
@@ -303,6 +314,15 @@ def _apply_env_overrides(record: dict) -> dict:
         overridden["sslmode"] = candidate
     if value := os.environ.get("TELLER_DB_SEARCH_PATH"):
         overridden["search_path"] = value
+    if value := os.environ.get("TELLER_DB_SQLITE_PATH"):
+        overridden["sqlite_path"] = value
+        overridden["target"] = "sqlite"
+        overridden["host"] = ""
+        overridden["port"] = 0
+        overridden["dbname"] = ""
+        overridden["user"] = ""
+        overridden["runtime_role"] = ""
+        overridden["sslmode"] = "disable"
     return overridden
 
 
@@ -325,6 +345,7 @@ def _resolve_profile_cached(_cache_key: tuple) -> ResolvedProfile:
         runtime_role=final["runtime_role"],
         sslmode=final["sslmode"],
         target=final["target"],
+        sqlite_path=final["sqlite_path"],
     )
 
 

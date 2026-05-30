@@ -294,3 +294,29 @@ EOF
   [ "$status" -ne 0 ]
   [[ "$output" == *"cp config/db-profiles-EXAMPLE.json config/db-profiles.json"* ]]
 }
+
+@test "sqlite profile deploy applies sqlite ddl without postgres bootstrap" {
+  #R071-T01
+  export PATH="${STUB_BIN}:/usr/bin:/bin"
+  mkdir -p "${FIXTURE_ROOT}/src/sql/sqlite"
+  echo "-- sqlite schema" > "${FIXTURE_ROOT}/src/sql/sqlite/create_database.sql"
+  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "DB_DIALECT=sqlite"
+echo "PROFILE_NAME=sqlite"
+echo "PROFILE_TARGET=sqlite"
+echo "SQLITE_PATH=/tmp/teller.sqlite3"
+EOF
+  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  cat > "${STUB_BIN}/sqlite3" <<EOF
+#!/usr/bin/env bash
+echo "sqlite3 \$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/sqlite3"
+  run bash "${FIXTURE_ROOT}/05_deploy_database.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"sqlite3 "* ]]
+  [[ "$calls" != *"psql "* ]]
+}

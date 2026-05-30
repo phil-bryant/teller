@@ -34,6 +34,11 @@ Design: Emit final cleanup completion line.
 Tests:
 - R025-T01: Verify successful run prints completion message.
 
+R026  Statement: Support SQLite teardown through the existing destroy entrypoint.
+Design: When `PROFILE_TARGET=sqlite`, require the same explicit confirmation and destroy the resolved SQLite database artifact safely.
+Tests:
+- R026-T01: Run with sqlite profile and verify confirmed destroy removes the SQLite artifact and prints completion output.
+
 R030  Statement: Validate local database identifier before destructive local teardown SQL.
 Design: Require `LOCAL_DBNAME` (resolved from profile `PG_DBNAME`) to be a valid PostgreSQL identifier before existence checks, session termination, and drop statements.
 Tests:
@@ -57,5 +62,6 @@ Tests:
 
 ## Changelog
 
+- 2026-05-30: Added R026 for SQLite teardown behavior through existing script.
 - 2026-05-30: Added R030-R033 for identifier validation and parameterized local/managed destroy SQL execution.
 - 2026-04-19: Initial reverse-engineered requirements for `98_destroy_database.sh`.

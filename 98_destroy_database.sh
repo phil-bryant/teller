@@ -28,7 +28,7 @@ load_profile_exports_from_file() {
             key=$0
             sub(/^export[[:space:]]+/, "", key)
             sub(/=.*/, "", key)
-            if (key !~ /^(PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM)$/) {
+            if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
                 print
             }
         }
@@ -71,11 +71,32 @@ if ! load_profile_exports_from_file "$profile_exports_file"; then
     exit 1
 fi
 rm -f "$profile_exports_file"
-require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET PG_DBNAME
+require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET
+DB_DIALECT="${DB_DIALECT:-postgresql}"
+if [[ "$DB_DIALECT" != "sqlite" && "${PROFILE_TARGET:-local}" != "sqlite" ]]; then
+    require_nonempty_env "Profile resolution" PG_DBNAME
+fi
 PG_SSLMODE="${PG_SSLMODE:-}"
 
 # Ensure psql stops immediately on SQL errors.
 PSQL_OPTS=(-v ON_ERROR_STOP=1)
+
+#R026: Support SQLite teardown through the existing destroy entrypoint.
+if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
+    SQLITE_DB_PATH="${SQLITE_PATH:-}"
+    if [[ -z "$SQLITE_DB_PATH" ]]; then
+        echo "SQLite destroy requires SQLITE_PATH from db profile export."
+        exit 1
+    fi
+    read -r -p "Are you sure you want to destroy sqlite database '${SQLITE_DB_PATH}'? This cannot be undone. Type 'destroy' to confirm: " confirmation
+    if [ "$confirmation" != "destroy" ]; then
+        echo "Destruction cancelled"
+        exit 1
+    fi
+    rm -f "$SQLITE_DB_PATH"
+    echo "Cleanup complete!"
+    exit 0
+fi
 
 if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
     # Re-resolve using the direct (non-pooler) profile for DDL teardown.

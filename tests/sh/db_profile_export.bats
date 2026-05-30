@@ -18,6 +18,7 @@ teardown() {
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 cat <<'OUT'
+DB_DIALECT=postgresql
 PROFILE_NAME=local
 PROFILE_TARGET=local
 PG_HOST=localhost
@@ -34,9 +35,28 @@ EOF
 
   run bash -c "cd '${FIXTURE_ROOT}' && ./src/scripts/db_profile_export.sh"
   [ "$status" -eq 0 ]
+  [[ "$output" == *"DB_DIALECT=postgresql"* ]]
   [[ "$output" == *"PROFILE_NAME=local"* ]]
   [[ "$output" == *"PG_DBNAME=prod"* ]]
   [[ "$output" == *"PG_ONEPSA_ITEM=localhost_postgres_teller"* ]]
+}
+
+@test "prints sqlite exports for sqlite profile" {
+  cat > "${STUB_BIN}/python3" <<'EOF'
+#!/usr/bin/env bash
+cat <<'OUT'
+DB_DIALECT=sqlite
+PROFILE_NAME=sqlite
+PROFILE_TARGET=sqlite
+SQLITE_PATH=/tmp/teller.sqlite3
+OUT
+EOF
+  chmod +x "${STUB_BIN}/python3"
+
+  run bash -c "cd '${FIXTURE_ROOT}' && ./src/scripts/db_profile_export.sh --profile sqlite"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"DB_DIALECT=sqlite"* ]]
+  [[ "$output" == *"SQLITE_PATH=/tmp/teller.sqlite3"* ]]
 }
 
 @test "supports profile override and rejects unknown args" {

@@ -19,6 +19,7 @@ _DB_ENV_KEYS = (
     "TELLER_DB_ROLE",
     "TELLER_DB_SSLMODE",
     "TELLER_DB_SEARCH_PATH",
+    "TELLER_DB_SQLITE_PATH",
     "TELLER_PSA_ITEM",
 )
 
@@ -40,6 +41,11 @@ _SUPABASE_FIELDS = {
     "schema": "teller",
     "runtime_role": "",
     "target": "managed",
+}
+
+_SQLITE_FIELDS = {
+    "database": "/tmp/teller-test.sqlite3",
+    "target": "sqlite",
 }
 
 
@@ -229,6 +235,18 @@ class ResolveProfileTests(_IsolatedEnvTest):
         with self.assertRaises(ProfileError) as ctx:
             resolve_profile()
         self.assertIn("TELLER_DB_SSLMODE must be one of", str(ctx.exception))
+
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SQLITE_FIELDS))
+    def test_sqlite_profile_resolves_sqlite_target_and_path(self, _mock):
+        self._write_profile_file(
+            {
+                "default_profile": "sqlite_local",
+                "profiles": {"sqlite_local": {"1psa_item": "sqlite_local_item"}},
+            }
+        )
+        profile = resolve_profile()
+        self.assertEqual(profile.target, "sqlite")
+        self.assertEqual(profile.sqlite_path, "/tmp/teller-test.sqlite3")
 
 
 if __name__ == "__main__":
