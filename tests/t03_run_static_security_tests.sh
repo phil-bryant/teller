@@ -25,5 +25,6 @@ fi
 #R060: Delegates detect-secrets detailed status output to lane script implementation.
 #R065: Delegates Ruff detailed status output to lane script implementation.
 #R070: Delegates ShellCheck detailed status output to lane script implementation.
+#R080: Delegates cache-location policy (__pycache__ under artifacts/cache) to lane script implementation.
 #R090: Delegates medium-or-higher blocking policy to lane script implementation.
 exec "${REPO_ROOT}/src/scripts/security/run_static_security_lane.sh" "$@"

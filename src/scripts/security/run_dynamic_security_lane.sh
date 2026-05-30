@@ -17,6 +17,7 @@ echo "running DAST (Dynamic Application Security Testing)"
 #R020: Dynamic lane prints completion markers and report artifact location.
 #R025: Dynamic lane captures baseline and executes cleanup to avoid DB state leakage.
 #R030: Dynamic lane parses ZAP summary and enforces configurable severity threshold gate.
+#R045: Dynamic lane runs Schemathesis from report_dir to keep .schemathesis out of repo root.
 REPORT_DIR="${SECURITY_REPORT_DIR:-./artifacts/security-dast}"
 RUN_SAST="${RUN_SAST:-false}"
 RUN_DAST="${RUN_DAST:-true}"
@@ -883,16 +884,18 @@ PY
       | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
     local schemathesis_raw_log="${report_dir_abs}/schemathesis-raw.log"
     set +e
-    schemathesis run "$schemathesis_location" \
-      --url "$base_url" \
-      --tls-verify=false \
-      --header "X-Teller-Write-Token: ${dast_write_token}" \
-      --mode "$schemathesis_mode" \
-      --seed "$schemathesis_seed" \
-      --max-examples "$schemathesis_max_examples" \
-      --report junit \
-      --report-junit-path "${report_dir_abs}/schemathesis-junit.xml" \
-      > "$schemathesis_raw_log" 2>&1
+    (
+      cd "$report_dir_abs"
+      schemathesis run "$schemathesis_location" \
+        --url "$base_url" \
+        --tls-verify=false \
+        --header "X-Teller-Write-Token: ${dast_write_token}" \
+        --mode "$schemathesis_mode" \
+        --seed "$schemathesis_seed" \
+        --max-examples "$schemathesis_max_examples" \
+        --report junit \
+        --report-junit-path "${report_dir_abs}/schemathesis-junit.xml"
+    ) > "$schemathesis_raw_log" 2>&1
     SCHEMATHESIS_EXIT=$?
     set -e
     python3 - <<'PY' "$schemathesis_raw_log" "${report_dir_abs}/schemathesis.log" "$dast_write_token"

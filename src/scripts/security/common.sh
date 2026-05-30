@@ -16,6 +16,7 @@
 #R060: Shared helpers support reusable detect-secrets/reporting pathways.
 #R065: Shared helpers support reusable Ruff/reporting pathways.
 #R070: Shared helpers support reusable ShellCheck/reporting pathways.
+#R080: Shared helpers export Python bytecode cache path under artifacts/cache.
 #R090: Shared helpers support reusable medium-or-higher gate plumbing.
 security_init_repo_root() {
   local script_path="${1:-${BASH_SOURCE[0]-$0}}"

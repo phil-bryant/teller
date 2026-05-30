@@ -35,8 +35,6 @@ XCUITEST_SCENARIOS=(
   "matchAndClassifyShellLoads"
   "searchFilter"
   "unclassifiedFilterAutoRefresh"
-  #R055: Cover match-state picker behavior in XCUITest smoke suite.
-  "matchStatePicker"
   "onlyUnmovedToggle"
   "refreshButton"
   "selectionShowsTransactionId"
@@ -75,8 +73,8 @@ XCUITEST_SCENARIOS=(
   "advancedEmailSearch"
 )
 XCUITEST_SMOKE_SUITE="TransactionClassifierUITests/TransactionClassifierUITests/testMacOSUISmokeSuite"
-XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-33}"
-XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-33}"
+XCUITEST_SMOKE_DEFAULT_STEPS="${XCUITEST_SMOKE_DEFAULT_STEPS:-1-32}"
+XCUITEST_EXTENDED_DEFAULT_STEPS="${XCUITEST_EXTENDED_DEFAULT_STEPS:-1-32}"
 
 if [[ $# -gt 1 ]]; then
   echo "❌ Usage: $0 [scenario-selector]"

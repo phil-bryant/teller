@@ -3,10 +3,10 @@ import XCTest
 
 final class TransactionClassifierUITests: XCTestCase {
     private static var app: XCUIApplication!
-    private static let scenarioCount = 33
+    private static let scenarioCount = 32
 
     /// Maximum bounds only; condition polling exits immediately once state is ready.
-    private let waitTimeout: TimeInterval = 2
+    private let waitTimeout: TimeInterval = 1
     private let launchTimeout: TimeInterval = 5
     private let pollInterval: TimeInterval = 0.05
 
@@ -22,7 +22,6 @@ final class TransactionClassifierUITests: XCTestCase {
         "matchAndClassifyShellLoads",
         "searchFilter",
         "unclassifiedFilterAutoRefresh",
-        "matchStatePicker",
         "onlyUnmovedToggle",
         "refreshButton",
         "selectionShowsTransactionId",
@@ -145,57 +144,55 @@ final class TransactionClassifierUITests: XCTestCase {
                 runSearchFilterScenario()
             case 3: // #R020-T01
                 runUnclassifiedFilterAutoRefreshScenario()
-            case 4:
-                runMatchStatePickerScenario()
-            case 5: runOnlyUnmovedToggleScenario()
-            case 6: runRefreshButtonScenario()
-            case 7: // #R030-T01
+            case 4: runOnlyUnmovedToggleScenario()
+            case 5: runRefreshButtonScenario()
+            case 6: // #R030-T01
                 runSelectionShowsTransactionIdScenario()
-            case 8: // #R010-T01
+            case 7: // #R010-T01
                 runNextUnclassifiedShortcutScenario()
-            case 9: runLoadMoreButtonScenario()
-            case 10: // #R015-T01
+            case 8: runLoadMoreButtonScenario()
+            case 9: // #R015-T01
                 runApplyCategoryScenario()
-            case 11: runClearSelectionScenario()
-            case 12: runUndoRestoresUnclassifiedScenario()
-            case 13: runUndoRestoresPriorCategoryScenario()
-            case 14: // #R066-T01 #R067-T01
+            case 10: runClearSelectionScenario()
+            case 11: runUndoRestoresUnclassifiedScenario()
+            case 12: runUndoRestoresPriorCategoryScenario()
+            case 13: // #R066-T01 #R067-T01
                 runCandidatesAndEmailPaneScenario()
-            case 15: // #R065-T01
+            case 14: // #R065-T01
                 runEmailSearchScenario()
-            case 16: // #R045-T01
+            case 15: // #R045-T01
                 runMatchActionsScenario()
-            case 17: // #R076-T01
+            case 16: // #R076-T01
                 runConfirmPreservesEmailRenderingScenario()
-            case 18: // #R025-T01
+            case 17: // #R025-T01
                 runNextUnclassifiedScrollsIntoViewScenario()
-            case 19: // #R070-T01
+            case 18: // #R070-T01
                 runLongListManualSelectionDoesNotRecenterScenario()
-            case 20: // #R035-T01
+            case 19: // #R035-T01
                 runHelpMenuListsHotkeysScenario()
-            case 21: // #R001-T01 #R025-T01
+            case 20: // #R001-T01 #R025-T01
                 runConnectTabLoadsConnectionsScenario()
-            case 22: runConnectDeleteCancelScenario()
-            case 23: // #R010-T01
+            case 21: runConnectDeleteCancelScenario()
+            case 22: // #R010-T01
                 runConnectDeleteConfirmScenario()
-            case 24: // #R015-T01 #R080-T01
+            case 23: // #R015-T01 #R080-T01
                 runConnectAddAndEditButtonsScenario()
-            case 25: // #R055-T01 #R060-T01
+            case 24: // #R055-T01 #R060-T01
                 runConnectTabHidesNextUnclassifiedScenario()
-            case 26: // #R065-T01
+            case 25: // #R065-T01
                 runConnectTabHidesUndoScenario()
-            case 27: runManageCategoriesLoadAndToolbarScenario()
-            case 28: // #R055-T01 #R060-T01
+            case 26: runManageCategoriesLoadAndToolbarScenario()
+            case 27: // #R055-T01 #R060-T01
                 runManageCategoriesHidesNextUnclassifiedScenario()
-            case 29:
+            case 28:
                 runManageCategoryEditAndSaveScenario()
-            case 30:
+            case 29:
                 runManageCategoryDeleteScenario()
-            case 31: // #R055-T01
+            case 30: // #R055-T01
                 runMatchStatePickerAllValuesScenario()
-            case 32: // #R070 #R090-T02
+            case 31: // #R070 #R090-T02
                 runAdvancedTransactionFilterScenario()
-            case 33: // #R071-T02 #R071-T03 #R071-T04 #R071-T05 #R071-T09 #R095-T01
+            case 32: // #R071-T02 #R071-T03 #R071-T04 #R071-T05 #R071-T09 #R095-T01
                 runAdvancedEmailSearchScenario()
             default: break
             }
@@ -243,14 +240,6 @@ final class TransactionClassifierUITests: XCTestCase {
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_002"), timeout: waitTimeout))
     }
 
-    private func runMatchStatePickerScenario() {
-        // Keep first-pass smoke lightweight; exhaustive match-state coverage lives in scenario 30.
-        ensureMatchAndClassifyTab()
-        ensureUnclassifiedFilterDisabled()
-        XCTAssertTrue(uiElement("match-review-state-picker").exists)
-        XCTAssertTrue(uiElement("transaction-list").exists)
-    }
-
     private func runMatchStatePickerAllValuesScenario() {
         // #R055
         ensureMatchAndClassifyTab()
@@ -263,11 +252,11 @@ final class TransactionClassifierUITests: XCTestCase {
         // already-active filter does not reset scroll, so top rows can be virtualized
         // out of the tree. Anchor back to the top before asserting top-of-list rows.
         scrollTransactionListToTop()
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout * 3))
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_004"), timeout: waitTimeout * 3))
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_005"), timeout: waitTimeout * 3))
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_006"), timeout: waitTimeout * 3))
-        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_007"), timeout: waitTimeout * 3))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_001"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_004"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_005"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_006"), timeout: waitTimeout))
+        XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_007"), timeout: waitTimeout))
 
         selectMatchStateFilter("Unmatched")
         XCTAssertTrue(waitForElement(uiElement("transaction-row-txn_003"), timeout: waitTimeout))
@@ -430,7 +419,13 @@ final class TransactionClassifierUITests: XCTestCase {
         )
 
         app.typeKey("]", modifierFlags: .command)
-        assertSelectedTransactionId("txn_001", requireHeaderMatch: false)
+        // Row may still be virtualized off-screen; verify selection count before scroll completes.
+        XCTAssertTrue(
+            waitUntil(timeout: waitTimeout * 2) {
+                elementText(uiElement("selection-count")).contains("1")
+            },
+            "Expected Next Unclassified to select exactly one transaction."
+        )
 
         var scrolledIntoView = false
         for _ in 0..<8 {

@@ -346,6 +346,15 @@ EOF
   chmod +x "${STUB_BIN}/schemathesis"
 }
 
+stub_python3_logs_cache_prefix() {
+  cat > "${STUB_BIN}/python3" <<'EOF'
+#!/usr/bin/env bash
+echo "python3 PYTHONPYCACHEPREFIX=${PYTHONPYCACHEPREFIX:-}" >> "${CALLS_LOG}"
+exec /usr/bin/python3 "$@"
+EOF
+  chmod +x "${STUB_BIN}/python3"
+}
+
 stub_schemathesis_findings() {
   cat > "${STUB_BIN}/schemathesis" <<'EOF'
 #!/usr/bin/env bash
@@ -1058,6 +1067,26 @@ EOF
     bash "${FIXTURE_ROOT}/t03_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Token capture Dynamic Application Security Testing (DAST) skipped"* ]]
+}
+
+@test "exports PYTHONPYCACHEPREFIX under artifacts and avoids root __pycache__" {
+  #R080-T01 #R080-T02
+  setup_shell_test
+  copy_security_project_files
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  stub_python3_logs_cache_prefix
+  stub_curl_success
+  run env RUN_SAST=false RUN_DAST=true RUN_SCHEMATHESIS=false RUN_ZAP=false \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
+    DAST_BASE_HOST=127.0.0.1 DAST_BASE_PORT=18790 \
+    DAST_APP_PYTHON=/usr/bin/python3 \
+    bash "${FIXTURE_ROOT}/t03_run_static_security_tests.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"python3 PYTHONPYCACHEPREFIX=${FIXTURE_ROOT}/artifacts/cache/pycache"* ]]
+  [ ! -d "${FIXTURE_ROOT}/__pycache__" ]
 }
 
 @test "DAST fails with clear error when ZAP is enabled but ZAP CLI missing" {

@@ -56,6 +56,12 @@ Design: When local Schemathesis support starts both the classifier API and Mailc
 Tests:
 - R040-T01: Verify lane logic contains explicit host+port collision handling and emits a collision auto-selection message.
 
+R045  Statement: Schemathesis runtime state must stay in DAST artifacts, not repo root.
+Design: Execute `schemathesis run` from the resolved DAST report directory so `.schemathesis/` is created beneath `artifacts/security-dast` (or custom report dir) instead of repository root.
+Tests:
+- R045-T01: Run DAST with Schemathesis enabled and verify `.schemathesis/` appears under the report directory.
+- R045-T02: Verify DAST run does not create `${repo_root}/.schemathesis/`.
+
 R025  Statement: DAST run must not leak state to the target database.
 Design: Generate a per-run `DAST_RUN_ID` tag, capture a pre-run baseline via `src/scripts/dast_baseline.py` (max IDs plus full mutable-field snapshots of `nys_snw_category`, `transaction_email_match`, `transaction_email_match_audit`, and `transaction_nys_snw_category`), embed `DAST_RUN_ID` in seeded `categorization` and `email_message_id` payloads, and install an `EXIT` trap that invokes `src/scripts/dast_cleanup.py` to restore mutated rows and delete rows inserted past the baseline (FK-safe order: match restore -> audit delete -> match delete -> classification reconcile -> category delete -> category restore). The cleanup runs both on the success path (before the integrity check) and on any failure path; the post-DAST integrity check therefore also asserts that cleanup succeeded. Cleanup refuses to apply when the recorded profile differs from the current resolved profile unless `DAST_CLEANUP_FORCE=true`, and can be disabled entirely with `DAST_SKIP_CLEANUP=true`.
 Tests:
@@ -70,3 +76,4 @@ Tests:
 - 2026-05-25: Reintroduced R030 with machine-readable ZAP summary parsing and configurable severity thresholds.
 - 2026-05-27: Added R035 strict Schemathesis gate with explicit downgrade toggle (`SCHEMATHESIS_FAIL_ON_FINDINGS=false`).
 - 2026-05-27: Added R040 for automatic DAST Mailcart/API port collision avoidance.
+- 2026-05-30: Added R045 to keep Schemathesis runtime state scoped to DAST artifact directories.

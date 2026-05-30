@@ -90,6 +90,12 @@ Design: During default SAST execution (without suppression toggles), emit explic
 Tests:
 - R070-T01: Run SAST lane and verify output includes a `ShellCheck detailed status` line with report path details.
 
+R080  Statement: Python bytecode caches must stay under `artifacts/cache`, not repo root.
+Design: Source `src/scripts/export_test_cache_env.sh` from shared security bootstrap and export `PYTHONPYCACHEPREFIX=${repo_root}/artifacts/cache/pycache` before scanner orchestration so Python execution does not create root-level `__pycache__/`.
+Tests:
+- R080-T01: Run lane with DAST-only Python execution and verify `PYTHONPYCACHEPREFIX` resolves under `artifacts/cache/pycache`.
+- R080-T02: Verify lane execution does not create `${repo_root}/__pycache__/`.
+
 R090  Statement: Financial-app policy must treat medium-or-higher security findings as blockers.
 Design: Enforce conservative SAST gating so that Semgrep WARNING/ERROR/CRITICAL, Bandit MEDIUM/HIGH, ShellCheck warning/error, SwiftLint warning/error, pip-audit vulnerabilities, detect-secrets findings, Ruff findings, and gitleaks findings all contribute to a blocking total when `SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true` (default on).
 Tests:
@@ -108,3 +114,4 @@ Tests:
 - 2026-05-15: Added R040 to run gitleaks on git-tracked snapshot source and prevent report feedback loops.
 - 2026-05-15: Added R045/R050/R055/R060/R065/R070 to require detailed unsuppressed status output for Semgrep, Bandit, pip-audit, detect-secrets, Ruff, and ShellCheck.
 - 2026-05-15: Added R090 financial-app medium-or-higher blocking policy across SAST tools.
+- 2026-05-30: Added R080 to keep Python bytecode cache output under `artifacts/cache/pycache` and prevent root-level `__pycache__/`.

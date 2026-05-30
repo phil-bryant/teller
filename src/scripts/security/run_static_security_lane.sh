@@ -26,6 +26,7 @@ echo "running SAST (Static Application Security Testing)"
 #R060: Static lane emits detailed detect-secrets status in unsuppressed runs.
 #R065: Static lane emits detailed Ruff status in unsuppressed runs.
 #R070: Static lane emits detailed ShellCheck status in unsuppressed runs.
+#R080: Static lane relies on shared cache env to keep __pycache__ under artifacts/cache.
 #R090: Static lane enforces medium-or-higher blocker policy across scanners.
 REPORT_DIR="${SECURITY_REPORT_DIR:-./artifacts/security/reports}"
 RUN_SAST="${RUN_SAST:-true}"
@@ -585,15 +586,17 @@ run_dast_checks() (
       "$dast_write_token" \
       | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
     set +e
-    schemathesis run "$schemathesis_location" \
-      --url "$base_url" \
-      --header "X-Teller-Write-Token: ${dast_write_token}" \
-      --mode positive \
-      --seed "$schemathesis_seed" \
-      --max-examples "$schemathesis_max_examples" \
-      --report junit \
-      --report-junit-path "${report_dir_abs}/schemathesis-junit.xml" \
-      | tee "${report_dir_abs}/schemathesis.log"
+    (
+      cd "$report_dir_abs"
+      schemathesis run "$schemathesis_location" \
+        --url "$base_url" \
+        --header "X-Teller-Write-Token: ${dast_write_token}" \
+        --mode positive \
+        --seed "$schemathesis_seed" \
+        --max-examples "$schemathesis_max_examples" \
+        --report junit \
+        --report-junit-path "${report_dir_abs}/schemathesis-junit.xml"
+    ) | tee "${report_dir_abs}/schemathesis.log"
     SCHEMATHESIS_EXIT=${PIPESTATUS[0]}
     set -e
     if [[ "$SCHEMATHESIS_EXIT" -gt 1 ]]; then

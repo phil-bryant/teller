@@ -319,3 +319,51 @@ PY
   run grep "DAST Mailcart stub port collided with API port" "$(src_lane)"
   [ "$status" -eq 0 ]
 }
+
+@test "Schemathesis runtime directory is scoped to DAST report artifacts" {
+  #R045-T01 #R045-T02
+  setup_shell_test
+  copy_dast_project_files
+  stub_curl_success
+  cat > "${FIXTURE_ROOT}/tests/py/security/delete_category_contract_check.py" <<'PY'
+#!/usr/bin/env python3
+import json
+import sys
+print(json.dumps({"status": "ok", "source": "stub"}))
+sys.exit(0)
+PY
+  chmod +x "${FIXTURE_ROOT}/tests/py/security/delete_category_contract_check.py"
+  mkdir -p "${FIXTURE_ROOT}/fake-security-venv/bin"
+  cat > "${FIXTURE_ROOT}/fake-security-venv/bin/python" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-c" ]]; then
+  exit 0
+fi
+exec /usr/bin/python3 "$@"
+EOF
+  chmod +x "${FIXTURE_ROOT}/fake-security-venv/bin/python"
+  echo '#!/usr/bin/env bash' > "${FIXTURE_ROOT}/fake-security-venv/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/fake-security-venv/bin/semgrep"
+  cat > "${FIXTURE_ROOT}/fake-security-venv/bin/schemathesis" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--version" ]]; then
+  exit 0
+fi
+mkdir -p .schemathesis
+printf '%s\n' "runtime-state" > .schemathesis/stub.txt
+exit 0
+EOF
+  chmod +x "${FIXTURE_ROOT}/fake-security-venv/bin/schemathesis"
+  run env RUN_SAST=false RUN_DAST=true RUN_ZAP=false RUN_SCHEMATHESIS=true \
+    DAST_REUSE_EXISTING_API=true \
+    DAST_CATEGORY_INTEGRITY_STRICT=false \
+    DAST_BASE_URL="https://127.0.0.1:19791" \
+    DAST_OPENAPI_URL="https://127.0.0.1:19791/openapi.json" \
+    SECURITY_VENV_DIR="${FIXTURE_ROOT}/fake-security-venv" \
+    SECURITY_REPORT_DIR="${FIXTURE_ROOT}/artifacts/security-dast" \
+    bash "${FIXTURE_ROOT}/t12_run_dynamic_security_tests.sh"
+  [ "$status" -eq 0 ]
+  [ -d "${FIXTURE_ROOT}/artifacts/security-dast/.schemathesis" ]
+  [ -f "${FIXTURE_ROOT}/artifacts/security-dast/.schemathesis/stub.txt" ]
+  [ ! -d "${FIXTURE_ROOT}/.schemathesis" ]
+}
