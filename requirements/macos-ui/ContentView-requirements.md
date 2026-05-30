@@ -25,8 +25,14 @@ Tests:
 - R060-T01: Switch to Connect and verify `undo-button` is absent.
 - R060-T02: Switch to Manage Categories and verify `undo-button` is absent.
 
+R070  Statement: Tab bar must present Connect, Manage Categories, and Match & Classify in that order.
+Design: `TabView` child order is Connect first, Manage Categories second, Match & Classify third so enrollment setup precedes category maintenance and transaction triage.
+Tests:
+- R070-T01: Inspect `ContentView.swift` and verify Connect tab items appear before Manage Categories, which appear before Match & Classify.
+
 ## Changelog
 
+- 2026-05-30: Added R070 for tab bar order: Connect, Manage Categories, Match & Classify.
 - 2026-05-29: Match action bar button labels updated to Confirm, Override, No-email, Clear (see MatchAndClassifyViews R045); R030 no longer duplicates transaction id in classification actions.
 - 2026-04-23: Added Swift-side requirements for `ContentView.swift` from macOS classifier implementation.
 - 2026-04-23: Added R020 (auto-refresh on Unclassified toggle), R025 (scroll-to-selection), and R030 (detail header includes transaction id).

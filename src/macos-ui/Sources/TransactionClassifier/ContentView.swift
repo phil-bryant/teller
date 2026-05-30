@@ -1,9 +1,9 @@
 import SwiftUI
 
 private enum AppTab: Hashable {
-    case matchAndClassify
-    case manageCategories
     case connect
+    case manageCategories
+    case matchAndClassify
 }
 
 struct ContentView: View {
@@ -31,21 +31,22 @@ struct ContentView: View {
         // #R010: Keyboard shortcuts are owned by pane-local controls in MatchAndClassifyView.
         // #R055: Next Unclassified is scoped to Match & Classify by living in that tab's pane.
         // #R060: Undo is scoped to Match & Classify by living in that tab's pane.
+        // #R070: Tab order is Connect, Manage Categories, Match & Classify.
         TabView(selection: $selectedTab) {
-            MatchAndClassifyView(viewModel: viewModel, scrollTargetId: $scrollTargetId)
+            ConnectView(viewModel: connectViewModel)
                 .padding(12)
-                .tabItem { Label("Match & Classify", systemImage: "envelope.badge.shield.half.filled") }
-                .tag(AppTab.matchAndClassify)
+                .tabItem { Label("Connect", systemImage: "link.badge.plus") }
+                .tag(AppTab.connect)
 
             CategoryManagerView(viewModel: viewModel)
                 .padding(12)
                 .tabItem { Label("Manage Categories", systemImage: "square.and.pencil") }
                 .tag(AppTab.manageCategories)
 
-            ConnectView(viewModel: connectViewModel)
+            MatchAndClassifyView(viewModel: viewModel, scrollTargetId: $scrollTargetId)
                 .padding(12)
-                .tabItem { Label("Connect", systemImage: "link.badge.plus") }
-                .tag(AppTab.connect)
+                .tabItem { Label("Match & Classify", systemImage: "envelope.badge.shield.half.filled") }
+                .tag(AppTab.matchAndClassify)
         }
         .navigationTitle("Transaction Classifier")
         .navigationSplitViewStyle(.balanced)

@@ -34,6 +34,24 @@ final class ContentViewRequirementsTests: XCTestCase {
         XCTAssertTrue(deleted.isEmpty)
     }
 
+    func testTabViewOrdersConnectManageCategoriesMatchAndClassify() throws {
+        // #R070-T01
+        let source = try Self.loadContentViewSource()
+        let connectIndex = try lowerBound(of: #"Label("Connect""#, in: source)
+        let manageIndex = try lowerBound(of: #"Label("Manage Categories""#, in: source)
+        let matchIndex = try lowerBound(of: #"Label("Match & Classify""#, in: source)
+        XCTAssertLessThan(
+            connectIndex,
+            manageIndex,
+            "TabView must place Connect before Manage Categories."
+        )
+        XCTAssertLessThan(
+            manageIndex,
+            matchIndex,
+            "TabView must place Manage Categories before Match & Classify."
+        )
+    }
+
     func testManageCategoriesTabHidesUndoButton() throws {
         // #R060-T02
         let source = try Self.loadUITestSource()
@@ -128,6 +146,23 @@ private actor ContentViewRequirementsMockAPI: ClassificationAPI {
 }
 
 private extension ContentViewRequirementsTests {
+    func lowerBound(of needle: String, in source: String) throws -> String.Index {
+        try XCTUnwrap(source.range(of: needle)?.lowerBound, "Expected snippet in ContentView: \(needle)")
+    }
+
+    static func loadContentViewSource() throws -> String {
+        let currentFile = URL(fileURLWithPath: #filePath)
+        let packageRoot = currentFile
+            .deletingLastPathComponent() // TransactionClassifierTests
+            .deletingLastPathComponent() // Tests
+            .deletingLastPathComponent() // macos-ui package root
+        let viewFile = packageRoot
+            .appendingPathComponent("Sources")
+            .appendingPathComponent("TransactionClassifier")
+            .appendingPathComponent("ContentView.swift")
+        return try String(contentsOf: viewFile, encoding: .utf8)
+    }
+
     static func loadUITestSource() throws -> String {
         let currentFile = URL(fileURLWithPath: #filePath)
         let packageRoot = currentFile
