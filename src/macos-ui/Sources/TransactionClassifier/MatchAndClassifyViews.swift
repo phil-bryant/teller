@@ -1098,9 +1098,6 @@ private struct EmailHeaderView: View {
                 }
             }
             .foregroundStyle(.secondary)
-            Text("id: \(email.email_message_id)")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
         }
     }
 }
@@ -1252,15 +1249,22 @@ private struct EmailBodyWebView: NSViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
         ) {
-            guard let url = navigationAction.request.url else {
+            // #R079: Keep untrusted email content from driving in-app navigation.
+            // Clicked links open in the external browser; everything else in-place is blocked.
+            if navigationAction.navigationType == .linkActivated {
+                if let url = navigationAction.request.url {
+                    NSWorkspace.shared.open(url)
+                }
                 decisionHandler(.cancel)
                 return
             }
-            // #R079: Keep untrusted email content from driving in-app navigation.
-            if navigationAction.navigationType == .linkActivated {
-                NSWorkspace.shared.open(url)
+            // Allow only the initial in-memory document render (loadHTMLString uses an
+            // about:blank URL when baseURL is nil); block any other in-place navigation.
+            if let scheme = navigationAction.request.url?.scheme?.lowercased(), scheme == "about" {
+                decisionHandler(.allow)
+            } else {
+                decisionHandler(.cancel)
             }
-            decisionHandler(.cancel)
         }
 
         func scrollToAmount(in webView: WKWebView) {

@@ -113,7 +113,7 @@ func wrappedEmailHTML(_ htmlBody: String) -> String {
     return """
     <!doctype html>
     <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; font-src data: https:; frame-src 'none'; form-action 'none'; base-uri 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; object-src 'none'; img-src data: https: http: cid:; style-src 'unsafe-inline'; font-src data: https:; frame-src 'none'; form-action 'none'; base-uri 'none';">
     <style>
         html, body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.4; margin: 12px; color: -apple-system-label; background: transparent; }
         img { max-width: 100%; height: auto; }
@@ -127,29 +127,31 @@ func wrappedEmailHTML(_ htmlBody: String) -> String {
 }
 
 func lightlySanitizedEmailHTML(_ htmlBody: String) -> String {
-    var sanitized = htmlBody
-    let patterns = [
-        #"(?is)<\s*(script|iframe|object|embed|form|base)\b[^>]*>.*?<\s*/\s*\1\s*>"#,
-        #"(?is)<\s*(script|iframe|object|embed|form|base)\b[^>]*/\s*>"#,
-        #"(?is)<\s*meta\b[^>]*http-equiv\s*=\s*['"]?refresh['"]?[^>]*>"#,
-        #"(?is)\s+on[a-z]+\s*=\s*(['"]).*?\1"#,
-        #"(?is)\s+on[a-z]+\s*=\s*[^\s>]+"#,
+    // Ordered (pattern, replacement) passes:
+    // - drop active, non-readable elements (script/iframe/object/embed) entirely;
+    // - drop redirect/rebase tags (base, meta refresh);
+    // - unwrap <form> to <div> so readable receipt bodies survive (submission is
+    //   already inert via JS disabled + CSP form-action 'none');
+    // - strip inline event handlers and neutralize javascript: URLs (defense-in-depth).
+    let replacements: [(pattern: String, template: String)] = [
+        (#"(?is)<\s*(script|iframe|object|embed)\b[^>]*>.*?<\s*/\s*\1\s*>"#, ""),
+        (#"(?is)<\s*(script|iframe|object|embed)\b[^>]*/\s*>"#, ""),
+        (#"(?is)<\s*base\b[^>]*>"#, ""),
+        (#"(?is)<\s*meta\b[^>]*http-equiv\s*=\s*['"]?refresh['"]?[^>]*>"#, ""),
+        (#"(?is)<\s*form\b[^>]*>"#, "<div>"),
+        (#"(?is)<\s*/\s*form\s*>"#, "</div>"),
+        (#"(?is)\s+on[a-z]+\s*=\s*(['"]).*?\1"#, ""),
+        (#"(?is)\s+on[a-z]+\s*=\s*[^\s>]+"#, ""),
+        (#"(?is)(href|src)\s*=\s*(['"])\s*javascript:.*?\2"#, "$1=\"#\""),
     ]
 
-    for pattern in patterns {
+    var sanitized = htmlBody
+    for (pattern, template) in replacements {
         sanitized = sanitized.replacingOccurrences(
             of: pattern,
-            with: "",
+            with: template,
             options: .regularExpression
         )
     }
-
-    // Neutralize javascript: URLs while preserving visible link text.
-    sanitized = sanitized.replacingOccurrences(
-        of: #"(?is)(href|src)\s*=\s*(['"])\s*javascript:.*?\2"#,
-        with: "$1=\"#\"",
-        options: .regularExpression
-    )
-
     return sanitized
 }

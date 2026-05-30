@@ -94,6 +94,30 @@ final class EmailAmountScrollSupportTests: XCTestCase {
         XCTAssertTrue(sanitized.contains("href=\"#\""))
         XCTAssertTrue(wrapped.contains("<p>safe content</p>"))
     }
+
+    func testFormWrappedContentSurvivesSanitizationAndImagesAreAllowed() {
+        // #R078-T02
+        let html = """
+        <form action="https://evil.example.com" method="post">
+          <h1>Your receipt</h1>
+          <p>Order total: $15.19</p>
+          <img src="http://cdn.example.com/logo.png">
+        </form>
+        """
+        let sanitized = lightlySanitizedEmailHTML(html)
+        XCTAssertFalse(sanitized.contains("<form"))
+        XCTAssertFalse(sanitized.contains("</form>"))
+        XCTAssertTrue(sanitized.contains("<div>"))
+        XCTAssertTrue(sanitized.contains("</div>"))
+        XCTAssertTrue(sanitized.contains("Your receipt"))
+        XCTAssertTrue(sanitized.contains("Order total: $15.19"))
+        XCTAssertTrue(sanitized.contains("http://cdn.example.com/logo.png"))
+
+        let wrapped = wrappedEmailHTML(html)
+        XCTAssertTrue(wrapped.contains("img-src data: https: http: cid:"))
+        XCTAssertTrue(wrapped.contains("script-src 'none'"))
+        XCTAssertTrue(wrapped.contains("Your receipt"))
+    }
 }
 
 private func decimal(

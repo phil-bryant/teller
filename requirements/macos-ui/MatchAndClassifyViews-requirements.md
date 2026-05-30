@@ -110,10 +110,11 @@ Design: When `Confirm` succeeds for a transaction whose selected candidate still
 Tests:
 - R076-T01: Select a transaction with a loaded candidate email body, press Confirm, and verify the right pane keeps showing email body content while `email-error` remains hidden.
 
-R078  Statement: Rendered email HTML must strip active content and enforce restrictive CSP before WKWebView render.
-Design: HTML rendering path sanitizes untrusted email HTML (removing scriptable/embedded active elements and javascript/event-handler vectors) and wraps output with a restrictive Content Security Policy that disallows script/frame/form execution.
+R078  Statement: Rendered email HTML must strip/neutralize active content and enforce a restrictive CSP before WKWebView render, while preserving readable receipt content (including form-wrapped bodies).
+Design: HTML rendering path applies light sanitization to untrusted email HTML: it removes active, non-readable elements (`script`, `iframe`, `object`, `embed`), removes redirect/rebase tags (`base`, `meta http-equiv=refresh`), strips inline event-handler attributes, and neutralizes `javascript:` URLs. It must NOT delete the content of readable containers; `form` elements are unwrapped to `div` (submission is already inert via JS disabled + CSP `form-action 'none'`) so receipt bodies remain visible. Output is wrapped with a restrictive Content Security Policy (`default-src 'none'`, explicit `script-src 'none'`/`object-src 'none'`, `frame-src 'none'`, `form-action 'none'`, `base-uri 'none'`) that still permits readable resources, allowing images over `data:`/`https:`/`http:`/`cid:`, inline styles, and `data:`/`https:` fonts.
 Tests:
 - R078-T01: Render HTML containing scripts/iframes/forms/event handlers and verify sanitized output removes active vectors and includes restrictive CSP meta.
+- R078-T02: Render HTML whose visible content is wrapped in a `<form>` and verify the inner content survives sanitization (form unwrapped, not deleted) and that the CSP `img-src` permits `http:` and `cid:` images.
 
 R079  Statement: Email links clicked in rendered web view must open externally and never navigate in-place.
 Design: `EmailBodyWebView` navigation delegate cancels in-webview navigation actions and opens clicked URLs via `NSWorkspace` so untrusted pages do not gain in-app web context.
@@ -130,6 +131,7 @@ Tests:
 ## Changelog
 
 - 2026-05-30: Updated R015/R045/R065/R071 for the compact pane-ownership refactor (classification moved under Transactions actions; Search Email disclosure; match actions + note + emails in `CandidatesPane`; override-id field removed). Added R120 for responsive 2-pane/3-pane switching with preserved transactions-pane width.
+- 2026-05-30: Reworked R078 to keep sanitization "light" (unwrap forms instead of deleting their content) and loosened CSP `img-src` to permit `http:`/`cid:` images so receipts stay readable; added R078-T02.
 - 2026-05-30: Added R078/R079 for rendered-email sanitization/CSP hardening and external-only link navigation policy.
 - 2026-05-29: Updated R030 so classification actions no longer duplicate the transaction id beside Apply/Clear/Undo.
 - 2026-05-29: Updated R045 to require compact match action bar labels (`Confirm`, `Override`, `No-email`, `Clear`) with stable accessibility identifiers; added R045-T02.
