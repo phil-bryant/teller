@@ -198,7 +198,7 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │   - Ingest: 06_fetch_teller_api_data.py                                      │
  │   - Backfill: 07_backfill_bank_statements.py                                 │
  │   - API: 08_run_classification_api.py ->                                     │
- │          src/teller/teller_classification_api.py -> src/teller/classification │
+ │         src/teller/teller_classification_api.py -> src/teller/classification │
  └───────────────────────────────────────┬──────────────────────────────────────┘
                                          |
                                          v
@@ -427,12 +427,12 @@ Trust/authz boundaries:
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │ FastAPI app (`08_run_classification_api.py` -> `create_app`) │  │
 │  │                                                              │  │
-│  │ 1) Startup preflight verifies `TELLER_CLASSIFIER_WRITE_TOKEN` │  │
+│  │ 1) Startup preflight verifies `TELLER_CLASSIFIER_WRITE_TOKEN`│  │
 │  │    can be resolved from 1psa before serving `/v1/*` traffic. │  │
 │  │ 2) Request authz enforces `X-Teller-Write-Token` on `/v1/*`; │  │
-│  │    runtime token resolution is cached in-process (restart to  │  │
-│  │    pick up rotated 1psa values).                              │  │
-│  │    `/health` remains unauthenticated.                         │  │
+│  │    runtime token resolution is cached in-process (restart to │  │
+│  │    pick up rotated 1psa values).                             │  │
+│  │    `/health` remains unauthenticated.                        │  │
 │  │ 3) Pydantic validation rejects malformed payloads.           │  │
 │  │ 4) `_write_one` persists classification mutations via        │  │
 │  │    SQLAlchemy into `teller.transaction_nys_snw_category`.    │  │
