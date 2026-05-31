@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: commit-plan-artifacts
     content: Create commit 5 for .cursor plan artifacts and verify clean git status.
-    status: in_progress
+    status: completed
 isProject: false
 ---
 
