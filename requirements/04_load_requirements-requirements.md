@@ -31,11 +31,11 @@ Tests:
 - R020-T01: Run with missing selector and verify usage failure.
 - R020-T02: Run with invalid selector and verify usage failure.
 
-R025  Statement: Install dependencies via pip upgrade then requirements install.
-Design: Enable `pip` alias to `pip3`, upgrade pip, then `pip install -r <selected-file>`.
+R025  Statement: Install dependencies with a pinned, hash-verified bootstrap pip chain.
+Design: Enable `pip` alias to `pip3`, install pinned bootstrap `pip` via temporary hash-pinned requirements (`--require-hashes --only-binary=:all:`), then install selected project requirements with `--require-hashes` when lockfile hashes are present.
 Tests:
-- R025-T01: Verify pip upgrade runs before requirements install.
-- R025-T02: Verify selected requirements file is passed to pip install.
+- R025-T01: Verify bootstrap pip install runs with pinned hash-checking flags before project requirements install.
+- R025-T02: Verify selected requirements file is passed to pip install with `--require-hashes` when hash pins are present.
 
 R030  Statement: Preserve manual traceability policy for locked script.
 Constraints:
@@ -55,3 +55,4 @@ Tests:
 
 - 2026-04-19: Initial reverse-engineered requirements for locked `04_load_requirements.sh`.
 - 2026-05-15: Added R035 to require wheel-based psycopg2 dependency in `requirements.txt`.
+- 2026-05-31: Hardened R025 to require pinned bootstrap pip hash verification and hashed project dependency installs when available.

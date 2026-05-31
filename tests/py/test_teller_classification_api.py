@@ -173,9 +173,16 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(second, "cached-write-token")
         self.assertEqual(run_process_mock.call_count, 1)
 
-    @patch.dict("os.environ", {"TELLER_CLASSIFIER_WRITE_TOKEN": "env-write-token"}, clear=False)
+    @patch.dict(
+        "os.environ",
+        {
+            "TELLER_CLASSIFIER_ALLOW_ENV_WRITE_TOKEN": "true",
+            "TELLER_CLASSIFIER_WRITE_TOKEN": "env-write-token",
+        },
+        clear=False,
+    )
     @patch("teller.teller_classification_api.run_process")
-    def test_configured_write_token_prefers_env_override(self, run_process_mock):
+    def test_configured_write_token_prefers_env_override_when_enabled(self, run_process_mock):
         self._token_patch.stop()
         try:
             reset_configured_write_token_cache()
@@ -185,6 +192,21 @@ class ClassificationApiTests(unittest.TestCase):
 
         self.assertEqual(token, "env-write-token")
         run_process_mock.assert_not_called()
+
+    @patch.dict("os.environ", {"TELLER_CLASSIFIER_WRITE_TOKEN": "env-write-token"}, clear=False)
+    @patch("teller.teller_classification_api.shutil.which", return_value="/usr/local/bin/1psa")
+    @patch("teller.teller_classification_api.run_process")
+    def test_configured_write_token_ignores_env_override_without_flag(self, run_process_mock, _which_mock):
+        run_process_mock.return_value = SimpleNamespace(stdout="psa-write-token\n")
+        self._token_patch.stop()
+        try:
+            reset_configured_write_token_cache()
+            token = _configured_write_token()
+        finally:
+            self._token_patch.start()
+
+        self.assertEqual(token, "psa-write-token")
+        run_process_mock.assert_called_once()
 
     def test_display_label_joins_hierarchy(self):
         #R005-T01

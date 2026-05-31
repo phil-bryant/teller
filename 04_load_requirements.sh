@@ -106,5 +106,19 @@ fi
 
 alias pip=pip3
 shopt -s expand_aliases
-pip install --upgrade pip
-pip install -r "$REQUIREMENTS_FILE"
+
+BOOTSTRAP_PIP_VERSION="${BOOTSTRAP_PIP_VERSION:-25.3}"
+BOOTSTRAP_PIP_SHA256="${BOOTSTRAP_PIP_SHA256:-9655943313a94722b7774661c21049070f6bbb0a1516bf02f7c8d5d9201514cd}"
+BOOTSTRAP_PIP_REQUIREMENTS="$(mktemp "${TMPDIR:-/tmp}/teller-bootstrap-pip.XXXXXX.txt")"
+trap 'rm -f "$BOOTSTRAP_PIP_REQUIREMENTS"' EXIT
+cat > "$BOOTSTRAP_PIP_REQUIREMENTS" <<EOF
+pip==${BOOTSTRAP_PIP_VERSION} --hash=sha256:${BOOTSTRAP_PIP_SHA256}
+EOF
+
+pip install --upgrade --require-hashes --only-binary=:all: -r "$BOOTSTRAP_PIP_REQUIREMENTS"
+
+if grep -q -- '--hash=sha256:' "$REQUIREMENTS_FILE"; then
+    pip install --require-hashes -r "$REQUIREMENTS_FILE"
+else
+    pip install -r "$REQUIREMENTS_FILE"
+fi

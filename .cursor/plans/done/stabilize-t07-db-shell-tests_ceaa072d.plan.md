@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: verify-t07
     content: Run targeted bats files, then t07 shell lane, then full parallel suite
-    status: in_progress
+    status: completed
 isProject: false
 ---
 

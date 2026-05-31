@@ -187,6 +187,10 @@ if [[ "$PROFILE_TARGET" != "managed" ]]; then
           ('teller_read'),
           ('teller_write'),
           ('teller_admin'),
+          ('teller_ingest_writer'),
+          ('teller_api_reader'),
+          ('teller_api_writer'),
+          ('teller_migration_admin'),
           ('teller')
       )
       SELECT expected.role_name
@@ -363,6 +367,150 @@ if [[ -n "$missing_updated_at_coverage" ]]; then
   done <<< "$missing_updated_at_coverage"
 fi
 
+if [[ "$PROFILE_TARGET" != "managed" ]]; then
+  # Verify single-tenant RLS is enabled on high-risk financial/PII tables.
+  rls_gaps="$(
+  db_lines "
+    WITH expected(table_name) AS (
+      VALUES
+        ('transaction'),
+        ('account_details'),
+        ('identity_email'),
+        ('identity_phone_number'),
+        ('identity_address_data'),
+        ('transaction_nys_snw_category'),
+        ('transaction_email_candidate'),
+        ('transaction_email_match')
+    )
+    SELECT expected.table_name
+    FROM expected
+    LEFT JOIN pg_class rel
+      ON rel.relname = expected.table_name
+    LEFT JOIN pg_namespace rel_ns
+      ON rel_ns.oid = rel.relnamespace
+    WHERE rel_ns.nspname = 'teller'
+      AND (
+        rel.relrowsecurity IS DISTINCT FROM TRUE
+        OR rel.relforcerowsecurity IS DISTINCT FROM TRUE
+      )
+    ORDER BY expected.table_name;
+  "
+  )"
+  if [[ -n "$rls_gaps" ]]; then
+    while IFS= read -r table_name; do
+      [[ -n "$table_name" ]] || continue
+      record_failure "missing enforced RLS on teller.${table_name}"
+    done <<< "$rls_gaps"
+  fi
+
+# Verify secure views for PII-facing read paths are present.
+  missing_secure_views="$(
+  db_lines "
+    WITH expected(view_name) AS (
+      VALUES
+        ('account_details_secure_v1'),
+        ('identity_email_secure_v1'),
+        ('identity_phone_number_secure_v1'),
+        ('identity_address_data_secure_v1'),
+        ('audit_log_export_v1')
+    )
+    SELECT expected.view_name
+    FROM expected
+    LEFT JOIN information_schema.views views
+      ON views.table_schema = 'teller'
+     AND views.table_name = expected.view_name
+    WHERE views.table_name IS NULL
+    ORDER BY expected.view_name;
+  "
+  )"
+  if [[ -n "$missing_secure_views" ]]; then
+    record_failure "missing security views: ${missing_secure_views//$'\n'/, }"
+  fi
+
+# Verify hash/masked columns exist for restricted PII fields.
+  missing_pii_columns="$(
+  db_lines "
+    WITH expected(table_name, column_name) AS (
+      VALUES
+        ('account_details', 'account_number_hash'),
+        ('account_details', 'account_number_masked'),
+        ('identity_email', 'data_hash'),
+        ('identity_email', 'data_masked'),
+        ('identity_phone_number', 'data_hash'),
+        ('identity_phone_number', 'data_masked'),
+        ('identity_address_data', 'address_hash'),
+        ('identity_address_data', 'address_masked')
+    )
+    SELECT expected.table_name || '.' || expected.column_name
+    FROM expected
+    LEFT JOIN information_schema.columns columns
+      ON columns.table_schema = 'teller'
+     AND columns.table_name = expected.table_name
+     AND columns.column_name = expected.column_name
+    WHERE columns.column_name IS NULL
+    ORDER BY expected.table_name, expected.column_name;
+  "
+  )"
+  if [[ -n "$missing_pii_columns" ]]; then
+    record_failure "missing PII protection columns: ${missing_pii_columns//$'\n'/, }"
+  fi
+
+# Verify enriched audit evidence columns and support objects.
+  missing_audit_columns="$(
+  db_lines "
+    WITH expected(column_name) AS (
+      VALUES
+        ('request_id'),
+        ('actor_id'),
+        ('actor_service'),
+        ('session_role'),
+        ('app_context')
+    )
+    SELECT expected.column_name
+    FROM expected
+    LEFT JOIN information_schema.columns columns
+      ON columns.table_schema = 'teller'
+     AND columns.table_name = 'audit_log'
+     AND columns.column_name = expected.column_name
+    WHERE columns.column_name IS NULL
+    ORDER BY expected.column_name;
+  "
+  )"
+  if [[ -n "$missing_audit_columns" ]]; then
+    record_failure "missing audit evidence columns: ${missing_audit_columns//$'\n'/, }"
+  fi
+
+  if [[ "$(db_scalar "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'teller' AND table_name = 'security_event_log');")" != "t" ]]; then
+    record_failure "missing table: teller.security_event_log"
+  fi
+
+  if [[ "$(db_scalar "
+  SELECT EXISTS (
+    SELECT 1
+    FROM pg_proc proc
+    JOIN pg_namespace ns
+      ON ns.oid = proc.pronamespace
+    WHERE ns.nspname = 'teller'
+      AND proc.proname = 'log_security_event'
+  );
+  ")" != "t" ]]; then
+    record_failure "missing function: teller.log_security_event(...)"
+  fi
+
+  if [[ "$(db_scalar "
+  SELECT EXISTS (
+    SELECT 1
+    FROM pg_proc proc
+    JOIN pg_namespace ns
+      ON ns.oid = proc.pronamespace
+    WHERE ns.nspname = 'teller'
+      AND proc.proname = 'purge_audit_log_before'
+  );
+  ")" != "t" ]]; then
+    record_failure "missing function: teller.purge_audit_log_before(...)"
+  fi
+fi
+
 #R060: When the resolved profile requires TLS, confirm the live connection is encrypted.
 if [[ "${PG_SSLMODE:-}" == "require" || "${PG_SSLMODE:-}" == "verify-ca" || "${PG_SSLMODE:-}" == "verify-full" ]]; then
   ssl_active="$(db_scalar "SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid();")"
@@ -380,4 +528,4 @@ if (( ${#failures[@]} > 0 )); then
   exit 1
 fi
 
-echo "✅ PASS: Database deployment verified (roles, schema, core relations, FK cascade, and updated_at trigger coverage)."
+echo "✅ PASS: Database deployment verified (roles, schema, core relations, FK cascade, trigger coverage, and security hardening controls)."

@@ -63,6 +63,48 @@ def main():
     else:
       print("", end="")
     return
+  if "expected(table_name)" in sql and "relforcerowsecurity" in sql:
+    if os.environ.get("RLS_GAPS") == "1":
+      print("transaction")
+    else:
+      print("", end="")
+    return
+  if "expected(view_name)" in sql and "audit_log_export_v1" in sql:
+    if os.environ.get("SECURITY_VIEW_GAPS") == "1":
+      print("audit_log_export_v1")
+    else:
+      print("", end="")
+    return
+  if "expected(table_name, column_name)" in sql and "account_number_hash" in sql:
+    if os.environ.get("PII_COLUMN_GAPS") == "1":
+      print("account_details.account_number_hash")
+    else:
+      print("", end="")
+    return
+  if "expected(column_name)" in sql and "request_id" in sql and "audit_log" in sql:
+    if os.environ.get("AUDIT_COLUMN_GAPS") == "1":
+      print("request_id")
+    else:
+      print("", end="")
+    return
+  if "security_event_log" in sql and "information_schema.tables" in sql and "EXISTS" in sql:
+    if os.environ.get("SECURITY_EVENT_TABLE_MISSING") == "1":
+      print("f", end="")
+    else:
+      print("t", end="")
+    return
+  if "proc.proname = 'log_security_event'" in sql:
+    if os.environ.get("LOG_SECURITY_EVENT_MISSING") == "1":
+      print("f", end="")
+    else:
+      print("t", end="")
+    return
+  if "proc.proname = 'purge_audit_log_before'" in sql:
+    if os.environ.get("PURGE_AUDIT_FN_MISSING") == "1":
+      print("f", end="")
+    else:
+      print("t", end="")
+    return
   if "pg_stat_ssl" in sql and "pg_backend_pid" in sql:
     if os.environ.get("SSL_INACTIVE") == "1":
       print("f", end="")
@@ -181,6 +223,33 @@ EOF
   [ "$status" -ne 0 ]
   [[ "$output" == *"missing updated_at trigger coverage: transaction"* ]]
   [[ "$output" == *"❌ FAIL:"* ]]
+}
+
+@test "fails when enforced RLS coverage has gaps" {
+  : > "${PSQL_LOG}"
+  make_psql_happy
+  run env TELLER_DB_PASSWORD=pw RLS_GAPS=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"missing enforced RLS on teller.transaction"* ]]
+}
+
+@test "fails when PII security views or columns are missing" {
+  : > "${PSQL_LOG}"
+  make_psql_happy
+  run env TELLER_DB_PASSWORD=pw SECURITY_VIEW_GAPS=1 PII_COLUMN_GAPS=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"missing security views:"* ]]
+  [[ "$output" == *"missing PII protection columns:"* ]]
+}
+
+@test "fails when audit evidence schema artifacts are missing" {
+  : > "${PSQL_LOG}"
+  make_psql_happy
+  run env TELLER_DB_PASSWORD=pw AUDIT_COLUMN_GAPS=1 SECURITY_EVENT_TABLE_MISSING=1 LOG_SECURITY_EVENT_MISSING=1 PURGE_AUDIT_FN_MISSING=1 \
+    zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"missing audit evidence columns:"* ]]
+  [[ "$output" == *"missing table: teller.security_event_log"* ]]
 }
 
 stub_managed_verify_helper() {

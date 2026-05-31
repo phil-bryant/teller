@@ -45,7 +45,15 @@ RUNTIME_LOCK_FILE="${RUNTIME_LOCK_FILE:-./requirements.txt}"
 SECURITY_IN_FILE="${SECURITY_IN_FILE:-./requirements/security/requirements-security.in}"
 SECURITY_LOCK_FILE="${SECURITY_LOCK_FILE:-./requirements/security/requirements-security.txt}"
 SUPPLY_CHAIN_ARTIFACTS_DIR="${SUPPLY_CHAIN_ARTIFACTS_DIR:-./artifacts/security/reports}"
-SIGNING_MODE="${SUPPLY_CHAIN_SIGNING_MODE:-scaffold}"
+if [[ -z "${SUPPLY_CHAIN_SIGNING_MODE:-}" ]]; then
+  if [[ "${CI:-}" == "true" || "${CI:-}" == "1" ]]; then
+    SIGNING_MODE="required"
+  else
+    SIGNING_MODE="scaffold"
+  fi
+else
+  SIGNING_MODE="${SUPPLY_CHAIN_SIGNING_MODE}"
+fi
 
 for file_path in "$RUNTIME_IN_FILE" "$SECURITY_IN_FILE"; do
   if [[ ! -f "$file_path" ]]; then

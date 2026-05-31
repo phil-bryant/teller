@@ -50,7 +50,7 @@ Tests:
 - R035-T02: Submit multiple updates and verify response cardinality and per-item write results.
 
 R040  Statement: Require authenticated token for all classifier API endpoints.
-Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN`, cache the resolved value in-process for runtime auth checks, require `X-Teller-Write-Token` for all `/v1/*` routes (read and write), compare supplied token using constant-time equality, and return 401 for missing or invalid tokens. Rotating the 1psa token requires classifier process restart to refresh the cached value.
+Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN` by default, cache the resolved value in-process for runtime auth checks, require `X-Teller-Write-Token` for all `/v1/*` routes (read and write), compare supplied token using constant-time equality, and return 401 for missing or invalid tokens. Allow env-token fallback only when `TELLER_CLASSIFIER_ALLOW_ENV_WRITE_TOKEN=true` is explicitly set for test/dev workflows. Rotating the 1psa token requires classifier process restart to refresh the cached value.
 Tests:
 - R040-T01: Submit write requests without `X-Teller-Write-Token` and verify 401 response.
 - R040-T02: Submit write requests with mismatched token and verify 401 response.
@@ -176,3 +176,4 @@ Tests:
 - 2026-05-28: Extended R060 so the candidates endpoint unions the active matched email (even when absent from the latest run) as an enriched synthetic candidate row; added R060-T05.
 - 2026-05-29: Added R074 so match-id confirm can transition active no-email rows to `human_confirmed_ai_match` using a validated latest-run candidate email.
 - 2026-05-29: Added R076 so `/v1/transactions` representative active-match selection prefers human-reviewed rows over AI-confidence ordering in multi-email scenarios.
+- 2026-05-31: Tightened R040 so env-token fallback requires explicit `TELLER_CLASSIFIER_ALLOW_ENV_WRITE_TOKEN=true`.

@@ -42,7 +42,10 @@ teardown() {
   local venv
   venv="${FIXTURE_ROOT}/fixture-venv"
   mkdir -p "${venv}/bin"
-  touch "${FIXTURE_ROOT}/requirements.txt"
+  cat > "${FIXTURE_ROOT}/requirements.txt" <<'EOF'
+requests==2.34.2 \
+    --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+EOF
   cat > "${venv}/pyvenv.cfg" <<EOF
 home = /usr
 include-system-site-packages = false
@@ -55,8 +58,8 @@ EOF
     ./04_load_requirements.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"requirements.txt"* ]]
-  grep -F "install --upgrade pip" "${CALLS_LOG}"
-  grep -F "install -r requirements.txt" "${CALLS_LOG}"
+  grep -F "install --upgrade --require-hashes --only-binary=:all: -r " "${CALLS_LOG}"
+  grep -F "install --require-hashes -r requirements.txt" "${CALLS_LOG}"
 }
 
 @test "requires cpu or gpu when split files are used" {

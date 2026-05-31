@@ -22,10 +22,11 @@ _DEFAULT_HTTPS_KEY = str(Path.home() / ".teller" / "classifier-localhost-key.pem
 
 
 def require_write_token():
-    #R010: Resolve classifier write token from env or 1psa before serving.
-    env_token = os.environ.get(_WRITE_TOKEN_PSA_ITEM, "").strip()
-    if env_token:
-        return
+    #R010: Resolve classifier write token from 1psa by default before serving.
+    if _env_flag("TELLER_CLASSIFIER_ALLOW_ENV_WRITE_TOKEN", default=False):
+        env_token = os.environ.get(_WRITE_TOKEN_PSA_ITEM, "").strip()
+        if env_token:
+            return
     try:
         result = subprocess.run(
             ["1psa", "-p", _WRITE_TOKEN_PSA_ITEM],

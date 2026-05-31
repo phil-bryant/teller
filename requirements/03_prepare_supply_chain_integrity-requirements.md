@@ -26,6 +26,12 @@ Design: Invoke `src/scripts/security/generate_supply_chain_artifacts.py` with ru
 Tests:
 - R015-T01: Verify artifact generator is invoked and writes outputs to security report path.
 
+R020  Statement: CI defaults to required SBOM signing mode when no explicit mode is provided.
+Design: Resolve signing mode to `required` when `CI=true|1` and `SUPPLY_CHAIN_SIGNING_MODE` is unset; keep local default `scaffold` unless explicitly overridden.
+Tests:
+- R020-T01: Verify CI execution invokes artifact generator with `--signing-mode required` when `SUPPLY_CHAIN_SIGNING_MODE` is not set (`tests/sh/03_prepare_supply_chain_integrity.bats`).
+
 ## Changelog
 
 - 2026-05-30: Initial requirements for pre-03 supply-chain integrity preparation script.
+- 2026-05-31: Added CI-default required signing requirement (R020) while preserving local scaffold default.

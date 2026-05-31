@@ -15,7 +15,7 @@ Tests:
 - R005-T01: Run entrypoint and verify `uvicorn.run` receives app instance and resolved bind settings.
 
 R010  Statement: Require classifier write token availability before serving requests.
-Design: Resolve write token only via `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN` during startup preflight and fail fast when 1psa is unavailable or token lookup is empty/failing. Runtime auth checks in the API process cache the token, so rotation requires process restart.
+Design: Resolve write token via `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN` during startup preflight and fail fast when 1psa is unavailable or token lookup is empty/failing. Allow env-token short-circuit only when `TELLER_CLASSIFIER_ALLOW_ENV_WRITE_TOKEN=true` is explicitly set (test/dev workflows). Runtime auth checks in the API process cache the token, so rotation requires process restart.
 Tests:
 - R010-T01: Run entrypoint with missing `1psa` and verify startup fails with explicit token-resolution error.
 - R010-T02: Stub failed/empty 1psa lookup and verify startup exits before `uvicorn.run`.
@@ -32,3 +32,4 @@ Tests:
 - 2026-05-09: Added R010 for mandatory 1psa-backed write-token preflight.
 - 2026-05-25: Added local-bind guardrails and HTTPS-by-default startup requirements (R001/R015).
 - 2026-05-27: Clarified R010 relation to runtime token cache and restart-on-rotation behavior.
+- 2026-05-31: Added explicit env-token fallback guard (`TELLER_CLASSIFIER_ALLOW_ENV_WRITE_TOKEN`) to R010.

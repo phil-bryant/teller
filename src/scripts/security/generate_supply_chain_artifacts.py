@@ -18,9 +18,15 @@ import pathlib
 import re
 import subprocess
 import sys
+import shlex
+import urllib.error
+import urllib.parse
+import urllib.request
+import uuid
 from typing import Iterable
 
 REQ_LINE_RE = re.compile(r"^([A-Za-z0-9_.-]+)==([A-Za-z0-9_.!+-]+)$")
+HASH_LINE_RE = re.compile(r"^--hash=sha256:([a-fA-F0-9]{64})$")
 
 
 def sha256_file(path: pathlib.Path) -> str:
@@ -34,13 +40,27 @@ def sha256_file(path: pathlib.Path) -> str:
     return digest.hexdigest()
 
 
-def parse_pinned_requirements(path: pathlib.Path) -> list[dict[str, str]]:
-    components: list[dict[str, str]] = []
+def normalize_pypi_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def build_purl(name: str, version: str) -> str:
+    return f"pkg:pypi/{normalize_pypi_name(name)}@{version}"
+
+
+def parse_pinned_requirements(path: pathlib.Path) -> list[dict[str, object]]:
+    components: list[dict[str, object]] = []
+    current: dict[str, object] | None = None
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
-        if line.startswith("--hash="):
+        hash_match = HASH_LINE_RE.match(line)
+        if hash_match:
+            if current is not None:
+                component_hashes = current.setdefault("hashes", [])
+                assert isinstance(component_hashes, list)
+                component_hashes.append(hash_match.group(1).lower())
             continue
         if line.startswith("--"):
             continue
@@ -50,32 +70,116 @@ def parse_pinned_requirements(path: pathlib.Path) -> list[dict[str, str]]:
         if not match:
             continue
         name, version = match.groups()
-        components.append({"name": name, "version": version})
+        if current is not None:
+            components.append(current)
+        current = {"name": name, "version": version, "hashes": []}
+    if current is not None:
+        components.append(current)
     return components
 
 
+def merge_components(
+    runtime_components: list[dict[str, object]],
+    security_components: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    merged: dict[tuple[str, str], dict[str, object]] = {}
+    for scope, component_list in (("required", runtime_components), ("optional", security_components)):
+        for component in component_list:
+            name = str(component["name"])
+            version = str(component["version"])
+            key = (normalize_pypi_name(name), version)
+            hashes = sorted({str(item).lower() for item in component.get("hashes", [])})
+            if key not in merged:
+                merged[key] = {
+                    "name": name,
+                    "version": version,
+                    "scope": scope,
+                    "hashes": hashes,
+                }
+                continue
+            existing = merged[key]
+            if existing["scope"] != "required" and scope == "required":
+                existing["scope"] = "required"
+            existing_hashes = set(str(item) for item in existing.get("hashes", []))
+            existing_hashes.update(hashes)
+            existing["hashes"] = sorted(existing_hashes)
+    return sorted(
+        merged.values(),
+        key=lambda entry: (normalize_pypi_name(str(entry["name"])), str(entry["version"])),
+    )
+
+
+def _license_id_from_classifiers(classifiers: list[str]) -> str | None:
+    classifier_to_spdx = {
+        "License :: OSI Approved :: Apache Software License": "Apache-2.0",
+        "License :: OSI Approved :: BSD License": "BSD-3-Clause",
+        "License :: OSI Approved :: MIT License": "MIT",
+        "License :: OSI Approved :: ISC License (ISCL)": "ISC",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)": "GPL-3.0-only",
+        "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)": "LGPL-3.0-only",
+        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)": "MPL-2.0",
+    }
+    for classifier in classifiers:
+        mapped = classifier_to_spdx.get(classifier.strip())
+        if mapped:
+            return mapped
+    return None
+
+
+def fetch_component_licenses(name: str, version: str, timeout: float = 5.0) -> list[dict[str, object]]:
+    package = urllib.parse.quote(name)
+    release = urllib.parse.quote(version)
+    url = f"https://pypi.org/pypi/{package}/{release}/json"
+    request = urllib.request.Request(url, headers={"User-Agent": "teller-sbom-generator/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
+        return [{"license": {"name": "UNKNOWN"}}]
+
+    info = payload.get("info", {})
+    license_expression = str(info.get("license_expression") or "").strip()
+    if license_expression:
+        return [{"expression": license_expression}]
+
+    license_name = str(info.get("license") or "").strip()
+    if license_name and license_name.upper() not in {"UNKNOWN", "N/A"}:
+        return [{"license": {"name": license_name}}]
+
+    classifier_id = _license_id_from_classifiers(
+        [str(item) for item in info.get("classifiers", []) if isinstance(item, str)]
+    )
+    if classifier_id:
+        return [{"license": {"id": classifier_id}}]
+    return [{"license": {"name": "UNKNOWN"}}]
+
+
 def build_cyclonedx(
-    runtime_components: list[dict[str, str]],
-    security_components: list[dict[str, str]],
+    runtime_components: list[dict[str, object]],
+    security_components: list[dict[str, object]],
 ) -> dict:
     timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
+    serial_number = f"urn:uuid:{uuid.uuid4()}"
     components = []
-    for pkg in runtime_components:
+    for pkg in merge_components(runtime_components, security_components):
+        name = str(pkg["name"])
+        version = str(pkg["version"])
+        purl = build_purl(name, version)
+        hashes = [
+            {"alg": "SHA-256", "content": digest}
+            for digest in pkg.get("hashes", [])
+            if isinstance(digest, str) and digest
+        ]
         components.append(
             {
                 "type": "library",
-                "name": pkg["name"],
-                "version": pkg["version"],
-                "scope": "required",
-            }
-        )
-    for pkg in security_components:
-        components.append(
-            {
-                "type": "library",
-                "name": pkg["name"],
-                "version": pkg["version"],
-                "scope": "optional",
+                "bom-ref": purl,
+                "name": name,
+                "version": version,
+                "scope": str(pkg.get("scope", "optional")),
+                "purl": purl,
+                "hashes": hashes,
+                "licenses": fetch_component_licenses(name, version),
             }
         )
 
@@ -83,8 +187,15 @@ def build_cyclonedx(
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
         "version": 1,
+        "serialNumber": serial_number,
         "metadata": {
             "timestamp": timestamp,
+            "component": {
+                "type": "application",
+                "name": "teller",
+                "bom-ref": "pkg:generic/teller@0",
+                "purl": "pkg:generic/teller@0",
+            },
             "tools": [
                 {
                     "vendor": "teller",
@@ -108,28 +219,54 @@ def has_command(command: str) -> bool:
     ).returncode == 0
 
 
-def sign_sbom_with_cosign(sbom_path: pathlib.Path, signature_path: pathlib.Path) -> bool:
-    if not has_command("cosign"):
-        return False
-    cosign_key = os.getenv("COSIGN_KEY", "").strip()
-    if not cosign_key:
-        return False
+def _run_cosign_sign_blob(
+    command: list[str],
+    sbom_path: pathlib.Path,
+    signature_path: pathlib.Path,
+) -> bool:
     result = subprocess.run(
-        [
-            "cosign",
-            "sign-blob",
-            "--yes",
-            "--key",
-            cosign_key,
-            "--output-signature",
-            str(signature_path),
-            str(sbom_path),
-        ],
+        [*command, "--output-signature", str(signature_path), str(sbom_path)],
         check=False,
         capture_output=True,
         text=True,
     )
     return result.returncode == 0 and signature_path.exists()
+
+
+def sign_sbom_with_cosign(
+    sbom_path: pathlib.Path, signature_path: pathlib.Path
+) -> tuple[bool, str]:
+    if not has_command("cosign"):
+        return False, "cosign command unavailable"
+    cosign_key = os.getenv("COSIGN_KEY", "").strip()
+    if cosign_key:
+        signed = _run_cosign_sign_blob(
+            ["cosign", "sign-blob", "--yes", "--key", cosign_key],
+            sbom_path,
+            signature_path,
+        )
+        return signed, "cosign key signing failed" if not signed else ""
+
+    if os.getenv("GITHUB_ACTIONS", "").lower() in {"true", "1"}:
+        oidc_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "").strip()
+        if not oidc_token:
+            return False, "cosign keyless signing unavailable (missing GitHub OIDC token)"
+        identity = os.getenv("COSIGN_CERT_IDENTITY", "").strip()
+        issuer = os.getenv("COSIGN_CERT_OIDC_ISSUER", "").strip()
+        keyless_command = ["cosign", "sign-blob", "--yes"]
+        if identity:
+            keyless_command.extend(["--certificate-identity", identity])
+        if issuer:
+            keyless_command.extend(["--certificate-oidc-issuer", issuer])
+        signed = _run_cosign_sign_blob(keyless_command, sbom_path, signature_path)
+        if not signed:
+            return (
+                False,
+                f"cosign keyless signing failed ({shlex.join(keyless_command)})",
+            )
+        return True, ""
+
+    return False, "cosign unavailable or COSIGN_KEY not configured"
 
 
 def write_scaffold_signature(
@@ -188,17 +325,18 @@ def main(argv: Iterable[str]) -> int:
 
     signature_mode = "off"
     if args.signing_mode != "off":
-        if sign_sbom_with_cosign(sbom_path, signature_path):
+        signed, sign_failure_reason = sign_sbom_with_cosign(sbom_path, signature_path)
+        if signed:
             signature_mode = "cosign"
         else:
             if args.signing_mode == "required":
                 raise SystemExit(
-                    "Signing mode is required, but cosign signing context is unavailable."
+                    f"Signing mode is required, but cosign signing context is unavailable: {sign_failure_reason}"
                 )
             write_scaffold_signature(
                 signature_path,
                 sbom_sha,
-                "cosign unavailable or COSIGN_KEY not configured",
+                sign_failure_reason,
             )
             signature_mode = "scaffold"
 

@@ -18,3 +18,8 @@ R010  Statement: Enforce optional strict gates for missing required binaries, ve
 Design: Return non-zero when `--fail-on-missing-required` detects missing required commands, when `--fail-on-version` detects stale/unknown constrained versions, or when `--fail-on-hash` detects checksum mismatches.
 Tests:
 - R010-T01: Verify `main()` returns failing exit status only when the corresponding strict gate is enabled and its condition is present (`tests/py/test_check_binary_integrity.py`).
+
+R015  Statement: Maintain SHA256 allowlists for pinned binaries with a documented refresh workflow.
+Design: Pin high-sensitivity local binaries in `config/security/binary-integrity-policy.json` (currently `1psa`, `cosign`, and `gitleaks`) and treat `--fail-on-hash` mismatches as blocking in strict lanes. For intentionally upgraded binaries, refresh digest pins by rerunning the integrity checker, copying observed digests into `allowed_sha256`, and rerunning t02 before merging. Homebrew-managed binaries may churn digests on upgrade, so pin selectively and only update hashes for deliberate upgrades.
+Tests:
+- R015-T01: Verify a digest in `allowed_sha256` produces an `ok` hash status and no hash mismatch count (`tests/py/test_check_binary_integrity.py`).

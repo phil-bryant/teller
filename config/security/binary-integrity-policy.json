@@ -53,7 +53,9 @@
       ],
       "version_pattern": "(\\d+(?:\\.\\d+){1,2})",
       "min_version": null,
-      "allowed_sha256": []
+      "allowed_sha256": [
+        "0cc7eac36c1232139fbd59c50944120046942cbe26eed11db83b0f7c4150414d"
+      ]
     },
     {
       "id": "curl",
@@ -133,6 +135,19 @@
       "allowed_sha256": []
     },
     {
+      "id": "cosign",
+      "command": "cosign",
+      "required": false,
+      "version_args": [
+        "version"
+      ],
+      "version_pattern": "(\\d+(?:\\.\\d+){1,2})",
+      "min_version": null,
+      "allowed_sha256": [
+        "7247772720caf34bc9d83c5dfa18e402c3b32dde31c98bd33a3cc3a6779a3304"
+      ]
+    },
+    {
       "id": "gitleaks",
       "command": "gitleaks",
       "required": false,
@@ -141,7 +156,9 @@
       ],
       "version_pattern": "(\\d+(?:\\.\\d+){1,2})",
       "min_version": null,
-      "allowed_sha256": []
+      "allowed_sha256": [
+        "f414bc2fb952be6c9072b75cb411e3368614ef4b16d48dbd9ad238034afd2302"
+      ]
     },
     {
       "id": "shellcheck",

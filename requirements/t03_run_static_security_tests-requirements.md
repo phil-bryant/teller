@@ -120,6 +120,11 @@ Design: Invoke `src/scripts/security/generate_supply_chain_artifacts.py` during 
 Tests:
 - R110-T01: Run SAST lane and verify SBOM/signature/attestation artifacts exist in the reports directory.
 
+R115  Statement: Static security lane defaults SBOM signing mode to required in CI when unset.
+Design: Resolve `SUPPLY_CHAIN_SIGNING_MODE` to `required` when `CI=true|1` and the variable is not explicitly set; keep non-CI default `scaffold` for local development.
+Tests:
+- R115-T01: Run lane with `CI=true` and no signing-mode override and verify artifact generator is invoked with `--signing-mode required`.
+
 ## Changelog
 
 - 2026-05-30: Added R100 to require Schemathesis token redaction for static-lane DAST artifacts.
@@ -133,3 +138,4 @@ Tests:
 - 2026-05-30: Added R080 to keep Python bytecode cache output under `artifacts/cache/pycache` and prevent root-level `__pycache__/`.
 - 2026-05-30: Added R105 for `--require-hashes` enforcement during security toolchain bootstrap.
 - 2026-05-30: Added R110 to require SBOM + signing scaffold artifact generation in static security lane.
+- 2026-05-31: Added R115 to require CI-default `--signing-mode required` behavior for supply-chain artifact generation.

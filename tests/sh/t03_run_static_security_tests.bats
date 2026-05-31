@@ -665,6 +665,38 @@ EOS
   [ -d "${FIXTURE_ROOT}/.custom-rep" ]
 }
 
+@test "defaults supply-chain signing mode to required in CI when unset" {
+  setup_shell_test
+  copy_security_project_files
+  write_python3_venv_stub
+  mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security/bin"
+  touch "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  chmod +x "${FIXTURE_ROOT}/artifacts/venv/security/bin/semgrep"
+  cat > "${STUB_BIN}/cosign" <<'EOF'
+#!/usr/bin/env bash
+sig=""
+sbom=""
+prev=""
+for arg in "$@"; do
+  if [[ "$prev" == "--output-signature" ]]; then
+    sig="$arg"
+  fi
+  prev="$arg"
+  sbom="$arg"
+done
+if [[ -n "$sig" ]]; then
+  printf 'fake-signature for %s\n' "$sbom" > "$sig"
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/cosign"
+  run env RUN_SAST=false RUN_DAST=false CI=true COSIGN_KEY=fake-key \
+    bash "${FIXTURE_ROOT}/t03_run_static_security_tests.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"python3 ./src/scripts/security/generate_supply_chain_artifacts.py --runtime-lock ./requirements.txt --security-lock ./requirements/security/requirements-security.txt --output-dir ./artifacts/security/reports --signing-mode required"* ]]
+}
+
 @test "SAST produces JSON reports and sast summary" {
   #R020-T01 #R025-T01 #R025-T02 #R030-T01 #R030-T02 #R065-T01 #R110-T01
   setup_shell_test

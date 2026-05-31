@@ -135,6 +135,46 @@ class CheckBinaryIntegrityTests(unittest.TestCase):
             payload = json.loads(out_json.read_text(encoding="utf-8"))
             self.assertEqual(payload["summary"]["hash_mismatch"], 1)
 
+    def test_make_report_marks_hash_allowlist_match_ok(self) -> None:
+        #R015-T01
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            fake_bin = tmp_path / "fake-hash-ok-tool"
+            make_executable(
+                fake_bin,
+                textwrap.dedent(
+                    """\
+                    #!/usr/bin/env bash
+                    echo "fake-hash-ok-tool 1.2.3"
+                    """
+                ),
+            )
+            expected_digest = self.module.sha256_file(str(fake_bin))
+            policy_path = tmp_path / "policy.json"
+            policy_path.write_text(
+                json.dumps(
+                    {
+                        "binaries": [
+                            {
+                                "id": "hash-ok-tool",
+                                "command": str(fake_bin),
+                                "required": True,
+                                "version_args": ["--version"],
+                                "version_pattern": "(\\d+\\.\\d+\\.\\d+)",
+                                "min_version": None,
+                                "allowed_sha256": [expected_digest.upper()],
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            report = self.module.make_report(policy_path)
+        self.assertEqual(report["summary"]["hash_mismatch"], 0)
+        entry = report["binaries"][0]
+        self.assertEqual(entry["status"], "ok")
+        self.assertEqual(entry["hash_status"], "ok")
+
     def test_main_passes_without_failure_flags(self) -> None:
         #R010-T01
         with tempfile.TemporaryDirectory() as tmp:

@@ -33,6 +33,8 @@ src() {
   [ "$status" -eq 0 ]
   run grep "TELLER_CLASSIFIER_WRITE_TOKEN" "$(src)"
   [ "$status" -eq 0 ]
+  run grep "TELLER_CLASSIFIER_ALLOW_ENV_WRITE_TOKEN" "$(src)"
+  [ "$status" -eq 0 ]
 }
 
 @test "fails startup path when TLS cert or key files are missing" {
