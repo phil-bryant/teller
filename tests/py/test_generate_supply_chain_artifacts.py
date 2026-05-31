@@ -7,7 +7,7 @@ import unittest
 
 class GenerateSupplyChainArtifactsTests(unittest.TestCase):
     def test_generates_sbom_signature_and_attestation(self):
-        #R110-T01
+        #R110-T01 #R115-T01
         repo_root = Path(__file__).resolve().parents[2]
         script = repo_root / "src/scripts/security/generate_supply_chain_artifacts.py"
         with tempfile.TemporaryDirectory() as tmp:

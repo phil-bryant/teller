@@ -98,6 +98,7 @@ EOF
 }
 
 @test "defaults supply-chain signing mode to required in CI when unset" {
+  #R020-T01
   mkdir -p "${FIXTURE_ROOT}/fixture-venv" "${FIXTURE_ROOT}/requirements/security"
   cat > "${FIXTURE_ROOT}/fixture-venv/pyvenv.cfg" <<'EOF'
 home = /usr

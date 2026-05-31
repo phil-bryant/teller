@@ -666,6 +666,7 @@ EOS
 }
 
 @test "defaults supply-chain signing mode to required in CI when unset" {
+  #R115-T01
   setup_shell_test
   copy_security_project_files
   write_python3_venv_stub

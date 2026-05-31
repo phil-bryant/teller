@@ -5,6 +5,11 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "99_restore_database.sh"
+  export POSTGRES_BACKUP_ENCRYPTION_TYPE="gpg"
+  export POSTGRES_BACKUP_ENCRYPTION_GPG_PRIVATE_KEY="-----BEGIN PGP PRIVATE KEY BLOCK-----
+test-private-key
+-----END PGP PRIVATE KEY BLOCK-----"
+  export POSTGRES_BACKUP_ENCRYPTION_GPG_PRIVATE_KEY_PASSPHRASE="test-passphrase"
   mkdir -p "${FIXTURE_ROOT}/backups"
   mkdir -p "${FIXTURE_ROOT}/src/scripts"
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
@@ -37,6 +42,37 @@ fi
 exit 1
 EOF
   chmod +x "${STUB_BIN}/shasum"
+  cat > "${STUB_BIN}/gpg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"--import"* ]]; then
+  exit 0
+fi
+output=""
+source=""
+decrypt_mode=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output)
+      output="$2"
+      shift 2
+      continue
+      ;;
+    --decrypt)
+      decrypt_mode=true
+      source="$2"
+      shift 2
+      continue
+      ;;
+  esac
+  shift
+done
+if [[ "$decrypt_mode" == true && -n "$output" ]]; then
+  cp "$source" "$output"
+  exit 0
+fi
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/gpg"
 }
 
 teardown() {
@@ -85,7 +121,15 @@ EOF
 
 @test "fails when pg_restore is missing" {
   #R001-T01 #R010-T01 #R015-T01
-  stub_cmd 1psa "echo pass"
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-f" ]]; then
+  echo ""
+  exit 0
+fi
+echo "pass"
+EOF
+  chmod +x "${STUB_BIN}/1psa"
   stub_cmd psql "exit 0"
 
   run bash "${FIXTURE_ROOT}/99_restore_database.sh"
@@ -95,11 +139,11 @@ EOF
 
 @test "defaults to latest dump and reports completion path" {
   #R005-T01 #R005-T02 #R020-T01 #R020-T02 #R030-T01 #R030-T02 #R035-T01 #R035-T02 #R095-T01
-  old="${FIXTURE_ROOT}/backups/prod_20250101_000000.dump"
-  new="${FIXTURE_ROOT}/backups/prod_20250102_000000.dump"
-  new_globals="${FIXTURE_ROOT}/backups/prod_20250102_000000_globals.sql"
+  old="${FIXTURE_ROOT}/backups/prod_20250101_000000.dump.gpg"
+  new="${FIXTURE_ROOT}/backups/prod_20250102_000000.dump.gpg"
+  new_globals="${FIXTURE_ROOT}/backups/prod_20250102_000000_globals.sql.gpg"
   new_manifest="${FIXTURE_ROOT}/backups/prod_20250102_000000.manifest.sha256"
-  touch "$old" "$new" "${FIXTURE_ROOT}/backups/prod_20250102_000000_globals.sql"
+  touch "$old" "$new" "$new_globals"
   touch -t 202501010000 "$old"
   touch -t 202501020000 "$new"
   (
@@ -107,7 +151,15 @@ EOF
       shasum -a 256 "$(basename "$new")" "$(basename "$new_globals")" > "$(basename "$new_manifest")"
   )
 
-  stub_cmd 1psa "echo pass"
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-f" ]]; then
+  echo ""
+  exit 0
+fi
+echo "pass"
+EOF
+  chmod +x "${STUB_BIN}/1psa"
   cat > "${STUB_BIN}/psql" <<EOF
 #!/usr/bin/env bash
 echo psql "\$*" >> "${CALLS_LOG}"
@@ -122,6 +174,36 @@ EOF
   run bash "${FIXTURE_ROOT}/99_restore_database.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Restore complete from: ${new}"* ]]
+}
+
+@test "encrypted restore falls back to env decryption fields when 1psa fields are empty" {
+  #R110-T01
+  dump_path="${FIXTURE_ROOT}/backups/snapshot.dump.gpg"
+  touch "$dump_path"
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-f" ]]; then
+  echo ""
+  exit 0
+fi
+echo "pass"
+EOF
+  chmod +x "${STUB_BIN}/1psa"
+  cat > "${STUB_BIN}/psql" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/psql"
+  cat > "${STUB_BIN}/pg_restore" <<EOF
+#!/usr/bin/env bash
+echo pg_restore "\$*" >> "${CALLS_LOG}"
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/pg_restore"
+
+  run bash "${FIXTURE_ROOT}/99_restore_database.sh" --from "$dump_path" --table teller.transaction
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Restore complete from: ${dump_path}"* ]]
 }
 
 @test "table-scoped restore skips globals file requirement" {

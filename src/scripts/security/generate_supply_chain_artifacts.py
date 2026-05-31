@@ -19,9 +19,6 @@ import re
 import subprocess
 import sys
 import shlex
-import urllib.error
-import urllib.parse
-import urllib.request
 import uuid
 from typing import Iterable
 
@@ -126,15 +123,34 @@ def _license_id_from_classifiers(classifiers: list[str]) -> str | None:
     return None
 
 
+#R115: Fetch license metadata from the canonical PyPI JSON endpoint for each component.
+def _percent_encode_path_segment(value: str) -> str:
+    safe = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+    encoded_parts: list[str] = []
+    for byte in value.encode("utf-8"):
+        if byte in safe:
+            encoded_parts.append(chr(byte))
+        else:
+            encoded_parts.append(f"%{byte:02X}")
+    return "".join(encoded_parts)
+
+
+#R115: Resolve CycloneDX licenses[] metadata with deterministic UNKNOWN fallback.
 def fetch_component_licenses(name: str, version: str, timeout: float = 5.0) -> list[dict[str, object]]:
-    package = urllib.parse.quote(name)
-    release = urllib.parse.quote(version)
+    package = _percent_encode_path_segment(name)
+    release = _percent_encode_path_segment(version)
     url = f"https://pypi.org/pypi/{package}/{release}/json"
-    request = urllib.request.Request(url, headers={"User-Agent": "teller-sbom-generator/1.0"})
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
+        response = subprocess.run(
+            ["curl", "-fsSL", "--max-time", str(int(timeout)), url],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if response.returncode != 0:
+            return [{"license": {"name": "UNKNOWN"}}]
+        payload = json.loads(response.stdout)
+    except (OSError, TimeoutError, json.JSONDecodeError):
         return [{"license": {"name": "UNKNOWN"}}]
 
     info = payload.get("info", {})
@@ -251,6 +267,7 @@ def sign_sbom_with_cosign(
         oidc_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "").strip()
         if not oidc_token:
             return False, "cosign keyless signing unavailable (missing GitHub OIDC token)"
+        #R120: Prefer keyless OIDC signing in GitHub Actions when COSIGN_KEY is unset.
         identity = os.getenv("COSIGN_CERT_IDENTITY", "").strip()
         issuer = os.getenv("COSIGN_CERT_OIDC_ISSUER", "").strip()
         keyless_command = ["cosign", "sign-blob", "--yes"]

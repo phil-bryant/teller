@@ -302,31 +302,45 @@ for script in "${CHECKS[@]}"; do
     lane_dast_reuse_api="${PARALLEL_DAST_REUSE_EXISTING_API:-false}"
     lane_dast_db_profile="${PARALLEL_DAST_DB_PROFILE:-${TELLER_DB_PROFILE:-}}"
     crash_check_delay="${PARALLEL_CRASH_CHECK_DELAY_SECONDS:-0}"
+    db_lock_dir="${SCRIPT_DIR}/.parallel-db-tests.lock"
     if [[ "$script" == "t15_verify_macos_crash_test.sh" && "$crash_check_delay" =~ ^[0-9]+$ && "$crash_check_delay" -gt 0 ]]; then
       sleep "$crash_check_delay"
     fi
-    if [[ "$script" == "t05_deploy_database_verification_test.sh" || "$script" == "t06_run_sql_unit_tests.sh" || "$script" == "t16_classification_persistence_verification_test.sh" || "$script" == "t12_run_dynamic_security_tests.sh" ]]; then
-      if [[ "$script" == "t16_classification_persistence_verification_test.sh" ]]; then
-        TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
-        TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
-        TELLER_CLASSIFIER_API_URL="${TELLER_CLASSIFIER_API_URL:-${lane_api_url}}" \
-          "${script_path}" >"${log}" 2>&1
-      elif [[ "$script" == "t12_run_dynamic_security_tests.sh" ]]; then
-        TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
-        TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
-        DAST_BASE_PORT="${DAST_BASE_PORT:-${lane_dast_base_port}}" \
-        DAST_REUSE_EXISTING_API="${DAST_REUSE_EXISTING_API:-${lane_dast_reuse_api}}" \
-        TELLER_DB_PROFILE="${lane_dast_db_profile}" \
-          "${script_path}" >"${log}" 2>&1
+    run_lane() {
+      if [[ "$script" == "t05_deploy_database_verification_test.sh" || "$script" == "t06_run_sql_unit_tests.sh" || "$script" == "t16_classification_persistence_verification_test.sh" || "$script" == "t12_run_dynamic_security_tests.sh" ]]; then
+        if [[ "$script" == "t16_classification_persistence_verification_test.sh" ]]; then
+          TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
+          TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
+          TELLER_CLASSIFIER_API_URL="${TELLER_CLASSIFIER_API_URL:-${lane_api_url}}" \
+            "${script_path}" >"${log}" 2>&1
+        elif [[ "$script" == "t12_run_dynamic_security_tests.sh" ]]; then
+          TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
+          TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
+          DAST_BASE_PORT="${DAST_BASE_PORT:-${lane_dast_base_port}}" \
+          DAST_REUSE_EXISTING_API="${DAST_REUSE_EXISTING_API:-${lane_dast_reuse_api}}" \
+          TELLER_DB_PROFILE="${lane_dast_db_profile}" \
+            "${script_path}" >"${log}" 2>&1
+        else
+          TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
+          TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
+            "${script_path}" >"${log}" 2>&1
+        fi
       else
-        TELLER_DB_HOST="${TELLER_DB_HOST:-127.0.0.1}" \
-        TELLER_DB_SSLMODE="${TELLER_DB_SSLMODE:-require}" \
-          "${script_path}" >"${log}" 2>&1
+        "${script_path}" >"${log}" 2>&1
       fi
+    }
+
+    if [[ "$script" == "t05_deploy_database_verification_test.sh" || "$script" == "t06_run_sql_unit_tests.sh" || "$script" == "t16_classification_persistence_verification_test.sh" || "$script" == "t12_run_dynamic_security_tests.sh" ]]; then
+      while ! mkdir "$db_lock_dir" 2>/dev/null; do
+        sleep 1
+      done
+      run_lane
+      exit_code=$?
+      rmdir "$db_lock_dir" 2>/dev/null || true
     else
-      "${script_path}" >"${log}" 2>&1
+      run_lane
+      exit_code=$?
     fi
-    exit_code=$?
     echo "$exit_code" > "${log}.exit"
   ) &
   child_pids+=("$!")

@@ -311,7 +311,7 @@ Credential source resolution order used by recovery scripts:
   - managed target: full restore refused; `--table` scoped restore uses profile `PG_ONEPSA_ITEM` via `1psa`
   - local target admin actions: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD`
   - teller post-restore credential check/reset (local only): `TELLER_PSA_ITEM`/`TELLER_PSA_FIELD`
-  - backup decryption: `POSTGRES_BACKUP_ENCRYPTION` (`type`, `gpg_private_key`, `gpg_private_key_passphrase`) via `1psa -f`; falls back to `POSTGRES_BACKUP_ENCRYPTION_*` env vars when field lookup is empty/unavailable
+  - backup decryption: `POSTGRES_BACKUP_ENCRYPTION` (`type`, `gpg_private_key`, `gpg_private_key_passphrase`) via `1psa -f`; falls back to `POSTGRES_BACKUP_ENCRYPTION_*` env vars when field lookup is empty/unavailable (`pragma: allowlist secret`)
 
 ## Ingest + Normalization + Persistence
 

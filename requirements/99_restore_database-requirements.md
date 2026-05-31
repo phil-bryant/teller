@@ -10,13 +10,13 @@ Tests:
 - R001-T01: Verify script exits on failing command and unset variable paths.
 
 R005  Statement: Accept optional backup source path and support latest-backup defaulting.
-Design: Parse `--from`; otherwise select newest `.dump` in local backups directory.
+Design: Parse `--from`; otherwise select newest encrypted `.dump.gpg` in local backups directory and fallback to legacy plaintext `.dump` only when encrypted artifacts are absent.
 Tests:
 - R005-T01: Run without args and verify newest dump is selected.
 - R005-T02: Run with `--from` and verify provided path is selected.
 
 R010  Statement: Require restore dependencies before restore operations.
-Design: Validate `1psa`, `pg_restore`, and `psql` are available on PATH.
+Design: Validate `1psa`, `pg_restore`, `psql`, and `gpg` are available on PATH.
 Tests:
 - R010-T01: Remove `pg_restore` from PATH and verify clear failure.
 
@@ -26,7 +26,7 @@ Tests:
 - R015-T01: Force empty password response and verify non-zero exit.
 
 R020  Statement: Require globals dump file only for full restore mode.
-Design: Validate selected `.dump` path always; require sibling `_globals.sql` only when `--table` is not provided.
+Design: Validate selected backup path always; require sibling `_globals.sql.gpg` for encrypted full-restore mode (or `_globals.sql` for legacy plaintext mode) only when `--table` is not provided.
 Tests:
 - R020-T01: Run full restore with missing globals file and verify restore is refused.
 - R020-T02: Run table-scoped restore with missing globals file and verify restore still runs.
@@ -94,10 +94,15 @@ Tests:
 - R101-T02: Provide malformed `--table` identifier and verify restore exits non-zero before repair SQL.
 
 R102  Statement: Require and verify backup integrity manifest before full restore globals replay.
-Design: In full restore mode, require sibling `*.manifest.sha256` for selected dump/globals pair and verify checksums before running globals SQL as postgres.
+Design: In full restore mode, require sibling `*.manifest.sha256` for selected dump/globals pair and verify checksums before running globals SQL as postgres; for encrypted backups, manifest checksums must cover `.gpg` artifacts before decryption to temp files.
 Tests:
 - R102-T01: Run full restore with missing manifest and verify restore exits non-zero.
 - R102-T02: Run full restore with checksum verification failure and verify restore exits non-zero before globals replay.
+
+R110  Statement: Resolve backup decryption configuration from `POSTGRES_BACKUP_ENCRYPTION` with `.env` fallback and decrypt encrypted backup artifacts to secure temp files.
+Design: When selected backup artifacts end in `.gpg`, read `type`, `gpg_private_key`, and `gpg_private_key_passphrase` via `1psa -f POSTGRES_BACKUP_ENCRYPTION <field>` with fallback to `POSTGRES_BACKUP_ENCRYPTION_<FIELD>` environment variables, require `type=gpg`, decrypt to `mktemp` files with mode `600`, and guarantee cleanup via `trap`.
+Tests:
+- R110-T01: Force empty `1psa -f` responses and verify encrypted restore succeeds using `.env` fallback decryption fields.
 
 R070  Statement: Resolve teller password from configurable 1psa source for full-restore credential re-sync.
 Design: Read teller password via `TELLER_PSA_ITEM`/`TELLER_PSA_FIELD` with default item `localhost_postgres_teller`, and require non-empty value before restore proceeds.
@@ -138,6 +143,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-31: Added R110 for encrypted restore decryption contract and updated R005/R010/R020/R102 for encrypted backup defaults and verification semantics.
 - 2026-05-30: Added R086 for SQLite restore behavior through existing script.
 - 2026-05-30: Added R100-R102 for identifier validation, scoped repair SQL parameterization, and full-restore manifest integrity verification.
 - 2026-05-26: Added R085/R090/R095 for profile-aware restore behavior; managed-target restore is `--table`-only with profile-resolved credentials.

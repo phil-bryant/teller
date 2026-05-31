@@ -16,6 +16,7 @@ if RUN_SHELL_TESTS=true \
   RUN_SQL_TESTS=false \
   RUN_SWIFT_TESTS=false \
   RUN_MACOS_UI_REGRESSION_TESTS=false \
+  BATS_JOBS=1 \
   "${REPO_ROOT}/src/scripts/run_unit_test_lanes.sh"; then
   #R006: Emit an unambiguous success marker at completion.
   echo "✅ Shell unit tests succeeded."

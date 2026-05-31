@@ -5,6 +5,11 @@ setup() {
   setup_shell_test
   create_repo_fixture
   copy_script_to_fixture "97_backup_database.sh"
+  export POSTGRES_BACKUP_ENCRYPTION_TYPE="gpg"
+  export POSTGRES_BACKUP_ENCRYPTION_GPG_RECIPIENT="backup@example.test"
+  export POSTGRES_BACKUP_ENCRYPTION_GPG_PUBLIC_KEY="-----BEGIN PGP PUBLIC KEY BLOCK-----
+test-public-key
+-----END PGP PUBLIC KEY BLOCK-----"
   mkdir -p "${FIXTURE_ROOT}/src/scripts"
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -32,6 +37,32 @@ fi
 exit 1
 EOF
   chmod +x "${STUB_BIN}/shasum"
+  cat > "${STUB_BIN}/gpg" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"--import"* ]]; then
+  exit 0
+fi
+args=("$@")
+output=""
+source_path=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output)
+      output="$2"
+      shift 2
+      continue
+      ;;
+  esac
+  shift
+done
+if [[ -n "$output" ]]; then
+  source_path="${args[${#args[@]}-1]}"
+  cp "$source_path" "$output"
+  exit 0
+fi
+exit 1
+EOF
+  chmod +x "${STUB_BIN}/gpg"
 }
 
 teardown() {
@@ -40,7 +71,15 @@ teardown() {
 
 @test "fails when pg_dump is missing" {
   #R001-T01 #R005-T01 #R010-T01 #R015-T01
-  stub_cmd 1psa "echo pass"
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-f" ]]; then
+  echo ""
+  exit 0
+fi
+echo pass
+EOF
+  chmod +x "${STUB_BIN}/1psa"
   stub_cmd pg_dumpall "exit 0"
 
   run bash "${FIXTURE_ROOT}/97_backup_database.sh"
@@ -50,7 +89,15 @@ teardown() {
 
 @test "creates dump and globals artifacts with printed paths" {
   #R020-T01 #R025-T01 #R030-T01 #R035-T01 #R040-T01 #R050-T01 #R055-T01 #R055-T02
-  stub_cmd 1psa "echo pass"
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-f" ]]; then
+  echo ""
+  exit 0
+fi
+echo pass
+EOF
+  chmod +x "${STUB_BIN}/1psa"
   cat > "${STUB_BIN}/pg_dump" <<'EOF'
 #!/usr/bin/env bash
 while [[ $# -gt 0 ]]; do
@@ -80,8 +127,8 @@ EOF
 
   run bash "${FIXTURE_ROOT}/97_backup_database.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Backup written:"* ]]
-  [[ "$output" == *"Globals written:"* ]]
+  [[ "$output" == *"Backup written:"*".dump.gpg"* ]]
+  [[ "$output" == *"Globals written:"*"_globals.sql.gpg"* ]]
   [[ "$output" == *"Manifest written:"* ]]
   [[ "$output" == *"local_prod_"* ]]
   run bash -c "ls -1 '${FIXTURE_ROOT}/backups/'*.manifest.sha256"
@@ -90,6 +137,53 @@ EOF
   run bash -c "stat -f %Lp '${manifest_path}'"
   [ "$status" -eq 0 ]
   [ "$output" -eq 600 ]
+}
+
+@test "falls back to env encryption fields when 1psa field lookup is empty" {
+  #R110-T01
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-p" ]]; then
+  echo pass
+  exit 0
+fi
+if [[ "$1" == "-f" ]]; then
+  echo ""
+  exit 0
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/1psa"
+  cat > "${STUB_BIN}/pg_dump" <<'EOF'
+#!/usr/bin/env bash
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "-f" ]]; then
+    touch "$2"
+    shift 2
+    continue
+  fi
+  shift
+done
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/pg_dump"
+  cat > "${STUB_BIN}/pg_dumpall" <<'EOF'
+#!/usr/bin/env bash
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "-f" ]]; then
+    touch "$2"
+    shift 2
+    continue
+  fi
+  shift
+done
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/pg_dumpall"
+
+  run bash "${FIXTURE_ROOT}/97_backup_database.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *".dump.gpg"* ]]
 }
 
 @test "managed target writes schema-scoped dump and skips globals" {
@@ -129,7 +223,15 @@ else
 fi
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
-  stub_cmd 1psa "echo managed-pass"
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-f" ]]; then
+  echo ""
+  exit 0
+fi
+echo managed-pass
+EOF
+  chmod +x "${STUB_BIN}/1psa"
   cat > "${STUB_BIN}/pg_dump" <<EOF
 #!/usr/bin/env bash
 echo pg_dump "\$*" >> "${CALLS_LOG}"
@@ -153,7 +255,7 @@ EOF
 
   run bash "${FIXTURE_ROOT}/97_backup_database.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Backup written:"* ]]
+  [[ "$output" == *"Backup written:"*".dump.gpg"* ]]
   [[ "$output" == *"Globals skipped:"* ]]
   [[ "$output" == *"supabase_direct_postgres_"* ]]
   calls="$(<"${CALLS_LOG}")"
@@ -172,7 +274,15 @@ echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   touch "${FIXTURE_ROOT}/sqlite-dev.db"
-  stub_cmd 1psa "echo pass"
+  cat > "${STUB_BIN}/1psa" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "-f" ]]; then
+  echo ""
+  exit 0
+fi
+echo pass
+EOF
+  chmod +x "${STUB_BIN}/1psa"
   cat > "${STUB_BIN}/pg_dump" <<EOF
 #!/usr/bin/env bash
 echo pg_dump "\$*" >> "${CALLS_LOG}"
@@ -188,7 +298,7 @@ EOF
 
   run bash "${FIXTURE_ROOT}/97_backup_database.sh"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Backup written:"* ]]
+  [[ "$output" == *"Backup written:"*".dump.gpg"* ]]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" != *"pg_dump "* ]]
   [[ "$calls" != *"pg_dumpall "* ]]

@@ -307,6 +307,19 @@ SQL
       echo "❌ failed to resolve teller DB password for SQL unit tests."
       exit 1
     fi
+    # Some local DB profiles run SQL tests as restricted roles; pgTAP helper
+    # objects require elevated privileges. Prefer postgres role when available.
+    if [[ "${SQL_TESTS_USE_ADMIN_ROLE:-true}" == "true" && "$DB_USER" != "postgres" ]]; then
+      admin_password="${POSTGRES_ADMIN_PASSWORD:-}"
+      if [[ -z "$admin_password" ]] && command -v 1psa >/dev/null 2>&1; then
+        admin_password="$(1psa -p "${POSTGRES_PSA_ITEM:-localhost_postgres_postgres}" 2>/dev/null || true)"
+      fi
+      if [[ -n "$admin_password" ]]; then
+        echo "ℹ️  Using postgres admin role for pgTAP execution."
+        DB_USER="postgres"
+        DB_PASSWORD="$admin_password"
+      fi
+    fi
     if [[ -z "$SQL_TEST_DATABASE" ]]; then
       echo "❌ Resolved profile is missing PG_DBNAME and SQL_TEST_DATABASE/TELLER_DB_NAME are unset."
       exit 1
@@ -340,7 +353,7 @@ SQL
       echo "▶ Running SQL unit tests (pgTAP via pg_prove)..."
       for sql_test_file in "${sql_test_files[@]}"; do
         if ! PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_USER" PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" \
-          PGOPTIONS="-c search_path=teller,public" \
+          PGOPTIONS="-c search_path=public,teller" \
           "$PG_PROVE_BIN" --dbname "$SQL_TEST_DATABASE" "$sql_test_file"; then
           if [[ "$PG_PROVE_BIN" == "${HOME}/perl5/bin/pg_prove" ]]; then
             brew_perl_bin="/opt/homebrew/bin/perl"
@@ -353,7 +366,7 @@ SQL
             if [[ -x "$brew_perl_bin" ]]; then
               echo "ℹ️  Retrying user-local pg_prove with Homebrew perl..."
               PGHOST="$DB_HOST" PGPORT="$DB_PORT" PGUSER="$DB_USER" PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${PG_SSLMODE:-disable}" \
-                PGOPTIONS="-c search_path=teller,public" \
+                PGOPTIONS="-c search_path=public,teller" \
                 "$brew_perl_bin" "$PG_PROVE_BIN" --dbname "$SQL_TEST_DATABASE" "$sql_test_file"
               continue
             fi

@@ -45,6 +45,7 @@ RUNTIME_LOCK_FILE="${RUNTIME_LOCK_FILE:-./requirements.txt}"
 SECURITY_IN_FILE="${SECURITY_IN_FILE:-./requirements/security/requirements-security.in}"
 SECURITY_LOCK_FILE="${SECURITY_LOCK_FILE:-./requirements/security/requirements-security.txt}"
 SUPPLY_CHAIN_ARTIFACTS_DIR="${SUPPLY_CHAIN_ARTIFACTS_DIR:-./artifacts/security/reports}"
+#R020: Default signing mode becomes required in CI when unset.
 if [[ -z "${SUPPLY_CHAIN_SIGNING_MODE:-}" ]]; then
   if [[ "${CI:-}" == "true" || "${CI:-}" == "1" ]]; then
     SIGNING_MODE="required"

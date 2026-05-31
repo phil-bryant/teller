@@ -28,6 +28,7 @@ def test_build_record_always_returns_expected_shape(
         "target",
         "sslmode",
         "sqlite_path",
+        "sqlcipher_key",
     }
     assert isinstance(result["port"], int)
     assert result["target"] in {"local", "managed", "sqlite"}

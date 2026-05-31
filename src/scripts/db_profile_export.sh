@@ -38,7 +38,7 @@ if [[ -n "$OVERRIDE_PROFILE" ]]; then
     export TELLER_DB_PROFILE="$OVERRIDE_PROFILE"
 fi
 
-PYTHONPATH="${REPO_ROOT}/src:${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" "$PYTHON_BIN" - <<'PY'
+PYTHONPATH="${REPO_ROOT}/src:${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" "$PYTHON_BIN" - <<'PY' | awk '/^[A-Z_][A-Z0-9_]*=.*/ { print }'
 import sys
 import shlex
 from pathlib import Path

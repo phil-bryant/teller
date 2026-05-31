@@ -200,6 +200,7 @@ def evaluate_binary(policy: BinaryPolicy) -> dict[str, Any]:
         version_status = "not-configured"
 
     digest = sha256_file(executable_path)
+    #R015: Enforce optional SHA256 allowlists for pinned high-sensitivity binaries.
     hash_status = "not-configured"
     if policy.allowed_sha256:
         hash_status = "ok" if _normalize_hex_digest(digest) in policy.allowed_sha256 else "mismatch"

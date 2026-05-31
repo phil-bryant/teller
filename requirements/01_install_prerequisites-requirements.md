@@ -189,11 +189,18 @@ Tests:
 - R125-T01: Run without `cosign` and verify installer installs `cosign`.
 - R125-T02: Rerun with `cosign` already available and verify no reinstall occurs.
 
+R130  Statement: Ensure SQLCipher CLI/library are available for encrypted SQLite profile workflows.
+Design: Install Homebrew formula `sqlcipher` and verify `sqlcipher` resolves on `PATH`.
+Tests:
+- R130-T01: Run without `sqlcipher` and verify installer installs `sqlcipher`.
+- R130-T02: Rerun with `sqlcipher` already available and verify no reinstall occurs.
+
 ## Changelog
 
 - 2026-05-26: Added R110 to require Homebrew `mkcert` for slot `05` TLS installation.
 - 2026-05-26: Added R115 to require Homebrew `peripheryapp/periphery/periphery` for the `t00` Swift dead-code analysis lane.
 - 2026-05-30: Added R120 and R125 for pip-tools lock compilation and cosign signing tooling.
+- 2026-05-31: Added R130 to require Homebrew `sqlcipher` for encrypted SQLite profile workflows.
 - 2026-05-07: Updated R050 guidance to include optional PLCrashReporter smoke verification entrypoint.
 - 2026-04-23: Added R055 to require `bats-core` installation for shell unit-test support.
 - 2026-04-26: Added R095 to require Homebrew `clamav` (`clamscan`) for repository malware scans.

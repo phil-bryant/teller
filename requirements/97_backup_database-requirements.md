@@ -10,7 +10,7 @@ Tests:
 - R001-T01: Verify script exits on unset variable and failing command paths.
 
 R005  Statement: Require backup dependencies before backup operations.
-Design: Validate `1psa`, `pg_dump`, and `pg_dumpall` commands on PATH.
+Design: Validate `1psa`, `pg_dump`, `pg_dumpall`, and `gpg` commands on PATH.
 Tests:
 - R005-T01: Remove `pg_dump` from PATH and verify clear failure message.
 
@@ -40,15 +40,20 @@ Tests:
 - R030-T01: Verify globals file exists beside database dump.
 
 R035  Statement: Restrict backup file permissions and print output paths.
-Design: Apply mode `600` to output files and print their locations.
+Design: Encrypt backup artifacts to `.gpg`, apply mode `600` to encrypted output files, and print encrypted artifact locations.
 Tests:
 - R035-T01: Verify file modes and output lines after successful run.
 
 R055  Statement: Emit integrity manifest for full local backup dump/globals pairs.
-Design: After writing local `.dump` and `_globals.sql`, generate sibling `*.manifest.sha256` containing sha256 checksums for both files; print manifest path and restrict manifest file permissions to `600`.
+Design: After writing local `.dump` and `_globals.sql`, encrypt both files to `.gpg`, generate sibling `*.manifest.sha256` containing sha256 checksums for encrypted artifacts, print manifest path, and restrict manifest file permissions to `600`.
 Tests:
 - R055-T01: Verify full local backup writes `*.manifest.sha256` with both filenames and mode `600`.
 - R055-T02: Verify output includes `Manifest written:` line with manifest path.
+
+R110  Statement: Resolve backup encryption configuration from `POSTGRES_BACKUP_ENCRYPTION` with `.env` fallback and encrypt all backup outputs at rest.
+Design: Read `type`, `gpg_recipient`, and `gpg_public_key` from `1psa -f POSTGRES_BACKUP_ENCRYPTION <field>`; if any field lookup is empty/unavailable, fallback to `POSTGRES_BACKUP_ENCRYPTION_<FIELD>` environment variables. Require `type=gpg`, import `gpg_public_key`, encrypt produced dump artifacts, remove plaintext artifacts, and report `.gpg` output paths.
+Tests:
+- R110-T01: Force empty `1psa -f` results and verify env fallback fields still produce successful `.gpg` backup output.
 
 R040  Statement: Resolve the active DB profile via the shared `src/scripts/db_profile_export.sh` helper and refuse to back up when the helper is missing.
 Design: Source whitelisted `PROFILE_NAME`/`PROFILE_TARGET`/`PG_*` exports from the helper before any dump runs; require non-empty `PROFILE_NAME`, `PROFILE_TARGET`, `PG_DBNAME`; encode the resolved profile name into the backup basename so dumps across targets do not collide.
@@ -74,6 +79,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-31: Added R110 for GPG encryption contract with 1psa-to-env fallback; updated dependency and manifest requirements for encrypted artifacts.
 - 2026-05-30: Added R041 for SQLite backup behavior through existing script.
 - 2026-05-30: Updated R020/R035 to owner-only defaults and added R055 for dump/globals manifest generation.
 - 2026-05-26: Added R040/R045/R050 for profile-aware backup behavior; managed-target schema-scoped dumps and env-override compatibility.

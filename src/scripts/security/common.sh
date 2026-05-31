@@ -21,6 +21,7 @@
 #R100: Shared helpers provide reusable secret redaction for persisted Schemathesis artifacts.
 #R105: Shared helpers support hash-pinned requirements enforcement for security toolchains.
 #R110: Shared helpers support supply-chain artifact generation wiring (SBOM/signing scaffold).
+#R115: Shared helpers support CI-default required signing mode behavior in static security lane.
 security_init_repo_root() {
   local script_path="${1:-${BASH_SOURCE[0]-$0}}"
   local script_dir
