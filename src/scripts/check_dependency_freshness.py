@@ -227,6 +227,7 @@ def _evaluate_actionability(latest_version: str, required_by: list[dict[str, str
 def _package_entry_from_outdated_row(
     row: dict[str, Any],
     requirements: dict[str, RequirementSpec],
+    direct_requirements: dict[str, RequirementSpec],
     reverse_constraints: dict[str, list[dict[str, str]]],
 ) -> dict[str, Any] | None:
     name = str(row.get("name", "")).strip()
@@ -235,7 +236,7 @@ def _package_entry_from_outdated_row(
     if not name or not current_version or not latest_version:
         return None
     normalized = normalize_package_name(name)
-    req_spec = requirements.get(normalized)
+    direct_req_spec = direct_requirements.get(normalized)
     update_type = classify_update(current_version, latest_version)
     required_by = sorted(
         reverse_constraints.get(normalized, []),
@@ -247,9 +248,9 @@ def _package_entry_from_outdated_row(
         "current_version": current_version,
         "latest_version": latest_version,
         "update_type": update_type,
-        "in_requirements_txt": bool(req_spec),
-        "is_exact_pin_in_requirements": bool(req_spec and req_spec.is_exact_pin),
-        "requirements_pin_version": req_spec.pinned_version if req_spec else None,
+        "in_requirements_txt": bool(direct_req_spec),
+        "is_exact_pin_in_requirements": bool(direct_req_spec and direct_req_spec.is_exact_pin),
+        "requirements_pin_version": direct_req_spec.pinned_version if direct_req_spec else None,
         "required_by": required_by,
         "outdated_actionability": actionability,
         "latest_satisfies_parent_constraints": latest_satisfies_parent_constraints,
@@ -290,15 +291,31 @@ def _build_summary(packages: list[dict[str, Any]]) -> dict[str, int]:
     return summary
 
 
-def make_report(requirements_path: Path) -> dict[str, Any]:
+def _load_direct_requirements(requirements_path: Path, direct_requirements_path: Path | None) -> dict[str, RequirementSpec]:
+    candidates: list[Path] = []
+    if direct_requirements_path is not None:
+        candidates.append(direct_requirements_path)
+    elif requirements_path.name == "requirements.txt":
+        candidates.append(requirements_path.with_suffix(".in"))
+    elif requirements_path.suffix == ".txt":
+        candidates.append(requirements_path.with_suffix(".in"))
+    candidates.append(requirements_path)
+    for path in candidates:
+        if path.exists():
+            return parse_requirements(path)
+    return {}
+
+
+def make_report(requirements_path: Path, direct_requirements_path: Path | None = None) -> dict[str, Any]:
     requirements = parse_requirements(requirements_path)
+    direct_requirements = _load_direct_requirements(requirements_path, direct_requirements_path)
     outdated_rows = run_outdated_list()
     reverse_constraints = _collect_reverse_dependency_constraints()
     venv_cruft_packages, venv_cruft_status = _detect_venv_cruft(requirements)
 
     packages: list[dict[str, Any]] = []
     for row in outdated_rows:
-        item = _package_entry_from_outdated_row(row, requirements, reverse_constraints)
+        item = _package_entry_from_outdated_row(row, requirements, direct_requirements, reverse_constraints)
         if item is not None:
             packages.append(item)
 
@@ -307,6 +324,7 @@ def make_report(requirements_path: Path) -> dict[str, Any]:
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "requirements_file": str(requirements_path),
+        "direct_requirements_file": str(direct_requirements_path) if direct_requirements_path else None,
         "summary": _build_summary(packages),
         "packages": packages,
         "venv_cruft_packages": venv_cruft_packages,
@@ -323,13 +341,16 @@ def format_report_text(report: dict[str, Any]) -> str:
         f"- Minor updates: {summary['minor_updates']}",
         f"- Patch updates: {summary['patch_updates']}",
         f"- Unknown updates: {summary['unknown_updates']}",
-        f"- Outdated entries from requirements.txt: {summary['direct_requirements_outdated']}",
+        f"- Outdated entries from direct requirements: {summary['direct_requirements_outdated']}",
         f"- Actionable outdated entries: {summary['actionable_outdated']}",
         f"- Constrained outdated entries: {summary['constrained_outdated']}",
         f"- Unknown-actionability outdated entries: {summary['unknown_actionability_outdated']}",
         f"- Venv cruft status: {report.get('venv_cruft_status', 'unknown')}",
         f"- Venv cruft packages: {len(report.get('venv_cruft_packages', []))}",
     ]
+    direct_requirements_file = report.get("direct_requirements_file")
+    if direct_requirements_file:
+        lines.append(f"- Direct requirements file: {direct_requirements_file}")
     lines.append("")
 
     packages = report["packages"]
@@ -373,6 +394,11 @@ def parse_args() -> argparse.Namespace:
         help="Path for text summary output.",
     )
     parser.add_argument(
+        "--direct-requirements",
+        default="",
+        help="Optional direct-requirements source file for direct outdated gate checks.",
+    )
+    parser.add_argument(
         "--fail-on-major",
         action="store_true",
         help="Exit non-zero when major updates are detected.",
@@ -410,7 +436,8 @@ def main() -> int:
     output_text.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        report = make_report(requirements_path)
+        direct_requirements_path = Path(args.direct_requirements) if args.direct_requirements.strip() else None
+        report = make_report(requirements_path, direct_requirements_path)
     except RuntimeError as exc:
         print(f"Failed to collect dependency freshness data: {exc}", file=sys.stderr)
         return 2

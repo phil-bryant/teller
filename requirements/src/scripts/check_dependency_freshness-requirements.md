@@ -31,6 +31,6 @@ Tests:
 ## </AI_MODEL_INSTRUCTION>
 
 R010  Statement: Enforce optional freshness gates for actionable outdated packages, major updates, direct requirements drift, and venv cruft.
-Design: Return non-zero when `--fail-on-any-actionable-outdated` detects actionable outdated packages under current parent constraints, when `--fail-on-major` detects major updates, when `--fail-on-direct-outdated` detects outdated packages referenced by `requirements.txt`, or when `--fail-on-venv-cruft` detects requested packages not declared in `requirements.txt`.
+Design: Return non-zero when `--fail-on-any-actionable-outdated` detects actionable outdated packages under current parent constraints, when `--fail-on-major` detects major updates, when `--fail-on-direct-outdated` detects outdated packages referenced by direct requirement sources (`requirements.in` by default, optional `--direct-requirements` override), or when `--fail-on-venv-cruft` detects requested packages not declared in `requirements.txt`.
 Tests:
 - R010-T01: Verify each gate independently returns a failing exit status only when its configured condition is present.

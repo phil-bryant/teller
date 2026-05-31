@@ -86,7 +86,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
                     "--fail-on-direct-outdated",
                 ]
                 original = self.module.make_report
-                self.module.make_report = lambda _path: {
+                self.module.make_report = lambda *_args: {
                     "generated_at": "2026-01-01T00:00:00+00:00",
                     "requirements_file": str(req_path),
                     "summary": {
@@ -139,7 +139,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
                     "--fail-on-any-actionable-outdated",
                 ]
                 original = self.module.make_report
-                self.module.make_report = lambda _path: {
+                self.module.make_report = lambda *_args: {
                     "generated_at": "2026-01-01T00:00:00+00:00",
                     "requirements_file": str(req_path),
                     "summary": {
@@ -191,7 +191,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
                     "--fail-on-any-actionable-outdated",
                 ]
                 original = self.module.make_report
-                self.module.make_report = lambda _path: {
+                self.module.make_report = lambda *_args: {
                     "generated_at": "2026-01-01T00:00:00+00:00",
                     "requirements_file": str(req_path),
                     "summary": {
@@ -243,7 +243,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
                     "--fail-on-venv-cruft",
                 ]
                 original = self.module.make_report
-                self.module.make_report = lambda _path: {
+                self.module.make_report = lambda *_args: {
                     "generated_at": "2026-01-01T00:00:00+00:00",
                     "requirements_file": str(req_path),
                     "summary": {
