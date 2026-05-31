@@ -14,6 +14,8 @@ cd "$REPO_ROOT"
 REPORT_DIR="${DEPENDENCY_REPORT_DIR:-./artifacts/security}"
 RUN_POSTGRES_FRESHNESS="${RUN_POSTGRES_FRESHNESS:-true}"
 RUN_TELLER_VERSION_FRESHNESS="${RUN_TELLER_VERSION_FRESHNESS:-true}"
+RUN_BINARY_INTEGRITY_CHECK="${RUN_BINARY_INTEGRITY_CHECK:-true}"
+BINARY_INTEGRITY_POLICY_FILE="${BINARY_INTEGRITY_POLICY_FILE:-./config/security/binary-integrity-policy.json}"
 TELLER_API_BASELINE_VERSION="${TELLER_API_BASELINE_VERSION:-}"
 TELLER_API_VERSION_FAIL_ON_NEW="${TELLER_API_VERSION_FAIL_ON_NEW:-false}"
 TELLER_API_VERSION_SOURCES="${TELLER_API_VERSION_SOURCES:-https://teller.io/docs/api,https://api.teller.io/openapi.json,https://api.teller.io/swagger.json}"
@@ -104,6 +106,21 @@ SECURITY_TOOLCHAIN_FRESHNESS_ARGS+=(--fail-on-direct-outdated)
 #R032: Security toolchain venv must not include requested packages outside declared lockfile.
 SECURITY_TOOLCHAIN_FRESHNESS_ARGS+=(--fail-on-venv-cruft)
 "$SECURITY_TOOLCHAIN_PYTHON" "${SECURITY_TOOLCHAIN_FRESHNESS_ARGS[@]}"
+
+#R040: Verify required runtime/security binaries and emit integrity artifacts.
+if [[ "$RUN_BINARY_INTEGRITY_CHECK" == "true" ]]; then
+  echo && echo "▶ Running binary integrity checks"
+  BINARY_INTEGRITY_ARGS=(
+    ./src/scripts/check_binary_integrity.py
+    --policy "${BINARY_INTEGRITY_POLICY_FILE}"
+    --output-json "${REPORT_DIR}/binary-integrity.json"
+    --output-text "${REPORT_DIR}/binary-integrity.txt"
+    --fail-on-missing-required
+    --fail-on-version
+    --fail-on-hash
+  )
+  "$PROJECT_PYTHON" "${BINARY_INTEGRITY_ARGS[@]}"
+fi
 
 #R015: Run optional Teller API version freshness checks via machine-readable API metadata.
 if [[ "$RUN_TELLER_VERSION_FRESHNESS" == "true" ]]; then

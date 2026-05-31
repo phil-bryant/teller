@@ -9,6 +9,7 @@ Applies to `tests/t02_run_dependency_freshness_tests.sh`.
 This document owns orchestration behavior for the numbered wrapper script.
 Implementation-level requirements for invoked helpers are owned by:
 - `requirements/src/scripts/check_dependency_freshness-requirements.md`
+- `requirements/src/scripts/check_binary_integrity-requirements.md`
 - `requirements/src/scripts/check_teller_api_version_freshness-requirements.md`
 - `requirements/src/scripts/check_postgres_freshness-requirements.md`
 
@@ -90,6 +91,12 @@ Design: Always pass `--fail-on-any-actionable-outdated`, `--fail-on-direct-outda
 Tests:
 - R032-T01: Verify the security-toolchain invocation always includes all strict freshness gate flags.
 
+R040  Statement: Optionally evaluate core/runtime and scanner binary integrity with strict required-binary gating.
+Design: Execute `src/scripts/check_binary_integrity.py` when `RUN_BINARY_INTEGRITY_CHECK=true`, always writing `binary-integrity.json` and `binary-integrity.txt` to the resolved report directory, and pass `--fail-on-missing-required`, `--fail-on-version`, and `--fail-on-hash` by default.
+Tests:
+- R040-T01: Run default lane and verify binary integrity artifacts are generated and strict integrity flags are passed.
+- R040-T02: Run with `RUN_BINARY_INTEGRITY_CHECK=false` and verify binary integrity substep is skipped.
+
 ## Changelog
 
 - 2026-04-26: Initial requirements for `05_run_dependency_freshness_tests.sh`.
@@ -103,3 +110,4 @@ Tests:
 - 2026-05-30: Made R010 constraint-aware by gating on actionable stale dependencies while preserving strict direct-dependency blocking.
 - 2026-05-30: Added R012 venv-cruft gate to fail when requested packages are not declared in `requirements.txt`.
 - 2026-05-31: Added R030/R032 for always-on security-toolchain freshness pass with strict gating and interpreter fallback contract.
+- 2026-05-31: Added R040 binary integrity substep for required command/path/version/hash policy gating with artifacts.
