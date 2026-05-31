@@ -48,8 +48,7 @@ _EXISTENCE_QUERIES = {
     ),
 }
 
-_TRANSACTION_COUNT_SQL = text(
-    f"""
+_TRANSACTION_COUNT_SQL_TEMPLATE = """
     SELECT COUNT(*)
       FROM teller.transaction tt
       LEFT JOIN teller.account ta USING (account_id)
@@ -109,15 +108,18 @@ _TRANSACTION_COUNT_SQL = text(
        AND (:start_date IS NULL OR tt.date >= :start_date)
        AND (:end_date IS NULL OR tt.date <= :end_date)
        AND (:institution_id = '' OR ta.institution_id = :institution_id)
-       AND {_AMOUNT_MIN_FILTER}
-       AND {_AMOUNT_MAX_FILTER}
+       AND __AMOUNT_MIN_FILTER__
+       AND __AMOUNT_MAX_FILTER__
 """
+_TRANSACTION_COUNT_SQL = text(
+    _TRANSACTION_COUNT_SQL_TEMPLATE.replace("__AMOUNT_MIN_FILTER__", _AMOUNT_MIN_FILTER).replace(
+        "__AMOUNT_MAX_FILTER__", _AMOUNT_MAX_FILTER
+    )
 )
 
-_TRANSACTION_LIST_SQL = text(
-    f"""
+_TRANSACTION_LIST_SQL_TEMPLATE = """
     SELECT tt.transaction_id, tt.account_id, ta.institution_id, ta.last_four AS account_last_four,
-           tt.date, {_AMOUNT_SELECT_EXPR} AS amount, tt.description, tt.status,
+           tt.date, __AMOUNT_SELECT_EXPR__ AS amount, tt.description, tt.status,
            ttt.code AS transaction_type_code, ttd.category AS teller_category,
            m.nys_snw_category_id, nsc.level_1, nsc.level_1_name, nsc.level_2, nsc.level_2_name,
            nsc.level_3, nsc.level_4, nsc.categorization,
@@ -185,11 +187,15 @@ _TRANSACTION_LIST_SQL = text(
        AND (:start_date IS NULL OR tt.date >= :start_date)
        AND (:end_date IS NULL OR tt.date <= :end_date)
        AND (:institution_id = '' OR ta.institution_id = :institution_id)
-       AND {_AMOUNT_MIN_FILTER}
-       AND {_AMOUNT_MAX_FILTER}
+       AND __AMOUNT_MIN_FILTER__
+       AND __AMOUNT_MAX_FILTER__
     ORDER BY tt.date DESC, tt.transaction_id DESC
     LIMIT :limit OFFSET :offset
 """
+_TRANSACTION_LIST_SQL = text(
+    _TRANSACTION_LIST_SQL_TEMPLATE.replace("__AMOUNT_SELECT_EXPR__", _AMOUNT_SELECT_EXPR)
+    .replace("__AMOUNT_MIN_FILTER__", _AMOUNT_MIN_FILTER)
+    .replace("__AMOUNT_MAX_FILTER__", _AMOUNT_MAX_FILTER)
 )
 
 _WRITE_TOKEN_PSA_ITEM = "TELLER_CLASSIFIER_WRITE_TOKEN"

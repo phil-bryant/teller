@@ -477,6 +477,9 @@ dast_run_id = sys.argv[2]
 payload = {
     "status": "skipped",
     "match_ids": [],
+    "active_match_transaction_ids": [],
+    "candidate_transaction_id": None,
+    "candidate_email_id": None,
     "override_email_message_id": None,
 }
 
@@ -488,10 +491,36 @@ else:
     try:
         engine = get_engine()
         with engine.begin() as conn:
+            candidate_rows = conn.execute(
+                text(
+                    """
+                    SELECT mr.transaction_id, c.email_message_id
+                      FROM teller.transaction_email_match_run mr
+                      JOIN teller.transaction_email_candidate c
+                        ON c.match_run_id = mr.match_run_id
+                     WHERE NOT EXISTS (
+                           SELECT 1
+                             FROM teller.transaction_email_match m
+                            WHERE m.transaction_id = mr.transaction_id
+                              AND m.active = TRUE
+                       )
+                     ORDER BY mr.completed_at DESC NULLS LAST, mr.match_run_id DESC, c.candidate_id ASC
+                     LIMIT 24
+                    """
+                )
+            ).fetchall()
+            for row in candidate_rows:
+                tx_value = row[0]
+                email_value = row[1]
+                if isinstance(tx_value, str) and tx_value and isinstance(email_value, str) and email_value:
+                    payload["candidate_transaction_id"] = tx_value
+                    payload["candidate_email_id"] = email_value
+                    break
             existing = conn.execute(
                 text(
                     """
                     SELECT match_id, email_message_id
+                         , transaction_id
                       FROM teller.transaction_email_match
                      WHERE active = TRUE
                      ORDER BY updated_at DESC NULLS LAST, match_id DESC
@@ -503,25 +532,106 @@ else:
                 payload["status"] = "existing"
                 payload["match_ids"] = [int(row[0]) for row in existing if row and row[0] is not None]
                 for row in existing:
+                    tx_value = row[2]
+                    if isinstance(tx_value, str) and tx_value:
+                        payload["active_match_transaction_ids"].append(tx_value)
                     email_value = row[1]
                     if isinstance(email_value, str) and email_value:
                         payload["override_email_message_id"] = email_value
                         break
+                if payload["candidate_transaction_id"] is None:
+                    candidate_tx_row = conn.execute(
+                        text(
+                            """
+                            SELECT t.transaction_id
+                              FROM teller.transaction t
+                             WHERE t.status = 'posted'
+                               AND NOT EXISTS (
+                                     SELECT 1
+                                       FROM teller.transaction_email_match m
+                                      WHERE m.transaction_id = t.transaction_id
+                                        AND m.active = TRUE
+                                 )
+                             ORDER BY t.date DESC NULLS LAST, t.transaction_id DESC
+                             LIMIT 1
+                            """
+                        )
+                    ).fetchone()
+                    if candidate_tx_row and candidate_tx_row[0]:
+                        candidate_tx_id = str(candidate_tx_row[0])
+                        seeded_candidate_email = f"dast_seed_candidate_{dast_run_id}_{uuid.uuid4().hex}"
+                        seeded_run = conn.execute(
+                            text(
+                                """
+                                INSERT INTO teller.transaction_email_match_run (
+                                    transaction_id,
+                                    trigger_source,
+                                    model_name,
+                                    prompt_version,
+                                    status,
+                                    completed_at
+                                ) VALUES (
+                                    :transaction_id,
+                                    CAST('manual' AS teller.matchy_trigger_source),
+                                    'dast_seed',
+                                    'dast_seed',
+                                    CAST('succeeded' AS teller.matchy_run_status),
+                                    CURRENT_TIMESTAMP
+                                )
+                                RETURNING match_run_id
+                                """
+                            ),
+                            {"transaction_id": candidate_tx_id},
+                        ).fetchone()
+                        if seeded_run and seeded_run[0] is not None:
+                            conn.execute(
+                                text(
+                                    """
+                                    INSERT INTO teller.transaction_email_candidate (
+                                        match_run_id,
+                                        transaction_id,
+                                        email_message_id,
+                                        score,
+                                        reason_json,
+                                        is_selected_by_ai
+                                    ) VALUES (
+                                        :match_run_id,
+                                        :transaction_id,
+                                        :email_message_id,
+                                        :score,
+                                        CAST(:reason_json AS jsonb),
+                                        TRUE
+                                    )
+                                    """
+                                ),
+                                {
+                                    "match_run_id": int(seeded_run[0]),
+                                    "transaction_id": candidate_tx_id,
+                                    "email_message_id": seeded_candidate_email,
+                                    "score": 0.99,
+                                    "reason_json": '{"source":"dast_seed"}',
+                                },
+                            )
+                            payload["candidate_transaction_id"] = candidate_tx_id
+                            payload["candidate_email_id"] = seeded_candidate_email
+                            if payload["override_email_message_id"] is None:
+                                payload["override_email_message_id"] = seeded_candidate_email
             else:
-                tx_row = conn.execute(
+                tx_rows = conn.execute(
                     text(
                         """
                         SELECT transaction_id
                           FROM teller.transaction
                          WHERE status = 'posted'
                          ORDER BY date DESC NULLS LAST, transaction_id DESC
-                         LIMIT 1
+                         LIMIT 2
                         """
                     )
-                ).fetchone()
-                if tx_row and tx_row[0]:
-                    seeded_email = f"dast-seed-{dast_run_id}-{uuid.uuid4().hex}@example.invalid"
-                    seeded = conn.execute(
+                ).fetchall()
+                if tx_rows and tx_rows[0] and tx_rows[0][0]:
+                    active_tx_id = str(tx_rows[0][0])
+                    seeded_active_email = f"dast_seed_active_{dast_run_id}_{uuid.uuid4().hex}"
+                    seeded_active = conn.execute(
                         text(
                             """
                             INSERT INTO teller.transaction_email_match (
@@ -541,14 +651,78 @@ else:
                             """
                         ),
                         {
-                            "transaction_id": tx_row[0],
-                            "email_message_id": seeded_email,
+                            "transaction_id": active_tx_id,
+                            "email_message_id": seeded_active_email,
                         },
                     ).fetchone()
-                    if seeded and seeded[0] is not None:
+                    if seeded_active and seeded_active[0] is not None:
                         payload["status"] = "seeded"
-                        payload["match_ids"] = [int(seeded[0])]
-                        payload["override_email_message_id"] = seeded_email
+                        payload["match_ids"] = [int(seeded_active[0])]
+                        payload["active_match_transaction_ids"] = [active_tx_id]
+                        payload["override_email_message_id"] = seeded_active_email
+                    candidate_tx_id = None
+                    if len(tx_rows) > 1 and tx_rows[1] and tx_rows[1][0]:
+                        candidate_tx_id = str(tx_rows[1][0])
+                    elif active_tx_id:
+                        candidate_tx_id = active_tx_id
+                    if candidate_tx_id:
+                        seeded_candidate_email = f"dast_seed_candidate_{dast_run_id}_{uuid.uuid4().hex}"
+                        seeded_run = conn.execute(
+                            text(
+                                """
+                                INSERT INTO teller.transaction_email_match_run (
+                                    transaction_id,
+                                    trigger_source,
+                                    model_name,
+                                    prompt_version,
+                                    status,
+                                    completed_at
+                                ) VALUES (
+                                    :transaction_id,
+                                    CAST('manual' AS teller.matchy_trigger_source),
+                                    'dast_seed',
+                                    'dast_seed',
+                                    CAST('succeeded' AS teller.matchy_run_status),
+                                    CURRENT_TIMESTAMP
+                                )
+                                RETURNING match_run_id
+                                """
+                            ),
+                            {"transaction_id": candidate_tx_id},
+                        ).fetchone()
+                        if seeded_run and seeded_run[0] is not None:
+                            conn.execute(
+                                text(
+                                    """
+                                    INSERT INTO teller.transaction_email_candidate (
+                                        match_run_id,
+                                        transaction_id,
+                                        email_message_id,
+                                        score,
+                                        reason_json,
+                                        is_selected_by_ai
+                                    ) VALUES (
+                                        :match_run_id,
+                                        :transaction_id,
+                                        :email_message_id,
+                                        :score,
+                                        CAST(:reason_json AS jsonb),
+                                        TRUE
+                                    )
+                                    """
+                                ),
+                                {
+                                    "match_run_id": int(seeded_run[0]),
+                                    "transaction_id": candidate_tx_id,
+                                    "email_message_id": seeded_candidate_email,
+                                    "score": 0.99,
+                                    "reason_json": '{"source":"dast_seed"}',
+                                },
+                            )
+                            payload["candidate_transaction_id"] = candidate_tx_id
+                            payload["candidate_email_id"] = seeded_candidate_email
+                            if payload["override_email_message_id"] is None:
+                                payload["override_email_message_id"] = seeded_candidate_email
                 else:
                     payload["reason"] = "no_posted_transactions_available"
     except Exception as exc:
@@ -1057,8 +1231,9 @@ PY
   local zap_medium_alerts=0
   local zap_low_alerts=0
   local zap_info_alerts=0
+  local zap_counts=""
   if [[ -f "$zap_summary_json" ]]; then
-    read -r zap_high_alerts zap_medium_alerts zap_low_alerts zap_info_alerts < <(
+    zap_counts="$(
       python3 - <<'PY' "$zap_summary_json"
 import json
 import sys
@@ -1071,7 +1246,10 @@ print(
     int(payload.get("informational", 0)),
 )
 PY
-    )
+    )"
+    IFS=' ' read -r zap_high_alerts zap_medium_alerts zap_low_alerts zap_info_alerts <<EOF
+$zap_counts
+EOF
   fi
 
   #R030: Fail lane when findings meet/exceed SECURITY_ZAP_FAIL_THRESHOLD.

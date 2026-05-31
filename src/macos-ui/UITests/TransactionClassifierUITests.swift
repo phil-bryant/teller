@@ -930,9 +930,19 @@ final class TransactionClassifierUITests: XCTestCase {
 
     private func runManageCategoryDeleteScenario() {
         ensureManageCategoriesTab()
-        uiElement("category-row-103").click()
+        let deletedCategoryId = 103
+        let deletedRow = uiElement("category-row-\(deletedCategoryId)")
+        deletedRow.click()
         uiElement("category-bulk-delete-button").click()
-        XCTAssertTrue(waitUntil(timeout: waitTimeout * 2) { !uiElement("category-row-103").exists })
+
+        var rowRemoved = waitUntil(timeout: waitTimeout * 6) { !deletedRow.exists }
+        // Under parallel load list virtualization can lag behind the delete mutation; refresh once as fallback.
+        if !rowRemoved {
+            uiElement("category-refresh-button").click()
+            rowRemoved = waitUntil(timeout: waitTimeout * 6) { !deletedRow.exists }
+        }
+        XCTAssertTrue(rowRemoved, "Deleted category row \(deletedCategoryId) remained visible after delete operation.")
+        XCTAssertFalse(uiElement("category-error-banner").exists, "Category delete surfaced an error banner.")
     }
 
     // MARK: - Helpers

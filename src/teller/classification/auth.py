@@ -13,6 +13,9 @@ from teller.classification.constants import _WRITE_TOKEN_HEADER, _WRITE_TOKEN_PS
 
 @lru_cache(maxsize=1)
 def _configured_write_token() -> str:
+    env_token = os.environ.get("TELLER_CLASSIFIER_WRITE_TOKEN", "").strip()
+    if env_token:
+        return env_token
     one_psa_path = shutil.which("1psa")
     if not one_psa_path or not os.path.isabs(one_psa_path):
         raise HTTPException(status_code=500, detail="1psa is required to resolve classifier write token")
