@@ -70,8 +70,8 @@ DEPENDENCY_FRESHNESS_ARGS=(
   --output-json "${REPORT_DIR}/dependency-freshness.json"
   --output-text "${REPORT_DIR}/dependency-freshness.txt"
 )
-#R011: Actionable stale dependencies are mandatory blocking gate for this lane.
-#R011: Do not weaken this gate; stale direct dependencies must be updated.
+#R010: Actionable stale dependencies are mandatory blocking gate for this lane.
+#R010: Do not weaken this gate; stale direct dependencies must be updated.
 DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-any-actionable-outdated)
 DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-direct-outdated)
 #R012: Venv must not include explicitly installed packages outside requirements.txt.

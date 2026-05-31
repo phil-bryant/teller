@@ -16,7 +16,7 @@ Tests:
 - R001-T01: Run script from outside repo root and verify successful execution with repo-relative paths.
 
 R005  Statement: Fail fast when required commands are unavailable.
-Design: Verify `teller-venv/bin/python3` exists and `python -m mutmut` is importable before mutation testing begins. Emit guidance referencing `./02_create_venv.sh` and `./03_load_requirements.sh` on failure.
+Design: Verify `teller-venv/bin/python3` exists and `python -m mutmut` is importable before mutation testing begins. Emit guidance referencing `./02_create_venv.sh` and `./04_load_requirements.sh` on failure.
 Tests:
 - R005-T01: Remove `teller-venv` and verify missing-interpreter failure guidance.
 

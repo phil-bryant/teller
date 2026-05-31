@@ -57,7 +57,7 @@ read -r -a LIZARD_TARGETS_ARR <<< "$LIZARD_TARGETS"
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "ERROR: missing required command: $1"
-    echo "Run ./03_load_requirements.sh to install project Python tooling."
+    echo "Run ./04_load_requirements.sh to install project Python tooling."
     exit 1
   fi
 }

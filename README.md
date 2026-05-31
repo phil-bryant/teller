@@ -10,16 +10,17 @@ Run setup scripts in numeric order. The workflow is designed around:
   - Ensures Homebrew, required tooling (`shellcheck`, `swiftlint`, `bats`, `gitleaks`, `clamscan`, OWASP ZAP), `1psa`, and sibling repos (`pg_install`, `pgtap`) are present.
   - Ensures Xcode first-launch and license acceptance are completed (using `1psa` for sudo credential input when needed).
 - `02_create_venv.sh`
-- `03_load_requirements.sh`
-- `04_install_classifier_api_tls.sh`
-- `05_deploy_database.sh`
-- `06_fetch_teller_api_data.py`
-- `07_backfill_bank_statements.py`
-- `08_run_classification_api.py`
-- `09_run_classification_macos_ui.sh`
-- `10_run_all_tests_parallel.sh`
-- `11_report_quality_trends.sh`
-- `12_validate_quality_target.sh`
+- `03_prepare_supply_chain_integrity.sh`
+- `04_load_requirements.sh`
+- `05_install_classifier_api_tls.sh`
+- `06_deploy_database.sh`
+- `07_fetch_teller_api_data.py`
+- `08_backfill_bank_statements.py`
+- `09_run_classification_api.py`
+- `10_run_classification_macos_ui.sh`
+- `11_run_all_tests_parallel.sh`
+- `12_report_quality_trends.sh`
+- `13_validate_quality_target.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -35,20 +36,21 @@ From the project root:
 ./01_install_prerequisites.sh
 ./02_create_venv.sh
 source ./teller-venv/bin/activate
-./03_load_requirements.sh
-./04_install_classifier_api_tls.sh
+./03_prepare_supply_chain_integrity.sh
+./04_load_requirements.sh
+./05_install_classifier_api_tls.sh
 mkdir -p config/local
 cp config/db-profiles-EXAMPLE.json config/db-profiles.json
 # Edit config/db-profiles.json default_profile / 1psa_or_env_item for your environment.
-./05_deploy_database.sh
-./06_fetch_teller_api_data.py
-./07_backfill_bank_statements.py
-./08_run_classification_api.py
-./09_run_classification_macos_ui.sh
-./10_run_all_tests_parallel.sh
+./06_deploy_database.sh
+./07_fetch_teller_api_data.py
+./08_backfill_bank_statements.py
+./09_run_classification_api.py
+./10_run_classification_macos_ui.sh
+./11_run_all_tests_parallel.sh
 ```
 
-Before `./05_deploy_database.sh`, ensure dependencies match your selected profile target: PostgreSQL installed/running for `local`/`supabase*` targets, or `sqlite3` installed for `sqlite` target.
+Before `./06_deploy_database.sh`, ensure dependencies match your selected profile target: PostgreSQL installed/running for `local`/`supabase*` targets, or `sqlite3` installed for `sqlite` target.
 For sqlite profile runs, the default database path is `.database/teller.sqlite3` (override with `TELLER_DB_SQLITE_PATH`).
 For sqlite profile runs, money values are persisted as integer minor units (cents) in `transaction.amount`, `transaction.running_balance`, `account_balances.ledger`, and `account_balances.available`.
 Current architecture assumes Teller API account currency is USD for sqlite money persistence.
@@ -91,15 +93,24 @@ source ./teller-venv/bin/activate
 PARALLEL_CLASSIFIER_API_PORT=8787 \
 PARALLEL_DAST_BASE_PORT=8788 \
 PARALLEL_DAST_REUSE_EXISTING_API=false \
-./10_run_all_tests_parallel.sh
+./11_run_all_tests_parallel.sh
 ```
 
 Quality trend / target checks:
 
 ```bash
-./11_report_quality_trends.sh
-./12_validate_quality_target.sh
+./12_report_quality_trends.sh
+./13_validate_quality_target.sh
 ```
+
+Supply-chain lock refresh:
+
+```bash
+source ./teller-venv/bin/activate
+./03_prepare_supply_chain_integrity.sh
+```
+
+This step compiles `requirements.in` and `requirements/security/requirements-security.in` into hash-pinned lockfiles and prepares SBOM/signing scaffold artifacts before install/test flows.
 
 ### Individual Test Lanes
 
@@ -132,7 +143,7 @@ python3 -m unittest discover tests/py
 
 ### Useful Notes
 
-- `10_run_all_tests_parallel.sh` orchestrates `tests/t*.sh` lanes and writes lane logs/artifacts.
+- `11_run_all_tests_parallel.sh` orchestrates `tests/t*.sh` lanes and writes lane logs/artifacts.
 - Hypothesis and related caches are stored under `artifacts/cache/` (not a root-level `.hypothesis/`).
 - Security and freshness outputs are written under `artifacts/security/`.
 - Fuzz outputs are written under `artifacts/fuzz/`.
@@ -156,7 +167,7 @@ Active secret and credential sources are:
   - `localhost_postgres_postgres` / `localhost_postgres_teller` by default for DB scripts
   - `TELLER_CLASSIFIER_WRITE_TOKEN` for classification API writes
 - Environment variables passed to scripts (for example `POSTGRES_PSA_ITEM`, `TELLER_PSA_ITEM`, `TELLER_DB_PROFILE`, `TELLER_DB_PROFILE_FILE`)
-- `~/.env` for local runtime settings loaded by `06_fetch_teller_api_data.py`
+- `~/.env` for local runtime settings loaded by `07_fetch_teller_api_data.py`
 
 ## What Each Core Script Does
 
@@ -164,28 +175,30 @@ Active secret and credential sources are:
   - Verifies/installs local prerequisites (Homebrew, dev/security tooling, `1psa`, `pg_install`, `pgtap`, and first-run Xcode readiness).
 - `02_create_venv.sh`
   - Creates `<repo>-venv` using `python3.12` (fallback `python3`) and wires test cache env defaults into the venv activation script.
-- `03_load_requirements.sh`
+- `03_prepare_supply_chain_integrity.sh`
+  - Compiles hash-pinned lockfiles from `requirements.in` manifests and emits supply-chain artifacts (`sbom.cdx.json`, signing scaffold, attestation) under security reports.
+- `04_load_requirements.sh`
   - Installs Python dependencies from `requirements.txt` (or `requirements-cpu.txt` / `requirements-gpu.txt` when used) into the active project venv.
-- `04_install_classifier_api_tls.sh`
-  - Installs/refreshes locally trusted TLS cert/key files used by `08_run_classification_api.py` (via `mkcert`, under `~/.teller` by default).
-- `05_deploy_database.sh`
+- `05_install_classifier_api_tls.sh`
+  - Installs/refreshes locally trusted TLS cert/key files used by `09_run_classification_api.py` (via `mkcert`, under `~/.teller` by default).
+- `06_deploy_database.sh`
   - Resolves DB profile and deploys schema/roles/DDL for local or managed targets from `src/sql/postgres/` in dependency order.
   - For sqlite target/profile, applies `src/sql/sqlite/create_database.sql` to `.database/teller.sqlite3` by default.
-- `06_fetch_teller_api_data.py`
+- `07_fetch_teller_api_data.py`
   - Pulls Teller API data, normalizes and deduplicates transaction history, and persists or upserts accounts, transactions, and related objects into Postgres.
-- `07_backfill_bank_statements.py`
+- `08_backfill_bank_statements.py`
   - OCR-parses bank statement PDFs, derives typed/signed transactions, and backfills missing statement-linked transaction rows.
-- `08_run_classification_api.py`
+- `09_run_classification_api.py`
   - Starts the local classifier FastAPI service (HTTPS only), requires `1psa` write token, and requires local TLS cert/key files.
-- `09_run_classification_macos_ui.sh`
+- `10_run_classification_macos_ui.sh`
   - Builds and launches the native macOS app (`TransactionClassifier`) with in-process Connect flows; supports optional transaction-list profiling.
-- `10_run_all_tests_parallel.sh`
+- `11_run_all_tests_parallel.sh`
   - Orchestrates all numbered `tests/t*.sh` checks in parallel, captures per-lane logs/artifacts, and updates quality telemetry summaries.
-- `11_report_quality_trends.sh`
+- `12_report_quality_trends.sh`
   - Reads telemetry and prints a local quality trend summary (latest score, rolling windows, and SLO status).
-- `12_validate_quality_target.sh`
+- `13_validate_quality_target.sh`
   - Enforces quality target gates from historical telemetry (including consecutive-week attainment checks).
-- `13_prune_quality_telemetry.sh`
+- `14_prune_quality_telemetry.sh`
   - Prunes old lane-summary telemetry files, retaining the newest configured count.
 
 Core lane scripts under `tests/`:
@@ -193,7 +206,7 @@ Core lane scripts under `tests/`:
 - `tests/t00_run_code_quality_tests.sh`
   - Runs static code-quality analyzers and writes reports to `artifacts/quality/reports`. Python lane: Vulture (dead code), Radon (complexity metrics), Xenon (complexity gate). Swift lane: Periphery (dead code; Vulture analog) and Lizard (complexity report + threshold gate; Radon+Xenon analog).
 - `tests/t01_run_av_test.sh`
-  - Runs ClamAV lane (signature freshness + scan + optional freshclam recovery).
+  - Runs ClamAV lane (24h signature freshness check, enforced stale-signature refresh, scan, and missing-DB refresh retry).
 - `tests/t02_run_dependency_freshness_tests.sh`
   - Runs dependency freshness, Teller API version freshness, and PostgreSQL freshness/CVE checks.
 - `tests/t03_run_static_security_tests.sh`
@@ -298,7 +311,7 @@ Credential source resolution order used by recovery scripts:
 
 ## Ingest + Normalization + Persistence
 
-### Sequence (`06_fetch_teller_api_data.py`)
+### Sequence (`07_fetch_teller_api_data.py`)
 
 Why this flow matters: it makes reruns safe and clarifies where idempotency is enforced before data lands in Postgres.
 
@@ -306,7 +319,7 @@ Why this flow matters: it makes reruns safe and clarifies where idempotency is e
 [scheduler/manual]
       |
       v
-06_fetch_teller_api_data.py
+07_fetch_teller_api_data.py
       |
       +--> fetch institutions/accounts/transactions (+ balances/identity per account)
       |
@@ -354,7 +367,7 @@ Local app-based enrollment and token refresh:
 After completing Teller Connect in the native app, the returned token is saved under `~/.teller`:
 
 ```bash
-./09_run_classification_macos_ui.sh
+./10_run_classification_macos_ui.sh
 ```
 
 Connect behavior:
@@ -362,17 +375,17 @@ Connect behavior:
 - Open the **Connect** tab to add, reconnect, or delete local enrollment contexts.
 - Successful Connect writes `auth_token*.json` and `enrollment_id*.txt` with restrictive permissions.
 - Local setup checks for Teller connectivity are available via in-app setup/smoke actions backed by `TellerSetupService`.
-- `06_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
+- `07_fetch_teller_api_data.py` now launches the macOS app for repair workflows when disconnected enrollments are detected.
 
 Quality/security aggregate checks are available through:
 
 ```bash
-./10_run_all_tests_parallel.sh
+./11_run_all_tests_parallel.sh
 ```
 
 ## 1psa Items Used by Database Scripts
 
-`05_deploy_database.sh`, `97_backup_database.sh`, `98_destroy_database.sh`, and `99_restore_database.sh` read credentials from `1psa`.
+`06_deploy_database.sh`, `97_backup_database.sh`, `98_destroy_database.sh`, and `99_restore_database.sh` read credentials from `1psa`.
 
 Default items/fields:
 
@@ -393,7 +406,7 @@ Optional overrides:
 Example:
 
 ```bash
-POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./05_deploy_database.sh
+POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./06_deploy_database.sh
 ```
 
 ## Troubleshooting
@@ -412,7 +425,7 @@ POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./05_deploy_d
   - Fix: verify with `1psa -l localhost_postgres_teller` and `1psa -p localhost_postgres_teller`.
 - `psql: ... password authentication failed for user ...`
   - Cause: stored credential does not match the database user password.
-  - Fix: update the corresponding `1psa` item, then rerun `./05_deploy_database.sh`.
+  - Fix: update the corresponding `1psa` item, then rerun `./06_deploy_database.sh`.
 - `could not connect to server on socket ...`
   - Cause: PostgreSQL is not running or listening on expected host/socket.
   - Fix: start PostgreSQL (for example via Homebrew service) and retry.

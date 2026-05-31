@@ -113,10 +113,31 @@ resolve_bats_jobs() {
 
 run_single_bats_file() {
   local bats_file="$1"
+  local -a bats_env_unsets=(
+    -u TELLER_DB_PASSWORD
+    -u DB_PASSWORD
+    -u DB_DIALECT
+    -u PROFILE_NAME
+    -u PROFILE_TARGET
+    -u PG_HOST
+    -u PG_PORT
+    -u PG_DBNAME
+    -u PG_USER
+    -u PG_SSLMODE
+    -u PG_SEARCH_PATH
+    -u PG_RUNTIME_ROLE
+    -u PG_ONEPSA_ITEM
+    -u SQLITE_PATH
+    -u TELLER_DB_HOST
+    -u TELLER_DB_PORT
+    -u TELLER_DB_NAME
+    -u TELLER_DB_USER
+    -u TELLER_DB_SQLITE_PATH
+  )
   if [[ -n "$BATS_FILTER" ]]; then
-    env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats --filter "$BATS_FILTER" "$bats_file"
+    env "${bats_env_unsets[@]}" bats --filter "$BATS_FILTER" "$bats_file"
   else
-    env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats "$bats_file"
+    env "${bats_env_unsets[@]}" bats "$bats_file"
   fi
 }
 
@@ -155,10 +176,31 @@ if [[ "$RUN_SHELL_TESTS" == "true" ]]; then
           xargs -0 -P "$BATS_JOBS_RESOLVED" -I {} bash -c '
             set -euo pipefail
             file="$1"
+            bats_env_unsets=(
+              -u TELLER_DB_PASSWORD
+              -u DB_PASSWORD
+              -u DB_DIALECT
+              -u PROFILE_NAME
+              -u PROFILE_TARGET
+              -u PG_HOST
+              -u PG_PORT
+              -u PG_DBNAME
+              -u PG_USER
+              -u PG_SSLMODE
+              -u PG_SEARCH_PATH
+              -u PG_RUNTIME_ROLE
+              -u PG_ONEPSA_ITEM
+              -u SQLITE_PATH
+              -u TELLER_DB_HOST
+              -u TELLER_DB_PORT
+              -u TELLER_DB_NAME
+              -u TELLER_DB_USER
+              -u TELLER_DB_SQLITE_PATH
+            )
             if [[ -n "${BATS_FILTER:-}" ]]; then
-              env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats --filter "$BATS_FILTER" "$file"
+              env "${bats_env_unsets[@]}" bats --filter "$BATS_FILTER" "$file"
             else
-              env -u TELLER_DB_PASSWORD -u DB_PASSWORD bats "$file"
+              env "${bats_env_unsets[@]}" bats "$file"
             fi
           ' _ {}
       fi

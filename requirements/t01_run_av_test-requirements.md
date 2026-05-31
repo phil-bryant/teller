@@ -20,7 +20,7 @@ Tests:
 - R010-T01: Run AV lane with clean ClamAV output and verify `clamav.log` and `clamav-summary.json` are produced.
 
 R015  Statement: Print signature freshness metadata and resolved scan target context.
-Design: Before scan execution, print signature DB freshness metadata (latest file timestamp/age) and the fully resolved scan target path.
+Design: Before scan execution, print signature DB freshness metadata (latest file timestamp/age/status) and the fully resolved scan target path; default staleness threshold is 24 hours via `CLAMAV_SIGNATURE_MAX_AGE_HOURS`.
 Tests:
 - R015-T01: Run with a valid scan target and verify output includes freshness metadata and resolved target path.
 
@@ -29,10 +29,11 @@ Design: While ClamAV runs, print in-progress heartbeat updates using configurabl
 Tests:
 - R020-T01: Run with a slow ClamAV stub and verify at least one in-progress heartbeat line is printed.
 
-R025  Statement: Retry once after signature refresh when ClamAV DB files are missing.
-Design: When ClamAV reports `No supported database files found`, attempt one-time `freshclam --stdout` refresh (bootstrapping Homebrew config when needed), then retry scan once.
+R025  Statement: Enforce strict signature refresh and retry once when DB files are missing.
+Design: If signature freshness is stale, proactively run `freshclam --stdout` before the first scan (bootstrapping Homebrew config when needed). When ClamAV reports `No supported database files found`, retry the scan once after refresh; if a proactive refresh already ran, retry once without issuing a redundant second refresh.
 Tests:
 - R025-T01: Stub missing DB on first scan and verify `freshclam --stdout` runs and scan retries once.
+- R025-T02: Stub stale signatures and verify `freshclam --stdout` runs before `clamscan`.
 
 R030  Statement: Delimit AV tool execution with bounded headers including purpose and URL.
 Design: Before ClamAV invocation, print a boxed ASCII header containing tool name, two explainer lines, and official tool URL.

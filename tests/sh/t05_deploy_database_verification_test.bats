@@ -89,6 +89,7 @@ setup() {
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
+echo "DB_DIALECT=postgresql"
 echo "PROFILE_TARGET=local"
 echo "PG_HOST=localhost"
 echo "PG_PORT=5432"
@@ -187,6 +188,7 @@ stub_managed_verify_helper() {
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=supabase"
+echo "DB_DIALECT=postgresql"
 echo "PROFILE_TARGET=managed"
 echo "PG_HOST=db.example.supabase.co"
 echo "PG_PORT=5432"
@@ -232,6 +234,7 @@ stub_require_ssl_helper() {
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
+echo "DB_DIALECT=postgresql"
 echo "PROFILE_TARGET=local"
 echo "PG_HOST=localhost"
 echo "PG_PORT=5432"

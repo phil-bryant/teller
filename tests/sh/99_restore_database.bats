@@ -10,6 +10,7 @@ setup() {
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
+echo "DB_DIALECT=postgresql"
 echo "PROFILE_TARGET=local"
 echo "PG_HOST=localhost"
 echo "PG_PORT=5432"
@@ -55,6 +56,7 @@ while (($#)); do
 done
 if [[ "$profile" == "supabase_direct" ]]; then
   echo "PROFILE_NAME=supabase_direct"
+  echo "DB_DIALECT=postgresql"
   echo "PROFILE_TARGET=managed"
   echo "PG_HOST=db.example.supabase.co"
   echo "PG_PORT=5432"
@@ -66,6 +68,7 @@ if [[ "$profile" == "supabase_direct" ]]; then
   echo "PG_ONEPSA_ITEM=EGGNEST_SUPABASE_DIRECT"
 else
   echo "PROFILE_NAME=supabase"
+  echo "DB_DIALECT=postgresql"
   echo "PROFILE_TARGET=managed"
   echo "PG_HOST=aws-0-us-east-1.pooler.supabase.com"
   echo "PG_PORT=5432"
@@ -144,7 +147,7 @@ EOF
   [[ "$calls" == *"--schema teller --table transaction"* ]]
 }
 
-@test "scoped repair SQL binds schema and table via psql variables" {
+@test "scoped repair SQL uses resolved schema and table identifiers" {
   #R101-T01
   dump_path="${FIXTURE_ROOT}/backups/snapshot.dump"
   touch "$dump_path"
@@ -162,8 +165,8 @@ EOF
   run bash "${FIXTURE_ROOT}/99_restore_database.sh" --from "$dump_path" --table teller.transaction
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"-v table_schema=teller -v table_name=transaction"* ]]
-  [[ "$calls" == *"columns.table_name = :'table_name'"* ]]
+  [[ "$calls" == *"columns.table_schema = 'teller'"* ]]
+  [[ "$calls" == *"columns.table_name = 'transaction'"* ]]
 }
 
 @test "rejects invalid DATABASE_NAME before restore checks" {

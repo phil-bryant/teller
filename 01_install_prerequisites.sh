@@ -279,7 +279,7 @@ print_final_guidance() {
     echo ""
     echo "Optional validation:"
     echo "- ./tests/t15_verify_macos_crash_test.sh"
-    echo "- ./04_install_classifier_api_tls.sh"
+    echo "- ./05_install_classifier_api_tls.sh"
 }
 
 print_header
@@ -307,6 +307,10 @@ ensure_brew_formula "cpanminus" "cpanm"
 ensure_brew_formula "mkcert"
 #R115: Ensure Periphery Swift dead-code analyzer is available for code-quality lane.
 ensure_brew_formula "peripheryapp/periphery/periphery" "periphery"
+#R120: Ensure pip-tools is available for hash-pinned lockfile compilation.
+ensure_brew_formula "pip-tools" "pip-compile"
+#R125: Ensure cosign is available for optional supply-chain signing workflows.
+ensure_brew_formula "cosign" "cosign"
 ensure_zap_cli
 
 ensure_1psa

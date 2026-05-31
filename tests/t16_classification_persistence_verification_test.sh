@@ -228,7 +228,7 @@ PY
   classifier_api_log="${CLASSIFICATION_PERSISTENCE_REPORT_DIR}/classification-api-startup.log"
   echo "  classifier startup log: ${classifier_api_log}"
   TELLER_CLASSIFIER_API_HOST="$api_host" TELLER_CLASSIFIER_API_PORT="$api_port" \
-    "$CLASSIFICATION_PERSISTENCE_API_PYTHON" "./08_run_classification_api.py" >"$classifier_api_log" 2>&1 &
+    "$CLASSIFICATION_PERSISTENCE_API_PYTHON" "./09_run_classification_api.py" >"$classifier_api_log" 2>&1 &
   classifier_api_pid="$!"
   classifier_api_started="true"
   if ! wait_for_classifier_api "$health_url" "$CLASSIFICATION_PERSISTENCE_API_STARTUP_SECONDS"; then

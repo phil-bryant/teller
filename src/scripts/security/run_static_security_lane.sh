@@ -29,6 +29,8 @@ echo "running SAST (Static Application Security Testing)"
 #R080: Static lane relies on shared cache env to keep __pycache__ under artifacts/cache.
 #R090: Static lane enforces medium-or-higher blocker policy across scanners.
 #R100: Static lane redacts persisted Schemathesis token-bearing artifacts.
+#R105: Static lane enforces hash-pinned security requirements for toolchain bootstrap.
+#R110: Static lane emits SBOM + signing scaffold artifacts for supply-chain visibility.
 REPORT_DIR="${SECURITY_REPORT_DIR:-./artifacts/security/reports}"
 RUN_SAST="${RUN_SAST:-true}"
 RUN_DAST="${RUN_DAST:-false}"
@@ -38,10 +40,13 @@ RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 FAIL_ON_MEDIUM_OR_HIGHER="${SECURITY_FAIL_ON_MEDIUM_OR_HIGHER:-${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./artifacts/venv/security}"
 SECURITY_REQUIREMENTS_FILE="${SECURITY_REQUIREMENTS_FILE:-./requirements/security/requirements-security.txt}"
+RUNTIME_REQUIREMENTS_FILE="${RUNTIME_REQUIREMENTS_FILE:-./requirements.txt}"
 SECURITY_CONFIG_DIR="${SECURITY_CONFIG_DIR:-./config/security}"
 SEMGREP_CONFIG_PATH="${SEMGREP_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/semgrep.yml}"
 BANDIT_CONFIG_PATH="${BANDIT_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/bandit.yml}"
 GITLEAKS_IGNORE_PATH="${GITLEAKS_IGNORE_PATH:-${SECURITY_CONFIG_DIR}/gitleaksignore}"
+SUPPLY_CHAIN_ARTIFACTS_DIR="${SUPPLY_CHAIN_ARTIFACTS_DIR:-${REPORT_DIR}}"
+SUPPLY_CHAIN_SIGNING_MODE="${SUPPLY_CHAIN_SIGNING_MODE:-scaffold}"
 WRITE_TOKEN_PSA_ITEM="TELLER_CLASSIFIER_WRITE_TOKEN"
 
 mkdir -p "$REPORT_DIR"
@@ -65,7 +70,7 @@ fi
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "❌ Missing required command: $1"
-    echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r ${SECURITY_REQUIREMENTS_FILE}"
+    echo "Install prerequisites with ./01_install_prerequisites.sh, then run ./03_prepare_supply_chain_integrity.sh and pip install --require-hashes -r ${SECURITY_REQUIREMENTS_FILE}"
     exit 1
   fi
 }
@@ -201,10 +206,49 @@ ensure_security_venv() {
     needs_toolchain="true"
   fi
   if [[ "$needs_toolchain" == "true" ]]; then
+    require_hashed_requirements_file "$SECURITY_REQUIREMENTS_FILE"
     echo "▶ Installing security toolchain into ${SECURITY_VENV_DIR}"
     "$security_pip" install --upgrade pip
-    "$security_pip" install -r "$SECURITY_REQUIREMENTS_FILE"
+    "$security_pip" install --require-hashes -r "$SECURITY_REQUIREMENTS_FILE"
   fi
+}
+
+requirements_file_has_hashes() {
+  local requirements_file="$1"
+  python3 - <<'PY' "$requirements_file"
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+if not path.exists():
+    raise SystemExit(1)
+content = path.read_text(encoding="utf-8", errors="replace")
+raise SystemExit(0 if "--hash=sha256:" in content else 1)
+PY
+}
+
+require_hashed_requirements_file() {
+  local requirements_file="$1"
+  require_file "$requirements_file"
+  if ! requirements_file_has_hashes "$requirements_file"; then
+    echo "❌ Requirements file is not hash-pinned: ${requirements_file}"
+    echo "Run ./03_prepare_supply_chain_integrity.sh to regenerate lockfiles with hashes."
+    exit 1
+  fi
+}
+
+generate_supply_chain_artifacts() {
+  require_hashed_requirements_file "$RUNTIME_REQUIREMENTS_FILE"
+  require_hashed_requirements_file "$SECURITY_REQUIREMENTS_FILE"
+  local generator_script="./src/scripts/security/generate_supply_chain_artifacts.py"
+  require_file "$generator_script"
+  echo "▶ Generating supply-chain artifacts (SBOM + signing scaffold)"
+  python3 "$generator_script" \
+    --runtime-lock "$RUNTIME_REQUIREMENTS_FILE" \
+    --security-lock "$SECURITY_REQUIREMENTS_FILE" \
+    --output-dir "$SUPPLY_CHAIN_ARTIFACTS_DIR" \
+    --signing-mode "$SUPPLY_CHAIN_SIGNING_MODE" \
+    > "${REPORT_DIR}/supply-chain-artifacts.json"
 }
 
 security_toolchain_usable() {
@@ -556,7 +600,7 @@ run_dast_checks() (
   else
     echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
     TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
-      "$dast_app_python" "./08_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
+      "$dast_app_python" "./09_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
     classifier_api_pid="$!"
   fi
   wait_for_http "${base_url}/health" 45
@@ -724,6 +768,7 @@ configure_pip_audit_python() {
 }
 
 configure_pip_audit_python
+generate_supply_chain_artifacts
 
 if [[ "$RUN_SAST" == "true" ]]; then
   #R020: Run SAST scanners and persist machine-readable artifacts.
@@ -789,7 +834,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   echo "▶ Running Bandit"
   # Distinguish scanner findings from scanner execution failures.
   set +e
-  bandit -r ./src/teller ./tests/py ./06_fetch_teller_api_data.py ./07_backfill_bank_statements.py ./08_run_classification_api.py \
+  bandit -r ./src/teller ./tests/py ./07_fetch_teller_api_data.py ./08_backfill_bank_statements.py ./09_run_classification_api.py \
     -c "$BANDIT_CONFIG_PATH" -f json -o "${REPORT_DIR}/bandit.json"
   BANDIT_EXIT=$?
   set -e

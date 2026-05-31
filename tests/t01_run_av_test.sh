@@ -78,12 +78,14 @@ print_clamav_signature_status() {
   #R015: Print signature freshness metadata before scan execution.
   local db_dir="$1"
   local max_age_hours="$2"
+  local status_path="$3"
+  printf '%s\n' "unknown" > "$status_path"
   if [[ -z "$db_dir" ]]; then
     echo "ℹ️  ClamAV signature freshness: unknown (database directory not found)."
     return
   fi
   echo "▶ ClamAV signature DB directory: ${db_dir}"
-  python3 - <<'PY' "$db_dir" "$max_age_hours"
+  python3 - <<'PY' "$db_dir" "$max_age_hours" "$status_path"
 import datetime as dt
 import json
 import pathlib
@@ -91,6 +93,7 @@ import sys
 
 db_dir = pathlib.Path(sys.argv[1])
 max_age_hours = int(sys.argv[2])
+status_path = pathlib.Path(sys.argv[3])
 patterns = ("*.cvd", "*.cld", "*.inc")
 files = []
 for pattern in patterns:
@@ -98,6 +101,7 @@ for pattern in patterns:
 
 if not files:
     print("⚠️  ClamAV signature freshness: no database files found.")
+    status_path.write_text("missing\n", encoding="utf-8")
     sys.exit(0)
 
 latest = max(files, key=lambda p: p.stat().st_mtime)
@@ -105,6 +109,7 @@ latest_dt = dt.datetime.fromtimestamp(latest.stat().st_mtime, tz=dt.timezone.utc
 now = dt.datetime.now(tz=dt.timezone.utc)
 age_hours = (now - latest_dt).total_seconds() / 3600.0
 status = "fresh" if age_hours <= max_age_hours else "stale"
+status_path.write_text(f"{status}\n", encoding="utf-8")
 
 payload = {
     "latest_file": latest.name,
@@ -118,6 +123,38 @@ print(json.dumps(payload, indent=2))
 if status == "stale":
     print("⚠️  ClamAV signatures look stale; consider running 'freshclam --stdout'.")
 PY
+}
+
+run_freshclam_refresh() {
+  local clamav_report="$1"
+  if ! command -v freshclam >/dev/null 2>&1; then
+    echo "❌ ClamAV database refresh required but 'freshclam' is unavailable."
+    return 1
+  fi
+
+  set +e
+  freshclam --stdout 2>&1 | tee "${clamav_report}.freshclam.log"
+  local freshclam_exit=${PIPESTATUS[0]}
+  set -e
+  local freshclam_log_text=""
+  if [[ -f "${clamav_report}.freshclam.log" ]]; then
+    freshclam_log_text="$(<"${clamav_report}.freshclam.log")"
+  fi
+  if [[ "$freshclam_exit" -ne 0 ]] && [[ "$freshclam_log_text" == *"Can't open/parse the config file"* ]]; then
+    echo "⚠️  freshclam config missing or invalid; attempting one-time config bootstrap."
+    if ensure_freshclam_config; then
+      set +e
+      freshclam --stdout 2>&1 | tee "${clamav_report}.freshclam.log"
+      freshclam_exit=${PIPESTATUS[0]}
+      set -e
+    fi
+  fi
+  if [[ "$freshclam_exit" -ne 0 ]]; then
+    echo "❌ freshclam failed to download ClamAV signatures."
+    echo "Run 'freshclam --stdout' manually, then rerun AV checks."
+    return 1
+  fi
+  return 0
 }
 
 run_clamscan_once() {
@@ -225,7 +262,8 @@ run_clamav_scan() {
   local clamav_report="$1"
   local clamav_summary="$2"
   local clamav_scan_target="${CLAMAV_SCAN_TARGET:-.}"
-  local clamav_signature_max_age_hours="${CLAMAV_SIGNATURE_MAX_AGE_HOURS:-48}"
+  local clamav_signature_max_age_hours="${CLAMAV_SIGNATURE_MAX_AGE_HOURS:-24}"
+  local freshclam_ran=false
 
   if [[ "$RUN_CLAMAV" != "true" ]]; then
     echo "ℹ️  ClamAV repository scan skipped (set RUN_CLAMAV=true to enable)."
@@ -252,7 +290,20 @@ run_clamav_scan() {
   echo "▶ ClamAV scan target: ${clamav_scan_target_abs}"
   local clamav_db_dir=""
   clamav_db_dir="$(detect_clamav_db_dir)"
-  print_clamav_signature_status "$clamav_db_dir" "$clamav_signature_max_age_hours"
+  local clamav_signature_status_file="${clamav_report}.signature-status"
+  print_clamav_signature_status "$clamav_db_dir" "$clamav_signature_max_age_hours" "$clamav_signature_status_file"
+  local clamav_signature_status="unknown"
+  if [[ -f "$clamav_signature_status_file" ]]; then
+    clamav_signature_status="$(tr -d '[:space:]' < "$clamav_signature_status_file")"
+  fi
+  if [[ "$clamav_signature_status" == "stale" ]]; then
+    echo "⚠️  ClamAV signatures are stale (> ${clamav_signature_max_age_hours}h); enforcing refresh with freshclam."
+    if ! run_freshclam_refresh "$clamav_report"; then
+      exit 1
+    fi
+    freshclam_ran=true
+    echo "▶ Continuing ClamAV repository scan after enforced signature refresh"
+  fi
 
   set +e
   run_clamscan_once "$clamav_report" "$clamav_scan_target" "$clamav_scan_target_abs"
@@ -265,40 +316,20 @@ run_clamav_scan() {
   fi
   #R025: Retry one time after freshclam when signature databases are missing.
   if [[ "$clamav_exit" -gt 1 ]] && [[ "$clamav_report_text" == *"No supported database files found"* ]]; then
-    echo "⚠️  ClamAV signatures are missing; attempting one-time database refresh with freshclam."
-    if command -v freshclam >/dev/null 2>&1; then
-      set +e
-      freshclam --stdout 2>&1 | tee "${clamav_report}.freshclam.log"
-      local freshclam_exit=${PIPESTATUS[0]}
-      set -e
-      local freshclam_log_text=""
-      if [[ -f "${clamav_report}.freshclam.log" ]]; then
-        freshclam_log_text="$(<"${clamav_report}.freshclam.log")"
-      fi
-      if [[ "$freshclam_exit" -ne 0 ]] && [[ "$freshclam_log_text" == *"Can't open/parse the config file"* ]]; then
-        echo "⚠️  freshclam config missing or invalid; attempting one-time config bootstrap."
-        if ensure_freshclam_config; then
-          set +e
-          freshclam --stdout 2>&1 | tee "${clamav_report}.freshclam.log"
-          freshclam_exit=${PIPESTATUS[0]}
-          set -e
-        fi
-      fi
-      if [[ "$freshclam_exit" -ne 0 ]]; then
-        echo "❌ freshclam failed to download ClamAV signatures."
-        echo "Run 'freshclam --stdout' manually, then rerun AV checks."
+    if [[ "$freshclam_ran" == "true" ]]; then
+      echo "⚠️  ClamAV signatures are still missing after proactive refresh; retrying scan once without another refresh."
+    else
+      echo "⚠️  ClamAV signatures are missing; attempting one-time database refresh with freshclam."
+      if ! run_freshclam_refresh "$clamav_report"; then
         exit 1
       fi
-      echo "▶ Retrying ClamAV repository scan after signature refresh"
-      set +e
-      run_clamscan_once "$clamav_report" "$clamav_scan_target" "$clamav_scan_target_abs"
-      clamav_exit=$?
-      set -e
-    else
-      echo "❌ ClamAV database is missing and 'freshclam' is unavailable."
-      echo "Install/update ClamAV signatures, then rerun AV checks."
-      exit 1
+      freshclam_ran=true
     fi
+    echo "▶ Retrying ClamAV repository scan after signature refresh"
+    set +e
+    run_clamscan_once "$clamav_report" "$clamav_scan_target" "$clamav_scan_target_abs"
+    clamav_exit=$?
+    set -e
   fi
 
   if [[ "$clamav_exit" -gt 1 ]]; then

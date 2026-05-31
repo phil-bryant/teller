@@ -4,7 +4,7 @@
 
 In this repository, enrollment management is now owned by the native macOS app in `macos-ui` (Connect tab) rather than a standalone local web page.
 
-- Primary entrypoint: `./09_run_classification_macos_ui.sh`
+- Primary entrypoint: `./10_run_classification_macos_ui.sh`
 - Connect flow: native `WKWebView` inside the Connect tab
 - Local context persistence: in-process Swift service writing `~/.teller/auth_token*.json` + `~/.teller/enrollment_id*.txt`
 

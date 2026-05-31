@@ -3,7 +3,7 @@ load "helpers/common.bash"
 
 write_dast_14_stub() {
   local root="$1"
-  cat > "${root}/08_run_classification_api.py" <<'PYS'
+  cat > "${root}/09_run_classification_api.py" <<'PYS'
 #!/usr/bin/env python3
 import http.server
 import os
@@ -28,7 +28,7 @@ if __name__ == "__main__":
   with socketserver.TCPServer((host, port), H) as s:
     s.serve_forever()
 PYS
-  chmod +x "${root}/08_run_classification_api.py"
+  chmod +x "${root}/09_run_classification_api.py"
 }
 
 copy_dast_project_files() {
@@ -46,8 +46,15 @@ copy_dast_project_files() {
   cp "$(repo_root)/tests/py/security/"*.py "${FIXTURE_ROOT}/tests/py/security/"
   mkdir -p "${FIXTURE_ROOT}/src/sql/postgres"
   cp "$(repo_root)/src/sql/postgres/teller_nys_snw_category.sql" "${FIXTURE_ROOT}/src/sql/postgres/teller_nys_snw_category.sql"
+  cat > "${FIXTURE_ROOT}/requirements.txt" <<'EOF'
+requests==2.34.2 \
+    --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+EOF
   mkdir -p "${FIXTURE_ROOT}/requirements/security"
-  cp "$(repo_root)/requirements/security/requirements-security.txt" "${FIXTURE_ROOT}/requirements/security/requirements-security.txt"
+  cat > "${FIXTURE_ROOT}/requirements/security/requirements-security.txt" <<'EOF'
+schemathesis==4.20.1 \
+    --hash=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+EOF
   mkdir -p "${FIXTURE_ROOT}/artifacts/venv/security"
   write_dast_14_stub "${FIXTURE_ROOT}"
   stub_cmd 1psa "echo write-token"
@@ -116,6 +123,14 @@ src() {
 
 src_lane() {
   printf '%s' "$(repo_root)/src/scripts/security/run_dynamic_security_lane.sh"
+}
+
+@test "dynamic lane enforces hash-pinned requirements during security bootstrap" {
+  #R055-T01
+  run grep -F "require_hashed_requirements_file \"\$SECURITY_REQUIREMENTS_FILE\"" "$(src_lane)"
+  [ "$status" -eq 0 ]
+  run grep -F -- "--require-hashes --force-reinstall -r \"\$SECURITY_REQUIREMENTS_FILE\"" "$(src_lane)"
+  [ "$status" -eq 0 ]
 }
 
 @test "prints DAST startup banner" {

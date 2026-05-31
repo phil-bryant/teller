@@ -9,8 +9,8 @@ This app now also includes a native **Connect** tab for local Teller enrollment 
 From repo root:
 
 ```zsh
-./04_install_classifier_api_tls.sh   # first run only (local HTTPS cert/key)
-./08_run_classification_api.py
+./05_install_classifier_api_tls.sh   # first run only (local HTTPS cert/key)
+./09_run_classification_api.py
 ```
 
 Defaults to **HTTPS** on `127.0.0.1:8787` using `~/.teller/classifier-localhost-cert.pem` and `~/.teller/classifier-localhost-key.pem`.
@@ -26,7 +26,7 @@ Write operations require `1psa` item `TELLER_CLASSIFIER_WRITE_TOKEN` to be resol
 
 ### Troubleshooting slow or failed loads
 
-- **Spinner then error:** Confirm the API is listening on `https://127.0.0.1:8787`. Run `./04_install_classifier_api_tls.sh` if cert files are missing.
+- **Spinner then error:** Confirm the API is listening on `https://127.0.0.1:8787`. Run `./05_install_classifier_api_tls.sh` if cert files are missing.
 - **Still slow with API up:** Initial load skips the expensive `COUNT(*)` query and refreshes the total in the background; very large databases may still take time on first paint. Check PostgreSQL profile latency (`TELLER_DB_PROFILE`, managed vs local).
 - **Proxy:** Unset `TELLER_CLASSIFIER_HTTP_PROXY` outside DAST/security test runs so loopback traffic is not proxied.
 
@@ -55,13 +55,13 @@ Connect is now owned in-process by the app (local file-backed service + native W
 From repo root, the recommended launcher is:
 
 ```zsh
-./09_run_classification_macos_ui.sh
+./10_run_classification_macos_ui.sh
 ```
 
 Profile transaction-list load and first-render timings:
 
 ```zsh
-./09_run_classification_macos_ui.sh --profile
+./10_run_classification_macos_ui.sh --profile
 ```
 
 That command launches this macOS app; open the Connect tab to manage local enrollments.

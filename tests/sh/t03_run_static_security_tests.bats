@@ -4,7 +4,7 @@ load "helpers/common.bash"
 # Minimal OpenAPI/health server for DAST (stdlib only, no Teller/FastAPI deps).
 write_dast_14_stub() {
   local root="$1"
-  cat > "${root}/08_run_classification_api.py" <<'PY'
+  cat > "${root}/09_run_classification_api.py" <<'PY'
 #!/usr/bin/env python3
 import http.server
 import os
@@ -31,7 +31,7 @@ if __name__ == "__main__":
   with socketserver.TCPServer((host, port), H) as s:
     s.serve_forever()
 PY
-  chmod +x "${root}/08_run_classification_api.py"
+  chmod +x "${root}/09_run_classification_api.py"
 }
 
 write_macos_ui_regression_stub() {
@@ -85,11 +85,19 @@ copy_security_project_files() {
   mkdir -p "${FIXTURE_ROOT}/src/scripts/security"
   cp "$(repo_root)/src/scripts/security/common.sh" "${FIXTURE_ROOT}/src/scripts/security/common.sh"
   cp "$(repo_root)/src/scripts/security/run_static_security_lane.sh" "${FIXTURE_ROOT}/src/scripts/security/run_static_security_lane.sh"
+  cp "$(repo_root)/src/scripts/security/generate_supply_chain_artifacts.py" "${FIXTURE_ROOT}/src/scripts/security/generate_supply_chain_artifacts.py"
   cp "$(repo_root)/src/scripts/export_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh"
   cp "$(repo_root)/src/scripts/normalize_pytest_addopts.sh" "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh"
   chmod +x "${FIXTURE_ROOT}/src/scripts/security/run_static_security_lane.sh" "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh" "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh"
+  cat > "${FIXTURE_ROOT}/requirements.txt" <<'EOF'
+requests==2.34.2 \
+    --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+EOF
   mkdir -p "${FIXTURE_ROOT}/requirements/security"
-  cp "$(repo_root)/requirements/security/requirements-security.txt" "${FIXTURE_ROOT}/requirements/security/requirements-security.txt"
+  cat > "${FIXTURE_ROOT}/requirements/security/requirements-security.txt" <<'EOF'
+semgrep==1.163.0 \
+    --hash=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+EOF
   mkdir -p "${FIXTURE_ROOT}/config/security"
   cp "$(repo_root)/config/security/semgrep.yml" "${FIXTURE_ROOT}/config/security/"
   cp "$(repo_root)/config/security/bandit.yml" "${FIXTURE_ROOT}/config/security/"
@@ -619,7 +627,7 @@ EOS
 }
 
 @test "installs security toolchain in venv when semgrep is absent" {
-  #R005-T01
+  #R005-T01 #R105-T01
   setup_shell_test
   copy_security_project_files
   write_python3_venv_stub_no_sast_tools
@@ -628,7 +636,7 @@ EOS
   [ "$status" -eq 0 ]
   [[ "$output" == *"Installing security toolchain into ./artifacts/venv/security"* ]]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"pip install -r ./requirements/security/requirements-security.txt"* ]]
+  [[ "$calls" == *"pip install --require-hashes -r ./requirements/security/requirements-security.txt"* ]]
 }
 
 @test "sets pip-audit to project venv when teller-venv is present" {
@@ -658,7 +666,7 @@ EOS
 }
 
 @test "SAST produces JSON reports and sast summary" {
-  #R020-T01 #R025-T01 #R025-T02 #R030-T01 #R030-T02 #R065-T01
+  #R020-T01 #R025-T01 #R025-T02 #R030-T01 #R030-T02 #R065-T01 #R110-T01
   setup_shell_test
   copy_security_project_files
   install_passing_sast_stubs_in_venv
@@ -666,7 +674,7 @@ EOS
   run env RUN_DAST=false \
     bash "${FIXTURE_ROOT}/t03_run_static_security_tests.sh"
   [ "$status" -eq 0 ]
-  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" ruff.json gitleaks.json shellcheck.json swiftlint.json sast-summary.json; do
+  for f in semgrep.json bandit.json "pip-audit.json" "detect-secrets.json" ruff.json gitleaks.json shellcheck.json swiftlint.json sast-summary.json supply-chain-artifacts.json sbom.cdx.json sbom.signature sbom.attestation.json; do
     [ -f "${FIXTURE_ROOT}/artifacts/security/reports/${f}" ]
   done
   ruff_total="$(/usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("ruff_total",-1))' "${FIXTURE_ROOT}/artifacts/security/reports/sast-summary.json")"

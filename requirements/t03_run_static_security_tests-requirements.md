@@ -110,10 +110,20 @@ Design: When `RUN_DAST=true` and Schemathesis runs, write raw output to temporar
 Tests:
 - R100-T01: Run static lane with DAST+Schemathesis enabled and verify persisted `schemathesis.log`/`schemathesis-junit.xml` do not contain the raw token and include redacted placeholder content.
 
+R105  Statement: Security lane dependency bootstrap must require hash-pinned security requirements.
+Design: Before installing security toolchain dependencies, validate `requirements/security/requirements-security.txt` contains `--hash=sha256:` entries and install with `pip install --require-hashes`.
+Tests:
+- R105-T01: Trigger security-toolchain bootstrap and verify install command includes `--require-hashes`.
+
+R110  Statement: Static security lane must emit SBOM and signing scaffold artifacts.
+Design: Invoke `src/scripts/security/generate_supply_chain_artifacts.py` during lane setup and persist `sbom.cdx.json`, `sbom.signature`, `sbom.attestation.json`, plus invocation summary under the configured report directory.
+Tests:
+- R110-T01: Run SAST lane and verify SBOM/signature/attestation artifacts exist in the reports directory.
+
 ## Changelog
 
 - 2026-05-30: Added R100 to require Schemathesis token redaction for static-lane DAST artifacts.
-- 2026-05-10: Split former combined security lane into `07_run_static_security_tests.sh` and `23_run_dynamic_security_tests.sh`.
+- 2026-05-10: Split former combined security lane into `tests/t03_run_static_security_tests.sh` and `tests/t12_run_dynamic_security_tests.sh`.
 - 2026-05-15: Added R025 to require Ruff execution and report accounting in SAST output.
 - 2026-05-15: Added R030 to enforce Ruff findings as blocking SAST gate signals.
 - 2026-05-15: Added R035 to exclude generated cache/report paths from detect-secrets.
@@ -121,3 +131,5 @@ Tests:
 - 2026-05-15: Added R045/R050/R055/R060/R065/R070 to require detailed unsuppressed status output for Semgrep, Bandit, pip-audit, detect-secrets, Ruff, and ShellCheck.
 - 2026-05-15: Added R090 financial-app medium-or-higher blocking policy across SAST tools.
 - 2026-05-30: Added R080 to keep Python bytecode cache output under `artifacts/cache/pycache` and prevent root-level `__pycache__/`.
+- 2026-05-30: Added R105 for `--require-hashes` enforcement during security toolchain bootstrap.
+- 2026-05-30: Added R110 to require SBOM + signing scaffold artifact generation in static security lane.

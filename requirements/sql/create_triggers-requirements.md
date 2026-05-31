@@ -6,7 +6,7 @@ Applies to `src/sql/postgres/create_triggers.sql`.
 
 ## Ownership Boundaries
 
-Deployment sequencing and invocation remain defined in `requirements/05_deploy_database-requirements.md`, and ORM/table naming contracts remain defined in `requirements/teller_object-requirements.md`.
+Deployment sequencing and invocation remain defined in `requirements/06_deploy_database-requirements.md`, and ORM/table naming contracts remain defined in `requirements/teller_object-requirements.md`.
 
 R001  Statement: Provide a shared trigger function that refreshes `updated_at` on row updates.
 Design: Define `teller.update_updated_at()` as a `plpgsql` trigger function that assigns `CURRENT_TIMESTAMP` to `NEW.updated_at`.

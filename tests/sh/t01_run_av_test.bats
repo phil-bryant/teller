@@ -11,6 +11,7 @@ copy_av_project_files() {
 stub_clamscan_clean() {
   cat > "${STUB_BIN}/clamscan" <<'EOF'
 #!/usr/bin/env bash
+echo "clamscan $*" >> "${CALLS_LOG}"
 cat <<'OUT'
 ----------- SCAN SUMMARY -----------
 Known viruses: 12345
@@ -138,6 +139,24 @@ EOF
   chmod +x "${STUB_BIN}/freshclam"
 }
 
+create_signature_db_with_age_hours() {
+  local db_dir="$1"
+  local age_hours="$2"
+  mkdir -p "$db_dir"
+  local db_file="${db_dir}/main.cvd"
+  : > "$db_file"
+  python3 - <<'PY' "$db_file" "$age_hours"
+import os
+import sys
+import time
+
+path = sys.argv[1]
+age_hours = float(sys.argv[2])
+mtime = time.time() - (age_hours * 3600.0)
+os.utime(path, (mtime, mtime))
+PY
+}
+
 teardown() {
   teardown_shell_test
 }
@@ -216,6 +235,41 @@ teardown() {
   [[ "$output" == *"Retrying ClamAV repository scan after signature refresh"* ]]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"freshclam --stdout"* ]]
+}
+
+@test "enforces proactive freshclam refresh before scan when signatures are stale" {
+  setup_shell_test
+  copy_av_project_files
+  stub_clamscan_clean
+  stub_freshclam_ok
+  local db_dir="${TEST_TMPDIR}/clamav-db"
+  create_signature_db_with_age_hours "$db_dir" 72
+  run env CLAMAV_DB_DIR="$db_dir" CLAMAV_SIGNATURE_MAX_AGE_HOURS=24 \
+    bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"enforcing refresh with freshclam"* ]]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" == *"freshclam --stdout"* ]]
+  fresh_line="$(printf '%s\n' "$calls" | awk '/freshclam --stdout/{print NR; exit}')"
+  clam_line="$(printf '%s\n' "$calls" | awk '/^clamscan /{print NR; exit}')"
+  [ -n "$fresh_line" ]
+  [ -n "$clam_line" ]
+  [ "$fresh_line" -lt "$clam_line" ]
+}
+
+@test "does not proactively refresh when signatures are within freshness threshold" {
+  setup_shell_test
+  copy_av_project_files
+  stub_clamscan_clean
+  stub_freshclam_ok
+  local db_dir="${TEST_TMPDIR}/clamav-db"
+  create_signature_db_with_age_hours "$db_dir" 1
+  run env CLAMAV_DB_DIR="$db_dir" CLAMAV_SIGNATURE_MAX_AGE_HOURS=24 \
+    bash "${FIXTURE_ROOT}/t01_run_av_test.sh"
+  [ "$status" -eq 0 ]
+  calls="$(<"${CALLS_LOG}")"
+  [[ "$calls" != *"freshclam --stdout"* ]]
+  [[ "$calls" == *"clamscan "* ]]
 }
 
 @test "fails AV gate on infected files by default and supports override" {

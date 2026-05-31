@@ -81,10 +81,10 @@ macOS UI action
 #### Local Runtime Topology (processes, ports, configs)
 
 ```text
-TransactionClassifier (SwiftUI app, launched by 09_run_classification_macos_ui.sh)
+TransactionClassifier (SwiftUI app, launched by 10_run_classification_macos_ui.sh)
   -> talks to FastAPI at TELLER_CLASSIFIER_API_URL (default https://127.0.0.1:8787)
 
-08_run_classification_api.py (FastAPI)
+09_run_classification_api.py (FastAPI)
   -> binds TELLER_CLASSIFIER_API_HOST/PORT (default 127.0.0.1:8787)
   -> requires 1psa-backed TELLER_CLASSIFIER_WRITE_TOKEN before serving
   -> requires HTTPS with local cert/key files (no HTTP override path)
@@ -195,9 +195,9 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │ Frameworks/Libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,          │
  │                  psycopg2-binary, requests, structlog, python-dotenv         │
  │ Main flows:                                                                  │
- │   - Ingest: 06_fetch_teller_api_data.py                                      │
- │   - Backfill: 07_backfill_bank_statements.py                                 │
- │   - API: 08_run_classification_api.py ->                                     │
+ │   - Ingest: 07_fetch_teller_api_data.py                                      │
+ │   - Backfill: 08_backfill_bank_statements.py                                 │
+ │   - API: 09_run_classification_api.py ->                                     │
  │         src/teller/teller_classification_api.py -> src/teller/classification │
  └───────────────────────────────────────┬──────────────────────────────────────┘
                                          |
@@ -283,7 +283,7 @@ SECURITY SCORECARD (10/10 EXIT GATE)
 - DAST coverage: Schemathesis (`SCHEMATHESIS_MODE=all` by default) plus ZAP quick scan with machine-readable severity summary.
 - ZAP gate policy: threshold-driven fail behavior via `SECURITY_ZAP_FAIL_THRESHOLD` (`high` default; `none|high|medium|low|informational`).
 - Local gate enforcement: static SAST gate via `tests/t03_run_static_security_tests.sh`; dynamic DAST gate via `tests/t12_run_dynamic_security_tests.sh` (no GitHub Actions workflows).
-- Dependency hygiene: `requirements.txt` is pinned for runtime dependencies (including `psycopg2-binary==2.9.12`), with a bounded compatibility range for test tooling (`pytest>=8.1,<10`).
+- Dependency hygiene: `03_prepare_supply_chain_integrity.sh` compiles hash-pinned lockfiles from `requirements.in` and `requirements/security/requirements-security.in`; install paths consume the compiled lockfiles (`requirements.txt`, `requirements/security/requirements-security.txt`) with hash verification.
 
 SECURITY RUNBOOK (LOCAL COMPROMISE RESPONSE)
 ============================================
@@ -310,7 +310,7 @@ INGEST + NORMALIZATION + PERSISTENCE (SCRIPT 06)
 [scheduler/manual]
       |
       v
-06_fetch_teller_api_data.py
+07_fetch_teller_api_data.py
       |
       +--> fetch institutions/accounts/transactions
       +--> normalize/transform (pagination + duplicate transaction canonicalization)
@@ -361,7 +361,7 @@ Trust boundaries:
 │                                  v                                                 │
 │  3) API usage path                                                 4) disconnected │
 │  ┌──────────────────────────────────────────────────────────────┐     enrollment   │
-│  │ 06_fetch_teller_api_data.py                                  │                  │
+│  │ 07_fetch_teller_api_data.py                                  │                  │
 │  │ - builds contexts from default/suffix/metadata files         │-----repair---┐   │
 │  │ - sends cert/key (mTLS) + token (basic user token:blank)     │              │   │
 │  │ - retries once after local repair workflow                   │              │   │
@@ -375,7 +375,7 @@ Trust boundaries:
                          └───────────────┬───────────────┘                       │
                                          │ enrollment.disconnected               │
                                          └───────────────────────────────────────┘
-                                                        launches 09_run_classification_macos_ui.sh
+                                                        launches 10_run_classification_macos_ui.sh
 ```
 
 Token and credential lifecycle notes:
@@ -383,7 +383,7 @@ Token and credential lifecycle notes:
 - Initial connect/add: token returned by Connect is written to `auth_token*.json`; enrollment id is written to matching `enrollment_id*.txt`.
 - Reconnect/rotate token: reconnect action updates the selected existing context files in place.
 - Multi-context support: add action allocates unique suffixed file pairs so multiple enrollments can coexist.
-- Runtime consumption: `06_fetch_teller_api_data.py` reads local contexts, then calls Teller with local cert/key plus per-context token.
+- Runtime consumption: `07_fetch_teller_api_data.py` reads local contexts, then calls Teller with local cert/key plus per-context token.
 - Disconnected enrollment recovery: when Teller returns `enrollment.disconnected`, script triggers the macOS Connect repair flow and retries once.
 - Cert/key rotation boundary: certificate/private key issuance and revocation happen in Teller dashboard; local app/scripts only read local `certificate.pem` / `private_key.pem`.
 
@@ -395,7 +395,7 @@ Why: Shows exact order and idempotency points for data movement into Postgres.
 [scheduler/manual]
       |
       v
-06_fetch_teller_api_data.py
+07_fetch_teller_api_data.py
       |
       +--> fetch institutions/accounts/transactions
       |
@@ -428,7 +428,7 @@ Trust/authz boundaries:
 │                     │                                              │
 │                     v                                              │
 │  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ FastAPI app (`08_run_classification_api.py` -> `create_app`) │  │
+│  │ FastAPI app (`09_run_classification_api.py` -> `create_app`) │  │
 │  │                                                              │  │
 │  │ 1) Startup preflight verifies `TELLER_CLASSIFIER_WRITE_TOKEN`│  │
 │  │    can be resolved from 1psa before serving `/v1/*` traffic. │  │
@@ -557,14 +557,14 @@ Why: Helpful for debugging "what should be running" and "where config comes from
 │  App/UI process                                                                            │
 │  ┌──────────────────────────────────────────────────────────┐                              │
 │  │ SwiftUI app: TransactionClassifier                       │                              │
-│  │ launcher: 09_run_classification_macos_ui.sh              │                              │
+│  │ launcher: 10_run_classification_macos_ui.sh              │                              │
 │  │ Connect runs in-process (no localhost Connect server)    │                              │
 │  └───────────────────────────────┬──────────────────────────┘                              │
 │                                  │ HTTPS: TELLER_CLASSIFIER_API_URL                        │
 │                                  │ default https://127.0.0.1:8787                          │
 │                                  v                                                         │
 │  API process                     ┌───────────────────────────────────────────────────────┐ │
-│  ┌───────────────────────────────│ FastAPI: 08_run_classification_api.py                 │ │
+│  ┌───────────────────────────────│ FastAPI: 09_run_classification_api.py                 │ │
 │  │                               │ bind env: TELLER_CLASSIFIER_API_HOST/PORT             │ │
 │  │                               │ defaults: 127.0.0.1:8787                              │ │
 │  │                               │ startup gate: requires 1psa item                      │ │
@@ -702,7 +702,7 @@ Primary data flows and ownership:
 
 - F1 Connect bootstrap request (owner: macOS UI): send app/environment/enrollment context into WKWebView Connect session.
 - F2 Connect callback secrets (owner: macOS UI + setup service): receive token/enrollment_id and persist into `~/.teller` with restrictive file permissions.
-- F3 Secret retrieval for runtime (owner: shell/python runtime): runtime entrypoints (`06_fetch_teller_api_data.py`, `08_run_classification_api.py`, `tests/t13_run_teller_api_smoke_tests.sh`, optional `07_backfill_bank_statements.py`) resolve write token from `1psa` and Teller API cert/key/token from `~/.teller`.
+- F3 Secret retrieval for runtime (owner: shell/python runtime): runtime entrypoints (`07_fetch_teller_api_data.py`, `09_run_classification_api.py`, `tests/t13_run_teller_api_smoke_tests.sh`, optional `08_backfill_bank_statements.py`) resolve write token from `1psa` and Teller API cert/key/token from `~/.teller`.
 - F4 Teller API exchange (owner: ingest runtime): outbound mTLS + token-auth requests and inbound institution/account/transaction payloads.
 - F5 Local API auth gate (owner: FastAPI): require `X-Teller-Write-Token` backed by `1psa` item resolution for `/v1/*` reads and writes (`/health` remains unauthenticated).
 - F6 Persistence path (owner: DB + API/ingest): validated SQLAlchemy reads/writes into `teller` schema under least-privilege role assumptions.

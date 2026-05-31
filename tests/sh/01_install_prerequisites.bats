@@ -34,6 +34,8 @@ teardown() {
   stub_cmd pg_prove "exit 0"
   stub_cmd mkcert "exit 0"
   stub_cmd periphery "exit 0"
+  stub_cmd pip-compile "exit 0"
+  stub_cmd cosign "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
 
   run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
@@ -58,6 +60,8 @@ teardown() {
   stub_cmd pg_prove "exit 0"
   stub_cmd mkcert "exit 0"
   stub_cmd periphery "exit 0"
+  stub_cmd pip-compile "exit 0"
+  stub_cmd cosign "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
 echo git "\$*" >> "${CALLS_LOG}"
@@ -88,6 +92,8 @@ EOF
   stub_cmd pg_prove "exit 0"
   stub_cmd mkcert "exit 0"
   stub_cmd periphery "exit 0"
+  stub_cmd pip-compile "exit 0"
+  stub_cmd cosign "exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
 echo git "\$*" >> "${CALLS_LOG}"
@@ -133,8 +139,8 @@ EOF
   [[ "$calls" == *"local-1psa -f custom_item custom_item"* ]]
 }
 
-@test "installs bats-core perl cpanminus and mkcert when tooling is missing" {
-  #R055-T01 #R055-T02 #R060-T01 #R060-T02 #R070-T01 #R070-T02 #R075-T01 #R075-T02 #R110-T01 #R115-T01
+@test "installs bats-core perl cpanminus mkcert pip-tools and cosign when tooling is missing" {
+  #R055-T01 #R055-T02 #R060-T01 #R060-T02 #R070-T01 #R070-T02 #R075-T01 #R075-T02 #R110-T01 #R115-T01 #R120-T01 #R120-T02 #R125-T01 #R125-T02
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   stub_cmd go "exit 0"
   stub_cmd git "exit 0"
@@ -200,9 +206,25 @@ exit 0
 PERIPHERY
   chmod +x "${STUB_BIN}/periphery"
 fi
+if [[ "\$1" == "install" && "\$2" == "pip-tools" ]]; then
+  cat > "${STUB_BIN}/pip-compile" <<'PIPCOMPILE'
+#!/usr/bin/env bash
+exit 0
+PIPCOMPILE
+  chmod +x "${STUB_BIN}/pip-compile"
+fi
+if [[ "\$1" == "install" && "\$2" == "cosign" ]]; then
+  cat > "${STUB_BIN}/cosign" <<'COSIGN'
+#!/usr/bin/env bash
+exit 0
+COSIGN
+  chmod +x "${STUB_BIN}/cosign"
+fi
 exit 0
 EOF
   chmod +x "${STUB_BIN}/brew"
+  stub_cmd pip-compile "exit 0"
+  stub_cmd cosign "exit 0"
 
   run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   [ "$status" -eq 0 ]
@@ -215,6 +237,8 @@ EOF
   [[ "$calls" == *"brew install gitleaks"* ]]
   [[ "$calls" == *"brew install mkcert"* ]]
   [[ "$calls" == *"brew install peripheryapp/periphery/periphery"* ]]
+  [[ "$calls" == *"brew install pip-tools"* ]]
+  [[ "$calls" == *"brew install cosign"* || "$output" == *"[cosign] Available on PATH"* ]]
 }
 
 @test "builds and installs pgtap from theory source when pg_prove is missing" {
@@ -227,6 +251,8 @@ EOF
   stub_cmd perl "exit 0"
   stub_cmd mkcert "exit 0"
   stub_cmd periphery "exit 0"
+  stub_cmd pip-compile "exit 0"
+  stub_cmd cosign "exit 0"
   stub_cmd 1psa "echo installed; exit 0"
   cat > "${STUB_BIN}/git" <<EOF
 #!/usr/bin/env bash
@@ -291,6 +317,18 @@ EOF
   [ "$status" -eq 0 ]
 }
 
+@test "requires pip-tools formula in installer script" {
+  #R120-T01 #R120-T02
+  run grep 'ensure_brew_formula "pip-tools" "pip-compile"' "$(repo_root)/01_install_prerequisites.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "requires cosign formula in installer script" {
+  #R125-T01 #R125-T02
+  run grep 'ensure_brew_formula "cosign" "cosign"' "$(repo_root)/01_install_prerequisites.sh"
+  [ "$status" -eq 0 ]
+}
+
 @test "installs TAP::Parser::SourceHandler::pgTAP via user-local cpanm" {
   mkdir -p "${TEST_TMPDIR}/pg_install/.git"
   mkdir -p "${TEST_TMPDIR}/pgtap/.git"
@@ -315,6 +353,8 @@ MAKE
   stub_cmd perl "exit 0"
   stub_cmd mkcert "exit 0"
   stub_cmd periphery "exit 0"
+  stub_cmd pip-compile "exit 0"
+  stub_cmd cosign "exit 0"
 
   run env PSA_INSTALL_SUDO_ITEM="custom_item" bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
   [ "$status" -eq 0 ]

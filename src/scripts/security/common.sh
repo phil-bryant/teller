@@ -19,6 +19,8 @@
 #R080: Shared helpers export Python bytecode cache path under artifacts/cache.
 #R090: Shared helpers support reusable medium-or-higher gate plumbing.
 #R100: Shared helpers provide reusable secret redaction for persisted Schemathesis artifacts.
+#R105: Shared helpers support hash-pinned requirements enforcement for security toolchains.
+#R110: Shared helpers support supply-chain artifact generation wiring (SBOM/signing scaffold).
 security_init_repo_root() {
   local script_path="${1:-${BASH_SOURCE[0]-$0}}"
   local script_dir
@@ -47,7 +49,7 @@ require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     local requirements_file="${SECURITY_REQUIREMENTS_FILE:-./requirements/security/requirements-security.txt}"
     echo "❌ Missing required command: $1"
-    echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r ${requirements_file}"
+    echo "Install prerequisites with ./01_install_prerequisites.sh, then run ./03_prepare_supply_chain_integrity.sh and pip install --require-hashes -r ${requirements_file}"
     exit 1
   fi
 }

@@ -19,6 +19,7 @@ echo "running DAST (Dynamic Application Security Testing)"
 #R030: Dynamic lane parses ZAP summary and enforces configurable severity threshold gate.
 #R045: Dynamic lane runs Schemathesis from report_dir to keep .schemathesis out of repo root.
 #R050: Dynamic lane redacts persisted Schemathesis token-bearing artifacts.
+#R055: Dynamic lane enforces hash-pinned security requirements for toolchain reinstall.
 REPORT_DIR="${SECURITY_REPORT_DIR:-./artifacts/security-dast}"
 RUN_SAST="${RUN_SAST:-false}"
 RUN_DAST="${RUN_DAST:-true}"
@@ -54,7 +55,7 @@ fi
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "❌ Missing required command: $1"
-    echo "Install prerequisites with ./01_install_prerequisites.sh and pip install -r ${SECURITY_REQUIREMENTS_FILE}"
+    echo "Install prerequisites with ./01_install_prerequisites.sh, then run ./03_prepare_supply_chain_integrity.sh and pip install --require-hashes -r ${SECURITY_REQUIREMENTS_FILE}"
     exit 1
   fi
 }
@@ -79,6 +80,32 @@ print_tool_header() {
   printf '| %-76s |\n' "${explainer_line_2}"
   printf '| %-76s |\n' "URL: ${tool_url}"
   printf '%s\n' "$border"
+}
+
+requirements_file_has_hashes() {
+  #R055: Detect whether requirements file includes sha256 hash pins.
+  local requirements_file="$1"
+  python3 - <<'PY' "$requirements_file"
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+if not path.exists():
+    raise SystemExit(1)
+content = path.read_text(encoding="utf-8", errors="replace")
+raise SystemExit(0 if "--hash=sha256:" in content else 1)
+PY
+}
+
+require_hashed_requirements_file() {
+  #R055: Stop lane bootstrap early when hash pins are missing.
+  local requirements_file="$1"
+  require_file "$requirements_file"
+  if ! requirements_file_has_hashes "$requirements_file"; then
+    echo "❌ Requirements file is not hash-pinned: ${requirements_file}"
+    echo "Run ./03_prepare_supply_chain_integrity.sh to regenerate lockfiles with hashes."
+    exit 1
+  fi
 }
 
 ensure_security_venv() {
@@ -126,9 +153,10 @@ ensure_security_venv() {
     needs_schemathesis_repair="true"
   fi
   if [[ "$needs_semgrep_repair" == "true" || "$needs_schemathesis_repair" == "true" ]]; then
+    require_hashed_requirements_file "$SECURITY_REQUIREMENTS_FILE"
     echo "▶ Repairing security toolchain entrypoints in ${SECURITY_VENV_DIR}"
     "$security_python" -m pip install --upgrade pip
-    "$security_python" -m pip install --force-reinstall -r "$SECURITY_REQUIREMENTS_FILE"
+    "$security_python" -m pip install --require-hashes --force-reinstall -r "$SECURITY_REQUIREMENTS_FILE"
   fi
 }
 
@@ -402,7 +430,8 @@ run_gitleaks_sast() {
   fi
 }
 
-run_dast_checks() (
+run_dast_checks() {
+(
   set -euo pipefail
 
   run_category_integrity_checks() {
@@ -693,34 +722,34 @@ PY
 
   _cleanup_dast_state() {
     local exit_code=$?
-    if [[ -n "$token_capture_pid" ]] && kill -0 "$token_capture_pid" >/dev/null 2>&1; then
-      kill "$token_capture_pid" >/dev/null 2>&1 || true
+    if [[ -n "${token_capture_pid:-}" ]] && kill -0 "${token_capture_pid}" >/dev/null 2>&1; then
+      kill "${token_capture_pid}" >/dev/null 2>&1 || true
     fi
-    if [[ -n "$mailcart_stub_pid" ]] && kill -0 "$mailcart_stub_pid" >/dev/null 2>&1; then
-      kill "$mailcart_stub_pid" >/dev/null 2>&1 || true
-      wait "$mailcart_stub_pid" 2>/dev/null || true
+    if [[ -n "${mailcart_stub_pid:-}" ]] && kill -0 "${mailcart_stub_pid}" >/dev/null 2>&1; then
+      kill "${mailcart_stub_pid}" >/dev/null 2>&1 || true
+      wait "${mailcart_stub_pid}" 2>/dev/null || true
     fi
-    if [[ -n "$classifier_api_pid" ]] && kill -0 "$classifier_api_pid" >/dev/null 2>&1; then
-      kill "$classifier_api_pid" >/dev/null 2>&1 || true
-      wait "$classifier_api_pid" 2>/dev/null || true
+    if [[ -n "${classifier_api_pid:-}" ]] && kill -0 "${classifier_api_pid}" >/dev/null 2>&1; then
+      kill "${classifier_api_pid}" >/dev/null 2>&1 || true
+      wait "${classifier_api_pid}" 2>/dev/null || true
     fi
-    if [[ "$dast_cleanup_done" == "true" ]]; then
+    if [[ "${dast_cleanup_done:-false}" == "true" ]]; then
       return $exit_code
     fi
     dast_cleanup_done="true"
-    if [[ "$dast_skip_cleanup" == "true" ]]; then
+    if [[ "${dast_skip_cleanup:-false}" == "true" ]]; then
       return $exit_code
     fi
-    if [[ ! -f "$dast_baseline_path" ]]; then
-      echo "⚠️  Skipping DAST cleanup; no baseline at ${dast_baseline_path}"
+    if [[ -z "${dast_baseline_path:-}" || ! -f "${dast_baseline_path}" ]]; then
+      echo "⚠️  Skipping DAST cleanup; no baseline at ${dast_baseline_path:-<unset>}"
       return $exit_code
     fi
-    echo "▶ Restoring database to pre-DAST baseline (run_id=${dast_run_id})"
-    PYTHONPATH="${dast_integrity_pythonpath}" "$dast_app_python" \
+    echo "▶ Restoring database to pre-DAST baseline (run_id=${dast_run_id:-unknown})"
+    PYTHONPATH="${dast_integrity_pythonpath:-}" "${dast_app_python}" \
       ./src/scripts/dast_cleanup.py \
-      "$dast_baseline_path" \
-      "$dast_run_id" \
-      "$dast_cleanup_summary_path" \
+      "${dast_baseline_path}" \
+      "${dast_run_id:-unknown}" \
+      "${dast_cleanup_summary_path}" \
       >> "${report_dir_abs}/dast-cleanup.log" 2>&1 || true
     return $exit_code
   }
@@ -845,8 +874,9 @@ PY
       echo "▶ DAST Mailcart base URL: ${MAILCART_SERVICE_BASE_URL}"
     fi
     echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
-    TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
-      "$dast_app_python" "./08_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
+    TELLER_CLASSIFIER_WRITE_TOKEN="$dast_write_token" \
+      TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
+      "$dast_app_python" "./09_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
     classifier_api_pid="$!"
   fi
   wait_for_http "${base_url}/health" 45
@@ -860,6 +890,11 @@ PY
       "Finds contract mismatches by generating and exercising request scenarios." \
       "https://schemathesis.readthedocs.io/"
     echo "▶ Running Schemathesis against ${openapi_url}"
+    local schemathesis_timeout_seconds="${SCHEMATHESIS_TIMEOUT_SECONDS:-300}"
+    if ! [[ "$schemathesis_timeout_seconds" =~ ^[0-9]+$ ]] || [[ "$schemathesis_timeout_seconds" -lt 1 ]]; then
+      echo "❌ SCHEMATHESIS_TIMEOUT_SECONDS must be a positive integer; received: ${schemathesis_timeout_seconds}"
+      exit 1
+    fi
     local schemathesis_location="$openapi_url"
     local schemathesis_openapi_fixture="${report_dir_abs}/schemathesis-openapi.json"
     local schemathesis_matchy_seed="${report_dir_abs}/schemathesis-matchy-seed.json"
@@ -886,18 +921,59 @@ PY
     #R050: Write raw output temporarily, then persist only token-redacted artifacts.
     local schemathesis_raw_log="${report_dir_abs}/schemathesis-raw.log"
     set +e
-    (
-      cd "$report_dir_abs"
-      schemathesis run "$schemathesis_location" \
-        --url "$base_url" \
-        --tls-verify=false \
-        --header "X-Teller-Write-Token: ${dast_write_token}" \
-        --mode "$schemathesis_mode" \
-        --seed "$schemathesis_seed" \
-        --max-examples "$schemathesis_max_examples" \
-        --report junit \
-        --report-junit-path "${report_dir_abs}/schemathesis-junit.xml"
-    ) > "$schemathesis_raw_log" 2>&1
+    "$dast_app_python" - "$schemathesis_raw_log" "$report_dir_abs" "$schemathesis_location" "$base_url" \
+      "$dast_write_token" "$schemathesis_mode" "$schemathesis_seed" "$schemathesis_max_examples" \
+      "$schemathesis_timeout_seconds" <<'PY'
+import subprocess
+import sys
+from pathlib import Path
+
+raw_log = Path(sys.argv[1])
+working_directory = Path(sys.argv[2])
+schemathesis_location = sys.argv[3]
+base_url = sys.argv[4]
+write_token = sys.argv[5]
+schemathesis_mode = sys.argv[6]
+schemathesis_seed = sys.argv[7]
+schemathesis_max_examples = sys.argv[8]
+timeout_seconds = int(sys.argv[9])
+
+command = [
+    "schemathesis",
+    "run",
+    schemathesis_location,
+    "--url",
+    base_url,
+    "--tls-verify=false",
+    "--header",
+    f"X-Teller-Write-Token: {write_token}",
+    "--mode",
+    schemathesis_mode,
+    "--seed",
+    schemathesis_seed,
+    "--max-examples",
+    schemathesis_max_examples,
+    "--report",
+    "junit",
+    "--report-junit-path",
+    str(working_directory / "schemathesis-junit.xml"),
+]
+
+with raw_log.open("w", encoding="utf-8") as stream:
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=working_directory,
+            stdout=stream,
+            stderr=subprocess.STDOUT,
+            timeout=timeout_seconds,
+            check=False,
+        )
+        raise SystemExit(completed.returncode)
+    except subprocess.TimeoutExpired:
+        stream.write(f"\nSchemathesis timed out after {timeout_seconds}s; terminating run.\n")
+        raise SystemExit(124)
+PY
     SCHEMATHESIS_EXIT=$?
     set -e
     redact_secret_in_file "$schemathesis_raw_log" "${report_dir_abs}/schemathesis.log" "$dast_write_token"
@@ -906,7 +982,11 @@ PY
       redact_secret_in_place "${report_dir_abs}/schemathesis-junit.xml" "$dast_write_token"
     fi
     if [[ "$SCHEMATHESIS_EXIT" -gt 1 ]]; then
-      echo "❌ Schemathesis failed to execute."
+      if [[ "$SCHEMATHESIS_EXIT" -eq 124 ]]; then
+        echo "❌ Schemathesis timed out after ${schemathesis_timeout_seconds}s."
+      else
+        echo "❌ Schemathesis failed to execute."
+      fi
       exit 1
     fi
     if [[ "$SCHEMATHESIS_EXIT" -eq 1 ]]; then
@@ -1034,6 +1114,7 @@ PY
 
   echo "✅ Dynamic Application Security Testing (DAST) checks completed."
 )
+}
 
 ensure_security_venv
 if security_toolchain_usable; then

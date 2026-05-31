@@ -25,7 +25,7 @@ Tests:
 - R015-T01: Force empty password and verify output starts with `❌ FAIL:` and script exits non-zero.
 
 R020  Statement: Verify required deployed database objects exist.
-Design: For PostgreSQL-family targets, check required roles/schema/core relations; for SQLite target, check SQLite equivalents of schema objects deployed by `05_deploy_database.sh`.
+Design: For PostgreSQL-family targets, check required roles/schema/core relations; for SQLite target, check SQLite equivalents of schema objects deployed by `06_deploy_database.sh`.
 Tests:
 - R020-T01: Drop or rename one required object in a test DB and verify it appears in failure output.
 

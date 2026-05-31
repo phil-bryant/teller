@@ -9,6 +9,7 @@ setup() {
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
+echo "DB_DIALECT=postgresql"
 echo "PROFILE_TARGET=local"
 echo "PG_HOST=localhost"
 echo "PG_PORT=5432"
@@ -30,6 +31,7 @@ stub_managed_profile_helper() {
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=supabase_direct"
+echo "DB_DIALECT=postgresql"
 echo "PROFILE_TARGET=managed"
 echo "PG_HOST=db.example.supabase.co"
 echo "PG_PORT=5432"
@@ -99,6 +101,7 @@ EOF
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
+echo "DB_DIALECT=postgresql"
 echo "PROFILE_TARGET=local"
 echo "PG_HOST=localhost"
 echo "PG_PORT=5432"
@@ -122,6 +125,7 @@ EOF
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=supabase_direct"
+echo "DB_DIALECT=postgresql"
 echo "PROFILE_TARGET=managed"
 echo "PG_HOST=db.example.supabase.co"
 echo "PG_PORT=5432"
@@ -158,7 +162,7 @@ EOF
   run bash -c "printf 'destroy\n' | '${FIXTURE_ROOT}/98_destroy_database.sh'"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"DROP SCHEMA IF EXISTS teller CASCADE;"* ]]
+  [[ "$calls" == *"DROP SCHEMA IF EXISTS \"teller\" CASCADE;"* ]]
 }
 
 @test "sqlite profile destroy removes sqlite database file" {

@@ -77,12 +77,12 @@ print_runner_header() {
 #R005: Fail fast when required commands are unavailable.
 if [ ! -x "$PYTHON_BIN" ]; then
   echo "teller-venv python is required but was not found at ${PYTHON_BIN}."
-  echo "Run ./02_create_venv.sh and ./03_load_requirements.sh first."
+  echo "Run ./02_create_venv.sh and ./04_load_requirements.sh first."
   exit 1
 fi
 if ! "$PYTHON_BIN" -m mutmut --version >/dev/null 2>&1; then
   echo "mutmut is required in teller-venv but was not found."
-  echo "Run ./03_load_requirements.sh to install test dependencies."
+  echo "Run ./04_load_requirements.sh to install test dependencies."
   exit 1
 fi
 

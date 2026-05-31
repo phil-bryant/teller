@@ -67,6 +67,11 @@ Design: Capture Schemathesis raw output to a temporary log, redact the live writ
 Tests:
 - R050-T01: Run DAST lane with Schemathesis enabled and verify persisted `schemathesis.log`/`schemathesis-junit.xml` do not contain the raw token and include redacted placeholder content.
 
+R055  Statement: Dynamic lane dependency bootstrap must require hash-pinned security requirements.
+Design: Before reinstalling security toolchain entrypoints, validate `requirements/security/requirements-security.txt` includes hash pins and install with `pip --require-hashes --force-reinstall`.
+Tests:
+- R055-T01: Verify dynamic lane security bootstrap path validates hash-pinned requirements before reinstall.
+
 R025  Statement: DAST run must not leak state to the target database.
 Design: Generate a per-run `DAST_RUN_ID` tag, capture a pre-run baseline via `src/scripts/dast_baseline.py` (max IDs plus full mutable-field snapshots of `nys_snw_category`, `transaction_email_match`, `transaction_email_match_audit`, and `transaction_nys_snw_category`), embed `DAST_RUN_ID` in seeded `categorization` and `email_message_id` payloads, and install an `EXIT` trap that invokes `src/scripts/dast_cleanup.py` to restore mutated rows and delete rows inserted past the baseline (FK-safe order: match restore -> audit delete -> match delete -> classification reconcile -> category delete -> category restore). The cleanup runs both on the success path (before the integrity check) and on any failure path; the post-DAST integrity check therefore also asserts that cleanup succeeded. Cleanup refuses to apply when the recorded profile differs from the current resolved profile unless `DAST_CLEANUP_FORCE=true`, and can be disabled entirely with `DAST_SKIP_CLEANUP=true`.
 Tests:
@@ -75,7 +80,7 @@ Tests:
 ## Changelog
 
 - 2026-05-30: Added R050 to require token redaction for persisted Schemathesis artifacts.
-- 2026-05-10: Split former combined security lane into `07_run_static_security_tests.sh` and `23_run_dynamic_security_tests.sh`.
+- 2026-05-10: Split former combined security lane into `tests/t03_run_static_security_tests.sh` and `tests/t12_run_dynamic_security_tests.sh`.
 - 2026-05-15: Added R025/R030/R035 for ZAP proxy resilience, lane state isolation, and startup diagnostics.
 - 2026-05-19: Removed macOS UI / XCUITest DAST integration (R025, R030, R035); DAST is Schemathesis + ZAP quick scan only.
 - 2026-05-25: Added R025 (database-state hygiene): per-run tagging + baseline-restore cleanup with EXIT-trap safety and profile-mismatch refusal.
@@ -83,3 +88,4 @@ Tests:
 - 2026-05-27: Added R035 strict Schemathesis gate with explicit downgrade toggle (`SCHEMATHESIS_FAIL_ON_FINDINGS=false`).
 - 2026-05-27: Added R040 for automatic DAST Mailcart/API port collision avoidance.
 - 2026-05-30: Added R045 to keep Schemathesis runtime state scoped to DAST artifact directories.
+- 2026-05-30: Added R055 for hash-pinned security requirements enforcement in dynamic-lane bootstrap.
