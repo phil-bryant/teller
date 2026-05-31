@@ -20,6 +20,7 @@ _DB_ENV_KEYS = (
     "TELLER_DB_SSLMODE",
     "TELLER_DB_SEARCH_PATH",
     "TELLER_DB_SQLITE_PATH",
+    "TELLER_DB_SQLCIPHER_KEY",
     "TELLER_PSA_ITEM",
 )
 
@@ -46,6 +47,7 @@ _SUPABASE_FIELDS = {
 _SQLITE_FIELDS = {
     "database": "/tmp/teller-test.sqlite3",
     "target": "sqlite",
+    "sqlcipher_key": "sqlite-key",
 }
 
 
@@ -247,6 +249,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
         profile = resolve_profile()
         self.assertEqual(profile.target, "sqlite")
         self.assertEqual(profile.sqlite_path, "/tmp/teller-test.sqlite3")
+        self.assertEqual(profile.sqlcipher_key, "sqlite-key")
 
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_profile_named_sqlite_forces_sqlite_target_when_source_target_is_local(self, _mock):
@@ -262,6 +265,19 @@ class ResolveProfileTests(_IsolatedEnvTest):
         self.assertEqual(profile.target, "sqlite")
         self.assertEqual(profile.sslmode, "disable")
         self.assertTrue(profile.sqlite_path.endswith(".database/teller.sqlite3"))
+
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SQLITE_FIELDS))
+    def test_sqlcipher_key_env_override(self, _mock):
+        self._write_profile_file(
+            {
+                "default_profile": "sqlite_local",
+                "profiles": {"sqlite_local": {"1psa_item": "sqlite_local_item"}},
+            }
+        )
+        os.environ["TELLER_DB_SQLCIPHER_KEY"] = "env-key"
+        profile = resolve_profile()
+        self.assertEqual(profile.target, "sqlite")
+        self.assertEqual(profile.sqlcipher_key, "env-key")
 
 
 if __name__ == "__main__":

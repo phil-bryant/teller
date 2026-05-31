@@ -92,6 +92,23 @@ def _read_password(profile: ResolvedProfile) -> str:
     return password
 
 
+def _escape_sqlite_literal(value: str) -> str:
+    """Escape a string literal for sqlite/sqlcipher PRAGMA statements."""
+    return value.replace("'", "''")
+
+
+def _resolve_sqlcipher_key(profile: ResolvedProfile) -> str:
+    key = os.environ.get("TELLER_DB_SQLCIPHER_KEY")
+    if key:
+        return key
+    if profile.sqlcipher_key:
+        return profile.sqlcipher_key
+    raise RuntimeError(
+        f"DB profile {profile.name!r} is missing sqlcipher_key. "
+        "Set TELLER_DB_SQLCIPHER_KEY or populate sqlcipher_key on the profile item."
+    )
+
+
 _engine = None
 
 
@@ -102,15 +119,32 @@ def get_engine():
         profile = resolve_profile()
         if profile.target == "sqlite":
             sqlite_url = "sqlite://"
-            _engine = create_engine(sqlite_url, echo=False)
+            sqlite_path = profile.sqlite_path or ""
+            sqlcipher_key = _resolve_sqlcipher_key(profile)
 
-            @event.listens_for(_engine, "connect")
-            def _on_connect_sqlite(dbapi_conn, _connection_record):
+            def _connect_sqlcipher():
+                try:
+                    from pysqlcipher3 import dbapi2 as sqlcipher_dbapi
+                except ImportError as exc:
+                    raise RuntimeError(
+                        "pysqlcipher3 is required for sqlite target. "
+                        "Run ./04_load_requirements.sh after installing prerequisites."
+                    ) from exc
+
+                dbapi_conn = sqlcipher_dbapi.connect(":memory:")
                 cursor = dbapi_conn.cursor()
+                escaped_key = _escape_sqlite_literal(sqlcipher_key)
+                cursor.execute(f"PRAGMA key = '{escaped_key}'")
+                if sqlite_path:
+                    escaped_path = _escape_sqlite_literal(sqlite_path)
+                    cursor.execute(
+                        f"ATTACH DATABASE '{escaped_path}' AS teller KEY '{escaped_key}'"
+                    )
                 cursor.execute("PRAGMA foreign_keys = ON")
-                if profile.sqlite_path:
-                    cursor.execute("ATTACH DATABASE ? AS teller", (profile.sqlite_path,))
                 cursor.close()
+                return dbapi_conn
+
+            _engine = create_engine(sqlite_url, echo=False, creator=_connect_sqlcipher)
         else:
             password = _read_password(profile)
             connect_args = {

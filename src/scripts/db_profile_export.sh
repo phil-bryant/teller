@@ -66,6 +66,7 @@ fields = {
     "PG_RUNTIME_ROLE": profile.runtime_role,
     "PG_ONEPSA_ITEM": profile.onepsa_item,
     "SQLITE_PATH": sqlite_path,
+    "SQLCIPHER_KEY": profile.sqlcipher_key,
 }
 for key, value in fields.items():
     print(f"{key}={shlex.quote(value)}")

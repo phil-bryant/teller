@@ -6,6 +6,7 @@ urllib3==2.7.0
 structlog==25.5.0
 psycopg2-binary==2.9.12
 sqlalchemy==2.0.50
+pysqlcipher3
 starlette==1.2.1
 idna==3.17
 pydantic==2.13.4

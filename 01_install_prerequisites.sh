@@ -309,6 +309,8 @@ ensure_brew_formula "mkcert"
 ensure_brew_formula "peripheryapp/periphery/periphery" "periphery"
 #R120: Ensure pip-tools is available for hash-pinned lockfile compilation.
 ensure_brew_formula "pip-tools" "pip-compile"
+#R130: Ensure SQLCipher CLI/library are available for encrypted sqlite profiles.
+ensure_brew_formula "sqlcipher" "sqlcipher"
 #R125: Ensure cosign is available for optional supply-chain signing workflows.
 ensure_brew_formula "cosign" "cosign"
 ensure_zap_cli

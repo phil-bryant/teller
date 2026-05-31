@@ -29,7 +29,7 @@ load_profile_exports_from_file() {
       key=$0
       sub(/^export[[:space:]]+/, "", key)
       sub(/=.*/, "", key)
-      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
+      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH|SQLCIPHER_KEY)$/) {
         print
       }
     }
@@ -40,7 +40,7 @@ load_profile_exports_from_file() {
     return 1
   fi
   unset DB_DIALECT PROFILE_NAME PROFILE_TARGET PG_HOST PG_PORT PG_DBNAME PG_USER
-  unset PG_SSLMODE PG_SEARCH_PATH PG_RUNTIME_ROLE PG_ONEPSA_ITEM SQLITE_PATH
+  unset PG_SSLMODE PG_SEARCH_PATH PG_RUNTIME_ROLE PG_ONEPSA_ITEM SQLITE_PATH SQLCIPHER_KEY
   set -a
   # shellcheck disable=SC1090
   source "$exports_file"
@@ -63,16 +63,30 @@ DB_DIALECT="${DB_DIALECT:-postgresql}"
 #R066: Run SQLite-specific verification checks when the active profile target is SQLite.
 if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
   SQLITE_DB_PATH="${SQLITE_PATH:-${TELLER_DB_SQLITE_PATH:-}}"
+  SQLITE_CIPHER_KEY="${SQLCIPHER_KEY:-${TELLER_DB_SQLCIPHER_KEY:-}}"
+  SQLITE_ESCAPED_KEY="$(printf "%s" "$SQLITE_CIPHER_KEY" | sed "s/'/''/g")"
+  sqlcipher_scalar() {
+    local query="$1"
+    sqlcipher "$SQLITE_DB_PATH" <<SQL
+.bail on
+PRAGMA key='${SQLITE_ESCAPED_KEY}';
+${query}
+SQL
+  }
   if [[ -z "$SQLITE_DB_PATH" ]]; then
     echo "❌ FAIL: SQLite verification requires SQLITE_PATH from db profile export."
+    exit 1
+  fi
+  if [[ -z "$SQLITE_CIPHER_KEY" ]]; then
+    echo "❌ FAIL: SQLite verification requires SQLCIPHER_KEY from db profile export."
     exit 1
   fi
   if [[ ! -f "$SQLITE_DB_PATH" ]]; then
     echo "❌ FAIL: SQLite database file is missing: ${SQLITE_DB_PATH}"
     exit 1
   fi
-  if ! command -v sqlite3 >/dev/null 2>&1; then
-    echo "❌ FAIL: sqlite3 is required for sqlite verification."
+  if ! command -v sqlcipher >/dev/null 2>&1; then
+    echo "❌ FAIL: sqlcipher is required for sqlite verification."
     exit 1
   fi
   required_tables=(
@@ -86,16 +100,12 @@ if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; th
   )
   failures=()
   for table_name in "${required_tables[@]}"; do
-    exists="$(
-      sqlite3 "$SQLITE_DB_PATH" "SELECT 1 FROM sqlite_master WHERE type='table' AND name='${table_name}' LIMIT 1;"
-    )"
+    exists="$(sqlcipher_scalar "SELECT 1 FROM sqlite_master WHERE type='table' AND name='${table_name}' LIMIT 1;" | tr -d '\r\n')"
     if [[ "$exists" != "1" ]]; then
       failures+=("missing sqlite table: ${table_name}")
     fi
   done
-  view_exists="$(
-    sqlite3 "$SQLITE_DB_PATH" "SELECT 1 FROM sqlite_master WHERE type='view' AND name='transaction_info_view' LIMIT 1;"
-  )"
+  view_exists="$(sqlcipher_scalar "SELECT 1 FROM sqlite_master WHERE type='view' AND name='transaction_info_view' LIMIT 1;" | tr -d '\r\n')"
   if [[ "$view_exists" != "1" ]]; then
     failures+=("missing sqlite view: transaction_info_view")
   fi
@@ -106,7 +116,7 @@ if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; th
     done
     exit 1
   fi
-  sqlite3 "$SQLITE_DB_PATH" "SELECT 1 FROM transaction_info_view LIMIT 1;" >/dev/null 2>&1 || {
+  sqlcipher_scalar "SELECT 1 FROM transaction_info_view LIMIT 1;" >/dev/null 2>&1 || {
     echo "❌ FAIL: sqlite transaction_info_view is not queryable."
     exit 1
   }

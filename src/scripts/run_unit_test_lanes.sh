@@ -45,7 +45,7 @@ load_profile_exports_from_file() {
       key=$0
       sub(/^export[[:space:]]+/, "", key)
       sub(/=.*/, "", key)
-      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
+      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH|SQLCIPHER_KEY)$/) {
         print
       }
     }
@@ -81,6 +81,7 @@ DB_USER="${TELLER_DB_USER:-${PG_USER:-teller}}"
 DB_PASSWORD="${TELLER_DB_PASSWORD:-${DB_PASSWORD:-}}"
 DB_DIALECT="${DB_DIALECT:-postgresql}"
 SQLITE_PATH="${TELLER_DB_SQLITE_PATH:-${SQLITE_PATH:-}}"
+SQLCIPHER_KEY="${TELLER_DB_SQLCIPHER_KEY:-${SQLCIPHER_KEY:-}}"
 if [[ -z "$SQL_TESTS_DIR" ]]; then
   if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
     SQL_TESTS_DIR="./tests/sql/sqlite"
@@ -128,11 +129,13 @@ run_single_bats_file() {
     -u PG_RUNTIME_ROLE
     -u PG_ONEPSA_ITEM
     -u SQLITE_PATH
+    -u SQLCIPHER_KEY
     -u TELLER_DB_HOST
     -u TELLER_DB_PORT
     -u TELLER_DB_NAME
     -u TELLER_DB_USER
     -u TELLER_DB_SQLITE_PATH
+    -u TELLER_DB_SQLCIPHER_KEY
   )
   if [[ -n "$BATS_FILTER" ]]; then
     env "${bats_env_unsets[@]}" bats --filter "$BATS_FILTER" "$bats_file"
@@ -191,11 +194,13 @@ if [[ "$RUN_SHELL_TESTS" == "true" ]]; then
               -u PG_RUNTIME_ROLE
               -u PG_ONEPSA_ITEM
               -u SQLITE_PATH
+              -u SQLCIPHER_KEY
               -u TELLER_DB_HOST
               -u TELLER_DB_PORT
               -u TELLER_DB_NAME
               -u TELLER_DB_USER
               -u TELLER_DB_SQLITE_PATH
+              -u TELLER_DB_SQLCIPHER_KEY
             )
             if [[ -n "${BATS_FILTER:-}" ]]; then
               env "${bats_env_unsets[@]}" bats --filter "$BATS_FILTER" "$file"
@@ -250,8 +255,12 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
         echo "❌ SQLite SQL lane requires SQLITE_PATH from profile export."
         exit 1
       fi
-      if ! command -v sqlite3 >/dev/null 2>&1; then
-        echo "❌ sqlite3 is required for SQLite SQL unit tests."
+      if [[ -z "$SQLCIPHER_KEY" ]]; then
+        echo "❌ SQLite SQL lane requires SQLCIPHER_KEY from profile export."
+        exit 1
+      fi
+      if ! command -v sqlcipher >/dev/null 2>&1; then
+        echo "❌ sqlcipher is required for SQLite SQL unit tests."
         exit 1
       fi
       shopt -s nullglob
@@ -260,9 +269,14 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
       if [[ "${#sql_test_files[@]}" -eq 0 ]]; then
         echo "ℹ️  Skipping SQL unit tests: no *.sql files found in ${SQL_TESTS_DIR}."
       else
-        echo "▶ Running SQL unit tests (sqlite3)..."
+        echo "▶ Running SQL unit tests (sqlcipher)..."
+        SQLITE_ESCAPED_KEY="$(printf "%s" "$SQLCIPHER_KEY" | sed "s/'/''/g")"
         for sql_test_file in "${sql_test_files[@]}"; do
-          sqlite3 "$SQLITE_PATH" < "$sql_test_file"
+          sqlcipher "$SQLITE_PATH" <<SQL
+.bail on
+PRAGMA key='${SQLITE_ESCAPED_KEY}';
+.read "${sql_test_file}"
+SQL
         done
       fi
     else

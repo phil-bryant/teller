@@ -611,6 +611,9 @@ pygments==2.20.0 \
     #   pytest
     #   rich
     #   textual
+pysqlcipher3==1.2.0 \
+    --hash=sha256:3c8033812655947ebf29a809ac5106b2bc69be0274eaccef6b58f4580c8d06c5
+    # via -r requirements.in
 pytest==9.0.3 \
     --hash=sha256:2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9 \
     --hash=sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c

@@ -27,7 +27,7 @@ load_profile_exports_from_file() {
             key=$0
             sub(/^export[[:space:]]+/, "", key)
             sub(/=.*/, "", key)
-            if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
+            if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH|SQLCIPHER_KEY)$/) {
                 print
             }
         }
@@ -38,7 +38,7 @@ load_profile_exports_from_file() {
         return 1
     fi
     unset DB_DIALECT PROFILE_NAME PROFILE_TARGET PG_HOST PG_PORT PG_DBNAME PG_USER
-    unset PG_SSLMODE PG_SEARCH_PATH PG_RUNTIME_ROLE PG_ONEPSA_ITEM SQLITE_PATH
+    unset PG_SSLMODE PG_SEARCH_PATH PG_RUNTIME_ROLE PG_ONEPSA_ITEM SQLITE_PATH SQLCIPHER_KEY
     set -a
     # shellcheck disable=SC1090
     source "$exports_file"
@@ -88,13 +88,18 @@ PSQL_OPTS=(-v ON_ERROR_STOP=1)
 #R071: Apply SQLite schema files through the existing deploy entrypoint.
 if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
     SQLITE_DB_PATH="${SQLITE_PATH:-}"
+    SQLITE_CIPHER_KEY="${SQLCIPHER_KEY:-${TELLER_DB_SQLCIPHER_KEY:-}}"
     SQLITE_SCHEMA_FILE="${SQLITE_SQL_DIR}/create_database.sql"
     if [[ -z "$SQLITE_DB_PATH" ]]; then
         echo "SQLite deploy requires SQLITE_PATH from db profile export."
         exit 1
     fi
-    if ! command -v sqlite3 >/dev/null 2>&1; then
-        echo "sqlite3 is required but was not found on PATH."
+    if [[ -z "$SQLITE_CIPHER_KEY" ]]; then
+        echo "SQLite deploy requires SQLCIPHER_KEY (or TELLER_DB_SQLCIPHER_KEY) from db profile export."
+        exit 1
+    fi
+    if ! command -v sqlcipher >/dev/null 2>&1; then
+        echo "sqlcipher is required but was not found on PATH."
         exit 1
     fi
     if [[ ! -f "$SQLITE_SCHEMA_FILE" ]]; then
@@ -103,7 +108,12 @@ if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; th
     fi
     mkdir -p "$(dirname "$SQLITE_DB_PATH")"
     echo "ℹ️  Applying sqlite schema file=${SQLITE_SCHEMA_FILE} db=${SQLITE_DB_PATH}"
-    sqlite3 "$SQLITE_DB_PATH" <"$SQLITE_SCHEMA_FILE"
+    SQLITE_ESCAPED_KEY="$(printf "%s" "$SQLITE_CIPHER_KEY" | sed "s/'/''/g")"
+    sqlcipher "$SQLITE_DB_PATH" <<SQL
+.bail on
+PRAGMA key='${SQLITE_ESCAPED_KEY}';
+.read "${SQLITE_SCHEMA_FILE}"
+SQL
     echo "SQLite deploy complete: ${SQLITE_DB_PATH}"
     exit 0
 fi

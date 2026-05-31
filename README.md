@@ -50,8 +50,9 @@ cp config/db-profiles-EXAMPLE.json config/db-profiles.json
 ./11_run_all_tests_parallel.sh
 ```
 
-Before `./06_deploy_database.sh`, ensure dependencies match your selected profile target: PostgreSQL installed/running for `local`/`supabase*` targets, or `sqlite3` installed for `sqlite` target.
+Before `./06_deploy_database.sh`, ensure dependencies match your selected profile target: PostgreSQL installed/running for `local`/`supabase*` targets, or `sqlcipher` installed for `sqlite` target.
 For sqlite profile runs, the default database path is `.database/teller.sqlite3` (override with `TELLER_DB_SQLITE_PATH`).
+For sqlite profile runs, set the encryption key via `TELLER_DB_SQLCIPHER_KEY` or the profile `sqlcipher_key` field.
 For sqlite profile runs, money values are persisted as integer minor units (cents) in `transaction.amount`, `transaction.running_balance`, `account_balances.ledger`, and `account_balances.available`.
 Current architecture assumes Teller API account currency is USD for sqlite money persistence.
 
@@ -122,7 +123,7 @@ All primary lanes live under `tests/t*.sh`:
 - `./tests/t03_run_static_security_tests.sh` - static security scanning (SAST)
 - `./tests/t04_run_requirements_traceability_tests.sh` - requirements to `#R...` tag traceability
 - `./tests/t05_deploy_database_verification_test.sh` - deployed database invariant checks
-- `./tests/t06_run_sql_unit_tests.sh` - SQL unit tests (pgTAP for PostgreSQL targets, sqlite3 SQL checks for SQLite target)
+- `./tests/t06_run_sql_unit_tests.sh` - SQL unit tests (pgTAP for PostgreSQL targets, sqlcipher SQL checks for SQLite target)
 - `./tests/t07_run_shell_unit_tests.sh` - shell unit tests (`bats`)
 - `./tests/t08_run_python_unit_tests.sh` - Python unit tests
 - `./tests/t09_run_mutation_tests.sh` - mutation testing (`mutmut`)
@@ -242,14 +243,14 @@ Core lane scripts under `tests/`:
 Operational recovery scripts:
 
 - `97_backup_database.sh`
-  - Creates timestamped custom-format DB backup plus matching globals dump for PostgreSQL targets.
-  - For sqlite target/profile, copies the sqlite DB file (default `.database/teller.sqlite3`) to `backups/*.dump`.
+  - Creates timestamped custom-format DB backup plus matching globals dump for PostgreSQL targets, then encrypts artifacts to `.gpg`.
+  - For sqlite target/profile, copies the sqlite DB file (default `.database/teller.sqlite3`) to `backups/*.dump.gpg`.
 - `98_destroy_database.sh`
   - Performs explicit-confirmation teardown for local DB or managed schema/roles based on active profile.
   - For sqlite target/profile, performs explicit-confirmation file delete of the sqlite DB path.
 - `99_restore_database.sh`
-  - Restores latest (or selected) backup with full-restore safety checks, globals-first flow, and optional table-scoped restore mode.
-  - For sqlite target/profile, restores by copying the backup dump file to the sqlite DB path.
+  - Restores latest (or selected) encrypted backup with full-restore safety checks, globals-first flow, and optional table-scoped restore mode.
+  - For sqlite target/profile, restores by decrypting/copying the backup dump file to the sqlite DB path.
 
 ### Operations Recovery Flow (`97` -> `98` -> `99`)
 
@@ -264,7 +265,7 @@ normal operations
       +--> resolve active profile (TELLER_DB_PROFILE -> db-profiles.json default)
       +--> local target  : pg_dump prod via postgres admin + pg_dumpall globals
       +--> managed target: switch to supabase_direct, schema-scoped pg_dump (no globals)
-      +--> verify <profile>_<db>_<timestamp>.dump (+ _globals.sql for local) exist
+      +--> verify <profile>_<db>_<timestamp>.dump.gpg (+ _globals.sql.gpg for local) exist
       |
       v
 optional destructive teardown?
@@ -300,6 +301,7 @@ Credential source resolution order used by recovery scripts:
   - profile resolution: `TELLER_DB_PROFILE` env override, otherwise profile file `default_profile`
   - managed target: re-resolves via `supabase_direct` profile; password from env override or profile `PG_ONEPSA_ITEM` via `1psa`
   - local target: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD` via `1psa` (defaults `localhost_postgres_postgres` / `password`)
+  - backup encryption: `POSTGRES_BACKUP_ENCRYPTION` (`type`, `gpg_recipient`, `gpg_public_key`) via `1psa -f`; falls back to `POSTGRES_BACKUP_ENCRYPTION_*` env vars when field lookup is empty/unavailable
 - `98_destroy_database.sh`:
   - profile resolution: `TELLER_DB_PROFILE` env override, otherwise profile file `default_profile`
   - managed target credential source: env override first, then profile `PG_ONEPSA_ITEM` via `1psa`
@@ -309,6 +311,7 @@ Credential source resolution order used by recovery scripts:
   - managed target: full restore refused; `--table` scoped restore uses profile `PG_ONEPSA_ITEM` via `1psa`
   - local target admin actions: `POSTGRES_PSA_ITEM`/`POSTGRES_PSA_FIELD`
   - teller post-restore credential check/reset (local only): `TELLER_PSA_ITEM`/`TELLER_PSA_FIELD`
+  - backup decryption: `POSTGRES_BACKUP_ENCRYPTION` (`type`, `gpg_private_key`, `gpg_private_key_passphrase`) via `1psa -f`; falls back to `POSTGRES_BACKUP_ENCRYPTION_*` env vars when field lookup is empty/unavailable
 
 ## Ingest + Normalization + Persistence
 
@@ -396,6 +399,14 @@ Default items/fields:
 - Teller user password:
   - item: `localhost_postgres_teller`
   - field: `password`
+- Backup encryption/decryption contract:
+  - item: `POSTGRES_BACKUP_ENCRYPTION`
+  - required fields:
+    - `type` (`gpg`)
+    - `gpg_recipient`
+    - `gpg_public_key`
+    - `gpg_private_key`
+    - `gpg_private_key_passphrase`
 
 Optional overrides:
 
@@ -403,11 +414,26 @@ Optional overrides:
 - `POSTGRES_PSA_FIELD`
 - `TELLER_PSA_ITEM`
 - `TELLER_PSA_FIELD`
+- `BACKUP_ENCRYPTION_ITEM` (defaults to `POSTGRES_BACKUP_ENCRYPTION`)
+
+Encrypted-backup `.env` fallback fields (used when `1psa -f` lookup is empty/unavailable):
+
+- `POSTGRES_BACKUP_ENCRYPTION_TYPE`
+- `POSTGRES_BACKUP_ENCRYPTION_GPG_RECIPIENT`
+- `POSTGRES_BACKUP_ENCRYPTION_GPG_PUBLIC_KEY`
+- `POSTGRES_BACKUP_ENCRYPTION_GPG_PRIVATE_KEY`
+- `POSTGRES_BACKUP_ENCRYPTION_GPG_PRIVATE_KEY_PASSPHRASE`
 
 Example:
 
 ```bash
 POSTGRES_PSA_ITEM=my_postgres_admin TELLER_PSA_ITEM=my_teller_user ./06_deploy_database.sh
+```
+
+Generate a dedicated backup GPG keypair (interactive passphrase prompt):
+
+```bash
+./src/scripts/security/generate_backup_gpg_keys.sh
 ```
 
 ## Troubleshooting

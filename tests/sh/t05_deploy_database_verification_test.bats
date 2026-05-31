@@ -141,6 +141,7 @@ echo "PG_SSLMODE=disable"
 echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=teller_write"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   export PATH="${STUB_BIN}:/usr/bin:/bin"
@@ -267,6 +268,7 @@ echo "PG_SSLMODE=require"
 echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=''"
 echo "PG_ONEPSA_ITEM=eggnest_supabase"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 }
@@ -313,6 +315,7 @@ echo "PG_SSLMODE=require"
 echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=teller_write"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 }
@@ -357,27 +360,29 @@ echo "DB_DIALECT=sqlite"
 echo "PROFILE_NAME=sqlite"
 echo "PROFILE_TARGET=sqlite"
 echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
+echo "SQLCIPHER_KEY='cipher-key'"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
-  cat > "${STUB_BIN}/sqlite3" <<'EOF'
+  cat > "${STUB_BIN}/sqlcipher" <<'EOF'
 #!/usr/bin/env bash
-if [[ "$*" == *"sqlite_master"* && "$*" == *"type='table'"* ]]; then
-  if [[ "$*" == *"institution"* || "$*" == *"account"* || "$*" == *"transaction_type"* || "$*" == *"transaction"* || "$*" == *"nys_snw_category"* || "$*" == *"transaction_nys_snw_category"* || "$*" == *"transaction_email_match"* ]]; then
+input="$(cat)"
+if [[ "$input" == *"sqlite_master"* && "$input" == *"type='table'"* ]]; then
+  if [[ "$input" == *"institution"* || "$input" == *"account"* || "$input" == *"transaction_type"* || "$input" == *"transaction"* || "$input" == *"nys_snw_category"* || "$input" == *"transaction_nys_snw_category"* || "$input" == *"transaction_email_match"* ]]; then
     echo "1"
   fi
   exit 0
 fi
-if [[ "$*" == *"type='view'"* && "$*" == *"transaction_info_view"* ]]; then
+if [[ "$input" == *"type='view'"* && "$input" == *"transaction_info_view"* ]]; then
   echo "1"
   exit 0
 fi
-if [[ "$*" == *"SELECT 1 FROM transaction_info_view LIMIT 1;"* ]]; then
+if [[ "$input" == *"SELECT 1 FROM transaction_info_view LIMIT 1;"* ]]; then
   echo "1"
   exit 0
 fi
 exit 0
 EOF
-  chmod +x "${STUB_BIN}/sqlite3"
+  chmod +x "${STUB_BIN}/sqlcipher"
   printf 'seed' > "${FIXTURE_ROOT}/sqlite-dev.db"
   run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -eq 0 ]

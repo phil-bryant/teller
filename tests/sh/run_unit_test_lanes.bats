@@ -39,6 +39,7 @@ echo "PG_DBNAME=prod"
 echo "PG_USER=teller"
 echo "PG_SSLMODE=disable"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+echo "SQLCIPHER_KEY=''"
 echo "PROFILE_TARGET=$(pwd)"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
@@ -73,6 +74,7 @@ echo "PG_DBNAME=prod"
 echo "PG_USER=teller"
 echo "PG_SSLMODE=disable"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 
@@ -122,6 +124,7 @@ echo "PG_DBNAME=prod"
 echo "PG_USER=teller"
 echo "PG_SSLMODE=disable"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 
@@ -170,6 +173,7 @@ echo "PG_DBNAME=prod"
 echo "PG_USER=teller"
 echo "PG_SSLMODE=disable"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 
@@ -213,6 +217,7 @@ echo "DB_DIALECT=sqlite"
 echo "PROFILE_NAME=sqlite"
 echo "PROFILE_TARGET=sqlite"
 echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
+echo "SQLCIPHER_KEY='cipher-key'"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   printf 'db' > "${FIXTURE_ROOT}/sqlite-dev.db"
@@ -220,12 +225,12 @@ EOF
   cat > "${FIXTURE_ROOT}/tests/sql/sqlite/01_sqlite_smoke.sql" <<'EOF'
 SELECT 1;
 EOF
-  cat > "${STUB_BIN}/sqlite3" <<EOF
+  cat > "${STUB_BIN}/sqlcipher" <<EOF
 #!/usr/bin/env bash
-echo "sqlite3 \$*" >> "${CALLS_LOG}"
+echo "sqlcipher \$*" >> "${CALLS_LOG}"
 exit 0
 EOF
-  chmod +x "${STUB_BIN}/sqlite3"
+  chmod +x "${STUB_BIN}/sqlcipher"
   run bash -c "
     cd '${FIXTURE_ROOT}'
     RUN_SHELL_TESTS=false RUN_PYTHON_TESTS=false RUN_SQL_TESTS=true RUN_SWIFT_TESTS=false \
@@ -233,5 +238,5 @@ EOF
   "
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"sqlite3 "* ]]
+  [[ "$calls" == *"sqlcipher "* ]]
 }

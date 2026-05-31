@@ -51,6 +51,7 @@ echo "PG_SSLMODE=disable"
 echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=teller_write"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   export CALLS_LOG
@@ -192,6 +193,7 @@ echo "PG_SSLMODE=require"
 echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=''"
 echo "PG_ONEPSA_ITEM=eggnest_supabase"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 }
@@ -255,6 +257,7 @@ echo "PG_SSLMODE=disable"
 echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=teller_write"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   run bash "${FIXTURE_ROOT}/06_deploy_database.sh"
@@ -278,6 +281,7 @@ echo "PG_SSLMODE=disable"
 echo "PG_SEARCH_PATH=teller"
 echo "PG_RUNTIME_ROLE=teller_write"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
+echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   run bash "${FIXTURE_ROOT}/06_deploy_database.sh"
@@ -310,17 +314,18 @@ echo "DB_DIALECT=sqlite"
 echo "PROFILE_NAME=sqlite"
 echo "PROFILE_TARGET=sqlite"
 echo "SQLITE_PATH=/tmp/teller.sqlite3"
+echo "SQLCIPHER_KEY='cipher-key'"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
-  cat > "${STUB_BIN}/sqlite3" <<EOF
+  cat > "${STUB_BIN}/sqlcipher" <<EOF
 #!/usr/bin/env bash
-echo "sqlite3 \$*" >> "${CALLS_LOG}"
+echo "sqlcipher \$*" >> "${CALLS_LOG}"
 exit 0
 EOF
-  chmod +x "${STUB_BIN}/sqlite3"
+  chmod +x "${STUB_BIN}/sqlcipher"
   run bash "${FIXTURE_ROOT}/06_deploy_database.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"sqlite3 "* ]]
+  [[ "$calls" == *"sqlcipher "* ]]
   [[ "$calls" != *"psql "* ]]
 }

@@ -23,8 +23,8 @@
       "allowed_sha256": []
     },
     {
-      "id": "sqlite3",
-      "command": "sqlite3",
+      "id": "sqlcipher",
+      "command": "sqlcipher",
       "required": true,
       "version_args": [
         "--version"

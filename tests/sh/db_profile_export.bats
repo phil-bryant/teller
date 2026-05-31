@@ -29,6 +29,7 @@ PG_SSLMODE=disable
 PG_SEARCH_PATH=teller,public
 PG_RUNTIME_ROLE=teller_write
 PG_ONEPSA_ITEM=localhost_postgres_teller
+SQLCIPHER_KEY=''
 OUT
 EOF
   chmod +x "${STUB_BIN}/python3"
@@ -39,6 +40,7 @@ EOF
   [[ "$output" == *"PROFILE_NAME=local"* ]]
   [[ "$output" == *"PG_DBNAME=prod"* ]]
   [[ "$output" == *"PG_ONEPSA_ITEM=localhost_postgres_teller"* ]]
+  [[ "$output" == *"SQLCIPHER_KEY=''"* ]]
 }
 
 @test "prints sqlite exports for sqlite profile" {
@@ -49,6 +51,7 @@ DB_DIALECT=sqlite
 PROFILE_NAME=sqlite
 PROFILE_TARGET=sqlite
 SQLITE_PATH=/tmp/teller.sqlite3
+SQLCIPHER_KEY='cipher-key'
 OUT
 EOF
   chmod +x "${STUB_BIN}/python3"
@@ -57,6 +60,7 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"DB_DIALECT=sqlite"* ]]
   [[ "$output" == *"SQLITE_PATH=/tmp/teller.sqlite3"* ]]
+  [[ "$output" == *"SQLCIPHER_KEY='cipher-key'"* ]]
 }
 
 @test "supports profile override and rejects unknown args" {

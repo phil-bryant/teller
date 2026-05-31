@@ -100,8 +100,26 @@ def _connect_sqlite(profile: ResolvedProfile) -> SqliteConnection:
     sqlite_path = profile.sqlite_path or str(Path.cwd() / ".database" / "teller.sqlite3")
     if not Path(sqlite_path).exists():
         raise FileNotFoundError(f"SQLite database file not found: {sqlite_path}")
-    conn = sqlite3.connect(":memory:")
-    conn.execute("ATTACH DATABASE ? AS teller", (sqlite_path,))
+
+    sqlcipher_key = os.environ.get("TELLER_DB_SQLCIPHER_KEY") or profile.sqlcipher_key
+    if not sqlcipher_key:
+        raise RuntimeError(
+            f"Profile {profile.name!r} is missing sqlcipher_key. "
+            "Set TELLER_DB_SQLCIPHER_KEY or populate sqlcipher_key on the profile item."
+        )
+    try:
+        from pysqlcipher3 import dbapi2 as sqlcipher_dbapi
+    except ImportError as exc:
+        raise RuntimeError(
+            "pysqlcipher3 is required for sqlite parity checks. "
+            "Run ./04_load_requirements.sh after installing prerequisites."
+        ) from exc
+
+    escaped_key = sqlcipher_key.replace("'", "''")
+    escaped_path = sqlite_path.replace("'", "''")
+    conn = sqlcipher_dbapi.connect(":memory:")
+    conn.execute(f"PRAGMA key = '{escaped_key}'")
+    conn.execute(f"ATTACH DATABASE '{escaped_path}' AS teller KEY '{escaped_key}'")
     return conn
 
 

@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="${SCRIPT_DIR}/backups"
 #R085: Resolve the active DB profile via the shared helper so restore targets the same database as deploy/destroy.
 DB_PROFILE_HELPER="${SCRIPT_DIR}/src/scripts/db_profile_export.sh"
+BACKUP_ENCRYPTION_ITEM="${BACKUP_ENCRYPTION_ITEM:-POSTGRES_BACKUP_ENCRYPTION}"
 
 BACKUP_PATH=""
 GLOBALS_BACKUP_PATH=""
@@ -14,9 +15,25 @@ TABLE_NAME=""
 TABLE_SCHEMA=""
 TABLE_RELATION=""
 MANIFEST_PATH=""
+BACKUP_INPUT_PATH=""
+GLOBALS_RESTORE_PATH=""
+GPG_HOME=""
+
+cleanup_paths=()
+cleanup() {
+    local path=""
+    for path in "${cleanup_paths[@]:-}"; do
+        if [[ -d "$path" ]]; then
+            rm -rf "$path"
+        elif [[ -n "$path" ]]; then
+            rm -f "$path"
+        fi
+    done
+}
+trap cleanup EXIT
 
 usage() {
-    echo "Usage: $0 [--from /path/to/backup.dump] [--table table_name|schema.table_name]"
+    echo "Usage: $0 [--from /path/to/backup.dump.gpg] [--table table_name|schema.table_name]"
 }
 
 is_valid_pg_identifier() {
@@ -52,10 +69,21 @@ verify_backup_manifest() {
 }
 
 latest_backup_path() {
-    #R005: Resolve newest local dump when --from is not provided.
+    #R005: Resolve newest local encrypted dump when --from is not provided.
     local latest=""
     local candidate=""
     shopt -s nullglob
+    for candidate in "$BACKUP_DIR"/*.dump.gpg; do
+        if [ -z "$latest" ] || [ "$candidate" -nt "$latest" ]; then
+            latest="$candidate"
+        fi
+    done
+    if [ -n "$latest" ]; then
+        shopt -u nullglob
+        echo "$latest"
+        return
+    fi
+    #R110: Backward-compatible fallback for legacy plaintext dumps.
     for candidate in "$BACKUP_DIR"/*.dump; do
         if [ -z "$latest" ] || [ "$candidate" -nt "$latest" ]; then
             latest="$candidate"
@@ -63,6 +91,76 @@ latest_backup_path() {
     done
     shopt -u nullglob
     echo "$latest"
+}
+
+encryption_env_var_for_field() {
+    local field_name="$1"
+    local normalized=""
+    normalized="$(printf '%s' "$field_name" | tr '[:lower:]' '[:upper:]')"
+    normalized="${normalized//[^A-Z0-9]/_}"
+    echo "POSTGRES_BACKUP_ENCRYPTION_${normalized}"
+}
+
+read_backup_encryption_field() {
+    local field_name="$1"
+    local env_name=""
+    local value=""
+    env_name="$(encryption_env_var_for_field "$field_name")"
+    value="$(1psa -f "$BACKUP_ENCRYPTION_ITEM" "$field_name" 2>/dev/null || true)"
+    if [[ -z "$value" ]]; then
+        value="${!env_name:-}"
+    fi
+    printf '%s' "$value"
+}
+
+init_gpg_home() {
+    if [[ -n "$GPG_HOME" ]]; then
+        return
+    fi
+    GPG_HOME="$(mktemp -d)"
+    cleanup_paths+=("$GPG_HOME")
+    chmod 700 "$GPG_HOME"
+}
+
+load_backup_decryption_material() {
+    local encryption_type=""
+    local gpg_private_key=""
+    local gpg_passphrase=""
+    local private_key_path=""
+
+    if [[ -n "$GPG_HOME" ]]; then
+        return
+    fi
+    encryption_type="$(read_backup_encryption_field "type")"
+    if [[ "$encryption_type" != "gpg" ]]; then
+        echo "Backup decryption requires type=gpg in ${BACKUP_ENCRYPTION_ITEM} or POSTGRES_BACKUP_ENCRYPTION_TYPE."
+        exit 1
+    fi
+    gpg_private_key="$(read_backup_encryption_field "gpg_private_key")"
+    if [[ -z "$gpg_private_key" ]]; then
+        echo "Backup decryption requires gpg_private_key in ${BACKUP_ENCRYPTION_ITEM} or POSTGRES_BACKUP_ENCRYPTION_GPG_PRIVATE_KEY."
+        exit 1
+    fi
+    gpg_passphrase="$(read_backup_encryption_field "gpg_private_key_passphrase")"
+    if [[ -z "$gpg_passphrase" ]]; then
+        echo "Backup decryption requires gpg_private_key_passphrase in ${BACKUP_ENCRYPTION_ITEM} or POSTGRES_BACKUP_ENCRYPTION_GPG_PRIVATE_KEY_PASSPHRASE."
+        exit 1
+    fi
+    init_gpg_home
+    private_key_path="$(mktemp)"
+    cleanup_paths+=("$private_key_path")
+    printf '%s\n' "$gpg_private_key" >"$private_key_path"
+    gpg --batch --yes --homedir "$GPG_HOME" --pinentry-mode loopback --passphrase "$gpg_passphrase" --import "$private_key_path" >/dev/null 2>&1
+}
+
+decrypt_backup_artifact() {
+    local encrypted_path="$1"
+    local output_path="$2"
+    local gpg_passphrase=""
+
+    gpg_passphrase="$(read_backup_encryption_field "gpg_private_key_passphrase")"
+    gpg --batch --yes --homedir "$GPG_HOME" --pinentry-mode loopback --passphrase "$gpg_passphrase" --output "$output_path" --decrypt "$encrypted_path" >/dev/null 2>&1
+    chmod 600 "$output_path"
 }
 
 #R005: Parse optional --from backup source argument.
@@ -114,6 +212,12 @@ if ! command -v psql >/dev/null 2>&1; then
     exit 1
 fi
 
+#R110: Require gpg for encrypted backup restore flows.
+if ! command -v gpg >/dev/null 2>&1; then
+    echo "gpg is required but was not found on PATH."
+    exit 1
+fi
+
 #R085: Refuse restore when the profile helper is missing so we never silently fall back
 #R085: to a stale hard-coded target.
 if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
@@ -131,7 +235,7 @@ load_profile_exports_from_file() {
             key=$0
             sub(/^export[[:space:]]+/, "", key)
             sub(/=.*/, "", key)
-            if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
+            if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH|SQLCIPHER_KEY)$/) {
                 print
             }
         }
@@ -142,7 +246,7 @@ load_profile_exports_from_file() {
         return 1
     fi
     unset DB_DIALECT PROFILE_NAME PROFILE_TARGET PG_HOST PG_PORT PG_DBNAME PG_USER
-    unset PG_SSLMODE PG_SEARCH_PATH PG_RUNTIME_ROLE PG_ONEPSA_ITEM SQLITE_PATH
+    unset PG_SSLMODE PG_SEARCH_PATH PG_RUNTIME_ROLE PG_ONEPSA_ITEM SQLITE_PATH SQLCIPHER_KEY
     set -a
     # shellcheck disable=SC1090
     source "$exports_file"
@@ -196,12 +300,19 @@ if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; th
         echo "Backup file does not exist: $BACKUP_PATH"
         exit 1
     fi
+    BACKUP_INPUT_PATH="$BACKUP_PATH"
+    if [[ "$BACKUP_PATH" == *.gpg ]]; then
+        load_backup_decryption_material
+        BACKUP_INPUT_PATH="$(mktemp)"
+        cleanup_paths+=("$BACKUP_INPUT_PATH")
+        decrypt_backup_artifact "$BACKUP_PATH" "$BACKUP_INPUT_PATH"
+    fi
     SQLITE_DB_PATH="${SQLITE_PATH:-}"
     if [ -z "$SQLITE_DB_PATH" ]; then
         echo "SQLite restore requires SQLITE_PATH from db profile export."
         exit 1
     fi
-    cp "$BACKUP_PATH" "$SQLITE_DB_PATH"
+    cp "$BACKUP_INPUT_PATH" "$SQLITE_DB_PATH"
     echo "Restore complete from: $BACKUP_PATH"
     exit 0
 fi
@@ -216,6 +327,13 @@ fi
 if [ ! -f "$BACKUP_PATH" ]; then
     echo "Backup file does not exist: $BACKUP_PATH"
     exit 1
+fi
+BACKUP_INPUT_PATH="$BACKUP_PATH"
+if [[ "$BACKUP_PATH" == *.gpg ]]; then
+    load_backup_decryption_material
+    BACKUP_INPUT_PATH="$(mktemp)"
+    cleanup_paths+=("$BACKUP_INPUT_PATH")
+    decrypt_backup_artifact "$BACKUP_PATH" "$BACKUP_INPUT_PATH"
 fi
 
 #R040: Parse optional --table scope into schema/table components used by both targets.
@@ -281,7 +399,7 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
     echo "ℹ️  Restoring managed schema-scoped table via profile=${PROFILE_NAME} host=${PG_HOST} port=${PG_PORT} db=${PG_DBNAME} user=${PG_USER} table=${TABLE_SCHEMA}.${TABLE_RELATION}"
     PGPASSWORD="$MANAGED_PASSWORD" PGSSLMODE="$PG_SSLMODE" pg_restore \
         -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d "$PG_DBNAME" \
-        --clean --if-exists "${RESTORE_TABLE_ARGS[@]}" "$BACKUP_PATH"
+        --clean --if-exists "${RESTORE_TABLE_ARGS[@]}" "$BACKUP_INPUT_PATH"
 
     #R035: Print completion status with source backup path.
     echo "Restore complete from: $BACKUP_PATH"
@@ -384,14 +502,26 @@ fi
 #R020: Require matching globals dump file only for full restore mode.
 #R102: Require dump/globals integrity manifest verification before globals replay.
 if [ -z "$TABLE_NAME" ]; then
-    GLOBALS_BACKUP_PATH="${BACKUP_PATH%.dump}_globals.sql"
-    MANIFEST_PATH="${BACKUP_PATH%.dump}.manifest.sha256"
+    if [[ "$BACKUP_PATH" == *.dump.gpg ]]; then
+        GLOBALS_BACKUP_PATH="${BACKUP_PATH%.dump.gpg}_globals.sql.gpg"
+        MANIFEST_PATH="${BACKUP_PATH%.dump.gpg}.manifest.sha256"
+    else
+        GLOBALS_BACKUP_PATH="${BACKUP_PATH%.dump}_globals.sql"
+        MANIFEST_PATH="${BACKUP_PATH%.dump}.manifest.sha256"
+        echo "⚠️  Plaintext backup detected. Recreate with 97_backup_database.sh for encrypted artifacts."
+    fi
     if [ ! -f "$GLOBALS_BACKUP_PATH" ]; then
         echo "Matching globals backup is missing: $GLOBALS_BACKUP_PATH"
         echo "Recreate backup with 97_backup_database.sh to include roles and grants."
         exit 1
     fi
     verify_backup_manifest "$BACKUP_PATH" "$GLOBALS_BACKUP_PATH" "$MANIFEST_PATH"
+    GLOBALS_RESTORE_PATH="$GLOBALS_BACKUP_PATH"
+    if [[ "$GLOBALS_BACKUP_PATH" == *.gpg ]]; then
+        GLOBALS_RESTORE_PATH="$(mktemp)"
+        cleanup_paths+=("$GLOBALS_RESTORE_PATH")
+        decrypt_backup_artifact "$GLOBALS_BACKUP_PATH" "$GLOBALS_RESTORE_PATH"
+    fi
 fi
 
 #R025: Refuse full restore into db that already contains teller schema.
@@ -410,16 +540,16 @@ fi
 
 #R030: In full restore mode, restore globals first, then restore database dump.
 if [ -n "$TABLE_NAME" ]; then
-    PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d "$DATABASE_NAME" --clean --if-exists "${RESTORE_TABLE_ARGS[@]}" "$BACKUP_PATH"
+    PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d "$DATABASE_NAME" --clean --if-exists "${RESTORE_TABLE_ARGS[@]}" "$BACKUP_INPUT_PATH"
     repair_scoped_table_restore
 else
     #R030: Globals replay may encounter pre-existing cluster roles (for example app_owner).
     # Retry in non-stop mode only for duplicate-role conflicts so remaining grants still apply.
     globals_err_log="$(mktemp)"
-    if ! PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH" 2>"$globals_err_log"; then
+    if ! PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$GLOBALS_RESTORE_PATH" 2>"$globals_err_log"; then
         if rg -q 'role ".*" already exists' "$globals_err_log"; then
             echo "⚠️  Globals replay hit existing roles; retrying in non-stop mode to apply remaining statements."
-            if ! PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=0 -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH"; then
+            if ! PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=0 -U postgres -d postgres -f "$GLOBALS_RESTORE_PATH"; then
                 rm -f "$globals_err_log"
                 echo "Globals replay failed after duplicate-role retry."
                 exit 1
@@ -432,7 +562,7 @@ else
         fi
     fi
     rm -f "$globals_err_log"
-    PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d postgres --clean --if-exists --create "$BACKUP_PATH"
+    PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d postgres --clean --if-exists --create "$BACKUP_INPUT_PATH"
     #R075: Re-sync teller role credential to live 1psa secret after globals restore.
     escaped_teller_password="${TELLER_PASSWORD//\'/\'\'}"
     PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \

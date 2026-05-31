@@ -44,6 +44,7 @@ class ResolvedProfile:
     sslmode: str
     target: str
     sqlite_path: str
+    sqlcipher_key: str
 
 
 class ProfileError(RuntimeError):
@@ -103,7 +104,17 @@ def _read_onepsa_field(item: str, field: str) -> Optional[str]:
     return fields.get(field) or None
 
 
-_CONNECTION_FIELDS = ("host", "port", "database", "username", "schema", "runtime_role", "target", "sslmode")
+_CONNECTION_FIELDS = (
+    "host",
+    "port",
+    "database",
+    "username",
+    "schema",
+    "runtime_role",
+    "target",
+    "sslmode",
+    "sqlcipher_key",
+)
 
 
 def _read_env_file_fields(item: str) -> dict[str, str]:
@@ -155,6 +166,7 @@ def _record_from_fields(fields: dict[str, str]) -> dict:
         target=fields.get("target"),
         sslmode=fields.get("sslmode"),
         sqlite_path_raw=fields.get("sqlite_path"),
+        sqlcipher_key_raw=fields.get("sqlcipher_key"),
     )
 
 
@@ -177,13 +189,26 @@ def _resolve_sslmode(sslmode: str | None, resolved_target: str) -> str:
     return sslmode if sslmode in _ALLOWED_SSLMODES else "disable"
 
 
-def _build_record(host, port_raw, database, username, schema, runtime_role, target, sslmode, sqlite_path_raw=None) -> dict:
+def _build_record(
+    host,
+    port_raw,
+    database,
+    username,
+    schema,
+    runtime_role,
+    target,
+    sslmode,
+    sqlite_path_raw=None,
+    sqlcipher_key_raw=None,
+) -> dict:
     resolved_target = _resolve_target(target)
     sqlite_path = ""
+    sqlcipher_key = ""
     if resolved_target == "sqlite":
         sqlite_path = (sqlite_path_raw or database or "").strip()
         if not sqlite_path:
             sqlite_path = str(Path.cwd() / ".database" / "teller.sqlite3")
+        sqlcipher_key = (sqlcipher_key_raw or "").strip()
     return {
         "host": "" if resolved_target == "sqlite" else (host or "localhost"),
         "port": 0 if resolved_target == "sqlite" else _parse_port(port_raw),
@@ -194,6 +219,7 @@ def _build_record(host, port_raw, database, username, schema, runtime_role, targ
         "target": resolved_target,
         "sslmode": _resolve_sslmode(sslmode, resolved_target),
         "sqlite_path": sqlite_path,
+        "sqlcipher_key": sqlcipher_key,
     }
 
 
@@ -202,6 +228,7 @@ def _force_sqlite_target(record: dict) -> dict:
     sqlite_path = (record.get("sqlite_path") or "").strip()
     if not sqlite_path:
         sqlite_path = str(Path.cwd() / ".database" / "teller.sqlite3")
+    sqlcipher_key = (record.get("sqlcipher_key") or "").strip()
     return {
         "host": "",
         "port": 0,
@@ -212,6 +239,7 @@ def _force_sqlite_target(record: dict) -> dict:
         "target": "sqlite",
         "sslmode": "disable",
         "sqlite_path": sqlite_path,
+        "sqlcipher_key": sqlcipher_key,
     }
 
 
@@ -250,6 +278,7 @@ def _profile_cache_key() -> tuple:
             "TELLER_DB_SSLMODE",
             "TELLER_DB_SEARCH_PATH",
             "TELLER_DB_SQLITE_PATH",
+            "TELLER_DB_SQLCIPHER_KEY",
             "ONEPSA_LIB_PATH",
         )
     )
@@ -341,6 +370,8 @@ def _apply_env_overrides(record: dict) -> dict:
         overridden["user"] = ""
         overridden["runtime_role"] = ""
         overridden["sslmode"] = "disable"
+    if (value := os.environ.get("TELLER_DB_SQLCIPHER_KEY")) is not None:
+        overridden["sqlcipher_key"] = value.strip()
     return overridden
 
 
@@ -368,6 +399,7 @@ def _resolve_profile_cached(_cache_key: tuple) -> ResolvedProfile:
         sslmode=final["sslmode"],
         target=final["target"],
         sqlite_path=final["sqlite_path"],
+        sqlcipher_key=final["sqlcipher_key"],
     )
 
 
