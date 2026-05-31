@@ -16,7 +16,7 @@ Tests:
 - R005-T02: Verify script fails when no active virtual environment is set.
 
 R010  Statement: Compile runtime and security lockfiles with hashes from `.in` sources.
-Design: Use `python3 -m piptools compile --generate-hashes` for both `requirements.in` and `requirements/security/requirements-security.in`.
+Design: Require `pip-compile` on `PATH` (installed by prerequisites), remove legacy venv-installed `pip-tools` when present, and run `pip-compile --generate-hashes` for both `requirements.in` and `requirements/security/requirements-security.in`.
 Tests:
 - R010-T01: Verify pip-tools compile command is invoked with `--generate-hashes` for runtime lockfile.
 - R010-T02: Verify pip-tools compile command is invoked with `--generate-hashes` for security lockfile.

@@ -238,6 +238,7 @@ teardown() {
 }
 
 @test "enforces proactive freshclam refresh before scan when signatures are stale" {
+  #R025-T02
   setup_shell_test
   copy_av_project_files
   stub_clamscan_clean

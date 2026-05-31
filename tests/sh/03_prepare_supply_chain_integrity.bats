@@ -53,29 +53,8 @@ EOF
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 echo "python3 $*" >> "${CALLS_LOG}"
-if [[ "$1" == "-m" && "$2" == "pip" ]]; then
-  exit 0
-fi
-if [[ "$1" == "-m" && "$2" == "piptools" && "$3" == "--version" ]]; then
-  exit 0
-fi
-if [[ "$1" == "-m" && "$2" == "piptools" && "$3" == "compile" ]]; then
-  out=""
-  prev=""
-  for arg in "$@"; do
-    if [[ "$prev" == "--output-file" ]]; then
-      out="$arg"
-      break
-    fi
-    prev="$arg"
-  done
-  if [[ -n "$out" ]]; then
-    cat > "$out" <<'OUT'
-requests==2.34.2 \
-    --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-OUT
-  fi
-  exit 0
+if [[ "$1" == "-m" && "$2" == "pip" && "$3" == "show" && "$4" == "pip-tools" ]]; then
+  exit 1
 fi
 if [[ "$1" == "./src/scripts/security/generate_supply_chain_artifacts.py" ]]; then
   exit 0
@@ -84,6 +63,28 @@ exec /usr/bin/python3 "$@"
 EOF
   chmod +x "${STUB_BIN}/python3"
 
+  cat > "${STUB_BIN}/pip-compile" <<'EOF'
+#!/usr/bin/env bash
+echo "pip-compile $*" >> "${CALLS_LOG}"
+out=""
+prev=""
+for arg in "$@"; do
+  if [[ "$prev" == "--output-file" ]]; then
+    out="$arg"
+    break
+  fi
+  prev="$arg"
+done
+if [[ -n "$out" ]]; then
+  cat > "$out" <<'OUT'
+requests==2.34.2 \
+    --hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+OUT
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/pip-compile"
+
   run bash -c "cd '${FIXTURE_ROOT}' && \
     export VIRTUAL_ENV=\"\$(cd '${FIXTURE_ROOT}/fixture-venv' && pwd -P)\" && \
     export PATH='${STUB_BIN}:'\${PATH} && \
@@ -91,7 +92,7 @@ EOF
   [ "$status" -eq 0 ]
 
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"python3 -m piptools compile --generate-hashes --resolver=backtracking --output-file ./requirements.txt ./requirements.in"* ]]
-  [[ "$calls" == *"python3 -m piptools compile --generate-hashes --resolver=backtracking --output-file ./requirements/security/requirements-security.txt ./requirements/security/requirements-security.in"* ]]
+  [[ "$calls" == *"pip-compile --generate-hashes --resolver=backtracking --output-file ./requirements.txt ./requirements.in"* ]]
+  [[ "$calls" == *"pip-compile --generate-hashes --resolver=backtracking --output-file ./requirements/security/requirements-security.txt ./requirements/security/requirements-security.in"* ]]
   [[ "$calls" == *"python3 ./src/scripts/security/generate_supply_chain_artifacts.py --runtime-lock ./requirements.txt --security-lock ./requirements/security/requirements-security.txt --output-dir ./artifacts/security/reports --signing-mode scaffold"* ]]
 }

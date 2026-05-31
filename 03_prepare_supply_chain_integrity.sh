@@ -55,20 +55,25 @@ for file_path in "$RUNTIME_IN_FILE" "$SECURITY_IN_FILE"; do
 done
 
 echo "▶ Ensuring pip-tools is available"
-python3 -m pip install --upgrade pip >/dev/null
-if ! python3 -m piptools --version >/dev/null 2>&1; then
-  python3 -m pip install pip-tools >/dev/null
+if ! command -v pip-compile >/dev/null 2>&1; then
+  echo "❌ ERROR: pip-compile is required but was not found on PATH."
+  echo "Run ./01_install_prerequisites.sh to install Homebrew prerequisites."
+  exit 1
+fi
+if python3 -m pip show pip-tools >/dev/null 2>&1; then
+  echo "▶ Removing legacy venv pip-tools package to satisfy dependency-freshness gate"
+  python3 -m pip uninstall -y pip-tools >/dev/null 2>&1 || true
 fi
 
 echo "▶ Compiling hash-pinned runtime lockfile (${RUNTIME_LOCK_FILE})"
-python3 -m piptools compile \
+pip-compile \
   --generate-hashes \
   --resolver=backtracking \
   --output-file "$RUNTIME_LOCK_FILE" \
   "$RUNTIME_IN_FILE"
 
 echo "▶ Compiling hash-pinned security lockfile (${SECURITY_LOCK_FILE})"
-python3 -m piptools compile \
+pip-compile \
   --generate-hashes \
   --resolver=backtracking \
   --output-file "$SECURITY_LOCK_FILE" \
