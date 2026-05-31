@@ -3,12 +3,13 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from types import SimpleNamespace
-from typing import Dict, List, Literal
+from typing import Annotated, Dict, List, Literal
 
 from fastapi import FastAPI, HTTPException, Path, Query, Request, Response
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BeforeValidator
 from sqlalchemy import String, bindparam, cast, func, select, text
 from sqlalchemy.exc import DataError
 
@@ -71,6 +72,12 @@ def _friendly_date_validation_detail(errors: list[dict]) -> str | None:
         if field_name in {"start_date", "end_date"}:
             return _date_format_error_detail(str(field_name))
     return None
+
+
+def _coerce_optional_date_query_value(value: object) -> object:
+    if isinstance(value, str) and value.strip().lower() in {"", "null"}:
+        return None
+    return value
 
 
 def _resolve_bindings(bindings=None):
@@ -229,22 +236,6 @@ def _register_category_routes(app: FastAPI, bindings) -> None:
 
 
 def _register_transaction_routes(app: FastAPI, bindings) -> None:
-    def _parse_optional_date(value: str | None, field_name: str) -> date | None:
-        if value is None:
-            return None
-        if isinstance(value, date):
-            return value
-        if isinstance(value, str):
-            normalized = value.strip().lower()
-            if normalized in {"", "null"}:
-                return None
-            try:
-                return date.fromisoformat(normalized)
-            except ValueError:
-                raise HTTPException(status_code=400, detail=_date_format_error_detail(field_name))
-        # Direct endpoint invocations in unit tests may pass FastAPI Query marker objects.
-        return None
-
     def _parse_optional_amount(value: str | None, field_name: str) -> Decimal | None:
         if value is None:
             return None
@@ -293,8 +284,16 @@ def _register_transaction_routes(app: FastAPI, bindings) -> None:
         match_state: Literal["", "unmatched", "no_email", "ai_no_match_found", "ai_candidate_uncertain", "ai_match_confident", "human_confirmed_ai_match", "human_overrode_ai_match"] = Query(default=""),
         only_unmoved_match: bool = Query(default=False),
         #R075: Support advanced scalar filters used by the macOS Match & Classify transaction pane.
-        start_date: str | None = Query(default=None, max_length=20, pattern=r"^(null|[0-9]{4}-[0-9]{2}-[0-9]{2})?$"),
-        end_date: str | None = Query(default=None, max_length=20, pattern=r"^(null|[0-9]{4}-[0-9]{2}-[0-9]{2})?$"),
+        start_date: Annotated[
+            date | None,
+            BeforeValidator(_coerce_optional_date_query_value),
+            Query(),
+        ] = None,
+        end_date: Annotated[
+            date | None,
+            BeforeValidator(_coerce_optional_date_query_value),
+            Query(),
+        ] = None,
         institution_id: str = Query(default="", min_length=0, max_length=120, pattern=r"^[\x20-\x7E]*$"),
         min_amount: str | None = Query(default=None, max_length=40, pattern=r"^(null|[0-9]+(?:\.[0-9]+)?)?$"),
         max_amount: str | None = Query(default=None, max_length=40, pattern=r"^(null|[0-9]+(?:\.[0-9]+)?)?$"),
@@ -343,8 +342,8 @@ def _register_transaction_routes(app: FastAPI, bindings) -> None:
             "only_unclassified": only_unclassified,
             "match_state": match_state,
             "only_unmoved_match": only_unmoved_match,
-            "start_date": _parse_optional_date(start_date, "start_date"),
-            "end_date": _parse_optional_date(end_date, "end_date"),
+            "start_date": start_date,
+            "end_date": end_date,
             "institution_id": normalized_institution_id,
             "min_amount": _parse_optional_amount(min_amount, "min_amount"),
             "max_amount": _parse_optional_amount(max_amount, "max_amount"),

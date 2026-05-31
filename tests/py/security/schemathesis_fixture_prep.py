@@ -119,6 +119,32 @@ def tighten_matchy_search_query_params(paths: dict):
             schema_obj["pattern"] = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
 
 
+def tighten_transactions_query_params(paths: dict):
+    operation = paths.get("/v1/transactions", {}).get("get", {})
+    parameters = operation.get("parameters", [])
+    if not isinstance(parameters, list):
+        return
+    for param in parameters:
+        if not isinstance(param, dict):
+            continue
+        if param.get("in") != "query":
+            continue
+        name = param.get("name")
+        if name not in {"start_date", "end_date"}:
+            continue
+        schema_obj = param.get("schema")
+        if not isinstance(schema_obj, dict):
+            continue
+        # Keep fuzzing focused on semantically valid calendar dates for positive-mode checks.
+        schema_obj.pop("pattern", None)
+        schema_obj["format"] = "date"
+        schema_obj["minLength"] = 10
+        schema_obj["maxLength"] = 10
+        param["examples"] = {
+            "seed": {"value": "2026-04-15"},
+        }
+
+
 def main() -> int:
     if len(sys.argv) != 7:
         raise SystemExit(
@@ -228,6 +254,7 @@ def main() -> int:
     paths = schema.get("paths", {})
     if isinstance(paths, dict):
         tighten_matchy_search_query_params(paths)
+        tighten_transactions_query_params(paths)
     if category_id is not None:
         set_path_param_example(paths, "/v1/categories/{nys_snw_category_id}", "put", "nys_snw_category_id", category_id)
     if delete_seed_ids:

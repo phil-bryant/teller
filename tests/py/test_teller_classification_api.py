@@ -173,6 +173,19 @@ class ClassificationApiTests(unittest.TestCase):
         self.assertEqual(second, "cached-write-token")
         self.assertEqual(run_process_mock.call_count, 1)
 
+    @patch.dict("os.environ", {"TELLER_CLASSIFIER_WRITE_TOKEN": "env-write-token"}, clear=False)
+    @patch("teller.teller_classification_api.run_process")
+    def test_configured_write_token_prefers_env_override(self, run_process_mock):
+        self._token_patch.stop()
+        try:
+            reset_configured_write_token_cache()
+            token = _configured_write_token()
+        finally:
+            self._token_patch.start()
+
+        self.assertEqual(token, "env-write-token")
+        run_process_mock.assert_not_called()
+
     def test_display_label_joins_hierarchy(self):
         #R005-T01
         row = {"level_1_name": "EXPENSES", "level_2_name": "Food", "level_3": "1.", "level_4": None, "categorization": "Groceries"}
@@ -2225,65 +2238,54 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertEqual(params["min_amount"], 10)
         self.assertEqual(params["max_amount"], 100)
 
+    @patch("teller.teller_classification_api.get_session")
+    @unittest.skipIf(TestClient is None, "fastapi testclient optional dependency (httpx) is not installed")
+    def test_transactions_endpoint_treats_null_or_empty_dates_as_unset(self, get_session_mock):
+        app = create_app()
+        client = TestClient(app)
+        session = _FakeSession(rows=[_Result(scalar=0)])
+        get_session_mock.return_value = _SessionContext(session)
+        headers = {"X-Teller-Write-Token": "test-write-token"}
+        response = client.get(
+            "/v1/transactions",
+            params={"start_date": "null", "end_date": "", "count_only": "true", "limit": "10", "offset": "0"},
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["total"], 0)
+        _, params = session.calls[0]
+        self.assertIsNone(params["start_date"])
+        self.assertIsNone(params["end_date"])
+
+    @unittest.skipIf(TestClient is None, "fastapi testclient optional dependency (httpx) is not installed")
     def test_transactions_endpoint_rejects_invalid_start_date_with_friendly_format_message(self):
         #R075-T02
         app = create_app()
-        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
-        request = SimpleNamespace(
-            headers={"x-teller-write-token": "test-write-token"},
-            query_params={"start_date": "2026-13-01"},
+        client = TestClient(app)
+        headers = {"X-Teller-Write-Token": "test-write-token"}
+        response = client.get(
+            "/v1/transactions",
+            params={"start_date": "2026-13-01", "count_only": "true"},
+            headers=headers,
         )
-        with self.assertRaises(HTTPException) as ctx:
-            endpoint(
-                request=request,
-                search="",
-                status="",
-                only_unclassified=False,
-                match_state="",
-                only_unmoved_match=False,
-                start_date="2026-13-01",
-                end_date=None,
-                institution_id="",
-                min_amount=None,
-                max_amount=None,
-                include_total=True,
-                count_only=False,
-                limit=10,
-                offset=0,
-            )
-        self.assertEqual(ctx.exception.status_code, 400)
-        self.assertIn("Expected date format: YYYY-MM-DD", str(ctx.exception.detail))
-        self.assertIn("start_date", str(ctx.exception.detail))
+        self.assertEqual(response.status_code, 422)
+        payload = response.json()
+        self.assertEqual(payload["detail"], "Expected date format: YYYY-MM-DD for start_date")
 
+    @unittest.skipIf(TestClient is None, "fastapi testclient optional dependency (httpx) is not installed")
     def test_transactions_endpoint_rejects_invalid_end_date_with_friendly_format_message(self):
         #R075-T03
         app = create_app()
-        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
-        request = SimpleNamespace(
-            headers={"x-teller-write-token": "test-write-token"},
-            query_params={"end_date": "2026-00-15"},
+        client = TestClient(app)
+        headers = {"X-Teller-Write-Token": "test-write-token"}
+        response = client.get(
+            "/v1/transactions",
+            params={"end_date": "2026-00-15", "count_only": "true"},
+            headers=headers,
         )
-        with self.assertRaises(HTTPException) as ctx:
-            endpoint(
-                request=request,
-                search="",
-                status="",
-                only_unclassified=False,
-                match_state="",
-                only_unmoved_match=False,
-                start_date=None,
-                end_date="2026-00-15",
-                institution_id="",
-                min_amount=None,
-                max_amount=None,
-                include_total=True,
-                count_only=False,
-                limit=10,
-                offset=0,
-            )
-        self.assertEqual(ctx.exception.status_code, 400)
-        self.assertIn("Expected date format: YYYY-MM-DD", str(ctx.exception.detail))
-        self.assertIn("end_date", str(ctx.exception.detail))
+        self.assertEqual(response.status_code, 422)
+        payload = response.json()
+        self.assertEqual(payload["detail"], "Expected date format: YYYY-MM-DD for end_date")
 
 
 if __name__ == "__main__":

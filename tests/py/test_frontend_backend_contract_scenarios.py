@@ -187,6 +187,19 @@ class ClassificationApiHttpContractTests(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["detail"], "Expected date format: YYYY-MM-DD for end_date")
 
+    def test_transactions_http_rejects_calendar_invalid_date_with_friendly_message(self):
+        app = create_app()
+        client = TestClient(app)
+        headers = {"X-Teller-Write-Token": "test-write-token"}
+        response = client.get(
+            "/v1/transactions",
+            params={"end_date": "3624-16-14", "count_only": "true"},
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 422)
+        payload = response.json()
+        self.assertEqual(payload["detail"], "Expected date format: YYYY-MM-DD for end_date")
+
     def test_message_search_date_only_end_matches_contract(self):
         #R062-T08
         scenarios = _load_contract_scenarios()
