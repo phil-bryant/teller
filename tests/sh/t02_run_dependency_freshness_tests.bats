@@ -46,7 +46,9 @@ EOF
   [ -f "${FIXTURE_ROOT}/artifacts/security/postgres-freshness.txt" ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./src/scripts/check_dependency_freshness.py"* ]]
+  [[ "$calls" == *"--fail-on-any-actionable-outdated"* ]]
   [[ "$calls" == *"--fail-on-direct-outdated"* ]]
+  [[ "$calls" == *"--fail-on-venv-cruft"* ]]
   [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./src/scripts/check_teller_api_version_freshness.py"* ]]
   [[ "$calls" == *"python cwd=${FIXTURE_ROOT} args=./src/scripts/check_postgres_freshness.py"* ]]
   [[ "$calls" == *"--check-server-version --server-psql-args -h localhost -U teller -d prod"* ]]
@@ -55,7 +57,7 @@ EOF
   [[ "$calls" == *"--fail-on-cve"* ]]
 }
 
-@test "can disable direct dependency freshness gate" {
+@test "keeps direct dependency freshness gate strict despite permissive env overrides" {
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -78,14 +80,17 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=false ./t02_run_dependency_freshness_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false DEPENDENCY_FAIL_ON_DIRECT_OUTDATED=false DEPENDENCY_DIRECT_OUTDATED_IGNORE='fastapi,hypothesis,starlette' ./t02_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
   [[ "$calls" == *"./src/scripts/check_dependency_freshness.py"* ]]
-  [[ "$calls" != *"--fail-on-direct-outdated"* ]]
+  [[ "$calls" == *"--fail-on-any-actionable-outdated"* ]]
+  [[ "$calls" == *"--fail-on-direct-outdated"* ]]
+  [[ "$calls" == *"--fail-on-venv-cruft"* ]]
+  [[ "$calls" != *"--direct-outdated-ignore"* ]]
 }
 
-@test "passes major gating flag when enabled" {
+@test "always passes strict freshness flags" {
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -108,10 +113,13 @@ EOF
 print("stub")
 EOF
 
-  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false DEPENDENCY_FAIL_ON_MAJOR=true ./t02_run_dependency_freshness_tests.sh"
+  run bash -c "cd '${FIXTURE_ROOT}' && DEPENDENCY_CHECK_PYTHON='${FIXTURE_ROOT}/teller-venv/bin/python' RUN_POSTGRES_FRESHNESS=false DEPENDENCY_FAIL_ON_MAJOR=false ./t02_run_dependency_freshness_tests.sh"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"--fail-on-major"* ]]
+  [[ "$calls" == *"--fail-on-any-actionable-outdated"* ]]
+  [[ "$calls" == *"--fail-on-direct-outdated"* ]]
+  [[ "$calls" == *"--fail-on-venv-cruft"* ]]
+  [[ "$calls" != *"--fail-on-major"* ]]
 }
 
 @test "fails fast for non-executable explicit interpreter path" {

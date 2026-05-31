@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #R001: Parse requirements pins and classify outdated dependency update types.
 #R005: Emit JSON/text freshness reports with direct/transitive metadata.
-#R010: Enforce optional major/direct-outdated failure gates.
+#R010: Enforce optional actionable/major/direct-outdated/venv-cruft failure gates.
 """Generate dependency freshness reports for direct and transitive packages."""
 
 from __future__ import annotations
@@ -12,14 +12,21 @@ import os
 import re
 import subprocess
 import sys
+from importlib import metadata as importlib_metadata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 try:
+    from packaging.requirements import Requirement
+    from packaging.specifiers import SpecifierSet
+    from packaging.utils import canonicalize_name
     from packaging.version import InvalidVersion, Version
 except Exception:  # pragma: no cover - fallback if packaging is unavailable
+    Requirement = None
+    SpecifierSet = None
+    canonicalize_name = None
     InvalidVersion = ValueError
     Version = None
 
@@ -35,16 +42,10 @@ class RequirementSpec:
 
 
 def normalize_package_name(name: str) -> str:
-    return re.sub(r"[-_.]+", "-", name).lower()
-
-
-def parse_name_list(value: str) -> set[str]:
-    names: set[str] = set()
-    for part in value.split(","):
-        item = part.strip()
-        if item:
-            names.add(normalize_package_name(item))
-    return names
+    normalized = re.sub(r"[-_.]+", "-", name).lower()
+    if canonicalize_name is not None:
+        return canonicalize_name(normalized)
+    return normalized
 
 
 def parse_requirements(requirements_path: Path) -> dict[str, RequirementSpec]:
@@ -122,7 +123,112 @@ def run_outdated_list() -> list[dict[str, Any]]:
     return [item for item in parsed if isinstance(item, dict)]
 
 
-def _package_entry_from_outdated_row(row: dict[str, Any], requirements: dict[str, RequirementSpec]) -> dict[str, Any] | None:
+def _collect_reverse_dependency_constraints() -> dict[str, list[dict[str, str]]]:
+    reverse_constraints: dict[str, list[dict[str, str]]] = {}
+    for dist in importlib_metadata.distributions():
+        parent_raw = dist.metadata.get("Name")
+        if not parent_raw:
+            continue
+        parent = normalize_package_name(parent_raw)
+        for raw_requirement in dist.requires or []:
+            requirement_text = str(raw_requirement).strip()
+            if not requirement_text:
+                continue
+            if Requirement is None:
+                requirement_name = requirement_text.split(";", 1)[0].strip().split(" ", 1)[0].split("[", 1)[0]
+                if not requirement_name:
+                    continue
+                child = normalize_package_name(requirement_name)
+                reverse_constraints.setdefault(child, []).append(
+                    {
+                        "parent": parent,
+                        "specifier": "",
+                        "requirement": requirement_text,
+                    }
+                )
+                continue
+            try:
+                requirement = Requirement(requirement_text)
+            except Exception:
+                continue
+            if requirement.marker is not None and not requirement.marker.evaluate():
+                continue
+            child = normalize_package_name(requirement.name)
+            reverse_constraints.setdefault(child, []).append(
+                {
+                    "parent": parent,
+                    "specifier": str(requirement.specifier),
+                    "requirement": requirement_text,
+                }
+            )
+    return reverse_constraints
+
+
+def _collect_requested_packages() -> tuple[set[str], str]:
+    cmd = [sys.executable, "-m", "pip", "inspect", "--local"]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        return set(), "unknown"
+    try:
+        payload = json.loads(result.stdout or "{}")
+    except json.JSONDecodeError:
+        return set(), "unknown"
+    installed = payload.get("installed")
+    if not isinstance(installed, list):
+        return set(), "unknown"
+    requested: set[str] = set()
+    for item in installed:
+        if not isinstance(item, dict):
+            continue
+        if not item.get("requested", False):
+            continue
+        metadata = item.get("metadata", {})
+        if not isinstance(metadata, dict):
+            continue
+        name = metadata.get("name")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        requested.add(normalize_package_name(name))
+    return requested, "ok"
+
+
+def _detect_venv_cruft(requirements: dict[str, RequirementSpec]) -> tuple[list[str], str]:
+    requested, status = _collect_requested_packages()
+    if status != "ok":
+        return [], "unknown"
+    allowlist = {"pip", "setuptools", "wheel"}
+    declared = set(requirements.keys())
+    cruft = sorted(requested - declared - allowlist)
+    return cruft, "ok"
+
+
+def _evaluate_actionability(latest_version: str, required_by: list[dict[str, str]]) -> tuple[str, bool | None]:
+    if not required_by:
+        return "actionable", True
+    if Version is None or SpecifierSet is None:
+        return "unknown", None
+    try:
+        latest = Version(latest_version)
+    except InvalidVersion:
+        return "unknown", None
+    for edge in required_by:
+        specifier = edge.get("specifier", "").strip()
+        if not specifier:
+            continue
+        try:
+            constraint = SpecifierSet(specifier)
+        except Exception:
+            return "unknown", None
+        if latest not in constraint:
+            return "constrained", False
+    return "actionable", True
+
+
+def _package_entry_from_outdated_row(
+    row: dict[str, Any],
+    requirements: dict[str, RequirementSpec],
+    reverse_constraints: dict[str, list[dict[str, str]]],
+) -> dict[str, Any] | None:
     name = str(row.get("name", "")).strip()
     current_version = str(row.get("version", "")).strip()
     latest_version = str(row.get("latest_version", "")).strip()
@@ -131,6 +237,11 @@ def _package_entry_from_outdated_row(row: dict[str, Any], requirements: dict[str
     normalized = normalize_package_name(name)
     req_spec = requirements.get(normalized)
     update_type = classify_update(current_version, latest_version)
+    required_by = sorted(
+        reverse_constraints.get(normalized, []),
+        key=lambda edge: (edge.get("parent", ""), edge.get("specifier", "")),
+    )
+    actionability, latest_satisfies_parent_constraints = _evaluate_actionability(latest_version, required_by)
     return {
         "name": name,
         "current_version": current_version,
@@ -139,6 +250,9 @@ def _package_entry_from_outdated_row(row: dict[str, Any], requirements: dict[str
         "in_requirements_txt": bool(req_spec),
         "is_exact_pin_in_requirements": bool(req_spec and req_spec.is_exact_pin),
         "requirements_pin_version": req_spec.pinned_version if req_spec else None,
+        "required_by": required_by,
+        "outdated_actionability": actionability,
+        "latest_satisfies_parent_constraints": latest_satisfies_parent_constraints,
     }
 
 
@@ -150,6 +264,9 @@ def _build_summary(packages: list[dict[str, Any]]) -> dict[str, int]:
         "patch_updates": 0,
         "unknown_updates": 0,
         "direct_requirements_outdated": 0,
+        "actionable_outdated": 0,
+        "constrained_outdated": 0,
+        "unknown_actionability_outdated": 0,
     }
     for item in packages:
         update_type = item["update_type"]
@@ -163,16 +280,25 @@ def _build_summary(packages: list[dict[str, Any]]) -> dict[str, int]:
             summary["unknown_updates"] += 1
         if item["in_requirements_txt"]:
             summary["direct_requirements_outdated"] += 1
+        actionability = item.get("outdated_actionability")
+        if actionability == "actionable":
+            summary["actionable_outdated"] += 1
+        elif actionability == "constrained":
+            summary["constrained_outdated"] += 1
+        else:
+            summary["unknown_actionability_outdated"] += 1
     return summary
 
 
 def make_report(requirements_path: Path) -> dict[str, Any]:
     requirements = parse_requirements(requirements_path)
     outdated_rows = run_outdated_list()
+    reverse_constraints = _collect_reverse_dependency_constraints()
+    venv_cruft_packages, venv_cruft_status = _detect_venv_cruft(requirements)
 
     packages: list[dict[str, Any]] = []
     for row in outdated_rows:
-        item = _package_entry_from_outdated_row(row, requirements)
+        item = _package_entry_from_outdated_row(row, requirements, reverse_constraints)
         if item is not None:
             packages.append(item)
 
@@ -183,22 +309,9 @@ def make_report(requirements_path: Path) -> dict[str, Any]:
         "requirements_file": str(requirements_path),
         "summary": _build_summary(packages),
         "packages": packages,
+        "venv_cruft_packages": venv_cruft_packages,
+        "venv_cruft_status": venv_cruft_status,
     }
-
-
-def apply_direct_outdated_ignore(report: dict[str, Any], ignored_names: set[str]) -> None:
-    if not ignored_names:
-        return
-    ignored_count = 0
-    for item in report["packages"]:
-        is_ignored = bool(item["in_requirements_txt"] and normalize_package_name(item["name"]) in ignored_names)
-        item["direct_outdated_ignored"] = is_ignored
-        if is_ignored:
-            ignored_count += 1
-    report["summary"]["direct_requirements_outdated_ignored"] = ignored_count
-    report["summary"]["direct_requirements_outdated_blocking"] = (
-        report["summary"]["direct_requirements_outdated"] - ignored_count
-    )
 
 
 def format_report_text(report: dict[str, Any]) -> str:
@@ -211,14 +324,12 @@ def format_report_text(report: dict[str, Any]) -> str:
         f"- Patch updates: {summary['patch_updates']}",
         f"- Unknown updates: {summary['unknown_updates']}",
         f"- Outdated entries from requirements.txt: {summary['direct_requirements_outdated']}",
+        f"- Actionable outdated entries: {summary['actionable_outdated']}",
+        f"- Constrained outdated entries: {summary['constrained_outdated']}",
+        f"- Unknown-actionability outdated entries: {summary['unknown_actionability_outdated']}",
+        f"- Venv cruft status: {report.get('venv_cruft_status', 'unknown')}",
+        f"- Venv cruft packages: {len(report.get('venv_cruft_packages', []))}",
     ]
-    if "direct_requirements_outdated_ignored" in summary:
-        lines.append(
-            f"- Outdated direct entries ignored by policy: {summary['direct_requirements_outdated_ignored']}"
-        )
-        lines.append(
-            f"- Outdated direct entries blocking gate: {summary['direct_requirements_outdated_blocking']}"
-        )
     lines.append("")
 
     packages = report["packages"]
@@ -230,11 +341,17 @@ def format_report_text(report: dict[str, Any]) -> str:
     for item in packages:
         source = "requirements.txt" if item["in_requirements_txt"] else "transitive"
         pin_state = "pinned" if item["is_exact_pin_in_requirements"] else "not-pinned"
-        policy_note = "; ignored-by-policy" if item.get("direct_outdated_ignored") else ""
+        actionability = item.get("outdated_actionability", "unknown")
         lines.append(
             f"- {item['name']}: {item['current_version']} -> {item['latest_version']} "
-            f"({item['update_type']}; {source}; {pin_state}{policy_note})"
+            f"({item['update_type']}; {source}; {pin_state}; {actionability})"
         )
+    cruft_packages = report.get("venv_cruft_packages", [])
+    if cruft_packages:
+        lines.append("")
+        lines.append("Venv cruft packages (requested but not declared in requirements.txt):")
+        for package in cruft_packages:
+            lines.append(f"- {package}")
     return "\n".join(lines) + "\n"
 
 
@@ -261,14 +378,19 @@ def parse_args() -> argparse.Namespace:
         help="Exit non-zero when major updates are detected.",
     )
     parser.add_argument(
+        "--fail-on-any-actionable-outdated",
+        action="store_true",
+        help="Exit non-zero when any actionable outdated package is detected.",
+    )
+    parser.add_argument(
         "--fail-on-direct-outdated",
         action="store_true",
         help="Exit non-zero when outdated packages are listed in requirements.txt.",
     )
     parser.add_argument(
-        "--direct-outdated-ignore",
-        default="",
-        help="Comma-separated package names to ignore for direct-outdated failure gating.",
+        "--fail-on-venv-cruft",
+        action="store_true",
+        help="Exit non-zero when requested venv packages are not declared in requirements.txt.",
     )
     return parser.parse_args()
 
@@ -293,20 +415,18 @@ def main() -> int:
         print(f"Failed to collect dependency freshness data: {exc}", file=sys.stderr)
         return 2
 
-    ignored_names = parse_name_list(args.direct_outdated_ignore)
-    apply_direct_outdated_ignore(report, ignored_names)
-
     output_json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     text_report = format_report_text(report)
     output_text.write_text(text_report, encoding="utf-8")
     print(text_report, end="")
 
+    if args.fail_on_any_actionable_outdated and report["summary"]["actionable_outdated"] > 0:
+        return 1
     if args.fail_on_major and report["summary"]["major_updates"] > 0:
         return 1
-    direct_blocking = report["summary"].get(
-        "direct_requirements_outdated_blocking", report["summary"]["direct_requirements_outdated"]
-    )
-    if args.fail_on_direct_outdated and direct_blocking > 0:
+    if args.fail_on_direct_outdated and report["summary"]["direct_requirements_outdated"] > 0:
+        return 1
+    if args.fail_on_venv_cruft and len(report.get("venv_cruft_packages", [])) > 0:
         return 1
     return 0
 

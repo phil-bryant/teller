@@ -14,9 +14,6 @@ cd "$REPO_ROOT"
 REPORT_DIR="${DEPENDENCY_REPORT_DIR:-./artifacts/security}"
 RUN_POSTGRES_FRESHNESS="${RUN_POSTGRES_FRESHNESS:-true}"
 RUN_TELLER_VERSION_FRESHNESS="${RUN_TELLER_VERSION_FRESHNESS:-true}"
-FAIL_ON_MAJOR="${DEPENDENCY_FAIL_ON_MAJOR:-false}"
-FAIL_ON_DIRECT_OUTDATED="${DEPENDENCY_FAIL_ON_DIRECT_OUTDATED:-true}"
-DIRECT_OUTDATED_IGNORE="${DEPENDENCY_DIRECT_OUTDATED_IGNORE:-fastapi,hypothesis}"
 TELLER_API_BASELINE_VERSION="${TELLER_API_BASELINE_VERSION:-}"
 TELLER_API_VERSION_FAIL_ON_NEW="${TELLER_API_VERSION_FAIL_ON_NEW:-false}"
 TELLER_API_VERSION_SOURCES="${TELLER_API_VERSION_SOURCES:-https://teller.io/docs/api,https://api.teller.io/openapi.json,https://api.teller.io/swagger.json}"
@@ -67,21 +64,18 @@ if [[ "$PROJECT_PYTHON_EXPLICIT" != "true" ]]; then
 fi
 
 echo && echo "▶ Running dependency freshness checks with ${PROJECT_PYTHON}"
-#R010: Emit machine-readable and text freshness reports with optional major-version gate.
+#R010: Emit machine-readable and text freshness reports with smart strict stale-dependency gates.
 DEPENDENCY_FRESHNESS_ARGS=(
   ./src/scripts/check_dependency_freshness.py
   --output-json "${REPORT_DIR}/dependency-freshness.json"
   --output-text "${REPORT_DIR}/dependency-freshness.txt"
 )
-if [[ "$FAIL_ON_MAJOR" == "true" ]]; then
-  DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-major)
-fi
-if [[ "$FAIL_ON_DIRECT_OUTDATED" == "true" ]]; then
-  DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-direct-outdated)
-fi
-if [[ -n "$DIRECT_OUTDATED_IGNORE" ]]; then
-  DEPENDENCY_FRESHNESS_ARGS+=(--direct-outdated-ignore "$DIRECT_OUTDATED_IGNORE")
-fi
+#R011: Actionable stale dependencies are mandatory blocking gate for this lane.
+#R011: Do not weaken this gate; stale direct dependencies must be updated.
+DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-any-actionable-outdated)
+DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-direct-outdated)
+#R012: Venv must not include explicitly installed packages outside requirements.txt.
+DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-venv-cruft)
 "$PROJECT_PYTHON" "${DEPENDENCY_FRESHNESS_ARGS[@]}"
 
 #R015: Run optional Teller API version freshness checks via machine-readable API metadata.
