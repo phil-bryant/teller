@@ -29,4 +29,4 @@ This directory contains `bats-core` unit tests for repository shell scripts.
 ## Notes
 
 - Tests avoid live network and database dependencies by using command stubs.
-- Integration scripts (`07`, `08`, `10`, `18`) remain out of unit scope by design.
+- Integration scripts (`07`, `08`, `09`, `10`) remain out of unit scope by design.

@@ -674,7 +674,7 @@ Legend:
 │  [B3 secrets boundary]                 [AS] shell/python execution path                       │
 │  ┌────────────────────────────────┐     ┌────────────────────────────────────────────────┐    │
 │  │ 1psa CLI + ~/.teller files     │<--->│ runtime entrypoints                            │    │
-│  │ cert/key/auth_token/enrollment │ F3  │ 06_fetch / 08_run_api / tests/t13_smoke / 07_* │    │
+│  │ cert/key/auth_token/enrollment │ F3  │ 07_fetch / 09_run_api / tests/t13_smoke / 08_* │    │
 │  └──────────────┬─────────────────┘     └───────────────────────────────┬────────────────┘    │
 │                 │ F5 token/cert/key reads [TB]                          | F6 SQL writes/reads |
 │                 │ (/v1/* auth gate; /health open)                       |        [TB]         │

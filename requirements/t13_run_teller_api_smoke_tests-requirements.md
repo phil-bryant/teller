@@ -30,4 +30,4 @@ Tests:
 
 ## Changelog
 
-- 2026-05-24: Initial requirements for `18_run_teller_api_smoke_tests.sh`.
+- 2026-05-24: Initial requirements for `tests/t13_run_teller_api_smoke_tests.sh`.

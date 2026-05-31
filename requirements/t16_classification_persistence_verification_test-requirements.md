@@ -67,7 +67,7 @@ Tests:
 ## Changelog
 
 - 2026-05-23: Added R040 to require explicit DB profile setup before persistence verification.
-- 2026-04-19: Initial reverse-engineered requirements for `22_classification_persistence_verification_test.sh`.
+- 2026-04-19: Initial reverse-engineered requirements for `tests/t16_classification_persistence_verification_test.sh`.
 - 2026-04-20: Made smart identifier auto-resolution the default and added `--require-env-ids` strict mode.
 - 2026-04-21: Added explicit, actionable failure behavior when auto-resolve queries return no rows.
 - 2026-04-21: Added explicit `PASS:`/`FAIL:` result output with non-zero failures for API or persistence mismatch.

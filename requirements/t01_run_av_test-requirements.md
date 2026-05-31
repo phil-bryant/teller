@@ -49,4 +49,4 @@ Tests:
 
 ## Changelog
 
-- 2026-05-09: Added standalone AV lane requirements for `06_run_av_test.sh` after splitting ClamAV out of `15_run_security_checks.sh`.
+- 2026-05-09: Added standalone AV lane requirements for `tests/t01_run_av_test.sh` after splitting ClamAV out of the prior combined security checks lane.

@@ -104,7 +104,7 @@ On the second launch, the app should detect and persist the pending crash report
 
 From repo root:
 
-- `./09_run_shell_unit_tests.sh` (API/unit tests)
+- `./tests/t07_run_shell_unit_tests.sh` (API/unit tests)
 - `./tests/t14_run_macos_ui_regression_tests.sh` (snapshot + macOS XCUITest smoke lane)
 - `./tests/t01_run_av_test.sh` (standalone ClamAV antivirus lane)
 - `./tests/t16_classification_persistence_verification_test.sh` (auto-selects IDs for end-to-end persistence check)
