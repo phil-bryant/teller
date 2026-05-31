@@ -208,6 +208,8 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │ Database target (local profile or managed profile via db profiles)           │
  │ PostgreSQL path: src/sql/postgres/                                           │
  │ SQLite path: existing script entrypoints with sqlite profile branching        │
+│ SQLite money storage: integer cents for amount/running_balance/ledger/available │
+│ Current dependency: Teller account currency is USD for sqlite money encoding  │
  │ DB helpers in: src/teller/teller_db.py,                                      │
  │                  src/teller/teller_db_profile.py                             │
  └───────────────────────────────────────┬──────────────────────────────────────┘

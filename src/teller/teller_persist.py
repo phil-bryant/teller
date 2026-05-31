@@ -11,11 +11,12 @@
 #R040: Commit/rollback persistence boundary behavior.
 """
 
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import bindparam, text
 import structlog
 
 log = structlog.get_logger()
+_USD_QUANTUM = Decimal("0.01")
 
 #R045: SQLite execution helper must coerce unsupported bound parameter types.
 def _sqlite_safe_params(params):
@@ -33,6 +34,13 @@ def _sqlite_safe_params(params):
 def _is_sqlite_session(session):
     dialect = getattr(getattr(session, "bind", None), "dialect", None)
     return getattr(dialect, "name", None) == "sqlite"
+
+
+def _sqlite_money_to_minor_units(value):
+    if value is None:
+        return None
+    quantized = value.quantize(_USD_QUANTUM, rounding=ROUND_HALF_UP)
+    return int(quantized * 100)
 
 
 #R001: Shared SQL execution helper.
@@ -73,11 +81,14 @@ def _upsert_account_links(session, links_data, existing_links_id=None):
 #R005: Idempotent account-level upsert orchestration.
 def _upsert_account(session, account_data):
     acct_id = account_data["id"]
+    currency_code = account_data["currency"]
+    if _is_sqlite_session(session) and currency_code != "USD":
+        raise ValueError(f"SQLite money storage expects USD accounts; got currency={currency_code!r} account_id={acct_id!r}")
     inst_data, links_data = account_data["institution"], account_data["links"]
     _upsert_institution(session, inst_data)
     existing = _exec(session, "SELECT account_links_id FROM teller.account WHERE account_id = :id", {"id": acct_id}).fetchone()
     links_id = _upsert_account_links(session, links_data, existing[0] if existing else None)
-    vals = {"account_id": acct_id, "currency": account_data["currency"], "enrollment_id": account_data["enrollment_id"],
+    vals = {"account_id": acct_id, "currency": currency_code, "enrollment_id": account_data["enrollment_id"],
             "institution_id": inst_data["id"], "last_four": account_data["last_four"], "account_links_id": links_id,
             "name": account_data["name"], "type": account_data["type"], "subtype": account_data["subtype"],
             "status": account_data["status"]}
@@ -237,6 +248,9 @@ def _upsert_transaction(session, txn_data):
     links_id = _upsert_transaction_links(session, txn_data["links"], existing[1] if existing else None)
     amount = Decimal(txn_data["amount"])
     running_balance = Decimal(txn_data["running_balance"]) if txn_data.get("running_balance") else None
+    if _is_sqlite_session(session):
+        amount = _sqlite_money_to_minor_units(amount)
+        running_balance = _sqlite_money_to_minor_units(running_balance)
     vals = {"transaction_id": txn_id, "account_id": txn_data["account_id"], "amount": amount,
             "date": txn_data["date"], "description": txn_data["description"],
             "transaction_details_id": details_id, "status": txn_data["status"],
@@ -363,6 +377,9 @@ def _upsert_account_balances(session, bal_data):
     links_id = _upsert_account_balances_links(session, bal_data["links"], existing[1] if existing else None)
     ledger = Decimal(bal_data["ledger"]) if bal_data.get("ledger") else None
     available = Decimal(bal_data["available"]) if bal_data.get("available") else None
+    if _is_sqlite_session(session):
+        ledger = _sqlite_money_to_minor_units(ledger)
+        available = _sqlite_money_to_minor_units(available)
     vals = {"account_id": account_id, "ledger": ledger, "available": available, "account_balances_links_id": links_id}
     if existing:
         _exec(session, """

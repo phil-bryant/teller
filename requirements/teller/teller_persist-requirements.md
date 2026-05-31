@@ -10,7 +10,7 @@ Tests:
 - R001-T01: Run helper calls against a test session and verify parameterized statements execute and returning rows are accessible.
 
 R005  Statement: Upsert account-level Teller entities idempotently.
-Design: Upsert institution, account links, and account rows using conflict handling while preserving existing link row IDs when updating.
+Design: Upsert institution, account links, and account rows using conflict handling while preserving existing link row IDs when updating. For SQLite targets, reject non-USD account currencies because money persistence uses USD-cent integer encoding.
 Tests:
 - R005-T01: Persist the same account payload twice and verify one logical account row remains with updated mutable fields.
 
@@ -21,7 +21,7 @@ Tests:
 - R010-T02: Verify account-identity link insert is conflict-safe.
 
 R015  Statement: Upsert transactions with normalized relation rows and numeric casting.
-Design: Upsert transaction type, details, links, and transaction rows; cast `amount` and optional `running_balance` to `Decimal`.
+Design: Upsert transaction type, details, links, and transaction rows; cast `amount` and optional `running_balance` to `Decimal`. For SQLite targets, convert money values to integer cents before write to avoid floating-point storage drift.
 Tests:
 - R015-T01: Persist transaction payload with links/details and verify relational rows and transaction row are written.
 - R015-T02: Re-persist with changed mutable fields and verify transaction conflict update path applies.
@@ -43,7 +43,7 @@ Tests:
 - R030-T01: Delete transactions that leave relation rows orphaned and verify orphan pruning removes only unreferenced rows.
 
 R035  Statement: Persist account balance snapshots with upsert behavior.
-Design: Upsert account-balance links and account-balance rows per account, with optional `ledger`/`available` cast to `Decimal` and timestamp refresh on updates.
+Design: Upsert account-balance links and account-balance rows per account, with optional `ledger`/`available` cast to `Decimal` and timestamp refresh on updates. For SQLite targets, convert `ledger`/`available` to integer cents before write.
 Tests:
 - R035-T01: Persist balances for an account and verify insert path writes links and balances.
 - R035-T02: Re-persist with updated balances and verify update path and timestamp refresh.
@@ -75,6 +75,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-30: Added SQLite USD-cent persistence constraints for account currency guard plus transaction/balance money writes.
 - 2026-05-30: Updated R025 to require PostgreSQL/SQLite dialect-safe pending-transaction reconciliation SQL.
 - 2026-05-30: Added R045 for SQLite-safe Decimal parameter coercion in shared SQL execution helper.
 - 2026-05-30: Added R050 for reserved transaction-table identifier quoting across SQLite/PostgreSQL paths.

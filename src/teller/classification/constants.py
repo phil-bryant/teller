@@ -27,6 +27,15 @@ def _is_sqlite_target() -> bool:
 
 
 _IS_SQLITE = _is_sqlite_target()
+if _IS_SQLITE:
+    # SQLite stores transaction/account-balance money as integer cents.
+    _AMOUNT_SELECT_EXPR = "(CAST(tt.amount AS REAL) / 100.0)"
+    _AMOUNT_MIN_FILTER = "(:min_amount IS NULL OR tt.amount >= CAST(ROUND(:min_amount * 100, 0) AS INTEGER))"
+    _AMOUNT_MAX_FILTER = "(:max_amount IS NULL OR tt.amount <= CAST(ROUND(:max_amount * 100, 0) AS INTEGER))"
+else:
+    _AMOUNT_SELECT_EXPR = "tt.amount"
+    _AMOUNT_MIN_FILTER = "(:min_amount IS NULL OR tt.amount >= :min_amount)"
+    _AMOUNT_MAX_FILTER = "(:max_amount IS NULL OR tt.amount <= :max_amount)"
 
 _EXISTENCE_QUERIES = {
     ("nys_snw_category", "nys_snw_category_id"): text(
@@ -40,7 +49,7 @@ _EXISTENCE_QUERIES = {
 }
 
 _TRANSACTION_COUNT_SQL = text(
-    """
+    f"""
     SELECT COUNT(*)
       FROM teller.transaction tt
       LEFT JOIN teller.account ta USING (account_id)
@@ -100,15 +109,15 @@ _TRANSACTION_COUNT_SQL = text(
        AND (:start_date IS NULL OR tt.date >= :start_date)
        AND (:end_date IS NULL OR tt.date <= :end_date)
        AND (:institution_id = '' OR ta.institution_id = :institution_id)
-       AND (:min_amount IS NULL OR tt.amount >= :min_amount)
-       AND (:max_amount IS NULL OR tt.amount <= :max_amount)
+       AND {_AMOUNT_MIN_FILTER}
+       AND {_AMOUNT_MAX_FILTER}
 """
 )
 
 _TRANSACTION_LIST_SQL = text(
-    """
+    f"""
     SELECT tt.transaction_id, tt.account_id, ta.institution_id, ta.last_four AS account_last_four,
-           tt.date, tt.amount, tt.description, tt.status,
+           tt.date, {_AMOUNT_SELECT_EXPR} AS amount, tt.description, tt.status,
            ttt.code AS transaction_type_code, ttd.category AS teller_category,
            m.nys_snw_category_id, nsc.level_1, nsc.level_1_name, nsc.level_2, nsc.level_2_name,
            nsc.level_3, nsc.level_4, nsc.categorization,
@@ -176,8 +185,8 @@ _TRANSACTION_LIST_SQL = text(
        AND (:start_date IS NULL OR tt.date >= :start_date)
        AND (:end_date IS NULL OR tt.date <= :end_date)
        AND (:institution_id = '' OR ta.institution_id = :institution_id)
-       AND (:min_amount IS NULL OR tt.amount >= :min_amount)
-       AND (:max_amount IS NULL OR tt.amount <= :max_amount)
+       AND {_AMOUNT_MIN_FILTER}
+       AND {_AMOUNT_MAX_FILTER}
     ORDER BY tt.date DESC, tt.transaction_id DESC
     LIMIT :limit OFFSET :offset
 """

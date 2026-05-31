@@ -15,7 +15,7 @@ Tests:
 - R005-T01: Parse `create_database.sql` and verify core ingest table names are declared.
 
 R010  Statement: SQLite deploy defines transaction, classification, and match-review tables required by classification API runtime.
-Design: `create_database.sql` creates transaction, category, mapping, and match-review tables with constraint intent equivalent to PostgreSQL workflow.
+Design: `create_database.sql` creates transaction, category, mapping, and match-review tables with constraint intent equivalent to PostgreSQL workflow. SQLite money columns (`transaction.amount`, `transaction.running_balance`, `account_balances.ledger`, `account_balances.available`) are stored as integer minor units (cents) to avoid floating-point drift; current architecture assumes Teller account currency is USD.
 Tests:
 - R010-T01: Parse `create_database.sql` and verify classification + match-review table declarations exist.
 

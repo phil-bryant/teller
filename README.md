@@ -50,6 +50,8 @@ cp config/db-profiles-EXAMPLE.json config/db-profiles.json
 
 Before `./05_deploy_database.sh`, ensure dependencies match your selected profile target: PostgreSQL installed/running for `local`/`supabase*` targets, or `sqlite3` installed for `sqlite` target.
 For sqlite profile runs, the default database path is `.database/teller.sqlite3` (override with `TELLER_DB_SQLITE_PATH`).
+For sqlite profile runs, money values are persisted as integer minor units (cents) in `transaction.amount`, `transaction.running_balance`, `account_balances.ledger`, and `account_balances.available`.
+Current architecture assumes Teller API account currency is USD for sqlite money persistence.
 
 ## Repository Layout
 
