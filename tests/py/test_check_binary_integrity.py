@@ -33,7 +33,7 @@ class CheckBinaryIntegrityTests(unittest.TestCase):
         self.module = load_module()
 
     def test_make_report_detects_missing_and_version_stale(self) -> None:
-        #R005-T01
+        #R001-T01 #R005-T01
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             fake_bin = tmp_path / "fake-tool"

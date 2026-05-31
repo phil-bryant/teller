@@ -13,7 +13,7 @@ teardown() {
 }
 
 @test "runs from repo root and writes freshness artifacts" {
-  #R001-T01 #R005-T01 #R005-T02 #R010-T01 #R010-T02 #R010-T03 #R010-T04 #R012-T01 #R020-T01 #R025-T01 #R025-T02 #R025-T03 #R030-T01 #R030-T02 #R032-T01
+  #R001-T01 #R005-T01 #R005-T02 #R010-T01 #R010-T02 #R010-T03 #R010-T04 #R012-T01 #R020-T01 #R025-T01 #R025-T02 #R025-T03 #R030-T01 #R030-T02 #R032-T01 #R040-T01
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
@@ -238,6 +238,7 @@ EOF
 }
 
 @test "skips binary integrity lane when disabled" {
+  #R040-T02
   mkdir -p "${FIXTURE_ROOT}/teller-venv/bin"
   cat > "${FIXTURE_ROOT}/teller-venv/bin/python" <<EOF
 #!/usr/bin/env bash
