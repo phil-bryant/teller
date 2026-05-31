@@ -35,6 +35,12 @@ POSTGRES_SERVER_PSA_FIELD="${POSTGRES_SERVER_PSA_FIELD:-password}"
 
 mkdir -p "$REPORT_DIR"
 
+python_interpreter_usable() {
+  local candidate="$1"
+  [[ -x "$candidate" ]] || return 1
+  "$candidate" -c "import site" >/dev/null 2>&1
+}
+
 PROJECT_PYTHON="${DEPENDENCY_CHECK_PYTHON:-}"
 PROJECT_PYTHON_EXPLICIT=false
 if [[ -n "${DEPENDENCY_CHECK_PYTHON:-}" ]]; then
@@ -57,7 +63,7 @@ if [[ ! -x "$PROJECT_PYTHON" ]] && [[ "$PROJECT_PYTHON" != "python3" ]]; then
 fi
 
 if [[ "$PROJECT_PYTHON_EXPLICIT" != "true" ]]; then
-  if ! "$PROJECT_PYTHON" -c "import site" >/dev/null 2>&1; then
+  if ! python_interpreter_usable "$PROJECT_PYTHON"; then
     echo "⚠️ Selected interpreter '$PROJECT_PYTHON' is not usable; falling back to python3"
     PROJECT_PYTHON="python3"
   fi
@@ -77,6 +83,27 @@ DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-direct-outdated)
 #R012: Venv must not include explicitly installed packages outside requirements.txt.
 DEPENDENCY_FRESHNESS_ARGS+=(--fail-on-venv-cruft)
 "$PROJECT_PYTHON" "${DEPENDENCY_FRESHNESS_ARGS[@]}"
+
+SECURITY_TOOLCHAIN_REQUIREMENTS_FILE="${SECURITY_TOOLCHAIN_REQUIREMENTS_FILE:-./requirements/security/requirements-security.txt}"
+SECURITY_TOOLCHAIN_PYTHON="./artifacts/venv/security/bin/python"
+if ! python_interpreter_usable "$SECURITY_TOOLCHAIN_PYTHON"; then
+  echo "⚠️ Security toolchain interpreter '${SECURITY_TOOLCHAIN_PYTHON}' is not usable; falling back to python3"
+  SECURITY_TOOLCHAIN_PYTHON="python3"
+fi
+
+echo && echo "▶ Running security toolchain dependency freshness checks with ${SECURITY_TOOLCHAIN_PYTHON}"
+SECURITY_TOOLCHAIN_FRESHNESS_ARGS=(
+  ./src/scripts/check_dependency_freshness.py
+  --requirements "${SECURITY_TOOLCHAIN_REQUIREMENTS_FILE}"
+  --output-json "${REPORT_DIR}/security-toolchain-dependency-freshness.json"
+  --output-text "${REPORT_DIR}/security-toolchain-dependency-freshness.txt"
+)
+#R030: Security toolchain freshness remains a strict gate for actionable/direct drift.
+SECURITY_TOOLCHAIN_FRESHNESS_ARGS+=(--fail-on-any-actionable-outdated)
+SECURITY_TOOLCHAIN_FRESHNESS_ARGS+=(--fail-on-direct-outdated)
+#R032: Security toolchain venv must not include requested packages outside declared lockfile.
+SECURITY_TOOLCHAIN_FRESHNESS_ARGS+=(--fail-on-venv-cruft)
+"$SECURITY_TOOLCHAIN_PYTHON" "${SECURITY_TOOLCHAIN_FRESHNESS_ARGS[@]}"
 
 #R015: Run optional Teller API version freshness checks via machine-readable API metadata.
 if [[ "$RUN_TELLER_VERSION_FRESHNESS" == "true" ]]; then

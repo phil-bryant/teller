@@ -77,6 +77,19 @@ Tests:
 - R025-T02: Run with `POSTGRES_CHECK_CVES=false` and verify CVE flags are not passed.
 - R025-T03: Refresh snapshot data where only `generated_at` changes and verify snapshot file is not rewritten.
 
+R030  Statement: Always run a security-toolchain dependency freshness substep.
+Design: After the runtime `requirements.txt` freshness pass, unconditionally run a second `src/scripts/check_dependency_freshness.py` invocation with `--requirements ./requirements/security/requirements-security.txt` and write distinct artifacts `security-toolchain-dependency-freshness.json` and `security-toolchain-dependency-freshness.txt` under the resolved report directory.
+Design: Resolve security-toolchain interpreter by preferring `./artifacts/venv/security/bin/python`; when unusable, fall back to `python3` and emit an explicit fallback message.
+Tests:
+- R030-T01: Run default lane and verify security-toolchain freshness artifacts are generated.
+- R030-T02: Verify the security-toolchain substep invokes `check_dependency_freshness.py` with `--requirements ./requirements/security/requirements-security.txt`.
+- R030-T03: Remove/disable `./artifacts/venv/security/bin/python` and verify fallback to `python3` is announced and used.
+
+R032  Statement: Security-toolchain freshness substep must keep strict failure gates enabled.
+Design: Always pass `--fail-on-any-actionable-outdated`, `--fail-on-direct-outdated`, and `--fail-on-venv-cruft` in the security-toolchain freshness invocation, with no allowlist bypass behavior.
+Tests:
+- R032-T01: Verify the security-toolchain invocation always includes all strict freshness gate flags.
+
 ## Changelog
 
 - 2026-04-26: Initial requirements for `05_run_dependency_freshness_tests.sh`.
@@ -89,3 +102,4 @@ Tests:
 - 2026-05-30: Tightened R010 to fail on any stale dependency (direct or transitive) via always-on strict freshness flags.
 - 2026-05-30: Made R010 constraint-aware by gating on actionable stale dependencies while preserving strict direct-dependency blocking.
 - 2026-05-30: Added R012 venv-cruft gate to fail when requested packages are not declared in `requirements.txt`.
+- 2026-05-31: Added R030/R032 for always-on security-toolchain freshness pass with strict gating and interpreter fallback contract.
