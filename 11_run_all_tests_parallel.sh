@@ -472,6 +472,7 @@ LANE_GROUPS = {
         "t03_run_static_security_tests",
         "t12_run_dynamic_security_tests",
         "t17_run_teller_live_canary_test",
+        "t18_verify_filevault_encryption_test",
     ),
 }
 

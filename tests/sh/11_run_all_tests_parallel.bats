@@ -20,6 +20,7 @@ CHECKS=(
   "t15_verify_macos_crash_test.sh"
   "t16_classification_persistence_verification_test.sh"
   "t17_run_teller_live_canary_test.sh"
+  "t18_verify_filevault_encryption_test.sh"
 )
 
 write_child_stub() {

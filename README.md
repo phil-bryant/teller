@@ -134,6 +134,7 @@ All primary lanes live under `tests/t*.sh`:
 - `./tests/t15_verify_macos_crash_test.sh` - macOS crash reporter verification
 - `./tests/t16_classification_persistence_verification_test.sh` - classification API to Postgres persistence E2E
 - `./tests/t17_run_teller_live_canary_test.sh` - strict live Teller upstream canary (requires mTLS + token)
+- `./tests/t18_verify_filevault_encryption_test.sh` - macOS FileVault encryption verification
 
 Equivalent direct Python invocation:
 
