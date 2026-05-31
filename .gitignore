@@ -40,3 +40,4 @@ src/macos-ui/.swiftpm-run.lock
 src/macos-ui/.swiftpm-run.lock.d/
 config/db-profiles.local.json
 config/db-profiles.json
+.database

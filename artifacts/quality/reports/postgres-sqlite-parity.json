@@ -1,0 +1,10 @@
+{
+  "postgres_profile": "postgres",
+  "sqlite_profile": "sqlite",
+  "postgres_target": "local",
+  "sqlite_target": "sqlite",
+  "postgres_search_path": "teller",
+  "sqlite_path": "/Users/phil/local/src/teller/.database/teller.sqlite3",
+  "diff_count": 0,
+  "diffs": []
+}
