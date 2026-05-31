@@ -88,7 +88,7 @@ TransactionClassifier (SwiftUI app, launched by 09_run_classification_macos_ui.s
   -> binds TELLER_CLASSIFIER_API_HOST/PORT (default 127.0.0.1:8787)
   -> requires 1psa-backed TELLER_CLASSIFIER_WRITE_TOKEN before serving
   -> requires HTTPS with local cert/key files (no HTTP override path)
-  -> persists via SQLAlchemy to profile-resolved PostgreSQL target
+  -> persists via SQLAlchemy to profile-resolved PostgreSQL or SQLite target
 
 Optional Mailcart proxy target defaults to https://127.0.0.1:8788
   (override with MAILCART_SERVICE_BASE_URL / MAILCART_SERVICE_TOKEN)
@@ -205,8 +205,9 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  ┌──────────────────────────────────────────────────────────────────────────────┐
  │                            DATA / PERSISTENCE LAYER                          │
  ├──────────────────────────────────────────────────────────────────────────────┤
- │ PostgreSQL (local profile or managed profile via db profiles)                │
- │ Schema + SQL objects in: src/sql/postgres/                                   │
+ │ Database target (local profile or managed profile via db profiles)           │
+ │ PostgreSQL path: src/sql/postgres/                                           │
+ │ SQLite path: existing script entrypoints with sqlite profile branching        │
  │ DB helpers in: src/teller/teller_db.py,                                      │
  │                  src/teller/teller_db_profile.py                             │
  └───────────────────────────────────────┬──────────────────────────────────────┘
@@ -592,7 +593,7 @@ Local runtime debugging checklist:
 
 - If UI cannot load data, verify FastAPI is listening on `127.0.0.1:8787` (or your `TELLER_CLASSIFIER_API_URL` override).
 - If write endpoints fail at startup, verify `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN` returns a non-empty value.
-- If DB connect fails, inspect the resolved profile (`TELLER_DB_PROFILE`, profile file path precedence, and `1psa_or_env_item`).
+- If DB connect fails, inspect the resolved profile (`TELLER_DB_PROFILE`, profile file path precedence, `1psa_or_env_item`, and `DB_DIALECT`/`SQLITE_PATH` exports; sqlite default path is `.database/teller.sqlite3`).
 - If match-review email fetch fails, verify optional Mailcart process on `127.0.0.1:8788` or override `MAILCART_SERVICE_BASE_URL`.
 
 ### 6) TEST STRATEGY MAP (LANES -> SCOPE -> GATES)

@@ -248,6 +248,21 @@ class ResolveProfileTests(_IsolatedEnvTest):
         self.assertEqual(profile.target, "sqlite")
         self.assertEqual(profile.sqlite_path, "/tmp/teller-test.sqlite3")
 
+    @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
+    def test_profile_named_sqlite_forces_sqlite_target_when_source_target_is_local(self, _mock):
+        #R021-T01
+        self._write_profile_file(
+            {
+                "default_profile": "sqlite",
+                "profiles": {"sqlite": {"1psa_item": "sqlite_item"}},
+            }
+        )
+        profile = resolve_profile()
+        self.assertEqual(profile.name, "sqlite")
+        self.assertEqual(profile.target, "sqlite")
+        self.assertEqual(profile.sslmode, "disable")
+        self.assertTrue(profile.sqlite_path.endswith(".database/teller.sqlite3"))
+
 
 if __name__ == "__main__":
     unittest.main()

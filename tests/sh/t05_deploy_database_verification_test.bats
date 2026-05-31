@@ -287,6 +287,25 @@ echo "PROFILE_TARGET=sqlite"
 echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
+  cat > "${STUB_BIN}/sqlite3" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"sqlite_master"* && "$*" == *"type='table'"* ]]; then
+  if [[ "$*" == *"institution"* || "$*" == *"account"* || "$*" == *"transaction_type"* || "$*" == *"transaction"* || "$*" == *"nys_snw_category"* || "$*" == *"transaction_nys_snw_category"* || "$*" == *"transaction_email_match"* ]]; then
+    echo "1"
+  fi
+  exit 0
+fi
+if [[ "$*" == *"type='view'"* && "$*" == *"transaction_info_view"* ]]; then
+  echo "1"
+  exit 0
+fi
+if [[ "$*" == *"SELECT 1 FROM transaction_info_view LIMIT 1;"* ]]; then
+  echo "1"
+  exit 0
+fi
+exit 0
+EOF
+  chmod +x "${STUB_BIN}/sqlite3"
   printf 'seed' > "${FIXTURE_ROOT}/sqlite-dev.db"
   run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
   [ "$status" -eq 0 ]

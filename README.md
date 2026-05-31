@@ -1,6 +1,6 @@
 # teller
 
-Local-first Teller data platform: PostgreSQL schema + ingest scripts + classification API + native macOS review app.
+Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema + ingest scripts + classification API + native macOS review app.
 
 ## Script Execution Order
 
@@ -48,13 +48,14 @@ cp config/db-profiles-EXAMPLE.json config/db-profiles.json
 ./10_run_all_tests_parallel.sh
 ```
 
-Before `./05_deploy_database.sh`, ensure PostgreSQL is installed and running for your selected profile target (for local runs, start your local server/service first).
+Before `./05_deploy_database.sh`, ensure dependencies match your selected profile target: PostgreSQL installed/running for `local`/`supabase*` targets, or `sqlite3` installed for `sqlite` target.
+For sqlite profile runs, the default database path is `.database/teller.sqlite3` (override with `TELLER_DB_SQLITE_PATH`).
 
 ## Repository Layout
 
 - `src/teller/` - Python package (ORM models, DB profile/engine, ingest persistence, FastAPI classification API, Mailcart proxy client).
 - `src/macos-ui/` - SwiftUI desktop app (`TransactionClassifier`) for Match Review, category management, and Connect enrollment flows.
-- `src/sql/postgres/` - canonical schema objects, triggers, and views for the `teller` schema.
+- `src/sql/postgres/` - canonical PostgreSQL schema objects, triggers, and views for the `teller` schema.
 - `tests/` - `py/` (`unittest`), `sh/` (`bats`), `sql/` (`pgTAP`), plus `swift/` and `swift-ui/` symlinks into `src/macos-ui/Tests` and `src/macos-ui/UITests` for snapshot + XCUITest lanes.
 - `requirements/` - requirements traceability docs mapped to source `#R...` tags.
 
@@ -108,7 +109,7 @@ All primary lanes live under `tests/t*.sh`:
 - `./tests/t03_run_static_security_tests.sh` - static security scanning (SAST)
 - `./tests/t04_run_requirements_traceability_tests.sh` - requirements to `#R...` tag traceability
 - `./tests/t05_deploy_database_verification_test.sh` - deployed database invariant checks
-- `./tests/t06_run_sql_unit_tests.sh` - SQL unit tests
+- `./tests/t06_run_sql_unit_tests.sh` - SQL unit tests (pgTAP for PostgreSQL targets, sqlite3 SQL checks for SQLite target)
 - `./tests/t07_run_shell_unit_tests.sh` - shell unit tests (`bats`)
 - `./tests/t08_run_python_unit_tests.sh` - Python unit tests
 - `./tests/t09_run_mutation_tests.sh` - mutation testing (`mutmut`)
@@ -167,6 +168,7 @@ Active secret and credential sources are:
   - Installs/refreshes locally trusted TLS cert/key files used by `08_run_classification_api.py` (via `mkcert`, under `~/.teller` by default).
 - `05_deploy_database.sh`
   - Resolves DB profile and deploys schema/roles/DDL for local or managed targets from `src/sql/postgres/` in dependency order.
+  - For sqlite target/profile, applies `src/sql/sqlite/create_database.sql` to `.database/teller.sqlite3` by default.
 - `06_fetch_teller_api_data.py`
   - Pulls Teller API data, normalizes and deduplicates transaction history, and persists or upserts accounts, transactions, and related objects into Postgres.
 - `07_backfill_bank_statements.py`
@@ -224,11 +226,14 @@ Core lane scripts under `tests/`:
 Operational recovery scripts:
 
 - `97_backup_database.sh`
-  - Creates timestamped custom-format DB backup plus matching globals dump.
+  - Creates timestamped custom-format DB backup plus matching globals dump for PostgreSQL targets.
+  - For sqlite target/profile, copies the sqlite DB file (default `.database/teller.sqlite3`) to `backups/*.dump`.
 - `98_destroy_database.sh`
   - Performs explicit-confirmation teardown for local DB or managed schema/roles based on active profile.
+  - For sqlite target/profile, performs explicit-confirmation file delete of the sqlite DB path.
 - `99_restore_database.sh`
   - Restores latest (or selected) backup with full-restore safety checks, globals-first flow, and optional table-scoped restore mode.
+  - For sqlite target/profile, restores by copying the backup dump file to the sqlite DB path.
 
 ### Operations Recovery Flow (`97` -> `98` -> `99`)
 

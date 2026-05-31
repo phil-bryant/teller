@@ -12,14 +12,35 @@
 """
 
 from decimal import Decimal
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 import structlog
 
 log = structlog.get_logger()
 
+#R045: SQLite execution helper must coerce unsupported bound parameter types.
+def _sqlite_safe_params(params):
+    if isinstance(params, Decimal):
+        return str(params)
+    if isinstance(params, dict):
+        return {key: _sqlite_safe_params(value) for key, value in params.items()}
+    if isinstance(params, list):
+        return [_sqlite_safe_params(value) for value in params]
+    if isinstance(params, tuple):
+        return tuple(_sqlite_safe_params(value) for value in params)
+    return params
+
+
+def _is_sqlite_session(session):
+    dialect = getattr(getattr(session, "bind", None), "dialect", None)
+    return getattr(dialect, "name", None) == "sqlite"
+
+
 #R001: Shared SQL execution helper.
 def _exec(session, sql, params=None):
-    return session.execute(text(sql), params or {})
+    bound_params = params or {}
+    if _is_sqlite_session(session):
+        bound_params = _sqlite_safe_params(bound_params)
+    return session.execute(text(sql), bound_params)
 
 #R001: Shared SQL execution helper with RETURNING row support.
 def _exec_returning(session, sql, params=None):
@@ -207,8 +228,9 @@ def _upsert_transaction_details(session, details_data, existing_details_id=None)
 #R015: Transaction upsert with relation normalization and decimal casting.
 def _upsert_transaction(session, txn_data):
     txn_id = txn_data["id"]
+    #R050: Quote reserved transaction table name for SQLite/PostgreSQL compatibility.
     existing = _exec(session, """
-        SELECT transaction_details_id, transaction_links_id FROM teller.transaction WHERE transaction_id = :id
+        SELECT transaction_details_id, transaction_links_id FROM teller."transaction" WHERE transaction_id = :id
     """, {"id": txn_id}).fetchone()
     type_id = _upsert_transaction_type(session, txn_data["type"])
     details_id = _upsert_transaction_details(session, txn_data["details"], existing[0] if existing else None)
@@ -221,7 +243,7 @@ def _upsert_transaction(session, txn_data):
             "transaction_links_id": links_id, "running_balance": running_balance,
             "transaction_type_id": type_id}
     _exec(session, """
-        INSERT INTO teller.transaction
+        INSERT INTO teller."transaction"
             (transaction_id, account_id, amount, date, description, transaction_details_id, status, transaction_links_id, running_balance, transaction_type_id)
         VALUES (:transaction_id, :account_id, :amount, :date, :description, :transaction_details_id, :status, :transaction_links_id, :running_balance, :transaction_type_id)
         ON CONFLICT (transaction_id) DO UPDATE SET
@@ -255,16 +277,21 @@ def _canonicalize_transactions(txns):
 def _reconcile_missing_pending_transactions(session, account_id, fetched_transaction_ids):
     #R025: Delete stale pending transactions absent from current fetch.
     if fetched_transaction_ids:
-        deleted = _exec(session, """
-            DELETE FROM teller.transaction
-            WHERE account_id = :account_id
-              AND status = 'pending'
-              AND transaction_id != ALL(:fetched_ids)
-            RETURNING transaction_id
-        """, {"account_id": account_id, "fetched_ids": fetched_transaction_ids}).fetchall()
+        deleted = session.execute(
+            text(
+                """
+                DELETE FROM teller."transaction"
+                WHERE account_id = :account_id
+                  AND status = 'pending'
+                  AND transaction_id NOT IN :fetched_ids
+                RETURNING transaction_id
+            """
+            ).bindparams(bindparam("fetched_ids", expanding=True)),
+            {"account_id": account_id, "fetched_ids": fetched_transaction_ids},
+        ).fetchall()
     else:
         deleted = _exec(session, """
-            DELETE FROM teller.transaction
+            DELETE FROM teller."transaction"
             WHERE account_id = :account_id
               AND status = 'pending'
             RETURNING transaction_id
@@ -273,30 +300,31 @@ def _reconcile_missing_pending_transactions(session, account_id, fetched_transac
 
 def _prune_unreferenced_transaction_relations(session):
     #R030: Remove orphaned transaction relation rows after reconciliation.
+    #R055: SQLite portability - avoid aliasing the DELETE target table.
     removed_links = _exec(session, """
-        DELETE FROM teller.transaction_links tl
+        DELETE FROM teller.transaction_links
         WHERE NOT EXISTS (
             SELECT 1
-            FROM teller.transaction t
-            WHERE t.transaction_links_id = tl.transaction_links_id
+            FROM teller."transaction" t
+            WHERE t.transaction_links_id = teller.transaction_links.transaction_links_id
         )
         RETURNING transaction_links_id
     """).fetchall()
     removed_details = _exec(session, """
-        DELETE FROM teller.transaction_details td
+        DELETE FROM teller.transaction_details
         WHERE NOT EXISTS (
             SELECT 1
-            FROM teller.transaction t
-            WHERE t.transaction_details_id = td.transaction_details_id
+            FROM teller."transaction" t
+            WHERE t.transaction_details_id = teller.transaction_details.transaction_details_id
         )
         RETURNING transaction_details_id
     """).fetchall()
     removed_counterparties = _exec(session, """
-        DELETE FROM teller.transaction_details_counterparty tdc
+        DELETE FROM teller.transaction_details_counterparty
         WHERE NOT EXISTS (
             SELECT 1
             FROM teller.transaction_details td
-            WHERE td.transaction_details_counterparty_id = tdc.transaction_details_counterparty_id
+            WHERE td.transaction_details_counterparty_id = teller.transaction_details_counterparty.transaction_details_counterparty_id
         )
         RETURNING transaction_details_counterparty_id
     """).fetchall()

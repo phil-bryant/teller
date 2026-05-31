@@ -182,6 +182,18 @@ fi
 
 #R086: Support SQLite restore through the existing restore entrypoint.
 if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
+    if [ -n "$TABLE_NAME" ]; then
+        echo "--table scoped restore is not supported for sqlite targets."
+        exit 1
+    fi
+    if [ -z "$BACKUP_PATH" ]; then
+        echo "No backup file found in $BACKUP_DIR"
+        exit 1
+    fi
+    if [ ! -f "$BACKUP_PATH" ]; then
+        echo "Backup file does not exist: $BACKUP_PATH"
+        exit 1
+    fi
     SQLITE_DB_PATH="${SQLITE_PATH:-}"
     if [ -z "$SQLITE_DB_PATH" ]; then
         echo "SQLite restore requires SQLITE_PATH from db profile export."
@@ -311,29 +323,21 @@ $$ LANGUAGE plpgsql;
 SQL
 
     #R060: Recreate updated_at trigger for restored table when that column exists.
-    #R101: Use parameterized SQL bindings for dynamic scoped repair table names.
+    #R101: Identifiers are pre-validated; use direct SQL for psql -c compatibility.
     has_updated_at="$(
-        run_psql_target -v table_schema="$TABLE_SCHEMA" -v table_name="$TABLE_RELATION" -tAc "
+        run_psql_target -tAc "
             SELECT 1
             FROM information_schema.columns columns
-            WHERE columns.table_schema = :'table_schema'
-              AND columns.table_name = :'table_name'
+            WHERE columns.table_schema = '${TABLE_SCHEMA}'
+              AND columns.table_name = '${TABLE_RELATION}'
               AND columns.column_name = 'updated_at'
             LIMIT 1;
         "
     )"
     if [ "${has_updated_at}" = "1" ]; then
-        #R101: Recreate triggers through server-side identifier formatting with bound variables.
-        run_psql_target -v table_schema="$TABLE_SCHEMA" -v table_name="$TABLE_RELATION" -c \
-"SELECT format(
-    'DROP TRIGGER IF EXISTS %I ON %I.%I; CREATE TRIGGER %I BEFORE UPDATE ON %I.%I FOR EACH ROW EXECUTE FUNCTION teller.update_updated_at();',
-    'update_' || :'table_name' || '_updated_at',
-    :'table_schema',
-    :'table_name',
-    'update_' || :'table_name' || '_updated_at',
-    :'table_schema',
-    :'table_name'
-) \gexec"
+        trigger_name="update_${TABLE_RELATION}_updated_at"
+        run_psql_target -c "DROP TRIGGER IF EXISTS \"${trigger_name}\" ON \"${TABLE_SCHEMA}\".\"${TABLE_RELATION}\";"
+        run_psql_target -c "CREATE TRIGGER \"${trigger_name}\" BEFORE UPDATE ON \"${TABLE_SCHEMA}\".\"${TABLE_RELATION}\" FOR EACH ROW EXECUTE FUNCTION teller.update_updated_at();"
     fi
 
     #R065: Reapply known table-specific DDL adjustments from deploy script.
@@ -390,8 +394,8 @@ fi
 
 #R025: Refuse full restore into db that already contains teller schema.
 database_exists="$(
-    PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -v db_name="$DATABASE_NAME" -tAc \
-        "SELECT 1 FROM pg_database WHERE datname = :'db_name';"
+    PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -tAc \
+        "SELECT 1 FROM pg_database WHERE datname = '${DATABASE_NAME}';"
 )"
 if [ "$database_exists" = "1" ]; then
     schema_exists="$(PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d "$DATABASE_NAME" -tAc "SELECT 1 FROM information_schema.schemata WHERE schema_name='teller';")"
@@ -407,12 +411,30 @@ if [ -n "$TABLE_NAME" ]; then
     PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d "$DATABASE_NAME" --clean --if-exists "${RESTORE_TABLE_ARGS[@]}" "$BACKUP_PATH"
     repair_scoped_table_restore
 else
-    PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH"
+    #R103: Globals replay may encounter pre-existing cluster roles (for example app_owner).
+    # Retry in non-stop mode only for duplicate-role conflicts so remaining grants still apply.
+    globals_err_log="$(mktemp)"
+    if ! PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH" 2>"$globals_err_log"; then
+        if rg -q 'role ".*" already exists' "$globals_err_log"; then
+            echo "⚠️  Globals replay hit existing roles; retrying in non-stop mode to apply remaining statements."
+            if ! PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=0 -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH"; then
+                rm -f "$globals_err_log"
+                echo "Globals replay failed after duplicate-role retry."
+                exit 1
+            fi
+        else
+            cat "$globals_err_log"
+            rm -f "$globals_err_log"
+            echo "Globals replay failed."
+            exit 1
+        fi
+    fi
+    rm -f "$globals_err_log"
     PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d postgres --clean --if-exists --create "$BACKUP_PATH"
     #R075: Re-sync teller role credential to live 1psa secret after globals restore.
+    escaped_teller_password="${TELLER_PASSWORD//\'/\'\'}"
     PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
-        -v teller_password="$TELLER_PASSWORD" \
-        -c "ALTER USER teller WITH PASSWORD :'teller_password';"
+        -c "ALTER USER teller WITH PASSWORD '${escaped_teller_password}';"
     #R080: Verify teller login with the same 1psa credential to catch stale globals drift.
     if ! PGPASSWORD="$TELLER_PASSWORD" psql -w -v ON_ERROR_STOP=1 -U teller -d "$DATABASE_NAME" -tAc "SELECT 1;" >/dev/null; then
         echo "Restore completed but teller authentication failed with 1psa secret from $TELLER_PSA_ITEM."

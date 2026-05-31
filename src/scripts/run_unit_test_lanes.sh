@@ -22,7 +22,7 @@ MACOS_UI_SWIFTPM_LOCK="${MACOS_UI_SWIFTPM_LOCK:-./src/macos-ui/.swiftpm-run.lock
 MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS="${MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS:-600}"
 #R030: Keep crash-reporter verification isolated to dedicated script 14.
 BATS_FILTER="${BATS_FILTER:-}"
-SQL_TESTS_DIR="${SQL_TESTS_DIR:-./tests/sql}"
+SQL_TESTS_DIR="${SQL_TESTS_DIR:-}"
 
 #R025: Resolve DB connection settings from the active profile (1psa+~/.env via the helper).
 DB_PROFILE_HELPER="${REPO_ROOT}/src/scripts/db_profile_export.sh"
@@ -81,6 +81,13 @@ DB_USER="${TELLER_DB_USER:-${PG_USER:-teller}}"
 DB_PASSWORD="${TELLER_DB_PASSWORD:-${DB_PASSWORD:-}}"
 DB_DIALECT="${DB_DIALECT:-postgresql}"
 SQLITE_PATH="${TELLER_DB_SQLITE_PATH:-${SQLITE_PATH:-}}"
+if [[ -z "$SQL_TESTS_DIR" ]]; then
+  if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
+    SQL_TESTS_DIR="./tests/sql/sqlite"
+  else
+    SQL_TESTS_DIR="./tests/sql"
+  fi
+fi
 
 python_interpreter_usable() {
   local candidate="$1"
@@ -216,8 +223,6 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
           sqlite3 "$SQLITE_PATH" < "$sql_test_file"
         done
       fi
-      return_code=0
-      :
     else
     echo "▶ Preparing SQL unit tests (pgTAP)..."
     if [[ -z "$PG_PROVE_BIN" ]]; then

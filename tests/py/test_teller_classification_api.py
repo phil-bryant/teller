@@ -759,8 +759,8 @@ class ClassificationApiTests(unittest.TestCase):
         list_sql, list_params = session.calls[0]
         count_sql, count_params = session.calls[1]
         self.assertIn("tt.status = 'posted'", count_sql)
-        self.assertIn("tt.status::text = :status", count_sql)
-        self.assertIn("ILIKE :search_pattern", count_sql)
+        self.assertIn("CAST(tt.status AS TEXT) = :status", count_sql)
+        self.assertIn("lower(tt.description) LIKE lower(:search_pattern)", count_sql)
         self.assertIn("m.nys_snw_category_id IS NULL", count_sql)
         self.assertIn("ORDER BY tt.date DESC, tt.transaction_id DESC", list_sql)
         self.assertEqual(count_params["search"], "cof")

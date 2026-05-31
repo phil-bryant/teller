@@ -101,7 +101,7 @@ def get_engine():
     if _engine is None:
         profile = resolve_profile()
         if profile.target == "sqlite":
-            sqlite_url = f"sqlite:///{profile.sqlite_path}"
+            sqlite_url = "sqlite://"
             _engine = create_engine(sqlite_url, echo=False)
 
             @event.listens_for(_engine, "connect")

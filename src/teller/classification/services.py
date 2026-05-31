@@ -14,6 +14,7 @@ from teller.classification.constants import (
     _MATCH_REVIEW_TABLE,
     _MATCH_SELECTED_BY_ENUM,
     _MATCH_STATE_ENUM,
+    _IS_SQLITE,
 )
 from teller.classification.schemas import (
     CategoryMutationBase,
@@ -22,6 +23,83 @@ from teller.classification.schemas import (
     MatchReviewActionResponse,
 )
 from teller.classification.text import _display_label, _normalize_text, _validate_email_message_id
+
+if _IS_SQLITE:
+    _INSERT_MATCH_AUDIT_SQL = text(
+        """
+        INSERT INTO teller.transaction_email_match_audit (
+            match_id,
+            from_state,
+            to_state,
+            actor,
+            note
+        ) VALUES (
+            :match_id,
+            :from_state,
+            :to_state,
+            :actor,
+            :note
+        )
+    """
+    )
+    _CREATE_MATCH_SQL = text(
+        """
+            INSERT INTO teller.transaction_email_match (
+                transaction_id,
+                email_message_id,
+                state,
+                ai_confidence,
+                selected_by,
+                active
+            ) VALUES (
+                :transaction_id,
+                :email_message_id,
+                :state,
+                :ai_confidence,
+                :selected_by,
+                TRUE
+            )
+            RETURNING match_id, updated_at
+        """
+    )
+else:
+    _INSERT_MATCH_AUDIT_SQL = text(
+        """
+        INSERT INTO teller.transaction_email_match_audit (
+            match_id,
+            from_state,
+            to_state,
+            actor,
+            note
+        ) VALUES (
+            :match_id,
+            CAST(:from_state AS teller.transaction_email_match_state),
+            CAST(:to_state AS teller.transaction_email_match_state),
+            CAST(:actor AS teller.transaction_email_match_selected_by),
+            :note
+        )
+    """
+    )
+    _CREATE_MATCH_SQL = text(
+        """
+            INSERT INTO teller.transaction_email_match (
+                transaction_id,
+                email_message_id,
+                state,
+                ai_confidence,
+                selected_by,
+                active
+            ) VALUES (
+                :transaction_id,
+                :email_message_id,
+                CAST(:state AS teller.transaction_email_match_state),
+                :ai_confidence,
+                CAST(:selected_by AS teller.transaction_email_match_selected_by),
+                TRUE
+            )
+            RETURNING match_id, updated_at
+        """
+    )
 
 
 def _estimate_transaction_total(*, offset: int, limit: int, row_count: int) -> int:
@@ -240,8 +318,8 @@ def _read_match_row(session, match_id: int) -> Dict[str, Any]:
         SELECT m.match_id,
                m.transaction_id,
                m.email_message_id,
-               m.state::text AS state,
-               m.selected_by::text AS selected_by
+               m.state AS state,
+               m.selected_by AS selected_by
           FROM teller.transaction_email_match m
          WHERE m.match_id = :match_id
          LIMIT 1
@@ -261,8 +339,8 @@ def _read_active_match_row(session, match_id: int) -> Dict[str, Any]:
         SELECT m.match_id,
                m.transaction_id,
                m.email_message_id,
-               m.state::text AS state,
-               m.selected_by::text AS selected_by
+               m.state AS state,
+               m.selected_by AS selected_by
           FROM teller.transaction_email_match m
          WHERE m.match_id = :match_id
            AND m.active = TRUE
@@ -283,8 +361,8 @@ def _read_active_match_for_transaction(session, transaction_id: str) -> Dict[str
         SELECT m.match_id,
                m.transaction_id,
                m.email_message_id,
-               m.state::text AS state,
-               m.selected_by::text AS selected_by
+               m.state AS state,
+               m.selected_by AS selected_by
           FROM teller.transaction_email_match m
          WHERE m.transaction_id = :transaction_id
            AND m.active = TRUE
@@ -321,23 +399,7 @@ def _active_match_candidate_row_payload(email_message_id: str) -> Dict[str, Any]
 
 def _insert_match_audit(session, match_id: int, from_state: Optional[str], to_state: str, actor: str, note: Optional[str]) -> None:
     session.execute(
-        text(
-            """
-        INSERT INTO teller.transaction_email_match_audit (
-            match_id,
-            from_state,
-            to_state,
-            actor,
-            note
-        ) VALUES (
-            :match_id,
-            CAST(:from_state AS teller.transaction_email_match_state),
-            CAST(:to_state AS teller.transaction_email_match_state),
-            CAST(:actor AS teller.transaction_email_match_selected_by),
-            :note
-        )
-    """
-        ),
+        _INSERT_MATCH_AUDIT_SQL,
         {
             "match_id": match_id,
             "from_state": from_state,
@@ -555,26 +617,7 @@ def _create_transaction_match(
             ensure_candidate_for_transaction_fn(session, transaction_id, email_message_id)
     try:
         inserted = session.execute(
-            text(
-                """
-            INSERT INTO teller.transaction_email_match (
-                transaction_id,
-                email_message_id,
-                state,
-                ai_confidence,
-                selected_by,
-                active
-            ) VALUES (
-                :transaction_id,
-                :email_message_id,
-                CAST(:state AS teller.transaction_email_match_state),
-                :ai_confidence,
-                CAST(:selected_by AS teller.transaction_email_match_selected_by),
-                TRUE
-            )
-            RETURNING match_id, updated_at
-        """
-            ),
+            _CREATE_MATCH_SQL,
             {
                 "transaction_id": transaction_id,
                 "email_message_id": email_message_id,

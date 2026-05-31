@@ -14,6 +14,19 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ENUM as PgEnum
+from sqlalchemy.sql.sqltypes import Enum as SqlEnum
+
+from teller.teller_db_profile import ProfileError, resolve_profile
+
+
+def _is_sqlite_target() -> bool:
+    try:
+        return resolve_profile().target == "sqlite"
+    except (ProfileError, RuntimeError):
+        return False
+
+
+_IS_SQLITE = _is_sqlite_target()
 
 _EXISTENCE_QUERIES = {
     ("nys_snw_category", "nys_snw_category_id"): text(
@@ -33,45 +46,57 @@ _TRANSACTION_COUNT_SQL = text(
       LEFT JOIN teller.account ta USING (account_id)
       LEFT JOIN teller.transaction_type ttt USING (transaction_type_id)
       LEFT JOIN teller.transaction_details ttd USING (transaction_details_id)
-      LEFT JOIN LATERAL (
-          SELECT tnsc.nys_snw_category_id
+      LEFT JOIN (
+          SELECT tnsc.transaction_id, tnsc.nys_snw_category_id
             FROM teller.transaction_nys_snw_category tnsc
-           WHERE tnsc.transaction_id = tt.transaction_id
-           ORDER BY tnsc.updated_at DESC
-           LIMIT 1
-      ) m ON TRUE
+            JOIN (
+                SELECT transaction_id, MAX(updated_at) AS max_updated_at
+                  FROM teller.transaction_nys_snw_category
+                 GROUP BY transaction_id
+            ) latest
+              ON latest.transaction_id = tnsc.transaction_id
+             AND latest.max_updated_at = tnsc.updated_at
+      ) m ON m.transaction_id = tt.transaction_id
       LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
-      LEFT JOIN LATERAL (
-          SELECT ranked.match_id, ranked.state AS match_state,
+      LEFT JOIN (
+          SELECT ranked.match_id,
+                 ranked.transaction_id,
+                 ranked.state AS match_state,
                  ranked.selected_by AS match_selected_by,
-                 ranked.email_message_id, ranked.moved_to_matchy_at,
+                 ranked.email_message_id,
+                 ranked.moved_to_matchy_at,
                  ranked.ai_confidence
             FROM (
-                SELECT tem.match_id, tem.state::text AS state, tem.selected_by::text AS selected_by,
-                       tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence,
+                SELECT tem.match_id,
+                       tem.transaction_id,
+                       tem.state,
+                       tem.selected_by,
+                       tem.email_message_id,
+                       tem.moved_to_matchy_at,
+                       tem.ai_confidence,
                        ROW_NUMBER() OVER (
+                           PARTITION BY tem.transaction_id
                            ORDER BY CASE WHEN tem.selected_by = 'human' THEN 0 ELSE 1 END,
-                                    tem.ai_confidence DESC NULLS LAST,
+                                    CASE WHEN tem.ai_confidence IS NULL THEN 1 ELSE 0 END,
+                                    tem.ai_confidence DESC,
                                     tem.selected_at DESC,
                                     tem.match_id DESC
                        ) AS rn
                   FROM teller.transaction_email_match tem
-                 WHERE tem.transaction_id = tt.transaction_id
-                   AND tem.active = TRUE
+                 WHERE tem.active = TRUE
             ) ranked
            WHERE ranked.rn = 1
-      ) tem ON TRUE
+      ) tem ON tem.transaction_id = tt.transaction_id
      WHERE tt.status = 'posted'
-       AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
-       AND (:status = '' OR tt.status::text = :status)
+       AND (:search = '' OR lower(tt.description) LIKE lower(:search_pattern) OR lower(tt.transaction_id) LIKE lower(:search_pattern))
+       AND (:status = '' OR CAST(tt.status AS TEXT) = :status)
        AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
        AND (:match_state = ''
             OR (:match_state = 'unmatched' AND (tem.match_id IS NULL
                 OR (tem.match_state = 'ai_no_match_found' AND tem.match_selected_by <> 'human')))
             OR (:match_state = 'no_email' AND tem.match_state = 'ai_no_match_found' AND tem.match_selected_by = 'human')
-            OR (tem.match_state = :match_state))
+            OR (CAST(tem.match_state AS TEXT) = :match_state))
        AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
-       --R075: Advanced date/institution/amount filters must be enforced at SQL boundary for API parity.
        AND (:start_date IS NULL OR tt.date >= :start_date)
        AND (:end_date IS NULL OR tt.date <= :end_date)
        AND (:institution_id = '' OR ta.institution_id = :institution_id)
@@ -94,45 +119,58 @@ _TRANSACTION_LIST_SQL = text(
       LEFT JOIN teller.account ta USING (account_id)
       LEFT JOIN teller.transaction_type ttt USING (transaction_type_id)
       LEFT JOIN teller.transaction_details ttd USING (transaction_details_id)
-      LEFT JOIN LATERAL (
-          SELECT tnsc.nys_snw_category_id
+      LEFT JOIN (
+          SELECT tnsc.transaction_id, tnsc.nys_snw_category_id
             FROM teller.transaction_nys_snw_category tnsc
-           WHERE tnsc.transaction_id = tt.transaction_id
-           ORDER BY tnsc.updated_at DESC
-           LIMIT 1
-      ) m ON TRUE
+            JOIN (
+                SELECT transaction_id, MAX(updated_at) AS max_updated_at
+                  FROM teller.transaction_nys_snw_category
+                 GROUP BY transaction_id
+            ) latest
+              ON latest.transaction_id = tnsc.transaction_id
+             AND latest.max_updated_at = tnsc.updated_at
+      ) m ON m.transaction_id = tt.transaction_id
       LEFT JOIN teller.nys_snw_category nsc ON nsc.nys_snw_category_id = m.nys_snw_category_id
-      LEFT JOIN LATERAL (
-          SELECT ranked.match_id, ranked.state AS match_state,
+      LEFT JOIN (
+          SELECT ranked.match_id,
+                 ranked.transaction_id,
+                 ranked.state AS match_state,
                  ranked.selected_by AS match_selected_by,
                  ranked.email_message_id AS match_email_message_id,
-                 ranked.moved_to_matchy_at, ranked.ai_confidence AS match_ai_confidence,
+                 ranked.moved_to_matchy_at,
+                 ranked.ai_confidence AS match_ai_confidence,
                  ranked.match_count
             FROM (
-                SELECT tem.match_id, tem.state::text AS state, tem.selected_by::text AS selected_by,
-                       tem.email_message_id, tem.moved_to_matchy_at, tem.ai_confidence,
-                       COUNT(*) OVER ()::INT AS match_count,
+                SELECT tem.match_id,
+                       tem.transaction_id,
+                       tem.state,
+                       tem.selected_by,
+                       tem.email_message_id,
+                       tem.moved_to_matchy_at,
+                       tem.ai_confidence,
+                       COUNT(*) OVER (PARTITION BY tem.transaction_id) AS match_count,
                        ROW_NUMBER() OVER (
+                           PARTITION BY tem.transaction_id
                            ORDER BY CASE WHEN tem.selected_by = 'human' THEN 0 ELSE 1 END,
-                                    tem.ai_confidence DESC NULLS LAST,
+                                    CASE WHEN tem.ai_confidence IS NULL THEN 1 ELSE 0 END,
+                                    tem.ai_confidence DESC,
                                     tem.selected_at DESC,
                                     tem.match_id DESC
                        ) AS rn
                   FROM teller.transaction_email_match tem
-                 WHERE tem.transaction_id = tt.transaction_id
-                   AND tem.active = TRUE
+                 WHERE tem.active = TRUE
             ) ranked
            WHERE ranked.rn = 1
-      ) tem ON TRUE
+      ) tem ON tem.transaction_id = tt.transaction_id
      WHERE tt.status = 'posted'
-       AND (:search = '' OR tt.description ILIKE :search_pattern OR tt.transaction_id ILIKE :search_pattern)
-       AND (:status = '' OR tt.status::text = :status)
+       AND (:search = '' OR lower(tt.description) LIKE lower(:search_pattern) OR lower(tt.transaction_id) LIKE lower(:search_pattern))
+       AND (:status = '' OR CAST(tt.status AS TEXT) = :status)
        AND (:only_unclassified = FALSE OR m.nys_snw_category_id IS NULL)
        AND (:match_state = ''
             OR (:match_state = 'unmatched' AND (tem.match_id IS NULL
                 OR (tem.match_state = 'ai_no_match_found' AND tem.match_selected_by <> 'human')))
             OR (:match_state = 'no_email' AND tem.match_state = 'ai_no_match_found' AND tem.match_selected_by = 'human')
-            OR (tem.match_state = :match_state))
+            OR (CAST(tem.match_state AS TEXT) = :match_state))
        AND (:only_unmoved_match = FALSE OR tem.match_id IS NULL OR tem.moved_to_matchy_at IS NULL)
        --R075: Advanced date/institution/amount filters must be enforced at SQL boundary for API parity.
        AND (:start_date IS NULL OR tt.date >= :start_date)
@@ -169,23 +207,40 @@ _CATEGORY_SCHEMA_PROPERTIES = {
 }
 _CATEGORY_SCHEMA_REQUIRE_ONE = [{"required": [field_name]} for field_name in _CATEGORY_TEXT_FIELDS]
 
-_MATCH_STATE_ENUM = PgEnum(
-    "ai_no_match_found",
-    "ai_candidate_uncertain",
-    "ai_match_confident",
-    "human_confirmed_ai_match",
-    "human_overrode_ai_match",
-    name="transaction_email_match_state",
-    schema="teller",
-    create_type=False,
-)
-_MATCH_SELECTED_BY_ENUM = PgEnum(
-    "ai",
-    "human",
-    name="transaction_email_match_selected_by",
-    schema="teller",
-    create_type=False,
-)
+if _IS_SQLITE:
+    _MATCH_STATE_ENUM = SqlEnum(
+        "ai_no_match_found",
+        "ai_candidate_uncertain",
+        "ai_match_confident",
+        "human_confirmed_ai_match",
+        "human_overrode_ai_match",
+        name="transaction_email_match_state",
+        native_enum=False,
+    )
+    _MATCH_SELECTED_BY_ENUM = SqlEnum(
+        "ai",
+        "human",
+        name="transaction_email_match_selected_by",
+        native_enum=False,
+    )
+else:
+    _MATCH_STATE_ENUM = PgEnum(
+        "ai_no_match_found",
+        "ai_candidate_uncertain",
+        "ai_match_confident",
+        "human_confirmed_ai_match",
+        "human_overrode_ai_match",
+        name="transaction_email_match_state",
+        schema="teller",
+        create_type=False,
+    )
+    _MATCH_SELECTED_BY_ENUM = PgEnum(
+        "ai",
+        "human",
+        name="transaction_email_match_selected_by",
+        schema="teller",
+        create_type=False,
+    )
 _SQL_METADATA = MetaData()
 _MATCH_REVIEW_TABLE = Table(
     "transaction_email_match",
@@ -237,15 +292,18 @@ _LATEST_RUN_CANDIDATES_SQL = text(
            cached_fetched_at
       FROM teller.transaction_email_candidate
      WHERE match_run_id = :match_run_id
-     ORDER BY score DESC, email_received_at DESC NULLS LAST, candidate_id ASC
+     ORDER BY score DESC,
+              CASE WHEN email_received_at IS NULL THEN 1 ELSE 0 END,
+              email_received_at DESC,
+              candidate_id ASC
 """
 )
 
 _ACTIVE_MATCH_EMAILS_SQL = text(
     """
     SELECT email_message_id,
-           state::text AS state,
-           selected_by::text AS selected_by
+           state AS state,
+           selected_by AS selected_by
       FROM teller.transaction_email_match
      WHERE transaction_id = :transaction_id
        AND active = TRUE

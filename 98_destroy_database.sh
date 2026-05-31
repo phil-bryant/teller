@@ -172,8 +172,8 @@ if [[ "${PROFILE_TARGET:-local}" == "managed" ]]; then
         echo "Refusing to destroy invalid schema identifier: ${SCHEMA_NAME}"
         exit 1
     fi
-    #R033: Use parameterized server-side identifier formatting for managed DROP SCHEMA.
-    run_psql_managed -v schema_name="$SCHEMA_NAME" -c "SELECT format('DROP SCHEMA IF EXISTS %I CASCADE', :'schema_name') \gexec"
+    #R033: Identifier already validated; execute DROP SCHEMA directly for psql -c compatibility.
+    run_psql_managed -c "DROP SCHEMA IF EXISTS \"${SCHEMA_NAME}\" CASCADE;"
     # Drop teller roles idempotently. Order matters: drop dependent roles before parents.
     run_psql_managed -c "DROP ROLE IF EXISTS teller_write;"
     run_psql_managed -c "DROP ROLE IF EXISTS teller_read;"
@@ -223,21 +223,20 @@ if [ "$confirmation" != "destroy" ]; then
 fi
 
 #R015: Clean dependent view and terminate sessions before database drop.
-#R031: Use parameterized SQL binding for local database-name queries.
+#R031: Identifier already validated; use direct SQL compatible with psql -c.
 db_exists="$(
     PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres \
-        -v db_name="$LOCAL_DBNAME" -tAc "SELECT 1 FROM pg_database WHERE datname = :'db_name';"
+        -tAc "SELECT 1 FROM pg_database WHERE datname = '${LOCAL_DBNAME}';"
 )"
 if [ "$db_exists" = "1" ]; then
     PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d "$LOCAL_DBNAME" -c "DROP VIEW IF EXISTS teller.transaction_info_view;"
     PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres \
-        -v db_name="$LOCAL_DBNAME" \
-        -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'db_name' AND pid <> pg_backend_pid();"
+        -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${LOCAL_DBNAME}' AND pid <> pg_backend_pid();"
 fi
 #R020: Drop database, user, and teller roles idempotently.
-#R031: Use server-side identifier formatting for local DROP DATABASE execution.
+#R031: Identifier already validated; execute DROP DATABASE directly.
 PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres \
-    -v db_name="$LOCAL_DBNAME" -c "SELECT format('DROP DATABASE IF EXISTS %I', :'db_name') \gexec"
+    -c "DROP DATABASE IF EXISTS \"${LOCAL_DBNAME}\";"
 PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres -c "DROP USER IF EXISTS teller;"
 PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres -c "DROP ROLE IF EXISTS teller_admin;"
 PGPASSWORD="$POSTGRES_PASSWORD" psql "${PSQL_OPTS[@]}" -U postgres -d postgres -c "DROP ROLE IF EXISTS teller_write;"

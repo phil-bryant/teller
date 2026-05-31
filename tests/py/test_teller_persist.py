@@ -35,6 +35,12 @@ class _Session:
         self.rollbacks += 1
 
 
+class _SQLiteSession(_Session):
+    def __init__(self, execute_result):
+        super().__init__(execute_result)
+        self.bind = type("Bind", (), {"dialect": type("Dialect", (), {"name": "sqlite"})()})()
+
+
 class TellerPersistTests(unittest.TestCase):
     def test_exec_executes_parameterized_sql(self):
         #R001-T01
@@ -43,6 +49,13 @@ class TellerPersistTests(unittest.TestCase):
         sql, params = session.calls[0]
         self.assertIn("SELECT :value", str(sql))
         self.assertEqual(params, {"value": 7})
+
+    def test_exec_coerces_decimal_params_for_sqlite_binding(self):
+        #R045-T01
+        session = _SQLiteSession(_Result())
+        teller_persist._exec(session, "SELECT :amount", {"amount": Decimal("12.34")})
+        _, params = session.calls[0]
+        self.assertEqual(params["amount"], "12.34")
 
     def test_exec_returning_returns_single_row(self):
         #R001-T01
@@ -169,6 +182,8 @@ class TellerPersistTests(unittest.TestCase):
 
         upsert_details.assert_called_once_with(session, txn_payload["details"], 501)
         upsert_links.assert_called_once_with(session, txn_payload["links"], 601)
+        select_sql = str(exec_mock.call_args_list[0].args[1])
+        self.assertIn('FROM teller."transaction"', select_sql)
 
     def test_canonicalize_transactions_prefers_posted_variant(self):
         #R020-T01
@@ -182,33 +197,41 @@ class TellerPersistTests(unittest.TestCase):
         self.assertEqual(by_id["txn_1"]["status"], "posted")
         self.assertEqual(len(out), 2)
 
-    @patch("teller.teller_persist._exec")
-    def test_reconcile_missing_pending_transactions_deletes_only_missing_ids(self, exec_mock):
+    def test_reconcile_missing_pending_transactions_deletes_only_missing_ids(self):
         #R025-T01
-        exec_mock.return_value = _Result(many=[("txn_old",), ("txn_older",)])
-        deleted = teller_persist._reconcile_missing_pending_transactions(MagicMock(), "acc_1", ["txn_keep"])
-        sql = str(exec_mock.call_args.args[1])
-        self.assertIn("transaction_id != ALL(:fetched_ids)", sql)
+        #R050-T01
+        session = MagicMock()
+        session.execute.return_value.fetchall.return_value = [("txn_old",), ("txn_older",)]
+        deleted = teller_persist._reconcile_missing_pending_transactions(session, "acc_1", ["txn_keep"])
+        sql = str(session.execute.call_args.args[0])
+        self.assertIn('DELETE FROM teller."transaction"', sql)
+        self.assertIn("transaction_id NOT IN", sql)
         self.assertEqual(deleted, ["txn_old", "txn_older"])
 
     @patch("teller.teller_persist._exec")
     def test_reconcile_with_empty_fetched_ids_removes_all_pending(self, exec_mock):
         #R025-T02
+        #R050-T02
         exec_mock.return_value = _Result(many=[("txn_1",)])
         deleted = teller_persist._reconcile_missing_pending_transactions(MagicMock(), "acc_1", [])
         sql = str(exec_mock.call_args.args[1])
+        self.assertIn('DELETE FROM teller."transaction"', sql)
         self.assertNotIn("!= ALL", sql)
         self.assertEqual(deleted, ["txn_1"])
 
     @patch("teller.teller_persist._exec")
     def test_prune_unreferenced_transaction_relations_reports_counts(self, exec_mock):
         #R030-T01
+        #R055-T01
         exec_mock.side_effect = [
             _Result(many=[(1,), (2,)]),
             _Result(many=[(3,)]),
             _Result(many=[]),
         ]
         pruned = teller_persist._prune_unreferenced_transaction_relations(MagicMock())
+        first_delete_sql = str(exec_mock.call_args_list[0].args[1])
+        self.assertIn("DELETE FROM teller.transaction_links", first_delete_sql)
+        self.assertNotIn("DELETE FROM teller.transaction_links tl", first_delete_sql)
         self.assertEqual(
             pruned,
             {

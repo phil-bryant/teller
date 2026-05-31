@@ -69,7 +69,46 @@ if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; th
     echo "❌ FAIL: SQLite database file is missing: ${SQLITE_DB_PATH}"
     exit 1
   fi
-  echo "✅ PASS: Database deployment verified (sqlite profile file is present)."
+  if ! command -v sqlite3 >/dev/null 2>&1; then
+    echo "❌ FAIL: sqlite3 is required for sqlite verification."
+    exit 1
+  fi
+  required_tables=(
+    institution
+    account
+    transaction_type
+    "transaction"
+    nys_snw_category
+    transaction_nys_snw_category
+    transaction_email_match
+  )
+  failures=()
+  for table_name in "${required_tables[@]}"; do
+    exists="$(
+      sqlite3 "$SQLITE_DB_PATH" "SELECT 1 FROM sqlite_master WHERE type='table' AND name='${table_name}' LIMIT 1;"
+    )"
+    if [[ "$exists" != "1" ]]; then
+      failures+=("missing sqlite table: ${table_name}")
+    fi
+  done
+  view_exists="$(
+    sqlite3 "$SQLITE_DB_PATH" "SELECT 1 FROM sqlite_master WHERE type='view' AND name='transaction_info_view' LIMIT 1;"
+  )"
+  if [[ "$view_exists" != "1" ]]; then
+    failures+=("missing sqlite view: transaction_info_view")
+  fi
+  if (( ${#failures[@]} > 0 )); then
+    echo "❌ FAIL: Database deployment verification failed."
+    for failure in "${failures[@]}"; do
+      echo "- ${failure}"
+    done
+    exit 1
+  fi
+  sqlite3 "$SQLITE_DB_PATH" "SELECT 1 FROM transaction_info_view LIMIT 1;" >/dev/null 2>&1 || {
+    echo "❌ FAIL: sqlite transaction_info_view is not queryable."
+    exit 1
+  }
+  echo "✅ PASS: Database deployment verified (sqlite tables/view/invariants)."
   exit 0
 fi
 

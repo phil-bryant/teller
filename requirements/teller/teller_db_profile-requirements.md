@@ -34,7 +34,14 @@ Tests:
 - R020-T01: Resolve with the local profile and `TELLER_DB_HOST=remote.example` set; verify host is overridden but other fields come from the profile.
 - R020-T02: Resolve with `TELLER_DB_USER=custom_user` set; verify only the runtime user field is overridden.
 
+R021  Statement: Treat the `sqlite` profile name as authoritative for SQLite runtime resolution.
+Design: If the selected profile name is `sqlite`, coerce the resolved profile to SQLite semantics even when upstream 1psa/env target metadata reports `local`; set `target=sqlite`, clear PostgreSQL connection fields, force `sslmode=disable`, and provide a default sqlite path when absent.
+Rationale: Prevents runtime drift where shell scripts route to SQLite but Python persistence resolves PostgreSQL and attempts `psycopg2` connections.
+Tests:
+- R021-T01: Resolve with `default_profile=sqlite` while source fields report `target=local`; verify `target=sqlite` with default sqlite file path semantics.
+
 ## Changelog
 
 - 2026-05-30: Extended requirements for multi-backend profile resolution including SQLite.
+- 2026-05-30: Added sqlite-profile-name coercion requirement to keep Python runtime resolution aligned with script routing.
 - 2026-05-21: Initial requirements for `teller_db_profile` resolver.

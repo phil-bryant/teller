@@ -216,8 +216,8 @@ echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   printf 'db' > "${FIXTURE_ROOT}/sqlite-dev.db"
-  mkdir -p "${FIXTURE_ROOT}/tests/sql"
-  cat > "${FIXTURE_ROOT}/tests/sql/01_sqlite_smoke.sql" <<'EOF'
+  mkdir -p "${FIXTURE_ROOT}/tests/sql/sqlite"
+  cat > "${FIXTURE_ROOT}/tests/sql/sqlite/01_sqlite_smoke.sql" <<'EOF'
 SELECT 1;
 EOF
   cat > "${STUB_BIN}/sqlite3" <<EOF

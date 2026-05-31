@@ -89,9 +89,9 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"Cleanup complete!"* ]]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"SELECT format('DROP DATABASE IF EXISTS %I', :'db_name') \\gexec"* ]]
+  [[ "$calls" == *"DROP DATABASE IF EXISTS prod;"* ]]
   [[ "$calls" == *"prod"* ]]
-  [[ "$calls" == *"-v db_name=prod"* ]]
+  [[ "$calls" == *"SELECT 1 FROM pg_database WHERE datname = 'prod';"* ]]
 }
 
 @test "rejects invalid local database identifier before teardown SQL" {
@@ -141,7 +141,7 @@ EOF
   [[ "$output" == *"invalid schema identifier"* ]]
 }
 
-@test "managed destroy uses parameterized schema drop SQL" {
+@test "managed destroy drops schema safely" {
   #R033-T01
   stub_managed_profile_helper
   stub_cmd 1psa "echo pass"
@@ -158,8 +158,7 @@ EOF
   run bash -c "printf 'destroy\n' | '${FIXTURE_ROOT}/98_destroy_database.sh'"
   [ "$status" -eq 0 ]
   calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"-v schema_name=teller"* ]]
-  [[ "$calls" == *"format('DROP SCHEMA IF EXISTS %I CASCADE', :'schema_name') \\gexec"* ]]
+  [[ "$calls" == *"DROP SCHEMA IF EXISTS teller CASCADE;"* ]]
 }
 
 @test "sqlite profile destroy removes sqlite database file" {

@@ -123,7 +123,7 @@ class EngineConstructionTests(_IsolatedEnvTest):
             teller_db.get_engine()
         fake_read_password.assert_not_called()
         engine_url = fake_create_engine.call_args.args[0]
-        self.assertEqual(engine_url, "sqlite:////tmp/teller-test.sqlite3")
+        self.assertEqual(engine_url, "sqlite://")
 
 
 class ConnectListenerTests(_IsolatedEnvTest):

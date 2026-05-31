@@ -7,6 +7,7 @@ SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 #R035: Resolve SQL directory relative to script location.
 SQL_DIR="${SCRIPT_DIR}/src/sql/postgres"
+SQLITE_SQL_DIR="${SCRIPT_DIR}/src/sql/sqlite"
 #R060: Resolve the active DB profile so we know whether to deploy locally or to a managed target.
 DB_PROFILE_HELPER="${SCRIPT_DIR}/src/scripts/db_profile_export.sh"
 
@@ -71,7 +72,7 @@ fi
 rm -f "$profile_exports_file"
 require_nonempty_env "Profile resolution" PROFILE_NAME PROFILE_TARGET
 DB_DIALECT="${DB_DIALECT:-postgresql}"
-if [[ "$DB_DIALECT" != "sqlite" ]]; then
+if [[ "$DB_DIALECT" != "sqlite" && "${PROFILE_TARGET:-local}" != "sqlite" ]]; then
     require_nonempty_env "Profile resolution" PG_DBNAME PG_USER
 fi
 PG_SSLMODE="${PG_SSLMODE:-}"
@@ -85,6 +86,7 @@ PSQL_OPTS=(-v ON_ERROR_STOP=1)
 #R071: Apply SQLite schema files through the existing deploy entrypoint.
 if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
     SQLITE_DB_PATH="${SQLITE_PATH:-}"
+    SQLITE_SCHEMA_FILE="${SQLITE_SQL_DIR}/create_database.sql"
     if [[ -z "$SQLITE_DB_PATH" ]]; then
         echo "SQLite deploy requires SQLITE_PATH from db profile export."
         exit 1
@@ -93,13 +95,14 @@ if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; th
         echo "sqlite3 is required but was not found on PATH."
         exit 1
     fi
-    sqlite3 "$SQLITE_DB_PATH" <<'SQL'
-PRAGMA foreign_keys = ON;
-CREATE TABLE IF NOT EXISTS institution (
-    institution_id TEXT PRIMARY KEY,
-    name TEXT NOT NULL
-);
-SQL
+    if [[ ! -f "$SQLITE_SCHEMA_FILE" ]]; then
+        echo "SQLite schema file is missing: ${SQLITE_SCHEMA_FILE}"
+        exit 1
+    fi
+    mkdir -p "$(dirname "$SQLITE_DB_PATH")"
+    echo "ℹ️  Applying sqlite schema file=${SQLITE_SCHEMA_FILE} db=${SQLITE_DB_PATH}"
+    sqlite3 "$SQLITE_DB_PATH" <"$SQLITE_SCHEMA_FILE"
+    echo "SQLite deploy complete: ${SQLITE_DB_PATH}"
     exit 0
 fi
 
@@ -253,9 +256,9 @@ if ! is_valid_pg_identifier "$PG_USER"; then
     exit 1
 fi
 prod_exists="$(
-    #R096: Bind DB name through psql variable expansion to avoid SQL interpolation.
+    #R096: Identifier already validated; use direct SQL for psql -c compatibility.
     PGPASSWORD="$POSTGRES_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql "${PSQL_OPTS[@]}" -U postgres \
-        -v db_name="$PG_DBNAME" -tAc "SELECT 1 FROM pg_database WHERE datname = :'db_name'"
+        -tAc "SELECT 1 FROM pg_database WHERE datname = '${PG_DBNAME}'"
 )"
 if [ -z "$prod_exists" ]; then
     run_psql_postgres -v db_name="$PG_DBNAME" -f "${SQL_DIR}/create_database.sql"

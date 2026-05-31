@@ -25,7 +25,7 @@ Tests:
 - R015-T01: Seed categories with and without assignments and verify counts include zero-assignment categories.
 
 R020  Statement: List posted transactions with filterable search and latest classification context.
-Design: `/v1/transactions` defaults to posted transactions and supports `search`, `status`, `only_unclassified`, `limit`, and `offset`; it joins account/type/details data and latest classification via lateral subquery.
+Design: `/v1/transactions` defaults to posted transactions and supports `search`, `status`, `only_unclassified`, `limit`, and `offset`; list/count SQL must remain dialect-safe for PostgreSQL and SQLite while preserving latest classification context.
 Tests:
 - R020-T01: Query with default params and verify only posted rows are returned.
 - R020-T02: Query with `search`, `status`, and `only_unclassified` options and verify each filter path is applied.
@@ -152,6 +152,7 @@ Tests:
 
 ## Changelog
 
+- 2026-05-30: Updated R020 to require PostgreSQL/SQLite dialect-safe transaction list/count SQL behavior.
 - 2026-05-26: Added R072 (`include_total`, `count_only`) and optimized active-match lateral + `match_count` window aggregation for `/v1/transactions`.
 - 2026-05-27: Clarified R040 runtime token cache semantics and explicit restart requirement after write-token rotation.
 - 2026-05-27: Tightened R062 to structured-search-only input and removed legacy `query` support.

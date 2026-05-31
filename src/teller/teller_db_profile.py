@@ -183,7 +183,7 @@ def _build_record(host, port_raw, database, username, schema, runtime_role, targ
     if resolved_target == "sqlite":
         sqlite_path = (sqlite_path_raw or database or "").strip()
         if not sqlite_path:
-            sqlite_path = str(Path.cwd() / "teller.sqlite3")
+            sqlite_path = str(Path.cwd() / ".database" / "teller.sqlite3")
     return {
         "host": "" if resolved_target == "sqlite" else (host or "localhost"),
         "port": 0 if resolved_target == "sqlite" else _parse_port(port_raw),
@@ -193,6 +193,24 @@ def _build_record(host, port_raw, database, username, schema, runtime_role, targ
         "runtime_role": "" if resolved_target == "sqlite" else (runtime_role or ""),
         "target": resolved_target,
         "sslmode": _resolve_sslmode(sslmode, resolved_target),
+        "sqlite_path": sqlite_path,
+    }
+
+
+def _force_sqlite_target(record: dict) -> dict:
+    """Normalize a resolved record to sqlite target semantics."""
+    sqlite_path = (record.get("sqlite_path") or "").strip()
+    if not sqlite_path:
+        sqlite_path = str(Path.cwd() / ".database" / "teller.sqlite3")
+    return {
+        "host": "",
+        "port": 0,
+        "dbname": "",
+        "user": "",
+        "search_path": "teller",
+        "runtime_role": "",
+        "target": "sqlite",
+        "sslmode": "disable",
         "sqlite_path": sqlite_path,
     }
 
@@ -334,6 +352,10 @@ def _resolve_profile_cached(_cache_key: tuple) -> ResolvedProfile:
     onepsa_item = _resolve_onepsa_item(document, name)
     record = _fetch_record_from_onepsa(onepsa_item)
     final = _apply_env_overrides(record)
+    #R021: sqlite profile name must resolve sqlite target even when 1psa target
+    # metadata is missing/stale (common fallback path when ~/.env supplies values).
+    if name == "sqlite":
+        final = _force_sqlite_target(final)
     return ResolvedProfile(
         name=name,
         host=final["host"],
