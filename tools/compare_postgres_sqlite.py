@@ -39,8 +39,8 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from teller.teller_db import _read_password
-from teller.teller_db_profile import ProfileError, ResolvedProfile, reset_profile_cache, resolve_profile
+from teller.teller_db import _read_password  # noqa: E402
+from teller.teller_db_profile import ProfileError, ResolvedProfile, reset_profile_cache, resolve_profile  # noqa: E402
 
 IGNORED_ROW_COMPARE_COLUMNS = {"created_at", "updated_at"}
 USD_MONEY_COLUMNS = {

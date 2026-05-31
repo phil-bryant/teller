@@ -38,6 +38,8 @@ load_profile_exports_from_file() {
         printf '%s\n' "$invalid_lines"
         return 1
     fi
+    unset DB_DIALECT PROFILE_NAME PROFILE_TARGET PG_HOST PG_PORT PG_DBNAME PG_USER
+    unset PG_SSLMODE PG_SEARCH_PATH PG_RUNTIME_ROLE PG_ONEPSA_ITEM SQLITE_PATH
     set -a
     # shellcheck disable=SC1090
     source "$exports_file"

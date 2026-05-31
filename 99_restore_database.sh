@@ -141,6 +141,8 @@ load_profile_exports_from_file() {
         printf '%s\n' "$invalid_lines"
         return 1
     fi
+    unset DB_DIALECT PROFILE_NAME PROFILE_TARGET PG_HOST PG_PORT PG_DBNAME PG_USER
+    unset PG_SSLMODE PG_SEARCH_PATH PG_RUNTIME_ROLE PG_ONEPSA_ITEM SQLITE_PATH
     set -a
     # shellcheck disable=SC1090
     source "$exports_file"
@@ -411,7 +413,7 @@ if [ -n "$TABLE_NAME" ]; then
     PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U postgres -d "$DATABASE_NAME" --clean --if-exists "${RESTORE_TABLE_ARGS[@]}" "$BACKUP_PATH"
     repair_scoped_table_restore
 else
-    #R103: Globals replay may encounter pre-existing cluster roles (for example app_owner).
+    #R030: Globals replay may encounter pre-existing cluster roles (for example app_owner).
     # Retry in non-stop mode only for duplicate-role conflicts so remaining grants still apply.
     globals_err_log="$(mktemp)"
     if ! PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$GLOBALS_BACKUP_PATH" 2>"$globals_err_log"; then
