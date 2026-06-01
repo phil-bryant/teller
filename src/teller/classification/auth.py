@@ -68,4 +68,7 @@ def _require_write_access(request: Request) -> None:
 
 
 def _require_authenticated_access(request: Request) -> None:
+    # Single-user local model: reads intentionally share the write credential (no read/write
+    # privilege split today). This is the seam for a future read-only token.
+    # See docs/security/api_authorization_model.md.
     _require_write_access(request)

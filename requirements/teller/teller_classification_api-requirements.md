@@ -50,7 +50,7 @@ Tests:
 - R035-T02: Submit multiple updates and verify response cardinality and per-item write results.
 
 R040  Statement: Require authenticated token for all classifier API endpoints.
-Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN` by default, cache the resolved value in-process for runtime auth checks, require `X-Teller-Write-Token` for all `/v1/*` routes (read and write), compare supplied token using constant-time equality, and return 401 for missing or invalid tokens. Allow env-token fallback only when `TELLER_CLASSIFIER_ALLOW_ENV_WRITE_TOKEN=true` is explicitly set for test/dev workflows. Rotating the 1psa token requires classifier process restart to refresh the cached value.
+Design: Resolve classifier write token from `1psa -p TELLER_CLASSIFIER_WRITE_TOKEN` by default, cache the resolved value in-process for runtime auth checks, require `X-Teller-Write-Token` for all `/v1/*` routes (read and write), compare supplied token using constant-time equality, and return 401 for missing or invalid tokens. Allow env-token fallback only when `TELLER_CLASSIFIER_ALLOW_ENV_WRITE_TOKEN=true` is explicitly set for test/dev workflows. Rotating the 1psa token requires classifier process restart to refresh the cached value. Scope note: coarse single-token authorization (one shared token, no roles or per-user identity; reads and writes resolve to the same credential) is an accepted decision for the single-user local threat model — see `docs/security/api_authorization_model.md`.
 Tests:
 - R040-T01: Submit write requests without `X-Teller-Write-Token` and verify 401 response.
 - R040-T02: Submit write requests with mismatched token and verify 401 response.

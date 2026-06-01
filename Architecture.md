@@ -715,6 +715,8 @@ Threat ownership map (who mitigates what):
 - DB integrity escalation (B4): schema/API owners enforce authz on `/v1/*` endpoints, parameterized ORM usage, and verification/audit tests.
 - Supply-chain compromise (AS): platform owners enforce freshness/security lanes (`tests/t02`, `tests/t03`, `tests/t12`) and fail-gates on high/critical findings.
 
+Accepted residual risk (owner: repository owner): the `/v1/*` auth gate uses a single shared `X-Teller-Write-Token` with no per-user identity or roles; reads and writes resolve to the same credential. This coarse model is an intentional, scoped decision for the single-user local threat model and must be upgraded to per-user identity, a distinct read-only token, and DB reader/writer role mapping if the service becomes multi-user, is exposed beyond localhost, or is deployed to a shared environment. See [`docs/security/api_authorization_model.md`](docs/security/api_authorization_model.md).
+
 ### 8) OPERATIONS / RECOVERY FLOW (BACKUP, RESTORE, DESTROY)
 
 Why: Scripts `97/98/99` are critical but easy to misuse without a flow diagram.
