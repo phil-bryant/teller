@@ -10,10 +10,13 @@ enum AppLaunchMode {
 }
 
 func detectAppLaunchMode(processInfo: ProcessInfo = .processInfo) -> AppLaunchMode {
+    var mode: AppLaunchMode = .normal
+    #if DEBUG
     if processInfo.arguments.contains("--ui-testing") || processInfo.environment["TELLER_UI_TEST_MODE"] == "1" {
-        return .uiTesting
+        mode = .uiTesting
     }
-    return .normal
+    #endif
+    return mode
 }
 
 /// Resolved once at process start. UI-test/automation runs set `TELLER_UI_TEST_MODE=1`.
@@ -38,20 +41,22 @@ struct BusyIndicator: View {
 
 @MainActor
 func buildDefaultViewModel(processInfo: ProcessInfo = .processInfo) -> ClassificationViewModel {
-    switch detectAppLaunchMode(processInfo: processInfo) {
-    case .normal:
-        return ClassificationViewModel()
-    case .uiTesting:
-        return ClassificationViewModel(api: UITestingFixtureAPI())
+    var viewModel = ClassificationViewModel()
+    #if DEBUG
+    if detectAppLaunchMode(processInfo: processInfo) == .uiTesting {
+        viewModel = ClassificationViewModel(api: UITestingFixtureAPI())
     }
+    #endif
+    return viewModel
 }
 
 @MainActor
 func buildDefaultConnectViewModel(processInfo: ProcessInfo = .processInfo) -> ConnectViewModel {
-    switch detectAppLaunchMode(processInfo: processInfo) {
-    case .normal:
-        return ConnectViewModel()
-    case .uiTesting:
-        return ConnectViewModel(api: UITestingFixtureConnectAPI(), setupAPI: UITestingFixtureSetupAPI())
+    var viewModel = ConnectViewModel()
+    #if DEBUG
+    if detectAppLaunchMode(processInfo: processInfo) == .uiTesting {
+        viewModel = ConnectViewModel(api: UITestingFixtureConnectAPI(), setupAPI: UITestingFixtureSetupAPI())
     }
+    #endif
+    return viewModel
 }

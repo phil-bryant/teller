@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 // #R015: Simulate connect-context lifecycle actions for deterministic UI test flows.
 
 actor UITestingFixtureConnectAPI: ConnectAPI {
@@ -96,3 +97,4 @@ actor UITestingFixtureConnectAPI: ConnectAPI {
         )
     }
 }
+#endif

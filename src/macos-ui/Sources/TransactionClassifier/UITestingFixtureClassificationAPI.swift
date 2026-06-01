@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 // #R010: Provide deterministic classification, match-review, and message fixtures for UI testing.
 
 private func fixtureAmount(_ value: String) -> Decimal {
@@ -599,3 +600,4 @@ actor UITestingFixtureAPI: ClassificationAPI {
         }
     }
 }
+#endif

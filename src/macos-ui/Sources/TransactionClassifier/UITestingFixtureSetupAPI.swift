@@ -1,5 +1,6 @@
 import Foundation
 
+#if DEBUG
 // #R020: Return a stable Teller setup snapshot for UI testing.
 
 actor UITestingFixtureSetupAPI: TellerSetupAPI {
@@ -12,3 +13,4 @@ actor UITestingFixtureSetupAPI: TellerSetupAPI {
         )
     }
 }
+#endif
