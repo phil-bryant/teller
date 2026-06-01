@@ -55,6 +55,48 @@ fi
 # shellcheck disable=SC1090
 source "$MACOS_UI_SWIFT_LOCK_HELPER"
 
+swiftpm_state_looks_stale_in_log() {
+  local log_file="$1"
+  [[ -f "$log_file" ]] || return 1
+  if grep -Fq "cannot be accessed" "$log_file" && grep -Fq ".build/" "$log_file"; then
+    return 0
+  fi
+  if grep -Fq "was compiled with module cache path" "$log_file"; then
+    return 0
+  fi
+  if grep -Fq "is defined in both" "$log_file" && grep -Fq "ModuleCache" "$log_file"; then
+    return 0
+  fi
+  return 1
+}
+
+clear_conflicting_swiftpm_build_dirs_from_log() {
+  local log_file="$1"
+  [[ -f "$log_file" ]] || return 0
+  local cache_roots=""
+  cache_roots="$(
+    python3 - <<'PY' "$log_file"
+import re
+import sys
+from pathlib import Path
+
+text = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+roots = sorted(set(re.findall(r"(/[^'\s]+/src/macos-ui)/\.build", text)))
+for root in roots:
+    print(root)
+PY
+  )"
+  if [[ -n "$cache_roots" ]]; then
+    while IFS= read -r cache_root; do
+      [[ -n "$cache_root" ]] || continue
+      if [[ -d "$cache_root/.build" ]]; then
+        rm -rf "$cache_root/.build"
+      fi
+    done <<< "$cache_roots"
+  fi
+  rm -rf "${MACOS_UI_DIR}/.build"
+}
+
 mkdir -p "$CRASH_REPORT_DIR"
 
 run_with_timeout() {
@@ -339,11 +381,44 @@ if [[ "$prewarm_status" -eq 124 ]]; then
   echo "------------------------"
   exit 1
 elif [[ "$prewarm_status" -ne 0 ]]; then
-  echo "❌ prewarm build failed before crash verification."
-  echo "---- prewarm output ----"
-  awk '{print}' "$PREWARM_LOG"
-  echo "------------------------"
-  exit 1
+  if swiftpm_state_looks_stale_in_log "$PREWARM_LOG"; then
+    echo "ℹ️  Detected stale SwiftPM cache/module state during prewarm; repairing and retrying prewarm build once..."
+    clear_conflicting_swiftpm_build_dirs_from_log "$PREWARM_LOG"
+    set +e
+    recover_swiftpm_state
+    recovery_status=$?
+    set -e
+    if [[ "$recovery_status" -ne 0 ]]; then
+      echo "❌ failed to recover SwiftPM state before prewarm retry."
+      echo "---- recovery output ----"
+      awk '{print}' "$RECOVERY_LOG"
+      echo "-------------------------"
+      exit 1
+    fi
+    set +e
+    prewarm_swiftpm_build
+    prewarm_status=$?
+    set -e
+    if [[ "$prewarm_status" -eq 124 ]]; then
+      echo "❌ prewarm build timed out after ${PREWARM_BUILD_TIMEOUT_SECONDS}s on retry."
+      echo "---- prewarm output ----"
+      awk '{print}' "$PREWARM_LOG"
+      echo "------------------------"
+      exit 1
+    elif [[ "$prewarm_status" -ne 0 ]]; then
+      echo "❌ prewarm build failed after stale-state recovery retry."
+      echo "---- prewarm output ----"
+      awk '{print}' "$PREWARM_LOG"
+      echo "------------------------"
+      exit 1
+    fi
+  else
+    echo "❌ prewarm build failed before crash verification."
+    echo "---- prewarm output ----"
+    awk '{print}' "$PREWARM_LOG"
+    echo "------------------------"
+    exit 1
+  fi
 fi
 
 echo "▶ Triggering intentional crash to seed pending crash report..."

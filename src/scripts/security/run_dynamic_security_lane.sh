@@ -156,7 +156,7 @@ ensure_security_venv() {
     require_hashed_requirements_file "$SECURITY_REQUIREMENTS_FILE"
     echo "▶ Repairing security toolchain entrypoints in ${SECURITY_VENV_DIR}"
     "$security_python" -m pip install --upgrade pip
-    "$security_python" -m pip install --require-hashes --force-reinstall -r "$SECURITY_REQUIREMENTS_FILE"
+    "$security_python" -m pip install --require-hashes --force-reinstall -r "$SECURITY_REQUIREMENTS_FILE" --no-deps
   fi
 }
 

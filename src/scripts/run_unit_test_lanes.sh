@@ -144,6 +144,39 @@ run_single_bats_file() {
   fi
 }
 
+swiftpm_state_looks_stale() {
+  local output_text="$1"
+  [[ "$output_text" == *"cannot be accessed"* && "$output_text" == *".build/"* ]] && return 0
+  [[ "$output_text" == *"was compiled with module cache path"* ]] && return 0
+  [[ "$output_text" == *"is defined in both"* && "$output_text" == *"ModuleCache"* ]] && return 0
+  return 1
+}
+
+clear_conflicting_swiftpm_build_dirs() {
+  local output_text="$1"
+  local cache_roots=""
+  cache_roots="$(
+    python3 - <<'PY' "$output_text"
+import re
+import sys
+
+text = sys.argv[1]
+roots = sorted(set(re.findall(r"(/[^'\s]+/src/macos-ui)/\.build", text)))
+for root in roots:
+    print(root)
+PY
+  )"
+  if [[ -n "$cache_roots" ]]; then
+    while IFS= read -r cache_root; do
+      [[ -n "$cache_root" ]] || continue
+      if [[ -d "$cache_root/.build" ]]; then
+        rm -rf "$cache_root/.build"
+      fi
+    done <<< "$cache_roots"
+  fi
+  rm -rf ./src/macos-ui/.build
+}
+
 #R005: Prefer project venv when available.
 if [[ -d "./teller-venv" ]] && [[ -f "./teller-venv/bin/activate" ]]; then
   if ! python_interpreter_usable "./teller-venv/bin/python"; then
@@ -408,10 +441,10 @@ if [[ "$RUN_SWIFT_TESTS" == "true" ]]; then
     if [[ "$swift_test_exit" -ne 0 ]]; then
       if [[ "$swift_test_output" == *"sandbox_apply: Operation not permitted"* ]]; then
         echo "⚠️  Skipping Swift unit tests in restricted runtime (swift sandbox apply permission denied)."
-      elif [[ "$swift_test_output" == *"cannot be accessed"* && "$swift_test_output" == *".build/"* ]]; then
+      elif swiftpm_state_looks_stale "$swift_test_output"; then
         #R020: Recover only on stale-cache/moved-worktree style errors instead of deleting .build preemptively.
         echo "ℹ️  Detected stale SwiftPM cache state; clearing ./src/macos-ui/.build and retrying swift test once..."
-        if ! rm -rf ./src/macos-ui/.build; then
+        if ! clear_conflicting_swiftpm_build_dirs "$swift_test_output"; then
           echo "⚠️  Unable to fully clear ./src/macos-ui/.build in restricted runtime; continuing with original failure."
           exit "$swift_test_exit"
         fi

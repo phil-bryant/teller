@@ -93,6 +93,11 @@ if ! python_interpreter_usable "$SECURITY_TOOLCHAIN_PYTHON"; then
   SECURITY_TOOLCHAIN_PYTHON="python3"
 fi
 
+if [[ -f "$SECURITY_TOOLCHAIN_REQUIREMENTS_FILE" ]]; then
+  echo && echo "▶ Refreshing security toolchain lockfile installs with ${SECURITY_TOOLCHAIN_PYTHON}"
+  "$SECURITY_TOOLCHAIN_PYTHON" -m pip install --require-hashes --force-reinstall -r "$SECURITY_TOOLCHAIN_REQUIREMENTS_FILE" --no-deps
+fi
+
 echo && echo "▶ Running security toolchain dependency freshness checks with ${SECURITY_TOOLCHAIN_PYTHON}"
 SECURITY_TOOLCHAIN_FRESHNESS_ARGS=(
   ./src/scripts/check_dependency_freshness.py

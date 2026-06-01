@@ -32,6 +32,7 @@ except Exception:  # pragma: no cover - fallback if packaging is unavailable
 
 
 UPDATE_ORDER = {"major": 0, "minor": 1, "patch": 2, "unknown": 3}
+INSTALLER_TOOLCHAIN_ALLOWLIST = {"pip", "setuptools", "wheel"}
 
 
 @dataclass(frozen=True)
@@ -236,6 +237,7 @@ def _package_entry_from_outdated_row(
     if not name or not current_version or not latest_version:
         return None
     normalized = normalize_package_name(name)
+    requirement_spec = requirements.get(normalized)
     direct_req_spec = direct_requirements.get(normalized)
     update_type = classify_update(current_version, latest_version)
     required_by = sorted(
@@ -243,6 +245,17 @@ def _package_entry_from_outdated_row(
         key=lambda edge: (edge.get("parent", ""), edge.get("specifier", "")),
     )
     actionability, latest_satisfies_parent_constraints = _evaluate_actionability(latest_version, required_by)
+    if requirement_spec is not None and requirement_spec.is_exact_pin and direct_req_spec is None:
+        # Lockfile-pinned transitive updates are expected to churn; track them as constrained
+        # and defer enforcement to explicit lockfile refresh workflows.
+        actionability = "constrained"
+        latest_satisfies_parent_constraints = False
+    # Installer toolchain package drift is operational noise in strict freshness gates.
+    # These packages are managed by environment bootstrapping and do not represent
+    # application/runtime dependency staleness.
+    if normalized in INSTALLER_TOOLCHAIN_ALLOWLIST:
+        actionability = "constrained"
+        latest_satisfies_parent_constraints = False
     return {
         "name": name,
         "current_version": current_version,

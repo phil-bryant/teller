@@ -93,6 +93,39 @@ fi
 # shellcheck disable=SC1090
 source "$MACOS_UI_SWIFT_LOCK_HELPER"
 
+swiftpm_state_looks_stale() {
+  local output_text="$1"
+  [[ "$output_text" == *"cannot be accessed"* && "$output_text" == *".build/"* ]] && return 0
+  [[ "$output_text" == *"was compiled with module cache path"* ]] && return 0
+  [[ "$output_text" == *"is defined in both"* && "$output_text" == *"ModuleCache"* ]] && return 0
+  return 1
+}
+
+clear_conflicting_swiftpm_build_dirs() {
+  local output_text="$1"
+  local cache_roots=""
+  cache_roots="$(
+    python3 - <<'PY' "$output_text"
+import re
+import sys
+
+text = sys.argv[1]
+roots = sorted(set(re.findall(r"(/[^'\s]+/src/macos-ui)/\.build", text)))
+for root in roots:
+    print(root)
+PY
+  )"
+  if [[ -n "$cache_roots" ]]; then
+    while IFS= read -r cache_root; do
+      [[ -n "$cache_root" ]] || continue
+      if [[ -d "$cache_root/.build" ]]; then
+        rm -rf "$cache_root/.build"
+      fi
+    done <<< "$cache_roots"
+  fi
+  rm -rf ./src/macos-ui/.build
+}
+
 run_with_timeout() {
   #R085: Timeout guard is watchdog-only; do not introduce fixed sleeps to pace interactions.
   local timeout_seconds="$1"
@@ -260,13 +293,39 @@ if [[ "$RUN_SNAPSHOT_TESTS" == "true" ]]; then
   if [[ "$SNAPSHOT_RECORD" == "true" ]]; then
     snapshot_cmd=(env SNAPSHOT_RECORD=1 swift test --package-path ./src/macos-ui --filter ContentViewSnapshotTests)
   fi
-  run_with_timeout "$SNAPSHOT_TIMEOUT_SECONDS" "macOS UI snapshot regression tests" \
-    bash -c 'source "$1"; shift; macos_ui_with_swiftpm_lock "$@"' -- \
-      "$MACOS_UI_SWIFT_LOCK_HELPER" \
-      "$MACOS_UI_SWIFTPM_LOCK" \
-      "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" \
-      "16_run_macos_ui_regression_tests:snapshot" \
-      "${snapshot_cmd[@]}"
+  set +e
+  snapshot_output="$(
+    run_with_timeout "$SNAPSHOT_TIMEOUT_SECONDS" "macOS UI snapshot regression tests" \
+      bash -c 'source "$1"; shift; macos_ui_with_swiftpm_lock "$@"' -- \
+        "$MACOS_UI_SWIFT_LOCK_HELPER" \
+        "$MACOS_UI_SWIFTPM_LOCK" \
+        "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" \
+        "16_run_macos_ui_regression_tests:snapshot" \
+        "${snapshot_cmd[@]}"
+  )"
+  snapshot_status=$?
+  set -e
+  printf '%s\n' "$snapshot_output"
+  if [[ "$snapshot_status" -ne 0 ]] && swiftpm_state_looks_stale "$snapshot_output"; then
+    echo "ℹ️  Detected stale SwiftPM cache state; clearing ./src/macos-ui/.build and retrying snapshot lane once..."
+    clear_conflicting_swiftpm_build_dirs "$snapshot_output"
+    set +e
+    snapshot_output="$(
+      run_with_timeout "$SNAPSHOT_TIMEOUT_SECONDS" "macOS UI snapshot regression tests" \
+        bash -c 'source "$1"; shift; macos_ui_with_swiftpm_lock "$@"' -- \
+          "$MACOS_UI_SWIFT_LOCK_HELPER" \
+          "$MACOS_UI_SWIFTPM_LOCK" \
+          "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" \
+          "16_run_macos_ui_regression_tests:snapshot" \
+          "${snapshot_cmd[@]}"
+    )"
+    snapshot_status=$?
+    set -e
+    printf '%s\n' "$snapshot_output"
+  fi
+  if [[ "$snapshot_status" -ne 0 ]]; then
+    exit "$snapshot_status"
+  fi
 else
   echo "ℹ️  Skipping snapshot regression tests (RUN_SNAPSHOT_TESTS=false)."
 fi

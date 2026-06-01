@@ -2,5 +2,5 @@ bandit==1.9.4
 detect-secrets==1.5.0
 pip-audit==2.10.0
 ruff==0.15.15
-schemathesis==4.20.3
+schemathesis==4.21.0
 semgrep==1.164.0
