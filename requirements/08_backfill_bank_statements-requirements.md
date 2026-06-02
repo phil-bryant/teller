@@ -34,6 +34,13 @@ Design: Log parsed totals, mismatch warnings, commit events, and final inserted/
 Tests:
 - R025-T01: Verify completion log includes inserted, skipped, and total parsed counts.
 
+R030  Statement: Reconstruct OCR text lines with scale-invariant vertical clustering.
+Design: `reconstruct_lines` orders OCR points top-to-bottom then left-to-right and groups them into lines using an adaptive y-gap epsilon derived by `_adaptive_line_epsilon` from the median of consecutive vertical gaps (with a floor), replacing the previous fixed `0.008` threshold so grouping adapts to font size and scan resolution.
+Tests:
+- R030-T01: Verify points spanning two rows reconstruct into two lines ordered top-to-bottom and left-to-right.
+- R030-T02: Verify within-line vertical jitter stays merged while tightly spaced rows still separate.
+- R030-T03: Verify the adaptive epsilon honors its floor when gaps are sparse and scales with the median gap.
+
 ## Changelog
 
 - 2026-04-19: Initial reverse-engineered requirements for `08_backfill_bank_statements.py`.

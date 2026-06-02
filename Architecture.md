@@ -173,6 +173,141 @@ strings (`[A-Za-z0-9_\-=]+`), capped at 4096 characters. Invalid ids return HTTP
 - Other Mailcart/upstream failures → classifier 502.
 - Mailcart unavailable at startup → classifier 503 on proxy routes.
 
+## Matching & Extraction Algorithms (CS deep-dive)
+
+The match pipeline and the OCR statement-backfill lean on a handful of classic
+computer-science algorithms. This section is an onboarding-friendly tour: for each one,
+what problem it solves in plain English, a small diagram, where it lives in code, and a
+link to read more. Every algorithm here is also a tracked, test-covered requirement
+(see the per-module `requirements/` docs), so the behavior is pinned down by tests.
+
+| Algorithm | Job in the pipeline | Module | Code (file → symbols) | Requirement |
+| --- | --- | --- | --- | --- |
+| TF-IDF / Okapi BM25 | Rank candidate emails by how well their text matches a transaction | matchy | `scoring_core.py` → `inverse_document_frequency`, `bm25_score`, `bm25_relevance`; `scoring.py` → `rank_candidates` | R042–R044, R047 |
+| Subset-sum reconciliation | Detect when receipt line-items add up to the bank's single total | matchy | `scoring_core.py` → `subset_sum_reachable` | R045, R047 |
+| SimHash + Hamming distance | Collapse near-duplicate emails (forwards / marketing copies) | matchy | `service.py` → `_simhash64`, `_hamming_distance`, `_collapse_near_duplicates` | R055 |
+| Aho-Corasick | Match many search filters against each email field in one pass | mailcart | `matchy_mailcart_api.py` → `AhoCorasick`, `_build_criteria_matcher` | R050 |
+| 1-D density clustering | Rebuild text lines from scattered OCR word boxes | teller | `08_backfill_bank_statements.py` → `reconstruct_lines`, `_adaptive_line_epsilon` | R030 |
+
+### A) TF-IDF / Okapi BM25 — relevance ranking
+
+**The idea (plain English):** This is how search engines decide which document best matches
+a query. A word that appears often *inside one email* (term frequency, **TF**) but is *rare
+across all the candidate emails* (inverse document frequency, **IDF**) is a strong signal —
+e.g. a distinctive merchant token like `peets` matters far more than a common word like
+`order`. **BM25** refines TF-IDF with two real-world corrections: **saturation** (the 10th
+occurrence of a word barely adds more than the 9th) and **length normalization** (a long
+email shouldn't win just for being long).
+
+```text
+transaction text ─► query tokens
+candidate emails ─► corpus stats (document frequency per token, average length)
+
+for each candidate document:
+  BM25 = Σ over query tokens t of:
+           idf(t) · ( tf·(k1+1) / ( tf + k1·(1 − b + b·(doclen/avglen)) ) )
+                       └ saturation (k1) ┘   └ length normalization (b) ┘
+
+  bm25_relevance = score / (score + saturation)      → squashed into a 0..1 weight
+```
+
+**Where it lives:** `matchy/matchy/scoring_core.py` (`inverse_document_frequency`,
+`bm25_score`, `bm25_relevance`) blended into the final weighted score by `rank_candidates`
+in `matchy/matchy/scoring.py`. Requirements R042–R044, R047.
+
+**Read more:** [Okapi BM25](https://en.wikipedia.org/wiki/Okapi_BM25) ·
+[tf–idf](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)
+
+### B) Subset-sum reconciliation — "do the items add up to the charge?"
+
+**The idea (plain English):** A receipt lists several line items, but the bank shows only one
+total. Did those items produce this charge? That's the classic **subset-sum** question: is
+there *some* subset of the item amounts that adds up to the target (within a small
+tolerance for rounding/tax)? We answer it with a tiny dynamic-programming reachability
+check over integer cents, pruning any running sum that overshoots the target.
+
+```text
+items (cents): [499, 1299, 250, 99]        target: 1798  (± tolerance)
+
+reachable sums (DP), pruning anything > target+tol:
+   {}  ─+499→ {499}  ─+1299→ {1798}   ✓ hits target  → reconciled
+```
+
+**Where it lives:** `matchy/matchy/scoring_core.py` (`subset_sum_reachable`); contributes the
+`amount_reconciliation` reason key via `rank_candidates`. Requirements R045, R047.
+
+**Read more:** [Subset sum problem](https://en.wikipedia.org/wiki/Subset_sum_problem) ·
+[Dynamic programming](https://en.wikipedia.org/wiki/Dynamic_programming)
+
+### C) SimHash + Hamming distance — near-duplicate collapse
+
+**The idea (plain English):** People forward the same receipt, or get both a marketing copy
+and an order confirmation. These are *near*-identical, not byte-identical, so a normal hash
+(which changes completely on any edit) can't catch them. **SimHash** is a *locality-sensitive*
+hash: similar text produces similar 64-bit fingerprints. We then count how many bits differ
+(**Hamming distance**); if that's at or below a threshold, the emails are treated as
+duplicates and we keep just one representative.
+
+```text
+email A ─► tokens ─► per-bit weighted vote ─► 1 0 1 1 … 0   (64-bit fingerprint)
+email B ─► tokens ─► per-bit weighted vote ─► 1 0 1 0 … 0   (64-bit fingerprint)
+                                   XOR + popcount ─► 1 bit differs
+                                   1 ≤ threshold  ─► near-dup ─► keep A, drop B
+```
+
+**Where it lives:** `matchy/matchy/service.py` (`_simhash64`, `_hamming_distance`,
+`_collapse_near_duplicates`), run in `match_transaction` after body enrichment so similarity
+is judged on full bodies. Disabled by default (threshold 0). Requirement R055.
+
+**Read more:** [SimHash](https://en.wikipedia.org/wiki/SimHash) ·
+[Hamming distance](https://en.wikipedia.org/wiki/Hamming_distance) ·
+[Locality-sensitive hashing](https://en.wikipedia.org/wiki/Locality-sensitive_hashing)
+
+### D) Aho-Corasick — many filters, one pass
+
+**The idea (plain English):** A search can carry several filters at once
+(`subject:…`, `sender:…`, `body:…`). The naive approach scans each email field once *per
+filter*. **Aho-Corasick** builds a single automaton — a trie of all the filter strings plus
+"failure links" that let it never backtrack — and finds *every* matching filter in one pass
+over the text. Cost drops from O(text × patterns) to O(text + patterns).
+
+```text
+filters ["amzn", "amex", "uber"] ─► build automaton once (trie + failure links)
+
+field text  ──────────────────────► single O(n) pass ─► { matched filters }
+   naive alternative: re-scan the field once per filter  (O(n · patterns))
+```
+
+**Where it lives:** `mailcart/scripts/matchy_mailcart_api.py` (`AhoCorasick`,
+`_build_criteria_matcher`); built once per `/v1/messages/search` request and reused across
+every scanned message. Requirement R050.
+
+**Read more:** [Aho–Corasick algorithm](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm) ·
+[Trie](https://en.wikipedia.org/wiki/Trie)
+
+### E) 1-D density clustering — rebuilding OCR text lines
+
+**The idea (plain English):** OCR returns word boxes with (x, y) positions but no concept of
+"lines." Words on the same visual line share a similar `y`. We sort top-to-bottom and start
+a new line wherever the vertical gap is unusually large. A *fixed* gap threshold breaks
+across font sizes and scan resolutions, so we derive the threshold from the **median** gap
+(robust to outliers) — adaptive density-based clustering in one dimension.
+
+```text
+y positions (sorted): .12 .13 .14    .31 .32      .55
+consecutive gaps:        .01 .01   .17    .01    .23
+epsilon = max(floor, gap_factor · median(gaps))
+split wherever gap > epsilon:
+   line 1 [.12 .13 .14]   line 2 [.31 .32]   line 3 [.55]
+```
+
+**Where it lives:** `teller/08_backfill_bank_statements.py` (`reconstruct_lines`,
+`_adaptive_line_epsilon`). Requirement R030.
+
+**Read more:** [Cluster analysis](https://en.wikipedia.org/wiki/Cluster_analysis) ·
+[Single-linkage clustering](https://en.wikipedia.org/wiki/Single-linkage_clustering) ·
+[Median](https://en.wikipedia.org/wiki/Median)
+
 ## Tech Stack Overview
 
 ```text

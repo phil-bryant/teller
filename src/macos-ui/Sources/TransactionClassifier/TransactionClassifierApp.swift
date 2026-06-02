@@ -8,7 +8,11 @@ struct TransactionClassifierApp: App {
     @State private var connectViewModel: ConnectViewModel
 
     init() {
-        CrashReporterService.start()
+        NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        if detectAppLaunchMode() == .normal {
+            CrashReporterService.start()
+        }
         _viewModel = State(initialValue: buildDefaultViewModel())
         _connectViewModel = State(initialValue: buildDefaultConnectViewModel())
     }
@@ -18,11 +22,7 @@ struct TransactionClassifierApp: App {
             ContentView(viewModel: viewModel, connectViewModel: connectViewModel)
                 // Keep enough vertical room so Match & Classify pane headers don't clip.
                 .frame(minWidth: 800, minHeight: 375)
-                .onAppear {
-                    if detectAppLaunchMode() == .normal {
-                        activateTransactionClassifierForInput()
-                    }
-                }
+                .onAppear { activateTransactionClassifierForInput() }
         }
         .commands {
             CommandGroup(after: .help) {
@@ -44,11 +44,14 @@ struct TransactionClassifierApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        _ = notification
+        activateTransactionClassifierForInput()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         _ = notification
-        if detectAppLaunchMode() == .normal {
-            activateTransactionClassifierForInput()
-        }
+        activateTransactionClassifierForInput()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

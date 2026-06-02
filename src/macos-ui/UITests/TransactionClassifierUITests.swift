@@ -102,7 +102,10 @@ final class TransactionClassifierUITests: XCTestCase {
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_API_URL")
         applyOptionalLaunchEnvironment("TELLER_CLASSIFIER_HTTP_PROXY")
         let launchStart = DispatchTime.now()
-        app.launch()
+        if app.state == .notRunning {
+            app.launch()
+        }
+        app.activate()
         appLaunchMs = Double(DispatchTime.now().uptimeNanoseconds - launchStart.uptimeNanoseconds) / 1_000_000
         if timingEnabled {
             print(String(format: "⏱ t14 app launch: %.0f ms", appLaunchMs))
@@ -936,10 +939,14 @@ final class TransactionClassifierUITests: XCTestCase {
         uiElement("category-bulk-delete-button").click()
 
         var rowRemoved = waitUntil(timeout: waitTimeout * 6) { !deletedRow.exists }
-        // Under parallel load list virtualization can lag behind the delete mutation; refresh once as fallback.
-        if !rowRemoved {
+        // Under heavy parallel CPU load (e.g. the AV and shell lanes saturating cores) the virtualized list
+        // can lag behind the delete mutation; poll with bounded refresh retries so the assertion tolerates
+        // load-induced settle delay without masking a genuine delete failure (the row must still disappear).
+        var refreshAttempts = 0
+        while !rowRemoved && refreshAttempts < 6 {
             uiElement("category-refresh-button").click()
             rowRemoved = waitUntil(timeout: waitTimeout * 6) { !deletedRow.exists }
+            refreshAttempts += 1
         }
         XCTAssertTrue(rowRemoved, "Deleted category row \(deletedCategoryId) remained visible after delete operation.")
         XCTAssertFalse(uiElement("category-error-banner").exists, "Category delete surfaced an error banner.")

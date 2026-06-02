@@ -137,6 +137,7 @@ run_with_timeout() {
   fi
   set +e
   "$TIMEOUT_HELPER_PYTHON" - "$timeout_seconds" "$timeout_label" "$TIMEOUT_HEARTBEAT_SECONDS" "$@" <<'PY'
+import fcntl
 import os
 import select
 import signal
@@ -161,57 +162,80 @@ proc = subprocess.Popen(
     preexec_fn=os.setsid,
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
-    text=True,
-    encoding="utf-8",
-    errors="replace",
-    bufsize=1,
+    text=False,
+    bufsize=0,
 )
+stdout_fd = proc.stdout.fileno()
+stdout_flags = fcntl.fcntl(stdout_fd, fcntl.F_GETFL)
+fcntl.fcntl(stdout_fd, fcntl.F_SETFL, stdout_flags | os.O_NONBLOCK)
 start = time.monotonic()
 next_heartbeat_at = heartbeat_seconds
 marker_seen_at = None
+failed_markers_seen = False
+line_buffer = ""
+
+def note_line(line: str) -> None:
+    global marker_seen_at, failed_markers_seen
+    if not line:
+        return
+    if " failed at " in line or " with 1 failure" in line or ": error:" in line:
+        failed_markers_seen = True
+    if "** TEST SUCCEEDED **" in line and not failed_markers_seen:
+        marker_seen_at = marker_seen_at or time.monotonic()
+
+def terminate_process() -> None:
+    os.killpg(proc.pid, signal.SIGTERM)
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait()
+
 while True:
     now = time.monotonic()
     elapsed = int(now - start)
     if elapsed >= timeout_seconds:
-      os.killpg(proc.pid, signal.SIGTERM)
-      try:
-          proc.wait(timeout=5)
-      except subprocess.TimeoutExpired:
-          os.killpg(proc.pid, signal.SIGKILL)
-          proc.wait()
-      raise SystemExit(124)
+        terminate_process()
+        raise SystemExit(124)
 
     if marker_seen_at is not None and success_grace_seconds > 0 and (now - marker_seen_at) >= success_grace_seconds:
-      os.killpg(proc.pid, signal.SIGTERM)
-      try:
-          proc.wait(timeout=5)
-      except subprocess.TimeoutExpired:
-          os.killpg(proc.pid, signal.SIGKILL)
-          proc.wait()
-      print(
-          f"ℹ️  {timeout_label} reported success; stopping lingering xcodebuild after {success_grace_seconds}s grace.",
-          flush=True,
-      )
-      raise SystemExit(0)
+        terminate_process()
+        print(
+            f"ℹ️  {timeout_label} reported success; stopping lingering xcodebuild after {success_grace_seconds}s grace.",
+            flush=True,
+        )
+        raise SystemExit(0 if not failed_markers_seen else 1)
 
     readable, _, _ = select.select([proc.stdout], [], [], 1)
     if readable:
-      line = proc.stdout.readline()
-      if line:
-          sys.stdout.write(line)
-          sys.stdout.flush()
-          # Only the authoritative end-of-run marker may start the grace timer,
-          # so the kill can never fire before xcodebuild's final success line.
-          if "** TEST SUCCEEDED **" in line:
-              marker_seen_at = marker_seen_at or time.monotonic()
-      elif proc.poll() is not None:
-          raise SystemExit(proc.returncode)
+        try:
+            chunk = os.read(stdout_fd, 4096)
+        except BlockingIOError:
+            chunk = b""
+        if not chunk:
+            if line_buffer:
+                note_line(line_buffer)
+                sys.stdout.write(line_buffer + "\n")
+                sys.stdout.flush()
+                line_buffer = ""
+            if proc.poll() is not None:
+                raise SystemExit(1 if failed_markers_seen else proc.returncode)
+        else:
+            text = chunk.decode("utf-8", errors="replace")
+            sys.stdout.write(text)
+            sys.stdout.flush()
+            line_buffer += text
+            while "\n" in line_buffer:
+                line, line_buffer = line_buffer.split("\n", 1)
+                note_line(line)
     elif proc.poll() is not None:
-      raise SystemExit(proc.returncode)
+        if line_buffer:
+            note_line(line_buffer)
+        raise SystemExit(1 if failed_markers_seen else proc.returncode)
 
     if heartbeat_seconds > 0 and marker_seen_at is None and elapsed >= next_heartbeat_at:
-      print(f"⏳ Still running {timeout_label} ({elapsed}s elapsed)...", flush=True)
-      next_heartbeat_at += heartbeat_seconds
+        print(f"⏳ Still running {timeout_label} ({elapsed}s elapsed)...", flush=True)
+        next_heartbeat_at += heartbeat_seconds
 PY
   local status=$?
   set -e
@@ -371,6 +395,8 @@ if [[ "$RUN_XCUITESTS" == "true" ]]; then
         -destination "$XCUITEST_DESTINATION" \
         -derivedDataPath "$XCUITEST_DERIVED_DATA_PATH" \
         -resultBundlePath "$XCUITEST_RESULT_BUNDLE_PATH" \
+        -parallel-testing-enabled NO \
+        -maximum-concurrent-test-device-destinations 1 \
         -only-testing:"${XCUITEST_SMOKE_SUITE}"
   else
     TIMEOUT_SUCCESS_GRACE_SECONDS="$XCUITEST_SUCCESS_GRACE_SECONDS" \
@@ -381,6 +407,8 @@ if [[ "$RUN_XCUITESTS" == "true" ]]; then
         -destination "$XCUITEST_DESTINATION" \
         -derivedDataPath "$XCUITEST_DERIVED_DATA_PATH" \
         -resultBundlePath "$XCUITEST_RESULT_BUNDLE_PATH" \
+        -parallel-testing-enabled NO \
+        -maximum-concurrent-test-device-destinations 1 \
         -only-testing:"${XCUITEST_SMOKE_SUITE}"
   fi
 else

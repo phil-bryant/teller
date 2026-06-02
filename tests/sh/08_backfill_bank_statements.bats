@@ -31,3 +31,12 @@ teardown() {
     tests.py.test_08_backfill_bank_statements.BackfillParsingTests.test_make_txn_id_is_deterministic
   [ "$status" -eq 0 ]
 }
+
+@test "OCR line reconstruction clusters points with adaptive vertical density" {
+  #R030-T01 #R030-T02 #R030-T03
+  run ./teller-venv/bin/python3 -m unittest \
+    tests.py.test_08_backfill_bank_statements.BackfillParsingTests.test_reconstruct_lines_groups_rows_in_reading_order \
+    tests.py.test_08_backfill_bank_statements.BackfillParsingTests.test_reconstruct_lines_merges_jitter_but_splits_tight_rows \
+    tests.py.test_08_backfill_bank_statements.BackfillParsingTests.test_adaptive_line_epsilon_honors_floor_and_scales
+  [ "$status" -eq 0 ]
+}

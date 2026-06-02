@@ -41,6 +41,44 @@ LAST_FOUR_OCR_RES = (
     re.compile(r'(?:ending|last)\s*(?:in|#|:)?\s*(\d{4})\b', re.I),
 )
 
+#R030: Derive the vertical line-break epsilon from the median of consecutive y-gaps so line grouping
+#R030: is scale-invariant across fonts and scan resolutions; fall back to the floor when gaps are sparse.
+def _adaptive_line_epsilon(descending_ys, min_epsilon=0.004, gap_factor=0.6):
+    gaps = []
+    for index in range(1, len(descending_ys)):
+        gap = abs(descending_ys[index - 1] - descending_ys[index])
+        if gap > 0:
+            gaps.append(gap)
+    epsilon = min_epsilon
+    if gaps:
+        gaps.sort()
+        middle = len(gaps) // 2
+        if len(gaps) % 2 == 1:
+            median_gap = gaps[middle]
+        else:
+            median_gap = (gaps[middle - 1] + gaps[middle]) / 2.0
+        candidate = median_gap * gap_factor
+        if candidate > epsilon:
+            epsilon = candidate
+    return epsilon
+
+#R030: Reconstruct page text lines from OCR points using adaptive 1-D density clustering on the y-axis
+#R030: instead of a fixed gap threshold; chunks within each clustered line are ordered left-to-right by x.
+def reconstruct_lines(points, min_epsilon=0.004, gap_factor=0.6):
+    ordered = sorted(points, key=lambda p: (-p[0], p[1]))
+    epsilon = _adaptive_line_epsilon([p[0] for p in ordered], min_epsilon, gap_factor)
+    lines = []
+    for y, x, text_value in ordered:
+        if not lines or abs(lines[-1]['y'] - y) > epsilon:
+            lines.append({'y': y, 'chunks': [(x, text_value)]})
+        else:
+            lines[-1]['chunks'].append((x, text_value))
+    page_lines = []
+    for ln in lines:
+        ln['chunks'].sort(key=lambda c: c[0])
+        page_lines.append(' '.join(c[1] for c in ln['chunks']))
+    return page_lines
+
 def _vision_ocr_pages(image_paths):
     #R001: Run Vision OCR and normalize recognized text into line-oriented page strings.
     if not image_paths:
@@ -103,17 +141,8 @@ for (idx, path) in CommandLine.arguments.dropFirst().enumerated() {
             except ValueError:
                 continue
             points.append((y, x, parts[2]))
-        points.sort(key=lambda p: (-p[0], p[1]))
-        lines = []
-        for y, x, text_value in points:
-            if not lines or abs(lines[-1]['y'] - y) > 0.008:
-                lines.append({'y': y, 'chunks': [(x, text_value)]})
-            else:
-                lines[-1]['chunks'].append((x, text_value))
-        page_lines = []
-        for ln in lines:
-            ln['chunks'].sort(key=lambda c: c[0])
-            page_lines.append(' '.join(c[1] for c in ln['chunks']))
+        #R030: Cluster OCR points into ordered text lines via adaptive vertical density clustering.
+        page_lines = reconstruct_lines(points)
         normalized.append('\n'.join(page_lines))
     pages = normalized
     if len(pages) != len(image_paths):

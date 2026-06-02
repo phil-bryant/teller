@@ -364,8 +364,8 @@ def _register_transaction_routes(app: FastAPI, bindings) -> None:
             raise
         except (DataError, UnicodeEncodeError):
             raise HTTPException(status_code=400, detail="Invalid query parameter value")
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid query parameter value")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="Unexpected server error") from exc
 
         items = []
         for row in rows:

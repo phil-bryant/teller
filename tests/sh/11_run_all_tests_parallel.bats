@@ -110,15 +110,38 @@ teardown() {
 
 @test "launches checks concurrently" {
   #R015-T01
-  write_all_child_stubs 'sleep 1; exit 0'
+  # Prove concurrency structurally rather than via a wall-clock threshold (which is flaky when this
+  # meta-test runs under the heavy real suite and the nested orchestrator is CPU-starved). Two lanes that
+  # are NOT DB-serialized (t08, t10) announce startup then block on a shared release file; every other
+  # lane exits immediately. If the orchestrator launches lanes concurrently, both blocked lanes become
+  # alive simultaneously and their markers both appear; a serial launcher would start the first, block on
+  # it forever, and never start the second. This is immune to host CPU speed and to the DB-lane lock.
+  local started_dir="${FIXTURE_ROOT}/started"
+  local release_file="${FIXTURE_ROOT}/release"
+  mkdir -p "${started_dir}"
+  write_all_child_stubs 'exit 0'
+  write_child_stub "t08_run_python_unit_tests.sh" "touch '${started_dir}/t08'; while [ ! -f '${release_file}' ]; do sleep 0.2; done; exit 0"
+  write_child_stub "t10_run_swift_unit_tests.sh" "touch '${started_dir}/t10'; while [ ! -f '${release_file}' ]; do sleep 0.2; done; exit 0"
 
-  run env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
-    bash "${FIXTURE_ROOT}/11_run_all_tests_parallel.sh"
+  env PARALLEL_CHECKS_REPORT_DIR="${REPORT_DIR}" \
+    bash "${FIXTURE_ROOT}/11_run_all_tests_parallel.sh" >"${FIXTURE_ROOT}/orch.out" 2>&1 &
+  local orch_pid=$!
 
-  [ "$status" -eq 0 ]
-  [[ "$output" =~ Timing:\ wall\ ([0-9]+)s ]]
-  wall_seconds="${BASH_REMATCH[1]}"
-  [ "$wall_seconds" -lt $(( ${#CHECKS[@]} / 2 + 2 )) ]
+  local deadline=$(( SECONDS + 120 ))
+  while { [ ! -f "${started_dir}/t08" ] || [ ! -f "${started_dir}/t10" ]; } && [ "${SECONDS}" -lt "${deadline}" ]; do
+    sleep 0.5
+  done
+  local both_started=0
+  if [ -f "${started_dir}/t08" ] && [ -f "${started_dir}/t10" ]; then
+    both_started=1
+  fi
+  touch "${release_file}"
+  wait "${orch_pid}"
+  local orch_status=$?
+
+  [ "${both_started}" -eq 1 ]
+  [ "${orch_status}" -eq 0 ]
+  [[ "$(cat "${FIXTURE_ROOT}/orch.out")" == *"Timing: wall "* ]]
 }
 
 @test "streams per-check results in completion order" {

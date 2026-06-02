@@ -58,6 +58,33 @@ class BackfillParsingTests(unittest.TestCase):
         )
         self.assertEqual(matched, "acc_b")
 
+    def test_reconstruct_lines_groups_rows_in_reading_order(self):
+        # R030-T01: Two clearly separated rows reconstruct top-to-bottom, left-to-right.
+        points = [
+            (0.90, 0.50, "world"),
+            (0.90, 0.10, "hello"),
+            (0.50, 0.10, "second"),
+            (0.50, 0.40, "line"),
+        ]
+        self.assertEqual(self.module.reconstruct_lines(points), ["hello world", "second line"])
+
+    def test_reconstruct_lines_merges_jitter_but_splits_tight_rows(self):
+        # R030-T02: Within-line jitter stays merged while tightly spaced rows still separate.
+        points = [
+            (0.9000, 0.10, "a"),
+            (0.8997, 0.50, "b"),
+            (0.8600, 0.10, "c"),
+            (0.8600, 0.50, "d"),
+        ]
+        self.assertEqual(self.module.reconstruct_lines(points), ["a b", "c d"])
+
+    def test_adaptive_line_epsilon_honors_floor_and_scales(self):
+        # R030-T03: Sparse gaps fall back to the floor; dense gaps scale epsilon by the median.
+        self.assertEqual(self.module._adaptive_line_epsilon([], min_epsilon=0.004), 0.004)
+        self.assertEqual(self.module._adaptive_line_epsilon([0.9, 0.9], min_epsilon=0.004), 0.004)
+        scaled = self.module._adaptive_line_epsilon([1.0, 0.8, 0.6], min_epsilon=0.004, gap_factor=0.5)
+        self.assertAlmostEqual(scaled, 0.1)
+
 
 if __name__ == "__main__":
     unittest.main()

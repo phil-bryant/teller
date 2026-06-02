@@ -48,12 +48,12 @@ PROJECT_PYTHON_EXPLICIT=false
 if [[ -n "${DEPENDENCY_CHECK_PYTHON:-}" ]]; then
   PROJECT_PYTHON_EXPLICIT=true
 fi
-#R005: Prefer active virtualenv interpreter, then local teller-venv, then system python.
+#R005: Prefer repo-local teller-venv, then active virtualenv, then system python.
 if [[ -z "$PROJECT_PYTHON" ]]; then
-  if [[ -n "${VIRTUAL_ENV:-}" ]] && [[ -x "${VIRTUAL_ENV}/bin/python" ]]; then
-    PROJECT_PYTHON="${VIRTUAL_ENV}/bin/python"
-  elif [[ -x "./teller-venv/bin/python" ]]; then
+  if [[ -x "./teller-venv/bin/python" ]]; then
     PROJECT_PYTHON="./teller-venv/bin/python"
+  elif [[ -n "${VIRTUAL_ENV:-}" ]] && [[ -x "${VIRTUAL_ENV}/bin/python" ]]; then
+    PROJECT_PYTHON="${VIRTUAL_ENV}/bin/python"
   else
     PROJECT_PYTHON="python3"
   fi

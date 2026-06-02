@@ -296,6 +296,7 @@ for script in "${CHECKS[@]}"; do
   date +%s > "${log}.start"
   (
     set +e
+    unset VIRTUAL_ENV
     # Keep lanes parallel while isolating shared resources.
     lane_api_url="${PARALLEL_CLASSIFIER_API_URL:-https://127.0.0.1:${PARALLEL_CLASSIFIER_API_PORT:-8787}}"
     lane_dast_base_port="${PARALLEL_DAST_BASE_PORT:-8788}"

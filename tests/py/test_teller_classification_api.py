@@ -2,7 +2,7 @@ import unittest
 from datetime import date, datetime, timezone
 from fastapi import HTTPException
 from pydantic import ValidationError
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DataError, IntegrityError, OperationalError
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -69,6 +69,15 @@ class _FakeSession:
 class _IntegrityErrorSession(_FakeSession):
     def execute(self, sql, params=None):
         raise IntegrityError(statement=str(sql), params=params or {}, orig=Exception("duplicate key"))
+
+
+class _RaisingSession(_FakeSession):
+    def __init__(self, error):
+        super().__init__(rows=[])
+        self._error = error
+
+    def execute(self, sql, params=None):
+        raise self._error
 
 
 class _SessionContext:
@@ -2153,6 +2162,38 @@ class MatchCandidateProxyTests(unittest.TestCase):
         self.assertEqual(body.items, [])
         self.assertEqual(len(session.calls), 1)
         self.assertIn("COUNT", session.calls[0][0].upper())
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_input_data_error_maps_to_400(self, get_session_mock):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        error = DataError(statement="SELECT", params={}, orig=Exception("bad input"))
+        get_session_mock.return_value = _SessionContext(_RaisingSession(error))
+        request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
+            query_params={"count_only": "true", "limit": "1", "offset": "0"},
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(request=request, search="", status="", only_unclassified=False, match_state="",
+                     only_unmoved_match=False, include_total=True, count_only=True, limit=1, offset=0)
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertEqual(ctx.exception.detail, "Invalid query parameter value")
+
+    @patch("teller.teller_classification_api.get_session")
+    def test_transactions_server_fault_maps_to_500(self, get_session_mock):
+        app = create_app()
+        endpoint = self._route_endpoint(app, "/v1/transactions", "GET")
+        error = OperationalError(statement="SELECT", params={}, orig=Exception("connection refused"))
+        get_session_mock.return_value = _SessionContext(_RaisingSession(error))
+        request = SimpleNamespace(
+            headers={"x-teller-write-token": "test-write-token"},
+            query_params={"count_only": "true", "limit": "1", "offset": "0"},
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            endpoint(request=request, search="", status="", only_unclassified=False, match_state="",
+                     only_unmoved_match=False, include_total=True, count_only=True, limit=1, offset=0)
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertEqual(ctx.exception.detail, "Unexpected server error")
 
     @patch("teller.teller_classification_api.get_session")
     def test_transactions_include_total_false_skips_count_query(self, get_session_mock):
