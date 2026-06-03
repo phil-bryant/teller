@@ -10,6 +10,10 @@ src() {
   printf '%s' "$(repo_root)/06_run_all_tests_parallel.sh"
 }
 
+runner_src() {
+  printf '%s' "$(repo_root)/../runner/11_run_all_tests_parallel.sh"
+}
+
 @test "enables secure umask and strict shell mode" {
   #R001-T01
   run grep "umask 007" "$(src)"
@@ -39,5 +43,11 @@ src() {
 @test "delegates to mapped runner golden script" {
   #R015-T01
   run grep "exec \"\${RUNNER_HOME}/11_run_all_tests_parallel.sh\" \"\$@\"" "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "delegated runner lock is scoped to runbook repo root" {
+  #R020-T01
+  run grep "LOCK_FILE=\"\${RUNBOOK_REPO_ROOT}/.10_run_all_tests_parallel.lock\"" "$(runner_src)"
   [ "$status" -eq 0 ]
 }
