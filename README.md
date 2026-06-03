@@ -12,6 +12,7 @@ Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema + bank
 Until `v1.0` customer release, this repo intentionally does not use GitHub-hosted CI/CD workflows (GitHub Actions).
 Quality and security gates run locally through numbered test lanes and `./06_run_all_tests_parallel.sh`.
 GitHub workflow automation is deferred until `v1.0`.
+Git submodules are intentionally avoided until `v1.0` ships to customers.
 
 ## Script Execution Order
 
