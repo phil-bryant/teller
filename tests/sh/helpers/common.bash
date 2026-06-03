@@ -9,6 +9,7 @@ setup_shell_test() {
   TEST_TMPDIR="$(mktemp -d)"
   export HOME="${TEST_TMPDIR}/home"
   mkdir -p "$HOME"
+  unset RUNBOOK_REPO_ROOT
 
   export STUB_BIN="${TEST_TMPDIR}/test-bin"
   mkdir -p "$STUB_BIN"
@@ -66,10 +67,25 @@ copy_traceability_assets_to_fixture() {
 
 copy_script_to_fixture() {
   local script_name="$1"
-  local source_path
-  source_path="$(repo_root)/${script_name}"
-  if [[ ! -f "$source_path" && -f "$(repo_root)/tests/${script_name}" ]]; then
-    source_path="$(repo_root)/tests/${script_name}"
+  local root_dir runner_dir source_path candidate
+  root_dir="$(repo_root)"
+  runner_dir="${root_dir}/../runner"
+  source_path=""
+  for candidate in \
+    "${root_dir}/${script_name}" \
+    "${root_dir}/tests/${script_name}" \
+    "${runner_dir}/${script_name}"; do
+    if [[ -f "$candidate" ]]; then
+      source_path="$candidate"
+      break
+    fi
+  done
+  if [[ -z "$source_path" ]]; then
+    echo "❌ Unable to locate script fixture source for '${script_name}'." >&2
+    echo "Checked: ${root_dir}/${script_name}" >&2
+    echo "Checked: ${root_dir}/tests/${script_name}" >&2
+    echo "Checked: ${runner_dir}/${script_name}" >&2
+    return 1
   fi
   cp "$source_path" "${FIXTURE_ROOT}/${script_name}"
   chmod +x "${FIXTURE_ROOT}/${script_name}"

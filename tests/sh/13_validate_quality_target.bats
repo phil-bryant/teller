@@ -34,10 +34,30 @@ NDJSON
   #R001-T01
   #R005-T01
   #R020-T01
-  cat > "${FIXTURE_ROOT}/artifacts/telemetry/quality-history.ndjson" <<'NDJSON'
-{"run_started_at":"2026-05-11T12:00:00+00:00","score":9.6,"components":{"lane_reliability":0.98}}
-{"run_started_at":"2026-05-19T12:00:00+00:00","score":9.7,"components":{"lane_reliability":0.97}}
-NDJSON
+  python3 - <<'PY' > "${FIXTURE_ROOT}/artifacts/telemetry/quality-history.ndjson"
+import json
+from datetime import datetime, timedelta, timezone
+
+now = datetime.now(timezone.utc)
+week_start = now - timedelta(days=now.weekday())
+current_week = week_start.replace(hour=12, minute=0, second=0, microsecond=0)
+previous_week = current_week - timedelta(days=7)
+
+for ts, score, reliability in (
+    (previous_week, 9.6, 0.98),
+    (current_week, 9.7, 0.97),
+):
+    print(
+        json.dumps(
+            {
+                "run_started_at": ts.isoformat(),
+                "score": score,
+                "components": {"lane_reliability": reliability},
+            },
+            separators=(",", ":"),
+        )
+    )
+PY
   run bash "${FIXTURE_ROOT}/13_validate_quality_target.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"quality target validated"* ]]
