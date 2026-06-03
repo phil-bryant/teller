@@ -1,6 +1,11 @@
 # teller
 
-Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema + ingest scripts + classification API + native macOS review app.
+Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema + bank-ingest scripts. Owns the database schema and the shared `teller_db` / `teller_db_profile` / `teller_mailcart_client` modules.
+
+> Note: The **classification API** and the **macOS review UI** were extracted into the sibling
+> [`classy`](../classy) repo. Run them from there (`../classy/09_run_classification_api.py`,
+> `../classy/10_run_classification_macos_ui.sh`). `classy` imports this package for DB/session/profile/mailcart-client
+> and reads/writes the teller-owned schema. Scripts `05`/`09`/`10` and their lanes (t10/t14/t15/t16) now live in `classy`.
 
 ## Script Execution Order
 
@@ -12,12 +17,9 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `02_create_venv.sh`
 - `03_prepare_supply_chain_integrity.sh`
 - `04_load_requirements.sh`
-- `05_install_classifier_api_tls.sh`
 - `06_deploy_database.sh`
 - `07_fetch_teller_api_data.py`
 - `08_backfill_bank_statements.py`
-- `09_run_classification_api.py`
-- `10_run_classification_macos_ui.sh`
 - `11_run_all_tests_parallel.sh`
 - `12_report_quality_trends.sh`
 - `13_validate_quality_target.sh`

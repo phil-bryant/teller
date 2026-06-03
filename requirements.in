@@ -8,7 +8,7 @@ psycopg2-binary==2.9.12
 sqlalchemy==2.0.50
 pysqlcipher3
 starlette==1.2.1
-idna==3.17
+idna==3.18
 pydantic==2.13.4
 hypothesis==6.155.1
 mutmut==3.5.0

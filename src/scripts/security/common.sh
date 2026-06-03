@@ -26,18 +26,34 @@ security_init_repo_root() {
   local script_path="${1:-${BASH_SOURCE[0]-$0}}"
   local script_dir
   script_dir="$(cd "$(dirname "$script_path")" && pwd)"
-  local repo_root="$script_dir"
-  if [[ "$(basename "$script_dir")" == "tests" ]]; then
-    repo_root="$(cd "${script_dir}/.." && pwd)"
-  elif [[ "$script_dir" == */src/scripts/security ]]; then
-    repo_root="$(cd "${script_dir}/../../.." && pwd)"
+  #R005: Engine home (where security lane code lives). Used for runner-owned code/config defaults.
+  local runner_home="$script_dir"
+  if [[ "$script_dir" == */src/scripts/security ]]; then
+    runner_home="$(cd "${script_dir}/../../.." && pwd)"
+  elif [[ "$(basename "$script_dir")" == "tests" ]]; then
+    runner_home="$(cd "${script_dir}/.." && pwd)"
   fi
-
+  SECURITY_RUNNER_HOME="${RUNNER_HOME:-$runner_home}"
+  #R005: Target repo to scan (an rNN_/rtNN_ pointer sets RUNBOOK_REPO_ROOT); default to engine home.
+  local repo_root="${RUNBOOK_REPO_ROOT:-$SECURITY_RUNNER_HOME}"
+  repo_root="$(cd "$repo_root" && pwd)"
   cd "$repo_root"
   # shellcheck disable=SC1091
-  source "${repo_root}/src/scripts/export_test_cache_env.sh"
+  source "${SECURITY_RUNNER_HOME}/src/scripts/export_test_cache_env.sh"
   export_test_cache_env "$repo_root"
   SECURITY_REPO_ROOT="$repo_root"
+  VENV_NAME="${VENV_NAME:-$(basename "$repo_root")-venv}"
+  export SECURITY_RUNNER_HOME SECURITY_REPO_ROOT VENV_NAME
+}
+
+#R005: Layered asset resolution: prefer the target repo's copy, else the runner-owned default.
+security_resolve_asset() {
+  local rel="$1"
+  if [[ -e "${SECURITY_REPO_ROOT}/${rel}" ]]; then
+    printf '%s\n' "${SECURITY_REPO_ROOT}/${rel}"
+  else
+    printf '%s\n' "${SECURITY_RUNNER_HOME}/${rel}"
+  fi
 }
 
 python_interpreter_usable() {
@@ -60,6 +76,47 @@ require_file() {
     echo "❌ Missing required file: $1"
     exit 1
   fi
+}
+
+rb_read_1psa_item() {
+  local item="$1"
+  local timeout_seconds="${RB_ONEPSA_TIMEOUT_SECONDS:-12}"
+  local output=""
+  local exit_code=0
+  if ! command -v 1psa >/dev/null 2>&1; then
+    echo "❌ Missing required command: 1psa"
+    return 1
+  fi
+  set +e
+  output="$(python3 - <<'PY' "$item" "$timeout_seconds"
+import subprocess
+import sys
+
+item = sys.argv[1]
+timeout_seconds = int(sys.argv[2])
+try:
+    result = subprocess.run(["1psa", "-p", item], check=False, capture_output=True, text=True, timeout=timeout_seconds)
+except subprocess.TimeoutExpired:
+    print(f"timeout:{item}:{timeout_seconds}", file=sys.stderr)
+    raise SystemExit(124)
+if result.returncode != 0:
+    if result.stderr:
+        print(result.stderr.strip(), file=sys.stderr)
+    raise SystemExit(result.returncode)
+print(result.stdout.strip())
+PY
+)"
+  exit_code=$?
+  set -e
+  if [[ "$exit_code" -eq 124 ]]; then
+    echo "❌ 1psa timed out after ${timeout_seconds}s while resolving item: ${item}"
+    return 1
+  fi
+  if [[ "$exit_code" -ne 0 ]]; then
+    echo "❌ failed to resolve 1psa item: ${item}"
+    return 1
+  fi
+  printf '%s' "$output"
 }
 
 print_tool_header() {

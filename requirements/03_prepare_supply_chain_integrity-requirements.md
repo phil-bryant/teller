@@ -1,37 +1,25 @@
-# Prepare Supply-Chain Integrity Requirements
+# 03 prepare supply chain integrity Wrapper Requirements
 
 ## Scope
 
 Applies to `03_prepare_supply_chain_integrity.sh`.
 
-R001  Statement: Run a dedicated pre-install integrity step before dependency installation.
-Design: Provide numbered script `03_prepare_supply_chain_integrity.sh` as the canonical supply-chain prep entrypoint before `04_load_requirements.sh`.
+R001  Statement: Wrapper runs in strict shell mode with secure umask.
+Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
 Tests:
-- R001-T01: Verify script exists and is executable at repo root.
+- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
 
-R005  Statement: Require the project virtual environment to exist and be active.
-Design: Validate `<repo>-venv` existence, `VIRTUAL_ENV` presence, and active path match before any pip-tools compilation.
+R005  Statement: Wrapper resolves repository root and runner root from script location.
+Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
 Tests:
-- R005-T01: Verify script fails when venv directory is missing.
-- R005-T02: Verify script fails when no active virtual environment is set.
+- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
 
-R010  Statement: Compile runtime and security lockfiles with hashes from `.in` sources.
-Design: Require `pip-compile` on `PATH` (installed by prerequisites), remove legacy venv-installed `pip-tools` when present, and run `pip-compile --generate-hashes` for both `requirements.in` and `requirements/security/requirements-security.in`.
+R010  Statement: Wrapper loads teller runbook profile before delegation.
+Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/teller.env` prior to `exec`.
 Tests:
-- R010-T01: Verify pip-tools compile command is invoked with `--generate-hashes` for runtime lockfile.
-- R010-T02: Verify pip-tools compile command is invoked with `--generate-hashes` for security lockfile.
+- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
-R015  Statement: Generate SBOM and signing scaffold artifacts during pre-install step.
-Design: Invoke `src/scripts/security/generate_supply_chain_artifacts.py` with runtime/security lockfile inputs and configured signing mode.
+R015  Statement: Wrapper delegates execution to the mapped runner golden.
+Design: Use `exec "${RUNNER_HOME}/03_prepare_supply_chain_integrity.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Verify artifact generator is invoked and writes outputs to security report path.
-
-R020  Statement: CI defaults to required SBOM signing mode when no explicit mode is provided.
-Design: Resolve signing mode to `required` when `CI=true|1` and `SUPPLY_CHAIN_SIGNING_MODE` is unset; keep local default `scaffold` unless explicitly overridden.
-Tests:
-- R020-T01: Verify CI execution invokes artifact generator with `--signing-mode required` when `SUPPLY_CHAIN_SIGNING_MODE` is not set (`tests/sh/03_prepare_supply_chain_integrity.bats`).
-
-## Changelog
-
-- 2026-05-30: Initial requirements for pre-03 supply-chain integrity preparation script.
-- 2026-05-31: Added CI-default required signing requirement (R020) while preserving local scaffold default.
+- R015-T01: Verify wrapper source delegates to `03_prepare_supply_chain_integrity.sh` with `"$@"`.

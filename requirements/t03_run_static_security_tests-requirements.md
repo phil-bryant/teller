@@ -1,141 +1,116 @@
-# Run SAST Requirements
+# t03 run static security tests Wrapper Requirements
 
 ## Scope
 
-Applies to:
-- `tests/t03_run_static_security_tests.sh`
-- `src/scripts/security/run_static_security_lane.sh`
-- `src/scripts/security/common.sh`
+Applies to `tests/t03_run_static_security_tests.sh`, `src/scripts/security/common.sh`,
+and `src/scripts/security/run_static_security_lane.sh`.
 
-R001  Statement: Print an explicit SAST startup banner.
-Design: Emit `running SAST (Static Application Security Testing)` at script startup before scanner orchestration begins.
+R001  Statement: Wrapper runs in strict shell mode with secure umask.
+Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
 Tests:
-- R001-T01: Run script with `RUN_SAST=false RUN_DAST=false` and verify startup output includes the exact banner string.
+- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
 
-R005  Statement: Execute from repository root in strict shell mode.
-Design: Use `set -euo pipefail`, resolve script directory from `${BASH_SOURCE[0]}`, and `cd` into that directory.
+R005  Statement: Wrapper resolves repository root and runner root from script location.
+Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
 Tests:
-- R005-T01: Run from a non-root working directory and verify relative paths still resolve.
+- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
 
-R010  Statement: Bootstrap isolated security toolchain environment before scanning.
-Design: Create `SECURITY_VENV_DIR` when missing, install `requirements/security/requirements-security.txt` when `semgrep` is absent in that venv, and prepend `${SECURITY_VENV_DIR}/bin` to `PATH`.
+R010  Statement: Wrapper loads teller runbook profile before delegation.
+Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/teller.env` prior to `exec`.
 Tests:
-- R010-T01: Remove `artifacts/venv/security`, run script, and verify venv creation plus tool installation path executes.
+- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
-R015  Statement: Run the static security lane by default.
-Design: Set `RUN_SAST=true` default and `RUN_DAST=false` default; run SAST scanners and centralized SAST gating when enabled.
+R015  Statement: Wrapper delegates execution to the mapped runner golden.
+Design: Use `exec "${RUNNER_HOME}/tests/t03_run_static_security_tests.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Run with defaults and verify SAST reports are produced.
-- R015-T02: Run with `RUN_SAST=false RUN_DAST=false` and verify script exits cleanly after setup.
+- R015-T01: Verify wrapper source delegates to `tests/t03_run_static_security_tests.sh` with `"$@"`.
 
-R020  Statement: Emit explicit completion status and artifact location.
-Design: Print lane completion markers and final success output including resolved report directory path.
+R020  Statement: Wrapper preserves runner static-lane completion marker behavior.
+Design: Delegate unchanged to the runner static security golden so completion output contracts remain intact.
 Tests:
-- R020-T01: Run a passing SAST lane and verify completion output includes report directory.
+- R020-T01: Verify wrapper source preserves runner static-lane delegation behavior.
 
-R025  Statement: Include Ruff lint scanning in the static security lane.
-Design: Require `ruff` in the SAST toolchain, run `ruff check --output-format json .`, persist `ruff.json`, and include Ruff totals in centralized SAST summary output.
+R025  Statement: Wrapper preserves runner Ruff report artifact behavior.
+Design: Delegate unchanged to the runner static security golden so Ruff artifact handling remains intact.
 Tests:
-- R025-T01: Run SAST lane and verify `ruff.json` exists in the reports directory.
-- R025-T02: Run SAST lane and verify `sast-summary.json` contains `ruff_total`.
+- R025-T01: Verify wrapper source preserves runner Ruff artifact delegation behavior.
 
-R030  Statement: Treat Ruff findings as blocking in centralized SAST gating.
-Design: Count Ruff findings as high/critical equivalents for policy enforcement and fail the gate when `SECURITY_FAIL_ON_HIGH_CRITICAL=true` and Ruff findings are present.
+R030  Statement: Wrapper preserves runner centralized SAST gate behavior.
+Design: Delegate unchanged to the runner static security golden so centralized gate policy remains intact.
 Tests:
-- R030-T01: Run SAST lane with non-empty Ruff findings and verify gate failure output.
-- R030-T02: Verify `sast-summary.json` includes `ruff_high_critical` and contributes to `high_critical_total`.
+- R030-T01: Verify wrapper source preserves runner SAST gate delegation behavior.
 
-R035  Statement: Secret scanners must avoid generated scanner/cache artifacts while preserving strict source scanning.
-Design: Keep `detect-secrets` in the SAST lane but exclude generated paths such as `artifacts/security/reports`, `artifacts/cache/ruff`, `__pycache__`, and other runtime caches so scanner outputs do not become scanner inputs.
+R035  Statement: Wrapper preserves runner scanner exclusion behavior.
+Design: Delegate unchanged to the runner static security golden so scanner exclusion policy remains intact.
 Tests:
-- R035-T01: Run SAST lane and verify detect-secrets invocation includes `artifacts/cache/ruff` in its exclusion pattern.
+- R035-T01: Verify wrapper source preserves runner exclusion delegation behavior.
 
-R040  Statement: gitleaks must scan tracked working-tree source, not mutable runtime directories.
-Design: Build a temporary snapshot of `git ls-files` from the current working tree and run `gitleaks detect --no-git` against that snapshot. This prevents feedback loops from report/cache directories while keeping modified tracked files in scope.
+R040  Statement: Wrapper preserves runner gitleaks tracked-source behavior.
+Design: Delegate unchanged to the runner static security golden so tracked-source scanning remains intact.
 Tests:
-- R040-T01: Run SAST lane and verify gitleaks invocation uses a temporary absolute `--source` path instead of `--source .`.
+- R040-T01: Verify wrapper source preserves runner gitleaks delegation behavior.
 
-R045  Statement: Semgrep must print detailed status in unsuppressed runs.
-Design: During default SAST execution (without suppression toggles), emit explicit Semgrep status output that includes detailed execution results of all findings and report artifact location.
+R045  Statement: Wrapper preserves runner Semgrep status visibility behavior.
+Design: Delegate unchanged to the runner static security golden so Semgrep status output remains intact.
 Tests:
-- R045-T01: Run SAST lane and verify output includes at least one detailed status line for each and every finding with report path details.
+- R045-T01: Verify wrapper source preserves runner Semgrep status delegation behavior.
 
-R047  Statement: Semgrep MUST be run WITHOUT --quiet 
-Design: Make certain that Semgrep is not run with any output suppression flags
+R047  Statement: Wrapper preserves runner unsuppressed Semgrep invocation behavior.
+Design: Delegate unchanged to the runner static security golden so quiet-mode suppression is not introduced.
 Tests:
-- R047-T01: Semgrep execution command does not contain the --quiet flag.
+- R047-T01: Verify wrapper source preserves runner Semgrep invocation delegation behavior.
 
-R050  Statement: Bandit must print detailed status in unsuppressed runs.
-Design: During default SAST execution (without suppression toggles), emit explicit Bandit status output that includes execution result and report artifact location.
+R050  Statement: Wrapper preserves runner Bandit status visibility behavior.
+Design: Delegate unchanged to the runner static security golden so Bandit status output remains intact.
 Tests:
-- R050-T01: Run SAST lane and verify output includes a `Bandit detailed status` line with report path details.
+- R050-T01: Verify wrapper source preserves runner Bandit delegation behavior.
 
-R055  Statement: pip-audit must print detailed status in unsuppressed runs.
-Design: During default SAST execution (without suppression toggles), emit explicit pip-audit status output that includes execution result and report artifact location.
+R055  Statement: Wrapper preserves runner pip-audit status visibility behavior.
+Design: Delegate unchanged to the runner static security golden so pip-audit status output remains intact.
 Tests:
-- R055-T01: Run SAST lane and verify output includes a `pip-audit detailed status` line with report path details.
+- R055-T01: Verify wrapper source preserves runner pip-audit delegation behavior.
 
-R060  Statement: detect-secrets must print detailed status in unsuppressed runs.
-Design: During default SAST execution (without suppression toggles), emit explicit detect-secrets status output that includes execution result and report artifact location.
+R060  Statement: Wrapper preserves runner detect-secrets status visibility behavior.
+Design: Delegate unchanged to the runner static security golden so detect-secrets status output remains intact.
 Tests:
-- R060-T01: Run SAST lane and verify output includes a `detect-secrets detailed status` line with report path details.
+- R060-T01: Verify wrapper source preserves runner detect-secrets delegation behavior.
 
-R065  Statement: Ruff must print detailed status in unsuppressed runs.
-Design: During default SAST execution (without suppression toggles), emit explicit Ruff status output that includes execution result and report artifact location.
+R065  Statement: Wrapper preserves runner Ruff status visibility behavior.
+Design: Delegate unchanged to the runner static security golden so Ruff status output remains intact.
 Tests:
-- R065-T01: Run SAST lane and verify output includes a `Ruff detailed status` line with report path details.
+- R065-T01: Verify wrapper source preserves runner Ruff status delegation behavior.
 
-R070  Statement: ShellCheck must print detailed status in unsuppressed runs.
-Design: During default SAST execution (without suppression toggles), emit explicit ShellCheck status output that includes execution result and report artifact location.
+R070  Statement: Wrapper preserves runner ShellCheck status visibility behavior.
+Design: Delegate unchanged to the runner static security golden so ShellCheck status output remains intact.
 Tests:
-- R070-T01: Run SAST lane and verify output includes a `ShellCheck detailed status` line with report path details.
+- R070-T01: Verify wrapper source preserves runner ShellCheck delegation behavior.
 
-R080  Statement: Python bytecode caches must stay under `artifacts/cache`, not repo root.
-Design: Source `src/scripts/export_test_cache_env.sh` from shared security bootstrap and export `PYTHONPYCACHEPREFIX=${repo_root}/artifacts/cache/pycache` before scanner orchestration so Python execution does not create root-level `__pycache__/`.
+R080  Statement: Wrapper preserves runner cache-location behavior.
+Design: Delegate unchanged to the runner static security golden so cache-location policy remains intact.
 Tests:
-- R080-T01: Run lane with DAST-only Python execution and verify `PYTHONPYCACHEPREFIX` resolves under `artifacts/cache/pycache`.
-- R080-T02: Verify lane execution does not create `${repo_root}/__pycache__/`.
+- R080-T01: Verify wrapper source preserves runner cache-location delegation behavior.
 
-R090  Statement: Financial-app policy must treat medium-or-higher security findings as blockers.
-Design: Enforce conservative SAST gating so that Semgrep WARNING/ERROR/CRITICAL, Bandit MEDIUM/HIGH, ShellCheck warning/error, SwiftLint warning/error, pip-audit vulnerabilities, detect-secrets findings, Ruff findings, and gitleaks findings all contribute to a blocking total when `SECURITY_FAIL_ON_MEDIUM_OR_HIGHER=true` (default on).
+R090  Statement: Wrapper preserves runner medium-or-higher gate behavior.
+Design: Delegate unchanged to the runner static security golden so blocker policy remains intact.
 Tests:
-- R090-T01: Run SAST lane with Semgrep WARNING finding and verify gate fails with medium-or-higher failure output.
-- R090-T02: Run SAST lane with Bandit MEDIUM finding and verify gate fails.
-- R090-T03: Run SAST lane with pip-audit vulnerability present and verify gate fails.
-- R090-T04: Run SAST lane with ShellCheck warning finding and verify gate fails.
-- R090-T05: Run SAST lane with SwiftLint warning finding and verify gate fails.
+- R090-T01: Verify wrapper source preserves runner gate-policy delegation behavior.
 
-R100  Statement: Dynamic Schemathesis artifacts generated from the static security lane must redact the classifier write token before persistence.
-Design: When `RUN_DAST=true` and Schemathesis runs, write raw output to temporary artifacts, redact `X-Teller-Write-Token` values via shared helper(s) in `src/scripts/security/common.sh`, persist only redacted `schemathesis.log`, redact `schemathesis-junit.xml` in place when present, and remove raw unredacted intermediates.
+R100  Statement: Wrapper preserves runner token-redaction behavior.
+Design: Delegate unchanged to the runner static security golden so token redaction remains intact.
 Tests:
-- R100-T01: Run static lane with DAST+Schemathesis enabled and verify persisted `schemathesis.log`/`schemathesis-junit.xml` do not contain the raw token and include redacted placeholder content.
+- R100-T01: Verify wrapper source preserves runner token-redaction delegation behavior.
 
-R105  Statement: Security lane dependency bootstrap must require hash-pinned security requirements.
-Design: Before installing security toolchain dependencies, validate `requirements/security/requirements-security.txt` contains `--hash=sha256:` entries and install with `pip install --require-hashes`.
+R105  Statement: Wrapper preserves runner hash-pinned toolchain enforcement behavior.
+Design: Delegate unchanged to the runner static security golden so hash-pin enforcement remains intact.
 Tests:
-- R105-T01: Trigger security-toolchain bootstrap and verify install command includes `--require-hashes`.
+- R105-T01: Verify wrapper source preserves runner hash-pin delegation behavior.
 
-R110  Statement: Static security lane must emit SBOM and signing scaffold artifacts.
-Design: Invoke `src/scripts/security/generate_supply_chain_artifacts.py` during lane setup and persist `sbom.cdx.json`, `sbom.signature`, `sbom.attestation.json`, plus invocation summary under the configured report directory.
+R110  Statement: Wrapper preserves runner supply-chain artifact generation behavior.
+Design: Delegate unchanged to the runner static security golden so supply-chain artifact behavior remains intact.
 Tests:
-- R110-T01: Run SAST lane and verify SBOM/signature/attestation artifacts exist in the reports directory.
+- R110-T01: Verify wrapper source preserves runner supply-chain delegation behavior.
 
-R115  Statement: Static security lane defaults SBOM signing mode to required in CI when unset.
-Design: Resolve `SUPPLY_CHAIN_SIGNING_MODE` to `required` when `CI=true|1` and the variable is not explicitly set; keep non-CI default `scaffold` for local development.
+R115  Statement: Wrapper preserves runner CI signing-mode default behavior.
+Design: Delegate unchanged to the runner static security golden so CI signing-mode defaults remain intact.
 Tests:
-- R115-T01: Run lane with `CI=true` and no signing-mode override and verify artifact generator is invoked with `--signing-mode required`.
-
-## Changelog
-
-- 2026-05-30: Added R100 to require Schemathesis token redaction for static-lane DAST artifacts.
-- 2026-05-10: Split former combined security lane into `tests/t03_run_static_security_tests.sh` and `tests/t12_run_dynamic_security_tests.sh`.
-- 2026-05-15: Added R025 to require Ruff execution and report accounting in SAST output.
-- 2026-05-15: Added R030 to enforce Ruff findings as blocking SAST gate signals.
-- 2026-05-15: Added R035 to exclude generated cache/report paths from detect-secrets.
-- 2026-05-15: Added R040 to run gitleaks on git-tracked snapshot source and prevent report feedback loops.
-- 2026-05-15: Added R045/R050/R055/R060/R065/R070 to require detailed unsuppressed status output for Semgrep, Bandit, pip-audit, detect-secrets, Ruff, and ShellCheck.
-- 2026-05-15: Added R090 financial-app medium-or-higher blocking policy across SAST tools.
-- 2026-05-30: Added R080 to keep Python bytecode cache output under `artifacts/cache/pycache` and prevent root-level `__pycache__/`.
-- 2026-05-30: Added R105 for `--require-hashes` enforcement during security toolchain bootstrap.
-- 2026-05-30: Added R110 to require SBOM + signing scaffold artifact generation in static security lane.
-- 2026-05-31: Added R115 to require CI-default `--signing-mode required` behavior for supply-chain artifact generation.
+- R115-T01: Verify wrapper source preserves runner signing-mode delegation behavior.

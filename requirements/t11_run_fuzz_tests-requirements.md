@@ -1,40 +1,25 @@
-# Run Fuzz Tests Requirements
+# t11 run fuzz tests Wrapper Requirements
 
 ## Scope
 
 Applies to `tests/t11_run_fuzz_tests.sh`.
 
-R001  Statement: Run fuzz tests in strict fail-fast mode from repository root.
-Design: Use `set -euo pipefail`, resolve script directory, and execute pytest with Hypothesis-backed property tests.
+R001  Statement: Wrapper runs in strict shell mode with secure umask.
+Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
 Tests:
-- R001-T01: Run script from outside repo root and verify execution succeeds with repo-relative paths.
+- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
 
-R005  Statement: Fail fast when venv python or hypothesis is unavailable.
-Design: Print actionable error when `teller-venv/bin/python3` or the `hypothesis` package is missing.
+R005  Statement: Wrapper resolves repository root and runner root from script location.
+Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
 Tests:
-- R005-T01: Remove `teller-venv` and verify missing-interpreter failure guidance.
+- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
 
-R010  Statement: Fuzz Python tests with a configurable example budget.
-Design: Default `FUZZ_TEST_PATHS` to `tests/py/properties`, `FUZZ_MAX_EXAMPLES` to `500`, and `FUZZ_DEADLINE_MS` to `1000`. Source `export_test_cache_env.sh` so `HYPOTHESIS_STORAGE_DIRECTORY` defaults to `artifacts/cache/hypothesis`, then pass `HYPOTHESIS_MAX_EXAMPLES`, `HYPOTHESIS_DEADLINE`, and `HYPOTHESIS_STORAGE_DIRECTORY` into pytest. Run with `-p hypothesis` and `--hypothesis-show-statistics`. Do not use a repository-root `.hypothesis` directory.
+R010  Statement: Wrapper loads teller runbook profile before delegation.
+Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/teller.env` prior to `exec`.
 Tests:
-- R010-T01: Traceability anchor in shell tests.
+- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
-R015  Statement: Emit concise success output and persist a fuzz summary report.
-Design: Write `${REPORT_DIR}/fuzz-summary.json` with property test names and example counters. Print `✅ PASS:` when gates succeed.
+R015  Statement: Wrapper delegates execution to the mapped runner golden.
+Design: Use `exec "${RUNNER_HOME}/tests/t11_run_fuzz_tests.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Run fuzz lane and verify summary report plus PASS output.
-
-R020  Statement: Gate on pytest failures and minimum fuzz example budget.
-Design: Parse Hypothesis statistics blocks from pytest output. Require at least `FUZZ_MIN_PROPERTY_TESTS` property tests and `FUZZ_MIN_TOTAL_EXAMPLES` passing examples. Also require each property test to meet a 90% per-test passing floor based on `FUZZ_MAX_EXAMPLES` (configurable through `FUZZ_MIN_PER_TEST_RATIO_PERCENT`). Fail when pytest exits non-zero, timeout occurs, or any budget gate is not met.
-Tests:
-- R020-T01: Shell test fails when total passing examples are below configured budget.
-
-R025  Statement: Enforce a configurable fuzz lane timeout.
-Design: Wrap pytest execution with `FUZZ_TIMEOUT_SECONDS` (default `300`) and fail with diagnostics on timeout exit `124`.
-Tests:
-- R025-T01: Shell test fails with timeout diagnostics when pytest exceeds timeout.
-
-R030  Statement: Persist machine-readable fuzz telemetry suitable for CI checks.
-Design: Store Hypothesis property test names, per-test metrics, aggregate passing/failing/invalid totals, invalid ratio, and gate status in `fuzz-summary.json`. Persist `fuzz-failure-last.log` on failure for replay triage.
-Tests:
-- R030-T01: Shell test persists replay log when pytest exits non-zero.
+- R015-T01: Verify wrapper source delegates to `tests/t11_run_fuzz_tests.sh` with `"$@"`.

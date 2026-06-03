@@ -1,25 +1,43 @@
 #!/usr/bin/env bats
-load "helpers/common.bash"
 
-copy_live_canary_project_files() {
-  create_repo_fixture
-  copy_script_to_fixture "t17_run_teller_live_canary_test.sh"
-  mkdir -p "${FIXTURE_ROOT}/src/scripts"
-  cp "$(repo_root)/src/scripts/check_teller_api_drift.py" "${FIXTURE_ROOT}/src/scripts/check_teller_api_drift.py"
-}
+load "helpers/common.bash"
 
 teardown() {
   teardown_shell_test
 }
 
-@test "runs strict Teller live canary wrapper with required flags" {
-  #R001-T01 #R005-T01
-  setup_shell_test
-  copy_live_canary_project_files
-  run grep -- "--require-live" "${FIXTURE_ROOT}/t17_run_teller_live_canary_test.sh"
+src() {
+  printf '%s' "$(repo_root)/tests/t17_run_teller_live_canary_test.sh"
+}
+
+@test "enables secure umask and strict shell mode" {
+  #R001-T01
+  run grep "umask 007" "$(src)"
   [ "$status" -eq 0 ]
-  run grep -- "--fail-on-warn" "${FIXTURE_ROOT}/t17_run_teller_live_canary_test.sh"
+  run grep "set -euo pipefail" "$(src)"
   [ "$status" -eq 0 ]
-  run grep -- "check_teller_api_drift.py" "${FIXTURE_ROOT}/t17_run_teller_live_canary_test.sh"
+}
+
+@test "derives script and runner paths from script location" {
+  #R005-T01
+  run grep "SCRIPT_DIR=" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "RUNNER_HOME=" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "runner" "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "loads teller runbook profile before delegation" {
+  #R010-T01
+  run grep "export RUNBOOK_REPO_ROOT" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "config/runbook/teller.env" "$(src)"
+  [ "$status" -eq 0 ]
+}
+
+@test "delegates to mapped runner golden script" {
+  #R015-T01
+  run grep "exec \"\${RUNNER_HOME}/tests/t17_run_teller_live_canary_test.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
 }

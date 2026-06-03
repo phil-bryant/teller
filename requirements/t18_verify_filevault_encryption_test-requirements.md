@@ -1,26 +1,25 @@
-# Verify FileVault Encryption Requirements
+# t18 verify filevault encryption test Wrapper Requirements
 
 ## Scope
 
 Applies to `tests/t18_verify_filevault_encryption_test.sh`.
 
-R001  Statement: Run in strict shell mode and execute from repository root.
-Design: Use `set -euo pipefail`, resolve script directory from `${BASH_SOURCE[0]}`, and `cd` into repository root.
+R001  Statement: Wrapper runs in strict shell mode with secure umask.
+Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
 Tests:
-- R001-T01: Run from a non-root working directory and verify the script exits successfully when FileVault is enabled.
+- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
 
-R005  Statement: Enforce FileVault encryption on the boot volume.
-Design: Invoke the configured FileVault status command (default `fdesetup status`) and pass only when output contains `FileVault is On.`; otherwise fail with the reported status.
+R005  Statement: Wrapper resolves repository root and runner root from script location.
+Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
 Tests:
-- R005-T01: Stub enabled FileVault status output and verify the script exits successfully.
-- R005-T02: Stub disabled FileVault status output and verify the script exits with failure.
+- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
 
-R010  Statement: Require macOS for FileVault verification.
-Design: Fail fast when `uname -s` is not `Darwin` because FileVault is a macOS-only control.
+R010  Statement: Wrapper loads teller runbook profile before delegation.
+Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/teller.env` prior to `exec`.
 Tests:
-- R010-T01: Stub non-Darwin platform detection and verify the script exits with failure.
+- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
-R015  Statement: Require FileVault status tooling before enforcement.
-Design: When using the default `fdesetup status` command, require `fdesetup` on `PATH`; fail clearly when the status command exits non-zero.
+R015  Statement: Wrapper delegates execution to the mapped runner golden.
+Design: Use `exec "${RUNNER_HOME}/tests/t18_verify_filevault_encryption_test.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Stub a failing FileVault status command and verify the script exits with failure.
+- R015-T01: Verify wrapper source delegates to `tests/t18_verify_filevault_encryption_test.sh` with `"$@"`.

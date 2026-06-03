@@ -1,91 +1,66 @@
-# Run DAST Requirements
+# t12 run dynamic security tests Wrapper Requirements
 
 ## Scope
 
-Applies to:
-- `tests/t12_run_dynamic_security_tests.sh`
-- `src/scripts/security/run_dynamic_security_lane.sh`
+Applies to `tests/t12_run_dynamic_security_tests.sh`
+and `src/scripts/security/run_dynamic_security_lane.sh`.
 
-## Ownership Boundaries
-
-This document owns DAST lane orchestration and hygiene policy.
-Helper implementation details are owned by:
-- `requirements/src/scripts/dast_baseline-requirements.md`
-- `requirements/src/scripts/dast_cleanup-requirements.md`
-- `requirements/src/scripts/cleanup_legacy_dast_artifacts-requirements.md`
-
-R001  Statement: Print an explicit DAST startup banner.
-Design: Emit `running DAST (Dynamic Application Security Testing)` at script startup before scanner orchestration begins.
+R001  Statement: Wrapper runs in strict shell mode with secure umask.
+Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
 Tests:
-- R001-T01: Run script with `RUN_DAST=false` and verify startup output includes the exact banner string.
+- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
 
-R005  Statement: Execute from repository root in strict shell mode.
-Design: Use `set -euo pipefail`, resolve script directory from `${BASH_SOURCE[0]}`, and `cd` into that directory.
+R005  Statement: Wrapper resolves repository root and runner root from script location.
+Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
 Tests:
-- R005-T01: Run from a non-root working directory and verify relative paths still resolve.
+- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
 
-R010  Statement: Bootstrap isolated security toolchain environment before running DAST dependencies.
-Design: Create `SECURITY_VENV_DIR` when missing, install `requirements/security/requirements-security.txt` when `semgrep` is absent in that venv, and prepend `${SECURITY_VENV_DIR}/bin` to `PATH`.
+R010  Statement: Wrapper loads teller runbook profile before delegation.
+Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/teller.env` prior to `exec`.
 Tests:
-- R010-T01: Remove `artifacts/venv/security`, run script, and verify venv creation plus tool installation path executes.
+- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
-R015  Statement: Run the dynamic security lane by default.
-Design: Set `RUN_DAST=true` default and `RUN_SAST=false` default; run DAST scanners and DAST gate checks when enabled.
+R015  Statement: Wrapper delegates execution to the mapped runner golden.
+Design: Use `exec "${RUNNER_HOME}/tests/t12_run_dynamic_security_tests.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Run with defaults and verify DAST output includes lane completion markers.
+- R015-T01: Verify wrapper source delegates to `tests/t12_run_dynamic_security_tests.sh` with `"$@"`.
 
-R020  Statement: Emit explicit completion status and artifact location.
-Design: Print DAST progress markers and final success output including resolved report directory path.
+R020  Statement: Wrapper preserves runner dynamic-lane completion marker behavior.
+Design: Delegate unchanged to the runner dynamic security golden so completion output contracts remain intact.
 Tests:
-- R020-T01: Run a passing DAST lane and verify completion output includes report directory.
+- R020-T01: Verify wrapper source preserves runner dynamic-lane delegation behavior.
 
-R030  Statement: Emit machine-readable ZAP severity summary and enforce configurable threshold gates.
-Design: Parse ZAP HTML quick-scan summary into JSON severity counts (`high`, `medium`, `low`, `informational`) and fail the DAST gate when findings meet/exceed `SECURITY_ZAP_FAIL_THRESHOLD` (default `high`) unless threshold is `none`.
+R025  Statement: Wrapper preserves runner DAST baseline and cleanup behavior.
+Design: Delegate unchanged to the runner dynamic security golden so baseline/cleanup behavior remains intact.
 Tests:
-- R030-T01: Run with `RUN_ZAP=true` and verify `zap-classification-summary.json` is generated with severity counts.
-- R030-T02: Set `SECURITY_ZAP_FAIL_THRESHOLD=medium` and verify medium-or-higher findings fail the lane.
+- R025-T01: Verify wrapper source preserves runner DAST cleanup delegation behavior.
 
-R035  Statement: Treat Schemathesis contract findings as blocking by default.
-Design: If Schemathesis exits with findings status (`exit 1`), fail the DAST lane unless `SCHEMATHESIS_FAIL_ON_FINDINGS=false` is explicitly set for diagnostic/non-blocking runs.
+R030  Statement: Wrapper preserves runner ZAP gate-threshold behavior.
+Design: Delegate unchanged to the runner dynamic security golden so ZAP gate-threshold policy remains intact.
 Tests:
-- R035-T01: Verify default behavior exits non-zero when Schemathesis returns findings.
-- R035-T02: Verify `SCHEMATHESIS_FAIL_ON_FINDINGS=false` preserves optional non-blocking execution.
+- R030-T01: Verify wrapper source preserves runner ZAP-threshold delegation behavior.
 
-R040  Statement: DAST local service ports must not collide.
-Design: When local Schemathesis support starts both the classifier API and Mailcart HTTPS stub, the script must auto-resolve port collisions so the Mailcart stub never binds to the same host:port as the classifier API.
+R035  Statement: Wrapper preserves runner Schemathesis blocking-mode behavior.
+Design: Delegate unchanged to the runner dynamic security golden so Schemathesis blocking behavior remains intact.
 Tests:
-- R040-T01: Verify lane logic contains explicit host+port collision handling and emits a collision auto-selection message.
+- R035-T01: Verify wrapper source preserves runner Schemathesis delegation behavior.
 
-R045  Statement: Schemathesis runtime state must stay in DAST artifacts, not repo root.
-Design: Execute `schemathesis run` from the resolved DAST report directory so `.schemathesis/` is created beneath `artifacts/security-dast` (or custom report dir) instead of repository root.
+R040  Statement: Wrapper preserves runner port-collision handling behavior.
+Design: Delegate unchanged to the runner dynamic security golden so API/stub collision handling remains intact.
 Tests:
-- R045-T01: Run DAST with Schemathesis enabled and verify `.schemathesis/` appears under the report directory.
-- R045-T02: Verify DAST run does not create `${repo_root}/.schemathesis/`.
+- R040-T01: Verify wrapper source preserves runner port-collision delegation behavior.
 
-R050  Statement: Persisted Schemathesis artifacts must redact the classifier write token.
-Design: Capture Schemathesis raw output to a temporary log, redact the live write token before writing `schemathesis.log`, redact `schemathesis-junit.xml` in place when present, and delete temporary unredacted artifacts so only redacted content persists.
+R045  Statement: Wrapper preserves runner Schemathesis report-dir behavior.
+Design: Delegate unchanged to the runner dynamic security golden so report-dir execution behavior remains intact.
 Tests:
-- R050-T01: Run DAST lane with Schemathesis enabled and verify persisted `schemathesis.log`/`schemathesis-junit.xml` do not contain the raw token and include redacted placeholder content.
+- R045-T01: Verify wrapper source preserves runner report-dir delegation behavior.
 
-R055  Statement: Dynamic lane dependency bootstrap must require hash-pinned security requirements.
-Design: Before reinstalling security toolchain entrypoints, validate `requirements/security/requirements-security.txt` includes hash pins and install with `pip --require-hashes --force-reinstall`.
+R050  Statement: Wrapper preserves runner token-redaction behavior.
+Design: Delegate unchanged to the runner dynamic security golden so Schemathesis token redaction remains intact.
 Tests:
-- R055-T01: Verify dynamic lane security bootstrap path validates hash-pinned requirements before reinstall.
+- R050-T01: Verify wrapper source preserves runner token-redaction delegation behavior.
 
-R025  Statement: DAST run must not leak state to the target database.
-Design: Generate a per-run `DAST_RUN_ID` tag, capture a pre-run baseline via `src/scripts/dast_baseline.py` (max IDs plus full mutable-field snapshots of `nys_snw_category`, `transaction_email_match`, `transaction_email_match_audit`, and `transaction_nys_snw_category`), embed `DAST_RUN_ID` in seeded `categorization` and `email_message_id` payloads, and install an `EXIT` trap that invokes `src/scripts/dast_cleanup.py` to restore mutated rows and delete rows inserted past the baseline (FK-safe order: match restore -> audit delete -> match delete -> classification reconcile -> category delete -> category restore). The cleanup runs both on the success path (before the integrity check) and on any failure path; the post-DAST integrity check therefore also asserts that cleanup succeeded. Cleanup refuses to apply when the recorded profile differs from the current resolved profile unless `DAST_CLEANUP_FORCE=true`, and can be disabled entirely with `DAST_SKIP_CLEANUP=true`.
+R055  Statement: Wrapper preserves runner hash-pinned toolchain enforcement behavior.
+Design: Delegate unchanged to the runner dynamic security golden so hash-pin enforcement remains intact.
 Tests:
-- R025-T01: Stub `dast_baseline.py` and `dast_cleanup.py` in the fixture so each writes a sentinel file, then force the DAST lane to fail mid-run (`RUN_ZAP=true` with a failing ZAP stub) and assert both sentinels exist, proving baseline capture ran pre-failure and cleanup ran in the EXIT trap.
-
-## Changelog
-
-- 2026-05-30: Added R050 to require token redaction for persisted Schemathesis artifacts.
-- 2026-05-10: Split former combined security lane into `tests/t03_run_static_security_tests.sh` and `tests/t12_run_dynamic_security_tests.sh`.
-- 2026-05-15: Added R025/R030/R035 for ZAP proxy resilience, lane state isolation, and startup diagnostics.
-- 2026-05-19: Removed macOS UI / XCUITest DAST integration (R025, R030, R035); DAST is Schemathesis + ZAP quick scan only.
-- 2026-05-25: Added R025 (database-state hygiene): per-run tagging + baseline-restore cleanup with EXIT-trap safety and profile-mismatch refusal.
-- 2026-05-25: Reintroduced R030 with machine-readable ZAP summary parsing and configurable severity thresholds.
-- 2026-05-27: Added R035 strict Schemathesis gate with explicit downgrade toggle (`SCHEMATHESIS_FAIL_ON_FINDINGS=false`).
-- 2026-05-27: Added R040 for automatic DAST Mailcart/API port collision avoidance.
-- 2026-05-30: Added R045 to keep Schemathesis runtime state scoped to DAST artifact directories.
-- 2026-05-30: Added R055 for hash-pinned security requirements enforcement in dynamic-lane bootstrap.
+- R055-T01: Verify wrapper source preserves runner hash-pin delegation behavior.

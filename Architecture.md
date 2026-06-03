@@ -1,312 +1,13 @@
 # Architecture
 
-This document contains architecture-focused reference material moved from `README.md`.
-
-## GLOBAL ARCHITECTURE: TELLER → MATCHY ← MAILCART
-
-Implemented in this repository: Teller ingest + schema + classification API + macOS review app.
-External ecosystem services: Matchy worker/orchestration and Mailcart Outlook/Graph adapter.
-
-```text
-┌───────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                          SYSTEM LANDSCAPE                                         │
-│                                                                                                   │
-│  ┌────────────────────────────────┐    HTTP (search/move)     ┌────────────────────────────────┐  │
-│  │             MATCHY             │ ────────────────────────► │            MAILCART            │  │
-│  │                                │ ◄──────────────────────── │                                │  │
-│  │ - FastAPI service              │      message candidates   │ - Outlook/Graph integration    │  │
-│  │ - Runs transaction↔email match │                           │ - Search endpoint for emails   │  │
-│  │ - Combines scoring + AI ranker │                           │ - Move endpoint to folder      │  │
-│  │ - Writes run/candidate/match   │                           │   `matchy`                     │  │
-│  │   records to Teller DB         │                           └────────────────────────────────┘  │
-│  └───────────────┬────────────────┘                                                               │
-│                  │ SQL read/write                                                                 │
-│                  ▼                                                                                │
-│  ┌──────────────────────────────────────────────────────────┐                                     │
-│  │                      TELLER DB                           │                                     │
-│  │                                                          │                                     │
-│  │ - Source transactions: `teller.transaction`              │                                     │
-│  │ - Match run table: `teller.transaction_email_match_run`  │                                     │
-│  │ - Candidates table: `teller.transaction_email_candidate` │                                     │
-│  │ - Match table: `teller.transaction_email_match`          │                                     │
-│  └──────────────────────────────────────────────────────────┘                                     │
-│                                                                                                   │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
-
-TRIGGER FLOW
-┌─────────────────────────────┐      POST /v1/matchy/runs       ┌────────────────────────────┐
-│ Caller (manual/auto/retry)  │───────────────────────────────► │ Matchy API                 │
-│ (operator/job in ecosystem) │                                 │ validates ids + starts run │
-└─────────────────────────────┘                                 └────────────────────────────┘
-```
-
-### Additional Architecture Views
-
-#### Auth + Token Lifecycle (Connect -> storage -> API usage)
-
-```text
-Trust boundaries:
-- Local app boundary: macOS SwiftUI app + WKWebView connect surface
-- Local secrets-at-rest boundary: ~/.teller (0700 dir, 0400 secret files)
-- External API boundary: api.teller.io (mTLS + token auth)
-
-SwiftUI Connect flow
-  -> receives token/enrollment callback
-  -> writes auth_token*.json + enrollment_id*.txt under ~/.teller
-  -> ingest/runtime reads cert/key + per-context token
-  -> calls api.teller.io endpoints
-  -> on enrollment.disconnected, launch local repair flow and retry once
-```
-
-Token lifecycle notes:
-
-- Initial connect/add writes token and enrollment ID files to `~/.teller`.
-- Reconnect rotates token in-place for the selected context.
-- Multi-context enrollments use suffixed file pairs (`auth_token_<suffix>.json`, `enrollment_id_<suffix>.txt`).
-- Certificate/private key rotation remains managed in Teller Dashboard; local scripts only consume local files.
-
-#### Classification Write Path + AuthZ Boundary
-
-```text
-macOS UI action
-  -> POST /v1/transactions/classifications
-  -> FastAPI app validates TELLER_CLASSIFIER_WRITE_TOKEN availability at startup
-  -> first authenticated /v1 request resolves token from 1psa and caches it in-process
-  -> shared auth guard enforces X-Teller-Write-Token on all /v1 routes
-  -> Pydantic validates payload
-  -> SQLAlchemy persists to teller.transaction_nys_snw_category
-  -> tests/t16_classification_persistence_verification_test.sh confirms API->DB write/read
-```
-
-#### Local Runtime Topology (processes, ports, configs)
-
-```text
-TransactionClassifier (SwiftUI app, launched by 10_run_classification_macos_ui.sh)
-  -> talks to FastAPI at TELLER_CLASSIFIER_API_URL (default https://127.0.0.1:8787)
-
-09_run_classification_api.py (FastAPI)
-  -> binds TELLER_CLASSIFIER_API_HOST/PORT (default 127.0.0.1:8787)
-  -> requires 1psa-backed TELLER_CLASSIFIER_WRITE_TOKEN before serving
-  -> requires HTTPS with local cert/key files (no HTTP override path)
-  -> persists via SQLAlchemy to profile-resolved PostgreSQL or SQLite target
-
-Optional Mailcart proxy target defaults to https://127.0.0.1:8788
-  (override with MAILCART_SERVICE_BASE_URL / MAILCART_SERVICE_TOKEN)
-
-Config and secrets:
-  - ~/.teller/auth_token*.json, enrollment_id*.txt, certificate.pem, private_key.pem
-  - db profile resolution: ~/.teller/db_profiles.json -> ./config/db-profiles.local.json -> ./config/db-profiles.json
-  - ~/.env fallbacks for ITEM.field profile entries
-```
-
-### Teller ↔ Mailcart contract (Match Review UI)
-
-Canonical upstream contract lives in the Mailcart repo (`mailcart/scripts/matchy_mailcart_api.py`,
-R035 for per-message; R020 for search) and matchy's `matchy/mailcart_client.py`. Teller
-implements the client in `src/teller/teller_mailcart_client.py` and the classifier API proxy in
-`src/teller/teller_classification_api.py` (facade over `src/teller/classification/`). Field mappings and error semantics below are the
-single source of truth for R060/R061/R062.
-
-#### Mailcart upstream endpoints
-
-- `GET /v1/messages/search?query=<string>&limit=<int>` — `limit` is 1–100. Returns
-  `{"messages": [{"message_id", "subject", "preview", "received_at", "sender", "body_text"}]}`.
-- `GET /v1/messages/{message_id}` — returns
-  `{"message_id", "subject", "preview", "received_at", "sender", "recipients", "html_body", "text_body", "body_text"}`.
-- `POST /v1/messages/{message_id}/move` — used by matchy, not by Teller.
-
-#### Teller client configuration
-
-- Base URL defaults to `https://127.0.0.1:8788`; override with
-  `MAILCART_SERVICE_BASE_URL` (same name matchy uses). Non-HTTPS values are rejected.
-- Bearer token is optional via `MAILCART_SERVICE_TOKEN`; attached only when set. Mailcart does
-  not validate it. The Microsoft Graph token Mailcart uses internally is managed by Mailcart
-  itself (cached at `~/.cache/mailcart/graph_oauth.json`, refreshed on 401).
-
-#### Teller classifier proxy endpoints
-
-All three require `X-Teller-Write-Token` like other `/v1/*` routes.
-
-- `GET /v1/matchy/transactions/{transaction_id}/candidates` — latest-run candidates enriched
-  with Mailcart metadata (R060).
-- `GET /v1/matchy/messages/{email_message_id}` — full message body for the right pane (R061).
-- `GET /v1/matchy/messages/search` — free-form search for ad-hoc discovery (R062). Register
-  this static path before `/v1/matchy/messages/{email_message_id}` so Starlette does not treat
-  the literal segment `search` as a message id.
-
-#### Field mapping (Mailcart → UI-facing)
-
-| Mailcart field | UI field | Used by |
-| --- | --- | --- |
-| `message_id` | `email_message_id` | candidates, message, search |
-| `sender` | `from` | all three |
-| `preview` | `snippet` | all three (fallback: first 200 chars of `body_text`/`text_body` for candidates) |
-| `recipients` | `to` | message |
-| `html_body`, `text_body` | same | message |
-| `received_at` | same | message, search |
-
-Legacy aliases (`email_message_id`, `from`, `snippet`, `id`, `to`) are accepted on inbound
-payloads so tests and older mocks keep working.
-
-Search responses must include a `messages` array; a legacy `items` array is accepted as a
-fallback. Missing both surfaces as HTTP 502.
-
-#### Identifier validation (R061)
-
-`email_message_id` path segments must match Microsoft Graph message IDs: URL-safe base64-ish
-strings (`[A-Za-z0-9_\-=]+`), capped at 4096 characters. Invalid ids return HTTP 400.
-
-#### Candidate enrichment behavior (R060)
-
-- Rows with cached `subject`/`sender`/`snippet` (persisted by matchy at insert time) are served
-  directly from the DB.
-- Rows with NULL cache (legacy data) are fetched from Mailcart via a 16-worker thread pool;
-  metadata is written back to the cache so subsequent calls are hot.
-- Per-id Mailcart failures degrade to `mailcart_error` on the row rather than failing the whole
-  listing; Mailcart 404 on enrichment is translated to a user-friendly "no longer in inbox" label
-  and negative-cached so Graph is not re-queried on every UI render.
-- Input candidate order is preserved in the response.
-
-#### Upstream error mapping
-
-- Mailcart 404 on message fetch → classifier 404.
-- Other Mailcart/upstream failures → classifier 502.
-- Mailcart unavailable at startup → classifier 503 on proxy routes.
-
-## Matching & Extraction Algorithms (CS deep-dive)
-
-The match pipeline and the OCR statement-backfill lean on a handful of classic
-computer-science algorithms. This section is an onboarding-friendly tour: for each one,
-what problem it solves in plain English, a small diagram, where it lives in code, and a
-link to read more. Every algorithm here is also a tracked, test-covered requirement
-(see the per-module `requirements/` docs), so the behavior is pinned down by tests.
-
-| Algorithm | Job in the pipeline | Module | Code (file → symbols) | Requirement |
-| --- | --- | --- | --- | --- |
-| TF-IDF / Okapi BM25 | Rank candidate emails by how well their text matches a transaction | matchy | `scoring_core.py` → `inverse_document_frequency`, `bm25_score`, `bm25_relevance`; `scoring.py` → `rank_candidates` | R042–R044, R047 |
-| Subset-sum reconciliation | Detect when receipt line-items add up to the bank's single total | matchy | `scoring_core.py` → `subset_sum_reachable` | R045, R047 |
-| SimHash + Hamming distance | Collapse near-duplicate emails (forwards / marketing copies) | matchy | `service.py` → `_simhash64`, `_hamming_distance`, `_collapse_near_duplicates` | R055 |
-| Aho-Corasick | Match many search filters against each email field in one pass | mailcart | `matchy_mailcart_api.py` → `AhoCorasick`, `_build_criteria_matcher` | R050 |
-| 1-D density clustering | Rebuild text lines from scattered OCR word boxes | teller | `08_backfill_bank_statements.py` → `reconstruct_lines`, `_adaptive_line_epsilon` | R030 |
-
-### A) TF-IDF / Okapi BM25 — relevance ranking
-
-**The idea (plain English):** This is how search engines decide which document best matches
-a query. A word that appears often *inside one email* (term frequency, **TF**) but is *rare
-across all the candidate emails* (inverse document frequency, **IDF**) is a strong signal —
-e.g. a distinctive merchant token like `peets` matters far more than a common word like
-`order`. **BM25** refines TF-IDF with two real-world corrections: **saturation** (the 10th
-occurrence of a word barely adds more than the 9th) and **length normalization** (a long
-email shouldn't win just for being long).
-
-```text
-transaction text ─► query tokens
-candidate emails ─► corpus stats (document frequency per token, average length)
-
-for each candidate document:
-  BM25 = Σ over query tokens t of:
-           idf(t) · ( tf·(k1+1) / ( tf + k1·(1 − b + b·(doclen/avglen)) ) )
-                       └ saturation (k1) ┘   └ length normalization (b) ┘
-
-  bm25_relevance = score / (score + saturation)      → squashed into a 0..1 weight
-```
-
-**Where it lives:** `matchy/matchy/scoring_core.py` (`inverse_document_frequency`,
-`bm25_score`, `bm25_relevance`) blended into the final weighted score by `rank_candidates`
-in `matchy/matchy/scoring.py`. Requirements R042–R044, R047.
-
-**Read more:** [Okapi BM25](https://en.wikipedia.org/wiki/Okapi_BM25) ·
-[tf–idf](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)
-
-### B) Subset-sum reconciliation — "do the items add up to the charge?"
-
-**The idea (plain English):** A receipt lists several line items, but the bank shows only one
-total. Did those items produce this charge? That's the classic **subset-sum** question: is
-there *some* subset of the item amounts that adds up to the target (within a small
-tolerance for rounding/tax)? We answer it with a tiny dynamic-programming reachability
-check over integer cents, pruning any running sum that overshoots the target.
-
-```text
-items (cents): [499, 1299, 250, 99]        target: 1798  (± tolerance)
-
-reachable sums (DP), pruning anything > target+tol:
-   {}  ─+499→ {499}  ─+1299→ {1798}   ✓ hits target  → reconciled
-```
-
-**Where it lives:** `matchy/matchy/scoring_core.py` (`subset_sum_reachable`); contributes the
-`amount_reconciliation` reason key via `rank_candidates`. Requirements R045, R047.
-
-**Read more:** [Subset sum problem](https://en.wikipedia.org/wiki/Subset_sum_problem) ·
-[Dynamic programming](https://en.wikipedia.org/wiki/Dynamic_programming)
-
-### C) SimHash + Hamming distance — near-duplicate collapse
-
-**The idea (plain English):** People forward the same receipt, or get both a marketing copy
-and an order confirmation. These are *near*-identical, not byte-identical, so a normal hash
-(which changes completely on any edit) can't catch them. **SimHash** is a *locality-sensitive*
-hash: similar text produces similar 64-bit fingerprints. We then count how many bits differ
-(**Hamming distance**); if that's at or below a threshold, the emails are treated as
-duplicates and we keep just one representative.
-
-```text
-email A ─► tokens ─► per-bit weighted vote ─► 1 0 1 1 … 0   (64-bit fingerprint)
-email B ─► tokens ─► per-bit weighted vote ─► 1 0 1 0 … 0   (64-bit fingerprint)
-                                   XOR + popcount ─► 1 bit differs
-                                   1 ≤ threshold  ─► near-dup ─► keep A, drop B
-```
-
-**Where it lives:** `matchy/matchy/service.py` (`_simhash64`, `_hamming_distance`,
-`_collapse_near_duplicates`), run in `match_transaction` after body enrichment so similarity
-is judged on full bodies. Disabled by default (threshold 0). Requirement R055.
-
-**Read more:** [SimHash](https://en.wikipedia.org/wiki/SimHash) ·
-[Hamming distance](https://en.wikipedia.org/wiki/Hamming_distance) ·
-[Locality-sensitive hashing](https://en.wikipedia.org/wiki/Locality-sensitive_hashing)
-
-### D) Aho-Corasick — many filters, one pass
-
-**The idea (plain English):** A search can carry several filters at once
-(`subject:…`, `sender:…`, `body:…`). The naive approach scans each email field once *per
-filter*. **Aho-Corasick** builds a single automaton — a trie of all the filter strings plus
-"failure links" that let it never backtrack — and finds *every* matching filter in one pass
-over the text. Cost drops from O(text × patterns) to O(text + patterns).
-
-```text
-filters ["amzn", "amex", "uber"] ─► build automaton once (trie + failure links)
-
-field text  ──────────────────────► single O(n) pass ─► { matched filters }
-   naive alternative: re-scan the field once per filter  (O(n · patterns))
-```
-
-**Where it lives:** `mailcart/scripts/matchy_mailcart_api.py` (`AhoCorasick`,
-`_build_criteria_matcher`); built once per `/v1/messages/search` request and reused across
-every scanned message. Requirement R050.
-
-**Read more:** [Aho–Corasick algorithm](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm) ·
-[Trie](https://en.wikipedia.org/wiki/Trie)
-
-### E) 1-D density clustering — rebuilding OCR text lines
-
-**The idea (plain English):** OCR returns word boxes with (x, y) positions but no concept of
-"lines." Words on the same visual line share a similar `y`. We sort top-to-bottom and start
-a new line wherever the vertical gap is unusually large. A *fixed* gap threshold breaks
-across font sizes and scan resolutions, so we derive the threshold from the **median** gap
-(robust to outliers) — adaptive density-based clustering in one dimension.
-
-```text
-y positions (sorted): .12 .13 .14    .31 .32      .55
-consecutive gaps:        .01 .01   .17    .01    .23
-epsilon = max(floor, gap_factor · median(gaps))
-split wherever gap > epsilon:
-   line 1 [.12 .13 .14]   line 2 [.31 .32]   line 3 [.55]
-```
-
-**Where it lives:** `teller/08_backfill_bank_statements.py` (`reconstruct_lines`,
-`_adaptive_line_epsilon`). Requirement R030.
-
-**Read more:** [Cluster analysis](https://en.wikipedia.org/wiki/Cluster_analysis) ·
-[Single-linkage clustering](https://en.wikipedia.org/wiki/Single-linkage_clustering) ·
-[Median](https://en.wikipedia.org/wiki/Median)
+Teller-owned architecture reference: Teller bank ingest, the `teller.*` schema, DB profiles, backup/restore,
+shared DB/session helpers, the local test/security stack, and OCR statement-line reconstruction.
+
+For the cross-repo ecosystem view (Teller ↔ Matchy ↔ Mailcart system landscape and trigger flow), see the
+eggnest root [`../Architecture.md`](../Architecture.md). Classification API / macOS UI architecture lives in
+[`../classy/Architecture.md`](../classy/Architecture.md); matching/scoring algorithms in
+[`../matchy/README.md`](../matchy/README.md); Outlook/Graph search internals in
+[`../mailcart/README.md`](../mailcart/README.md).
 
 ## Tech Stack Overview
 
@@ -544,49 +245,7 @@ PostgreSQL (teller schema)
       +--> views/triggers/audit paths
 ```
 
-### 3) CLASSIFICATION WRITE PATH + AUTHZ BOUNDARY
-
-Why: Makes mutation protection and persistence verification explicit.
-
-```text
-Trust/authz boundaries:
-- UI boundary: macOS client invokes localhost FastAPI routes.
-- Auth boundary: `/v1/*` routes (reads + writes) require `X-Teller-Write-Token` from 1psa-backed secret.
-- Persistence boundary: only validated writes reach Postgres via SQLAlchemy session.
-
-┌────────────────────────────────────────────────────────────────────┐
-│ Local host (macOS)                                                 │
-│                                                                    │
-│ User action in macOS UI (TransactionClassifier/APIClient)          │
-│   ├─ GET  /v1/transactions                                         │
-│   └─ POST /v1/transactions/classifications                         │
-│                     │                                              │
-│                     v                                              │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ FastAPI app (`09_run_classification_api.py` -> `create_app`) │  │
-│  │                                                              │  │
-│  │ 1) Startup preflight verifies `TELLER_CLASSIFIER_WRITE_TOKEN`│  │
-│  │    can be resolved from 1psa before serving `/v1/*` traffic. │  │
-│  │ 2) Request authz enforces `X-Teller-Write-Token` on `/v1/*`; │  │
-│  │    runtime token resolution is cached in-process (restart to │  │
-│  │    pick up rotated 1psa values).                             │  │
-│  │    `/health` remains unauthenticated.                        │  │
-│  │ 3) Pydantic validation rejects malformed payloads.           │  │
-│  │ 4) `_write_one` persists classification mutations via        │  │
-│  │    SQLAlchemy into `teller.transaction_nys_snw_category`.    │  │
-│  └───────────────────────────────┬──────────────────────────────┘  │
-└──────────────────────────────────┼─────────────────────────────────┘
-                                   v
-                     ┌────────────────────────────────┐
-                     │ PostgreSQL (teller schema)     │
-                     │ classification row is persisted│
-                     └───────────────┬────────────────┘
-                                     │ verified by
-                                     v
-          `tests/t16_classification_persistence_verification_test.sh`
-```
-
-### 4) DATA MODEL ER DIAGRAM (CORE TABLES + RELATIONSHIPS)
+### 3) DATA MODEL ER DIAGRAM (CORE TABLES + RELATIONSHIPS)
 
 Why: Repo has rich SQL under `src/sql/postgres/`; a compact ER view speeds onboarding.
 
@@ -681,7 +340,7 @@ Notes:
 - `transaction_classification` is implemented as `teller.transaction_nys_snw_category`.
 - Matchy tables (`transaction_email_match_run`, `transaction_email_candidate`, `transaction_email_match`, `transaction_email_match_audit`) are in active use by the classification API.
 
-### 5) LOCAL RUNTIME TOPOLOGY (PROCESSES, PORTS, FILES, ENV)
+### 4) LOCAL RUNTIME TOPOLOGY (PROCESSES, PORTS, FILES, ENV)
 
 Why: Helpful for debugging "what should be running" and "where config comes from".
 
@@ -733,7 +392,7 @@ Local runtime debugging checklist:
 - If DB connect fails, inspect the resolved profile (`TELLER_DB_PROFILE`, profile file path precedence, `1psa_or_env_item`, and `DB_DIALECT`/`SQLITE_PATH` exports; sqlite default path is `.database/teller.sqlite3`).
 - If match-review email fetch fails, verify optional Mailcart process on `127.0.0.1:8788` or override `MAILCART_SERVICE_BASE_URL`.
 
-### 6) TEST STRATEGY MAP (LANES -> SCOPE -> GATES)
+### 5) TEST STRATEGY MAP (LANES -> SCOPE -> GATES)
 
 Why: Explains why there are many numbered scripts and what each gate protects.
 
@@ -772,7 +431,7 @@ How to interpret failures:
 - t16 fail: persistence contract break between API and database layers.
 - 10 (parallel runner) fail: composite readiness not met; inspect failing child lanes.
 
-### 7) SECURITY THREAT MODEL (TRUST BOUNDARIES + DATA FLOWS)
+### 6) SECURITY THREAT MODEL (TRUST BOUNDARIES + DATA FLOWS)
 
 Why: Security tools are present, but a visual threat model explains risk ownership.
 
@@ -852,7 +511,7 @@ Threat ownership map (who mitigates what):
 
 Accepted residual risk (owner: repository owner): the `/v1/*` auth gate uses a single shared `X-Teller-Write-Token` with no per-user identity or roles; reads and writes resolve to the same credential. This coarse model is an intentional, scoped decision for the single-user local threat model and must be upgraded to per-user identity, a distinct read-only token, and DB reader/writer role mapping if the service becomes multi-user, is exposed beyond localhost, or is deployed to a shared environment. See [`docs/security/api_authorization_model.md`](docs/security/api_authorization_model.md).
 
-### 8) OPERATIONS / RECOVERY FLOW (BACKUP, RESTORE, DESTROY)
+### 7) OPERATIONS / RECOVERY FLOW (BACKUP, RESTORE, DESTROY)
 
 Why: Scripts `97/98/99` are critical but easy to misuse without a flow diagram.
 
@@ -943,3 +602,38 @@ Operational notes:
   managed targets cannot accept a CREATE-DATABASE-style restore or replay globals).
 - Use `--table schema.table` in `99` for targeted repair when full schema replacement is not desired.
 
+## Teller-Owned Algorithm: OCR Statement-Line Reconstruction
+
+The match pipeline and the OCR statement-backfill lean on a handful of classic computer-science algorithms.
+Teller owns one of them; the others live with their owning repos:
+
+| Algorithm | Job in the pipeline | Module | Code (file → symbols) | Requirement |
+| --- | --- | --- | --- | --- |
+| TF-IDF / Okapi BM25 | Rank candidate emails by how well their text matches a transaction | matchy | see [`../matchy/README.md`](../matchy/README.md) | R042–R044, R047 |
+| Subset-sum reconciliation | Detect when receipt line-items add up to the bank's single total | matchy | see [`../matchy/README.md`](../matchy/README.md) | R045, R047 |
+| SimHash + Hamming distance | Collapse near-duplicate emails (forwards / marketing copies) | matchy | see [`../matchy/README.md`](../matchy/README.md) | R055 |
+| Aho-Corasick | Match many search filters against each email field in one pass | mailcart | see [`../mailcart/README.md`](../mailcart/README.md) | R050 |
+| 1-D density clustering | Rebuild text lines from scattered OCR word boxes | teller | `08_backfill_bank_statements.py` → `reconstruct_lines`, `_adaptive_line_epsilon` | R030 |
+
+### 1-D density clustering — rebuilding OCR text lines
+
+**The idea (plain English):** OCR returns word boxes with (x, y) positions but no concept of
+"lines." Words on the same visual line share a similar `y`. We sort top-to-bottom and start
+a new line wherever the vertical gap is unusually large. A *fixed* gap threshold breaks
+across font sizes and scan resolutions, so we derive the threshold from the **median** gap
+(robust to outliers) — adaptive density-based clustering in one dimension.
+
+```text
+y positions (sorted): .12 .13 .14    .31 .32      .55
+consecutive gaps:        .01 .01   .17    .01    .23
+epsilon = max(floor, gap_factor · median(gaps))
+split wherever gap > epsilon:
+   line 1 [.12 .13 .14]   line 2 [.31 .32]   line 3 [.55]
+```
+
+**Where it lives:** `teller/08_backfill_bank_statements.py` (`reconstruct_lines`,
+`_adaptive_line_epsilon`). Requirement R030.
+
+**Read more:** [Cluster analysis](https://en.wikipedia.org/wiki/Cluster_analysis) ·
+[Single-linkage clustering](https://en.wikipedia.org/wiki/Single-linkage_clustering) ·
+[Median](https://en.wikipedia.org/wiki/Median)

@@ -1,390 +1,43 @@
 #!/usr/bin/env bats
+
 load "helpers/common.bash"
-
-make_psql_happy() {
-  cat > "${STUB_BIN}/psql" <<'PY'
-#!/usr/bin/env python3
-import os
-import sys
-
-def log_line():
-  path = os.environ.get("PSQL_LOG", "")
-  if not path:
-    return
-  with open(path, "a", encoding="utf-8") as h:
-    h.write("psql " + " ".join(sys.argv[1:]) + "\n")
-
-def get_sql(a):
-  if not a:
-    return ""
-  tail = a[-1]
-  if any(k in tail for k in ("SELECT", "WITH", "select", "with")) or "teller" in tail:
-    return tail
-  if "-Atc" in a:
-    return a[a.index("-Atc") + 1]
-  if "-c" in a:
-    return a[a.index("-c") + 1]
-  return tail
-
-def main():
-  log_line()
-  args = sys.argv[1:]
-  sql = get_sql(args)
-  if "teller_read" in sql and "WITH expected" in sql and "role_name" in sql:
-    print("", end="")
-    return
-  if "nspname = 'teller'" in sql and "EXISTS" in sql and "pg_namespace" in sql and "pg_constraint" not in sql:
-    print("t", end="")
-    return
-  if "expected(table_name)" in sql and "institution" in sql and "teller" in sql:
-    print("", end="")
-    return
-  if "transaction_info_view" in sql and "views" in sql and "EXISTS" in sql:
-    print("t", end="")
-    return
-  if "transaction_info_view" in sql and "SELECT 1" in sql and "FROM teller" in sql:
-    print("1", end="")
-    return
-  if "confdeltype" in sql and "transaction_nys_snw_category" in sql:
-    if os.environ.get("FK_BROKEN") == "1":
-      print("f", end="")
-    else:
-      print("t", end="")
-    return
-  if "update_updated_at" in sql and "pg_proc" in sql and "teller" in sql and "EXISTS" in sql and "information_schema.columns" not in sql:
-    print("t", end="")
-    return
-  if "pg_trigger" in sql and "transaction_nys_snw_category" in sql and "update_updated_at" in sql:
-    print("t", end="")
-    return
-  if "information_schema.columns" in sql and "LEFT JOIN actual" in sql and "update_updated_at" in sql:
-    if os.environ.get("TRIGGER_GAPS") == "1":
-      print("transaction")
-    else:
-      print("", end="")
-    return
-  if "expected(table_name)" in sql and "relforcerowsecurity" in sql:
-    if os.environ.get("RLS_GAPS") == "1":
-      print("transaction")
-    else:
-      print("", end="")
-    return
-  if "expected(view_name)" in sql and "audit_log_export_v1" in sql:
-    if os.environ.get("SECURITY_VIEW_GAPS") == "1":
-      print("audit_log_export_v1")
-    else:
-      print("", end="")
-    return
-  if "expected(table_name, column_name)" in sql and "account_number_hash" in sql:
-    if os.environ.get("PII_COLUMN_GAPS") == "1":
-      print("account_details.account_number_hash")
-    else:
-      print("", end="")
-    return
-  if "expected(column_name)" in sql and "request_id" in sql and "audit_log" in sql:
-    if os.environ.get("AUDIT_COLUMN_GAPS") == "1":
-      print("request_id")
-    else:
-      print("", end="")
-    return
-  if "security_event_log" in sql and "information_schema.tables" in sql and "EXISTS" in sql:
-    if os.environ.get("SECURITY_EVENT_TABLE_MISSING") == "1":
-      print("f", end="")
-    else:
-      print("t", end="")
-    return
-  if "proc.proname = 'log_security_event'" in sql:
-    if os.environ.get("LOG_SECURITY_EVENT_MISSING") == "1":
-      print("f", end="")
-    else:
-      print("t", end="")
-    return
-  if "proc.proname = 'purge_audit_log_before'" in sql:
-    if os.environ.get("PURGE_AUDIT_FN_MISSING") == "1":
-      print("f", end="")
-    else:
-      print("t", end="")
-    return
-  if "pg_stat_ssl" in sql and "pg_backend_pid" in sql:
-    if os.environ.get("SSL_INACTIVE") == "1":
-      print("f", end="")
-    else:
-      print("t", end="")
-    return
-  print("t", end="")
-
-if __name__ == "__main__":
-  main()
-PY
-  chmod +x "${STUB_BIN}/psql"
-}
-
-setup() {
-  setup_shell_test
-  create_repo_fixture
-  copy_script_to_fixture "t05_deploy_database_verification_test.sh"
-  export PSQL_LOG="${TEST_TMPDIR}/psql.log"
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  stub_cmd 1psa "echo from1psa"
-  mkdir -p "${FIXTURE_ROOT}/src/scripts"
-  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
-#!/usr/bin/env bash
-echo "PROFILE_NAME=local"
-echo "DB_DIALECT=postgresql"
-echo "PROFILE_TARGET=local"
-echo "PG_HOST=localhost"
-echo "PG_PORT=5432"
-echo "PG_DBNAME=prod"
-echo "PG_USER=teller"
-echo "PG_SSLMODE=disable"
-echo "PG_SEARCH_PATH=teller"
-echo "PG_RUNTIME_ROLE=teller_write"
-echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
-echo "SQLCIPHER_KEY=''"
-EOF
-  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
-  export PATH="${STUB_BIN}:/usr/bin:/bin"
-  export PSQL_LOG
-}
 
 teardown() {
   teardown_shell_test
 }
 
-@test "fails on first psql error" {
+src() {
+  printf '%s' "$(repo_root)/tests/t05_deploy_database_verification_test.sh"
+}
+
+@test "enables secure umask and strict shell mode" {
   #R001-T01
-  cat > "${STUB_BIN}/psql" <<'EOF'
-#!/usr/bin/env bash
-exit 1
-EOF
-  chmod +x "${STUB_BIN}/psql"
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -ne 0 ]
+  run grep "umask 007" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "set -euo pipefail" "$(src)"
+  [ "$status" -eq 0 ]
 }
 
-@test "psql command includes custom host and port from env" {
+@test "derives script and runner paths from script location" {
   #R005-T01
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  run env TELLER_DB_HOST=custom.local TELLER_DB_PORT=15432 TELLER_DB_PASSWORD=pw TELLER_DB_NAME=d TELLER_DB_USER=u \
-    zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
+  run grep "SCRIPT_DIR=" "$(src)"
   [ "$status" -eq 0 ]
-  grep -F "custom.local" "${PSQL_LOG}"
-  grep -F "15432" "${PSQL_LOG}"
+  run grep "RUNNER_HOME=" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "runner" "$(src)"
+  [ "$status" -eq 0 ]
 }
 
-@test "uses 1psa when teller db password is unset" {
+@test "loads teller runbook profile before delegation" {
   #R010-T01
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
+  run grep "export RUNBOOK_REPO_ROOT" "$(src)"
   [ "$status" -eq 0 ]
-  [[ "$(cat "${PSQL_LOG}")" == *"psql "* ]]
+  run grep "config/runbook/teller.env" "$(src)"
+  [ "$status" -eq 0 ]
 }
 
-@test "fails with clear error when database password is empty" {
+@test "delegates to mapped runner golden script" {
   #R015-T01
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  cat > "${STUB_BIN}/1psa" <<'EOF'
-#!/usr/bin/env bash
-echo ""
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/1psa"
-  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"❌ FAIL:"* ]]
-}
-
-@test "fails when classification FK is missing ON DELETE CASCADE" {
-  #R020-T01 #R025-T01
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  run env TELLER_DB_PASSWORD=pw FK_BROKEN=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"❌ FAIL:"* ]]
-  [[ "$output" == *"CASCADE"* || "$output" == *"cascade"* ]]
-}
-
-@test "emits a single pass line for successful verification" {
-  #R030-T01 #R035-T01 #R040-T01 #R045-T01
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
+  run grep "exec \"\${RUNNER_HOME}/tests/t05_deploy_database_verification_test.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
-  [ "$(printf '%s' "$output" | grep -c "✅ PASS:")" -eq 1 ]
-}
-
-@test "fails when updated_at coverage has gaps" {
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  run env TELLER_DB_PASSWORD=pw TRIGGER_GAPS=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"missing updated_at trigger coverage: transaction"* ]]
-  [[ "$output" == *"❌ FAIL:"* ]]
-}
-
-@test "fails when enforced RLS coverage has gaps" {
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  run env TELLER_DB_PASSWORD=pw RLS_GAPS=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"missing enforced RLS on teller.transaction"* ]]
-}
-
-@test "fails when PII security views or columns are missing" {
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  run env TELLER_DB_PASSWORD=pw SECURITY_VIEW_GAPS=1 PII_COLUMN_GAPS=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"missing security views:"* ]]
-  [[ "$output" == *"missing PII protection columns:"* ]]
-}
-
-@test "fails when audit evidence schema artifacts are missing" {
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  run env TELLER_DB_PASSWORD=pw AUDIT_COLUMN_GAPS=1 SECURITY_EVENT_TABLE_MISSING=1 LOG_SECURITY_EVENT_MISSING=1 PURGE_AUDIT_FN_MISSING=1 \
-    zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"missing audit evidence columns:"* ]]
-  [[ "$output" == *"missing table: teller.security_event_log"* ]]
-}
-
-stub_managed_verify_helper() {
-  mkdir -p "${FIXTURE_ROOT}/src/scripts"
-  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
-#!/usr/bin/env bash
-echo "PROFILE_NAME=supabase"
-echo "DB_DIALECT=postgresql"
-echo "PROFILE_TARGET=managed"
-echo "PG_HOST=db.example.supabase.co"
-echo "PG_PORT=5432"
-echo "PG_DBNAME=postgres"
-echo "PG_USER=postgres"
-echo "PG_SSLMODE=require"
-echo "PG_SEARCH_PATH=teller"
-echo "PG_RUNTIME_ROLE=''"
-echo "PG_ONEPSA_ITEM=eggnest_supabase"
-echo "SQLCIPHER_KEY=''"
-EOF
-  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
-}
-
-@test "managed profile skips role existence check" {
-  #R050-T01
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  stub_managed_verify_helper
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -eq 0 ]
-  ! grep -F "WITH expected(role_name)" "${PSQL_LOG}"
-}
-
-@test "uses profile psa item when password env is unset" {
-  #R055-T01
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  stub_managed_verify_helper
-  : > "${TEST_TMPDIR}/1psa.log"
-  cat > "${STUB_BIN}/1psa" <<EOF
-#!/usr/bin/env bash
-echo "1psa \$*" >> "${TEST_TMPDIR}/1psa.log"
-echo "from1psa"
-EOF
-  chmod +x "${STUB_BIN}/1psa"
-  run env -u TELLER_DB_PASSWORD zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -eq 0 ]
-  grep -F "1psa -p eggnest_supabase" "${TEST_TMPDIR}/1psa.log"
-}
-
-stub_require_ssl_helper() {
-  mkdir -p "${FIXTURE_ROOT}/src/scripts"
-  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
-#!/usr/bin/env bash
-echo "PROFILE_NAME=local"
-echo "DB_DIALECT=postgresql"
-echo "PROFILE_TARGET=local"
-echo "PG_HOST=localhost"
-echo "PG_PORT=5432"
-echo "PG_DBNAME=prod"
-echo "PG_USER=teller"
-echo "PG_SSLMODE=require"
-echo "PG_SEARCH_PATH=teller"
-echo "PG_RUNTIME_ROLE=teller_write"
-echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
-echo "SQLCIPHER_KEY=''"
-EOF
-  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
-}
-
-@test "ssl-required deploy fails when pg_stat_ssl reports unencrypted session" {
-  #R060-T01 #R060-T02
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  stub_require_ssl_helper
-  run env TELLER_DB_PASSWORD=pw SSL_INACTIVE=1 zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"sslmode=require"* ]]
-  [[ "$output" == *"pg_stat_ssl"* ]]
-}
-
-@test "ssl probe is skipped when sslmode is disable" {
-  : > "${PSQL_LOG}"
-  make_psql_happy
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -eq 0 ]
-  ! grep -F "pg_stat_ssl" "${PSQL_LOG}"
-}
-
-@test "fails with setup guidance when db profile file is missing" {
-  #R065-T01
-  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
-#!/usr/bin/env bash
-echo "No DB profile file found. Create one with: cp config/db-profiles-EXAMPLE.json config/db-profiles.json" >&2
-exit 1
-EOF
-  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"cp config/db-profiles-EXAMPLE.json config/db-profiles.json"* ]]
-}
-
-@test "sqlite profile runs sqlite verification path" {
-  #R066-T01
-  cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<EOF
-#!/usr/bin/env bash
-echo "DB_DIALECT=sqlite"
-echo "PROFILE_NAME=sqlite"
-echo "PROFILE_TARGET=sqlite"
-echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
-echo "SQLCIPHER_KEY='cipher-key'"
-EOF
-  chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
-  cat > "${STUB_BIN}/sqlcipher" <<'EOF'
-#!/usr/bin/env bash
-input="$(cat)"
-if [[ "$input" == *"sqlite_master"* && "$input" == *"type='table'"* ]]; then
-  if [[ "$input" == *"institution"* || "$input" == *"account"* || "$input" == *"transaction_type"* || "$input" == *"transaction"* || "$input" == *"nys_snw_category"* || "$input" == *"transaction_nys_snw_category"* || "$input" == *"transaction_email_match"* ]]; then
-    echo "1"
-  fi
-  exit 0
-fi
-if [[ "$input" == *"type='view'"* && "$input" == *"transaction_info_view"* ]]; then
-  echo "1"
-  exit 0
-fi
-if [[ "$input" == *"SELECT 1 FROM transaction_info_view LIMIT 1;"* ]]; then
-  echo "1"
-  exit 0
-fi
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/sqlcipher"
-  printf 'seed' > "${FIXTURE_ROOT}/sqlite-dev.db"
-  run env TELLER_DB_PASSWORD=pw zsh "${FIXTURE_ROOT}/t05_deploy_database_verification_test.sh"
-  [ "$status" -eq 0 ]
-  [ "$(printf '%s' "$output" | grep -c "✅ PASS:")" -eq 1 ]
 }

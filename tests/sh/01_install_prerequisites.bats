@@ -1,377 +1,43 @@
 #!/usr/bin/env bats
-load "helpers/common.bash"
 
-setup() {
-  setup_shell_test
-  create_repo_fixture
-  copy_script_to_fixture "01_install_prerequisites.sh"
-}
+load "helpers/common.bash"
 
 teardown() {
   teardown_shell_test
 }
 
-@test "fails clearly when brew is missing" {
-  #R001-T01 #R005-T01 #R012-T01 #R012-T02
-  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"[Homebrew] Not installed."* ]]
+src() {
+  printf '%s' "$(repo_root)/01_install_prerequisites.sh"
 }
 
-@test "idempotent path skips installs when dependencies already exist" {
-  #R010-T01 #R035-T01 #R040-T01 #R050-T01 #R050-T02 #R079-T02 #R080-T02 #R085-T02 #R090-T02 #R095-T02 #R100-T02 #R105-T02 #R110-T02 #R115-T02 #R130-T02
-  mkdir -p "${TEST_TMPDIR}/pg_install/.git"
-  stub_cmd brew "exit 0"
-  stub_cmd go "exit 0"
-  stub_cmd git "exit 0"
-  stub_cmd swiftlint "exit 0"
-  stub_cmd shellcheck "exit 0"
-  stub_cmd gitleaks "exit 0"
-  stub_cmd bats "exit 0"
-  stub_cmd clamscan "exit 0"
-  stub_cmd cpanm "exit 0"
-  stub_cmd perl "exit 0"
-  stub_cmd pg_prove "exit 0"
-  stub_cmd mkcert "exit 0"
-  stub_cmd periphery "exit 0"
-  stub_cmd pip-compile "exit 0"
-  stub_cmd cosign "exit 0"
-  stub_cmd sqlcipher "exit 0"
-  stub_cmd 1psa "echo installed; exit 0"
-
-  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
+@test "enables secure umask and strict shell mode" {
+  #R001-T01
+  run grep "umask 007" "$(src)"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"[1psa] Available on PATH"* ]]
-  [[ "$output" == *"[pg_install] Repository present"* ]]
-  [[ "$output" == *"[mkcert] Available on PATH"* ]]
-  [[ "$output" == *"./tests/t15_verify_macos_crash_test.sh"* ]]
-}
-
-@test "clones pg_install when missing" {
-  #R025-T01 #R030-T01 #R079-T01 #R080-T01 #R085-T01 #R090-T01 #R095-T01 #R100-T01 #R105-T01 #R110-T01
-  stub_cmd brew "exit 0"
-  stub_cmd go "exit 0"
-  stub_cmd swiftlint "exit 0"
-  stub_cmd shellcheck "exit 0"
-  stub_cmd gitleaks "exit 0"
-  stub_cmd bats "exit 0"
-  stub_cmd clamscan "exit 0"
-  stub_cmd cpanm "exit 0"
-  stub_cmd perl "exit 0"
-  stub_cmd pg_prove "exit 0"
-  stub_cmd mkcert "exit 0"
-  stub_cmd periphery "exit 0"
-  stub_cmd pip-compile "exit 0"
-  stub_cmd cosign "exit 0"
-  stub_cmd sqlcipher "exit 0"
-  cat > "${STUB_BIN}/git" <<EOF
-#!/usr/bin/env bash
-echo git "\$*" >> "${CALLS_LOG}"
-if [[ "\$1" == "clone" ]]; then
-  mkdir -p "\$3/.git"
-fi
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/git"
-  stub_cmd 1psa "echo installed; exit 0"
-
-  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"[pg_install] Installed"* ]]
-}
-
-@test "uses PSA_INSTALL_SUDO_ITEM during install flow" {
-  #R015-T01 #R015-T02 #R020-T01 #R045-T01 #R065-T01 #R065-T02
-  stub_cmd brew "exit 0"
-  stub_cmd go "exit 0"
-  stub_cmd swiftlint "exit 0"
-  stub_cmd shellcheck "exit 0"
-  stub_cmd gitleaks "exit 0"
-  stub_cmd bats "exit 0"
-  stub_cmd clamscan "exit 0"
-  stub_cmd cpanm "exit 0"
-  stub_cmd perl "exit 0"
-  stub_cmd pg_prove "exit 0"
-  stub_cmd mkcert "exit 0"
-  stub_cmd periphery "exit 0"
-  stub_cmd pip-compile "exit 0"
-  stub_cmd cosign "exit 0"
-  stub_cmd sqlcipher "exit 0"
-  cat > "${STUB_BIN}/git" <<EOF
-#!/usr/bin/env bash
-echo git "\$*" >> "${CALLS_LOG}"
-if [[ "\$1" == "clone" ]]; then
-  mkdir -p "\$3/.git" "\$3/bin"
-  cat > "\$3/Makefile" <<'MAKE'
-all:
-	@true
-install:
-	@true
-MAKE
-  cat > "\$3/bin/1psa" <<'ONEPSA'
-#!/usr/bin/env bash
-echo local-1psa "\$*" >> "${CALLS_LOG}"
-echo fake-pass
-ONEPSA
-  chmod +x "\$3/bin/1psa"
-fi
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/git"
-  stub_cmd make '
-if [[ "$*" == *"install"* ]]; then
-  cat > "'"${STUB_BIN}"'/1psa" <<'"'"'EOF'"'"'
-#!/usr/bin/env bash
-echo installed-1psa
-EOF
-  chmod +x "'"${STUB_BIN}"'/1psa"
-fi
-exit 0'
-  cat > "${STUB_BIN}/sudo" <<'EOF'
-#!/usr/bin/env bash
-if [[ "$1" == "-S" ]]; then
-  shift
-fi
-"$@"
-EOF
-  chmod +x "${STUB_BIN}/sudo"
-
-  run env PSA_INSTALL_SUDO_ITEM="custom_item" bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
-  [ "$status" -eq 0 ]
-  calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"local-1psa -f custom_item custom_item"* ]]
-}
-
-@test "installs bats-core perl cpanminus mkcert pip-tools and cosign when tooling is missing" {
-  #R055-T01 #R055-T02 #R060-T01 #R060-T02 #R070-T01 #R070-T02 #R075-T01 #R075-T02 #R110-T01 #R115-T01 #R120-T01 #R120-T02 #R125-T01 #R125-T02 #R130-T01
-  mkdir -p "${TEST_TMPDIR}/pg_install/.git"
-  stub_cmd go "exit 0"
-  stub_cmd git "exit 0"
-  stub_cmd swiftlint "exit 0"
-  stub_cmd pg_prove "exit 0"
-  stub_cmd 1psa "echo installed; exit 0"
-  cat > "${STUB_BIN}/brew" <<EOF
-#!/usr/bin/env bash
-echo brew "\$*" >> "${CALLS_LOG}"
-if [[ "\$1" == "install" && "\$2" == "bats-core" ]]; then
-  cat > "${STUB_BIN}/bats" <<'BATS'
-#!/usr/bin/env bash
-exit 0
-BATS
-  chmod +x "${STUB_BIN}/bats"
-fi
-if [[ "\$1" == "install" && "\$2" == "cpanminus" ]]; then
-  cat > "${STUB_BIN}/cpanm" <<'CPANM'
-#!/usr/bin/env bash
-exit 0
-CPANM
-  chmod +x "${STUB_BIN}/cpanm"
-fi
-if [[ "\$1" == "install" && "\$2" == "perl" ]]; then
-  cat > "${STUB_BIN}/perl" <<'PERL'
-#!/usr/bin/env bash
-exit 0
-PERL
-  chmod +x "${STUB_BIN}/perl"
-fi
-if [[ "\$1" == "install" && "\$2" == "clamav" ]]; then
-  cat > "${STUB_BIN}/clamscan" <<'CLAMSCAN'
-#!/usr/bin/env bash
-exit 0
-CLAMSCAN
-  chmod +x "${STUB_BIN}/clamscan"
-fi
-if [[ "\$1" == "install" && "\$2" == "shellcheck" ]]; then
-  cat > "${STUB_BIN}/shellcheck" <<'SHELLCHECK'
-#!/usr/bin/env bash
-exit 0
-SHELLCHECK
-  chmod +x "${STUB_BIN}/shellcheck"
-fi
-if [[ "\$1" == "install" && "\$2" == "gitleaks" ]]; then
-  cat > "${STUB_BIN}/gitleaks" <<'GITLEAKS'
-#!/usr/bin/env bash
-exit 0
-GITLEAKS
-  chmod +x "${STUB_BIN}/gitleaks"
-fi
-if [[ "\$1" == "install" && "\$2" == "mkcert" ]]; then
-  cat > "${STUB_BIN}/mkcert" <<'MKCERT'
-#!/usr/bin/env bash
-exit 0
-MKCERT
-  chmod +x "${STUB_BIN}/mkcert"
-fi
-if [[ "\$1" == "install" && "\$2" == "peripheryapp/periphery/periphery" ]]; then
-  cat > "${STUB_BIN}/periphery" <<'PERIPHERY'
-#!/usr/bin/env bash
-exit 0
-PERIPHERY
-  chmod +x "${STUB_BIN}/periphery"
-fi
-if [[ "\$1" == "install" && "\$2" == "pip-tools" ]]; then
-  cat > "${STUB_BIN}/pip-compile" <<'PIPCOMPILE'
-#!/usr/bin/env bash
-exit 0
-PIPCOMPILE
-  chmod +x "${STUB_BIN}/pip-compile"
-fi
-if [[ "\$1" == "install" && "\$2" == "cosign" ]]; then
-  cat > "${STUB_BIN}/cosign" <<'COSIGN'
-#!/usr/bin/env bash
-exit 0
-COSIGN
-  chmod +x "${STUB_BIN}/cosign"
-fi
-if [[ "\$1" == "install" && "\$2" == "sqlcipher" ]]; then
-  cat > "${STUB_BIN}/sqlcipher" <<'SQLCIPHER'
-#!/usr/bin/env bash
-exit 0
-SQLCIPHER
-  chmod +x "${STUB_BIN}/sqlcipher"
-fi
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/brew"
-  stub_cmd pip-compile "exit 0"
-  stub_cmd cosign "exit 0"
-
-  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
-  [ "$status" -eq 0 ]
-  calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"brew install bats-core"* ]]
-  [[ "$calls" == *"brew install perl"* ]]
-  [[ "$calls" == *"brew install cpanminus"* ]]
-  [[ "$calls" == *"brew install clamav"* ]]
-  [[ "$calls" == *"brew install shellcheck"* ]]
-  [[ "$calls" == *"brew install gitleaks"* ]]
-  [[ "$calls" == *"brew install mkcert"* ]]
-  [[ "$calls" == *"brew install peripheryapp/periphery/periphery"* ]]
-  [[ "$calls" == *"brew install pip-tools"* ]]
-  [[ "$calls" == *"brew install cosign"* || "$output" == *"[cosign] Available on PATH"* ]]
-  [[ "$calls" == *"brew install sqlcipher"* ]]
-}
-
-@test "builds and installs pgtap from theory source when pg_prove is missing" {
-  mkdir -p "${TEST_TMPDIR}/pg_install/.git"
-  stub_cmd go "exit 0"
-  stub_cmd swiftlint "exit 0"
-  stub_cmd shellcheck "exit 0"
-  stub_cmd gitleaks "exit 0"
-  stub_cmd bats "exit 0"
-  stub_cmd perl "exit 0"
-  stub_cmd mkcert "exit 0"
-  stub_cmd periphery "exit 0"
-  stub_cmd pip-compile "exit 0"
-  stub_cmd cosign "exit 0"
-  stub_cmd sqlcipher "exit 0"
-  stub_cmd 1psa "echo installed; exit 0"
-  cat > "${STUB_BIN}/git" <<EOF
-#!/usr/bin/env bash
-echo git "\$*" >> "${CALLS_LOG}"
-if [[ "\$1" == "clone" ]]; then
-  mkdir -p "\$3/.git"
-  cat > "\$3/Makefile" <<'MAKE'
-all:
-	@true
-install:
-	@true
-MAKE
-fi
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/git"
-  cat > "${STUB_BIN}/make" <<EOF
-#!/usr/bin/env bash
-echo make "\$*" >> "${CALLS_LOG}"
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/make"
-  cat > "${STUB_BIN}/cpanm" <<EOF
-#!/usr/bin/env bash
-echo cpanm "\$*" >> "${CALLS_LOG}"
-mkdir -p "${HOME}/perl5/bin"
-cat > "${HOME}/perl5/bin/pg_prove" <<'PGPROVE'
-#!/usr/bin/env bash
-exit 0
-PGPROVE
-chmod +x "${HOME}/perl5/bin/pg_prove"
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/cpanm"
-  cat > "${STUB_BIN}/brew" <<EOF
-#!/usr/bin/env bash
-echo brew "\$*" >> "${CALLS_LOG}"
-if [[ "\$1" == "install" && "\$2" == "clamav" ]]; then
-  cat > "${STUB_BIN}/clamscan" <<'CLAMSCAN'
-#!/usr/bin/env bash
-exit 0
-CLAMSCAN
-  chmod +x "${STUB_BIN}/clamscan"
-fi
-exit 0
-EOF
-  chmod +x "${STUB_BIN}/brew"
-
-  run bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
-  [ "$status" -eq 0 ]
-  calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"git clone https://github.com/theory/pgtap.git ${TEST_TMPDIR}/pgtap"* ]]
-  [[ "$calls" == *"make -C ${TEST_TMPDIR}/pgtap"* ]]
-  [[ "$calls" == *"make -C ${TEST_TMPDIR}/pgtap install"* ]]
-  [[ "$calls" == *"cpanm --local-lib=${HOME}/perl5 --reinstall TAP::Parser::SourceHandler::pgTAP"* ]]
-  [ -x "${HOME}/perl5/bin/pg_prove" ]
-}
-
-@test "requires mkcert formula in installer script" {
-  #R110-T01 #R110-T02
-  run grep 'ensure_brew_formula "mkcert"' "$(repo_root)/01_install_prerequisites.sh"
+  run grep "set -euo pipefail" "$(src)"
   [ "$status" -eq 0 ]
 }
 
-@test "requires pip-tools formula in installer script" {
-  #R120-T01 #R120-T02
-  run grep 'ensure_brew_formula "pip-tools" "pip-compile"' "$(repo_root)/01_install_prerequisites.sh"
+@test "derives script and runner paths from script location" {
+  #R005-T01
+  run grep "SCRIPT_DIR=" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "RUNNER_HOME=" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "runner" "$(src)"
   [ "$status" -eq 0 ]
 }
 
-@test "requires cosign formula in installer script" {
-  #R125-T01 #R125-T02
-  run grep 'ensure_brew_formula "cosign" "cosign"' "$(repo_root)/01_install_prerequisites.sh"
+@test "loads teller runbook profile before delegation" {
+  #R010-T01
+  run grep "export RUNBOOK_REPO_ROOT" "$(src)"
+  [ "$status" -eq 0 ]
+  run grep "config/runbook/teller.env" "$(src)"
   [ "$status" -eq 0 ]
 }
 
-@test "installs TAP::Parser::SourceHandler::pgTAP via user-local cpanm" {
-  mkdir -p "${TEST_TMPDIR}/pg_install/.git"
-  mkdir -p "${TEST_TMPDIR}/pgtap/.git"
-  cat > "${TEST_TMPDIR}/pgtap/Makefile" <<'MAKE'
-all:
-	@true
-install:
-	@true
-MAKE
-  stub_cmd brew "exit 0"
-  stub_cmd go "exit 0"
-  stub_cmd git "exit 0"
-  stub_cmd swiftlint "exit 0"
-  stub_cmd shellcheck "exit 0"
-  stub_cmd gitleaks "exit 0"
-  stub_cmd bats "exit 0"
-  stub_cmd clamscan "exit 0"
-  stub_cmd cpanm "mkdir -p \"${HOME}/perl5/bin\"; printf '#!/usr/bin/env bash\nexit 0\n' > \"${HOME}/perl5/bin/pg_prove\"; chmod +x \"${HOME}/perl5/bin/pg_prove\"; exit 0"
-  stub_cmd pg_prove "exit 1"
-  stub_cmd 1psa "echo fake-pass; exit 0"
-  stub_cmd make "exit 0"
-  stub_cmd perl "exit 0"
-  stub_cmd mkcert "exit 0"
-  stub_cmd periphery "exit 0"
-  stub_cmd pip-compile "exit 0"
-  stub_cmd cosign "exit 0"
-  stub_cmd sqlcipher "exit 0"
-
-  run env PSA_INSTALL_SUDO_ITEM="custom_item" bash "${FIXTURE_ROOT}/01_install_prerequisites.sh"
+@test "delegates to mapped runner golden script" {
+  #R015-T01
+  run grep "exec \"\${RUNNER_HOME}/01_install_prerequisites.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
-  calls="$(<"${CALLS_LOG}")"
-  [[ "$calls" == *"cpanm --local-lib=${HOME}/perl5 --reinstall TAP::Parser::SourceHandler::pgTAP"* ]]
-  [ -x "${HOME}/perl5/bin/pg_prove" ]
 }

@@ -1,60 +1,25 @@
-# Create Venv Requirements
+# 02 create venv Wrapper Requirements
 
 ## Scope
 
 Applies to `02_create_venv.sh`.
 
-R001  Statement: Run in strict shell mode and fail fast on unrecoverable errors.
-Design: Use `umask 007` and `set -euo pipefail`; exit non-zero on hard failures.
+R001  Statement: Wrapper runs in strict shell mode with secure umask.
+Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
 Tests:
-- R001-T01: Force a failing command and verify script exits non-zero.
+- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
 
-R005  Statement: Require sibling prerequisites script to exist.
-Design: Verify `01_install_prerequisites.sh` in script directory before continuing.
+R005  Statement: Wrapper resolves repository root and runner root from script location.
+Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
 Tests:
-- R005-T01: Rename prerequisites script and verify clear failure message.
+- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
 
-R010  Statement: Select Python interpreter with deterministic preference.
-Design: Prefer `python3.12`; fallback to `python3`.
+R010  Statement: Wrapper loads teller runbook profile before delegation.
+Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/teller.env` prior to `exec`.
 Tests:
-- R010-T01: With both interpreters available, verify `python3.12` is selected.
-- R010-T02: With only `python3`, verify fallback is selected.
+- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
-R015  Statement: Fail when no supported Python interpreter is present.
-Design: Exit non-zero if neither `python3.12` nor `python3` resolves on PATH.
+R015  Statement: Wrapper delegates execution to the mapped runner golden.
+Design: Use `exec "${RUNNER_HOME}/02_create_venv.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Remove both interpreters from PATH and verify failure.
-
-R020  Statement: Name virtual environment from current directory.
-Design: Compute directory as `<cwd-basename>-venv`.
-Tests:
-- R020-T01: Run in folder `foo` and verify venv target is `foo-venv`.
-
-R025  Statement: Refuse creation when another virtual environment is active.
-Design: Check `VIRTUAL_ENV`; print deactivation guidance and exit.
-Tests:
-- R025-T01: Run with `VIRTUAL_ENV` set and verify script exits non-zero.
-
-R030  Statement: Keep virtual environment creation idempotent.
-Design: If target venv directory exists, print activation hint and exit success.
-Tests:
-- R030-T01: Run script twice and verify second run exits 0 without recreating venv.
-
-R035  Statement: Create virtual environment with selected interpreter.
-Design: Execute `<python> -m venv <dir>`.
-Tests:
-- R035-T01: Verify target directory contains `bin/activate` after creation.
-
-R040  Statement: Print activation guidance after successful or idempotent runs.
-Design: Output `activate` command hint in terminal.
-Tests:
-- R040-T01: Verify output includes activation guidance string.
-
-R038  Statement: Wire test-cache environment into the virtualenv activate script.
-Design: After create (and on idempotent re-run), append a teller-marked block to `bin/activate` that sources `export_test_cache_env.sh` when the activated shell is inside this repository.
-Tests:
-- R038-T01: Verify `bin/activate` contains the teller test-cache marker after venv creation.
-
-## Changelog
-
-- 2026-04-19: Initial reverse-engineered requirements for `02_create_venv.sh`.
+- R015-T01: Verify wrapper source delegates to `02_create_venv.sh` with `"$@"`.

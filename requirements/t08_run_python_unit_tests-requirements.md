@@ -1,26 +1,25 @@
-# Run Python Unit Tests Requirements
+# t08 run python unit tests Wrapper Requirements
 
 ## Scope
 
 Applies to `tests/t08_run_python_unit_tests.sh`.
 
-## Ownership Boundaries
-
-This document owns wrapper behavior only.
-Shared lane implementation details are owned by:
-- `requirements/src/scripts/run_unit_test_lanes-requirements.md`
-
-R001  Statement: Run from repository root regardless of caller working directory.
-Design: Resolve script directory and `cd` there before invoking the shared unit-test lane runner.
+R001  Statement: Wrapper runs in strict shell mode with secure umask.
+Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
 Tests:
-- R001-T01: Run from a different working directory and verify the wrapper still succeeds.
+- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
 
-R005  Statement: Execute only the Python unit-test lane.
-Design: Invoke `src/scripts/run_unit_test_lanes.sh` with `RUN_PYTHON_TESTS=true` and all other unit lanes disabled.
+R005  Statement: Wrapper resolves repository root and runner root from script location.
+Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
 Tests:
-- R005-T01: Verify the wrapper exports lane toggles with only Python tests enabled.
+- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
 
-R008  Statement: Keep Hypothesis storage out of the repository root during Python unit tests.
-Design: The shared lane runner sources `export_test_cache_env.sh`; `tests/py/conftest.py` also defaults `HYPOTHESIS_STORAGE_DIRECTORY` to `artifacts/cache/hypothesis` for direct pytest invocations.
+R010  Statement: Wrapper loads teller runbook profile before delegation.
+Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/teller.env` prior to `exec`.
 Tests:
-- R008-T01: Traceability anchor in `tests/py/test_hypothesis_storage_location.py`.
+- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
+
+R015  Statement: Wrapper delegates execution to the mapped runner golden.
+Design: Use `exec "${RUNNER_HOME}/tests/t08_run_python_unit_tests.sh" "$@"` so arguments pass through unchanged.
+Tests:
+- R015-T01: Verify wrapper source delegates to `tests/t08_run_python_unit_tests.sh` with `"$@"`.

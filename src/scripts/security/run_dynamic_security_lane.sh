@@ -10,6 +10,12 @@ security_init_repo_root "$SCRIPT_PATH"
 REPO_ROOT="${SECURITY_REPO_ROOT}"
 echo "running DAST (Dynamic Application Security Testing)"
 
+#R005: Runner-owned engine code/SQL resolved repo-override-else-runner; app + DB integration are knobs.
+SECURITY_PY_DIR="$(security_resolve_asset tests/py/security)"
+SECURITY_SCRIPTS_DIR="$(security_resolve_asset src/scripts)"
+DAST_APP_SCRIPT="${DAST_APP_SCRIPT:-09_run_classification_api.py}"
+DAST_DB_INTEGRATION="${DAST_DB_INTEGRATION:-true}"
+
 #R001: Dynamic lane prints explicit startup banner before DAST orchestration.
 #R005: Dynamic lane resolves repo root and executes with strict shell settings.
 #R010: Dynamic lane bootstraps isolated security toolchain venv for DAST dependencies.
@@ -27,12 +33,13 @@ RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 #R015: Support configurable execution lanes and report destination.
 FAIL_ON_HIGH_CRITICAL="${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./artifacts/venv/security}"
-SECURITY_REQUIREMENTS_FILE="${SECURITY_REQUIREMENTS_FILE:-./requirements/security/requirements-security.txt}"
-SECURITY_CONFIG_DIR="${SECURITY_CONFIG_DIR:-./config/security}"
+SECURITY_REQUIREMENTS_FILE="${SECURITY_REQUIREMENTS_FILE:-$(security_resolve_asset requirements/security/requirements-security.txt)}"
+SECURITY_CONFIG_DIR="${SECURITY_CONFIG_DIR:-$(security_resolve_asset config/security)}"
 SEMGREP_CONFIG_PATH="${SEMGREP_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/semgrep.yml}"
 BANDIT_CONFIG_PATH="${BANDIT_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/bandit.yml}"
 GITLEAKS_IGNORE_PATH="${GITLEAKS_IGNORE_PATH:-${SECURITY_CONFIG_DIR}/gitleaksignore}"
-WRITE_TOKEN_PSA_ITEM="TELLER_CLASSIFIER_WRITE_TOKEN"
+WRITE_TOKEN_PSA_ITEM="${WRITE_TOKEN_PSA_ITEM:-TELLER_CLASSIFIER_WRITE_TOKEN}"
+WRITE_TOKEN_HEADER_NAME="${WRITE_TOKEN_HEADER_NAME:-X-Teller-Write-Token}"
 
 mkdir -p "$REPORT_DIR"
 
@@ -43,12 +50,12 @@ python_interpreter_usable() {
 }
 
 #R001: Prefer project venv when available.
-if [[ -d "./teller-venv" ]] && [[ -f "./teller-venv/bin/activate" ]]; then
-  if ! python_interpreter_usable "./teller-venv/bin/python"; then
-    echo "⚠️  Skipping teller-venv activation because its interpreter is not usable."
+if [[ -d "./${VENV_NAME}" ]] && [[ -f "./${VENV_NAME}/bin/activate" ]]; then
+  if ! python_interpreter_usable "./${VENV_NAME}/bin/python"; then
+    echo "⚠️  Skipping ${VENV_NAME} activation because its interpreter is not usable."
   else
   # shellcheck disable=SC1091
-    source "./teller-venv/bin/activate"
+    source "./${VENV_NAME}/bin/activate"
   fi
 fi
 
@@ -167,6 +174,7 @@ security_toolchain_usable() {
 wait_for_http() {
   local url="$1"
   local timeout_seconds="${2:-30}"
+  local watch_pid="${3:-}"
   local curl_args=(-fsS)
   if [[ "$url" == https://* ]]; then
     curl_args+=(-k)
@@ -174,6 +182,10 @@ wait_for_http() {
   local start_ts
   start_ts="$(date +%s)"
   while true; do
+    if [[ -n "$watch_pid" ]] && ! kill -0 "$watch_pid" >/dev/null 2>&1; then
+      echo "❌ Process ${watch_pid} exited before ${url} became ready."
+      return 1
+    fi
     if curl "${curl_args[@]}" "$url" >/dev/null 2>&1; then
       return 0
     fi
@@ -290,14 +302,14 @@ run_zap_quick_scan() {
 summarize_zap_html_report() {
   local html_report="$1"
   local summary_json="$2"
-  python3 "./tests/py/security/zap_summary_parser.py" "$html_report" "$summary_json"
+  python3 "${SECURITY_PY_DIR}/zap_summary_parser.py" "$html_report" "$summary_json"
 }
 
 read_classifier_write_token() {
   # Resolve DAST write token from env when present, else 1psa.
   local write_token="${TELLER_CLASSIFIER_WRITE_TOKEN:-}"
   if [[ -z "$write_token" ]]; then
-    write_token="$(1psa -p "$WRITE_TOKEN_PSA_ITEM")"
+    write_token="$(rb_read_1psa_item "$WRITE_TOKEN_PSA_ITEM")"
   fi
   if [[ -z "$write_token" ]]; then
     echo "❌ Failed to read classifier write token from 1psa item: ${WRITE_TOKEN_PSA_ITEM}"
@@ -437,12 +449,13 @@ run_dast_checks() {
   run_category_integrity_checks() {
     local report_dir_abs="$1"
     local integrity_report_path="${report_dir_abs}/category-integrity.json"
-    local seed_sql_path="./src/sql/postgres/teller_nys_snw_category.sql"
+    local seed_sql_path
+    seed_sql_path="$(security_resolve_asset src/sql/postgres/teller_nys_snw_category.sql)"
     local strict_mode="${DAST_CATEGORY_INTEGRITY_STRICT:-true}"
 
     echo "▶ Running post-DAST category integrity checks"
     set +e
-    PYTHONPATH="${dast_integrity_pythonpath}" "$dast_app_python"       "./tests/py/security/category_integrity_check.py"       "$integrity_report_path"       "$seed_sql_path"       "$strict_mode"
+    PYTHONPATH="${dast_integrity_pythonpath}" "$dast_app_python"       "${SECURITY_PY_DIR}/category_integrity_check.py"       "$integrity_report_path"       "$seed_sql_path"       "$strict_mode"
     local integrity_exit=$?
     set -e
     if [[ "$integrity_exit" -ne 0 ]]; then
@@ -455,9 +468,10 @@ run_dast_checks() {
     local source_base_url="$2"
     local output_schema_path="$3"
     local write_token="$4"
-    local matchy_seed_path="${5:-}"
-    local dast_run_id="${6:-unknown}"
-    python3 "./tests/py/security/schemathesis_fixture_prep.py"       "$source_openapi_url"       "$source_base_url"       "$output_schema_path"       "$write_token"       "$matchy_seed_path"       "$dast_run_id"
+    local write_token_header_name="$5"
+    local matchy_seed_path="${6:-}"
+    local dast_run_id="${7:-unknown}"
+    python3 "${SECURITY_PY_DIR}/schemathesis_fixture_prep.py"       "$source_openapi_url"       "$source_base_url"       "$output_schema_path"       "$write_token"       "$write_token_header_name"       "$matchy_seed_path"       "$dast_run_id"
   }
 
   seed_matchy_data_for_schemathesis() {
@@ -745,8 +759,9 @@ PY
     local source_base_url="$2"
     local output_json_path="$3"
     local write_token="$4"
-    local dast_run_id="${5:-unknown}"
-    python3 "./tests/py/security/delete_category_contract_check.py"       "$schema_path"       "$source_base_url"       "$output_json_path"       "$write_token"       "$dast_run_id"
+    local write_token_header_name="$5"
+    local dast_run_id="${6:-unknown}"
+    python3 "${SECURITY_PY_DIR}/delete_category_contract_check.py"       "$schema_path"       "$source_base_url"       "$output_json_path"       "$write_token"       "$write_token_header_name"       "$dast_run_id"
   }
 
   local report_dir="$1"
@@ -778,7 +793,7 @@ PY
   local zap_quick_proxy_host="${ZAP_QUICK_PROXY_HOST:-127.0.0.1}"
   local zap_quick_proxy_port="${ZAP_QUICK_PROXY_PORT:-8091}"
 
-  local dast_app_python="${DAST_APP_PYTHON:-./teller-venv/bin/python}"
+  local dast_app_python="${DAST_APP_PYTHON:-./${VENV_NAME}/bin/python}"
   local dast_integrity_pythonpath="${PYTHONPATH:-}"
   if [[ -n "$dast_integrity_pythonpath" ]]; then
     dast_integrity_pythonpath="${PWD}/src:${PWD}:${dast_integrity_pythonpath}"
@@ -793,8 +808,8 @@ PY
   if ! python_interpreter_usable "$dast_app_python"; then
     dast_app_python="python3"
   fi
-  if [[ "$dast_app_python" == "python3" ]] && [[ -d "./teller-venv/lib" ]]; then
-    for site_packages_dir in ./teller-venv/lib/python*/site-packages; do
+  if [[ "$dast_app_python" == "python3" ]] && [[ -d "./${VENV_NAME}/lib" ]]; then
+    for site_packages_dir in ./${VENV_NAME}/lib/python*/site-packages; do
       if [[ -d "$site_packages_dir" ]]; then
         local site_packages_dir_abs
         site_packages_dir_abs="$(cd "$site_packages_dir" && pwd)"
@@ -877,13 +892,17 @@ PY
   local dast_baseline_path="${report_dir_abs}/dast-baseline.json"
   local dast_cleanup_summary_path="${report_dir_abs}/dast-cleanup.json"
   local dast_skip_cleanup="${DAST_SKIP_CLEANUP:-false}"
+  #R025: DB baseline/seed/cleanup/integrity only apply when the target app integrates the teller DB.
+  if [[ "${DAST_DB_INTEGRATION:-true}" != "true" ]]; then
+    dast_skip_cleanup="true"
+  fi
   local dast_cleanup_done="false"
 
   if [[ "$dast_skip_cleanup" != "true" ]]; then
     echo "▶ Capturing pre-DAST database baseline at ${dast_baseline_path}"
     set +e
     PYTHONPATH="${dast_integrity_pythonpath}" "$dast_app_python" \
-      ./src/scripts/dast_baseline.py "$dast_baseline_path" \
+      "${SECURITY_SCRIPTS_DIR}/dast_baseline.py" "$dast_baseline_path" \
       > "${report_dir_abs}/dast-baseline.log" 2>&1
     local dast_baseline_exit=$?
     set -e
@@ -920,7 +939,7 @@ PY
     fi
     echo "▶ Restoring database to pre-DAST baseline (run_id=${dast_run_id:-unknown})"
     PYTHONPATH="${dast_integrity_pythonpath:-}" "${dast_app_python}" \
-      ./src/scripts/dast_cleanup.py \
+      "${SECURITY_SCRIPTS_DIR}/dast_cleanup.py" \
       "${dast_baseline_path}" \
       "${dast_run_id:-unknown}" \
       "${dast_cleanup_summary_path}" \
@@ -1043,17 +1062,19 @@ server.socket = context.wrap_socket(server.socket, server_side=True)
 server.serve_forever()
 PY
       mailcart_stub_pid="$!"
-      wait_for_http "${mailcart_stub_url}/health" 30
+      wait_for_http "${mailcart_stub_url}/health" 30 "$mailcart_stub_pid"
       export MAILCART_SERVICE_BASE_URL="$mailcart_stub_url"
       echo "▶ DAST Mailcart base URL: ${MAILCART_SERVICE_BASE_URL}"
     fi
     echo "▶ Starting local classification API for Dynamic Application Security Testing (DAST) at ${base_url}"
     TELLER_CLASSIFIER_WRITE_TOKEN="$dast_write_token" \
       TELLER_CLASSIFIER_API_HOST="$base_host" TELLER_CLASSIFIER_API_PORT="$base_port" \
-      "$dast_app_python" "./09_run_classification_api.py" >"${report_dir_abs}/classification-api.log" 2>&1 &
+      CLASSIFICATION_API_HOST="$base_host" CLASSIFICATION_API_PORT="$base_port" \
+      CLASSY_API_HOST="$base_host" CLASSY_API_PORT="$base_port" \
+      "$dast_app_python" "./${DAST_APP_SCRIPT}" >"${report_dir_abs}/classification-api.log" 2>&1 &
     classifier_api_pid="$!"
   fi
-  wait_for_http "${base_url}/health" 45
+  wait_for_http "${base_url}/health" 45 "$classifier_api_pid"
 
   # Run Schemathesis and ZAP quick scans with configurable targets and gating.
   if [[ "$run_schemathesis" == "true" ]]; then
@@ -1072,12 +1093,16 @@ PY
     local schemathesis_location="$openapi_url"
     local schemathesis_openapi_fixture="${report_dir_abs}/schemathesis-openapi.json"
     local schemathesis_matchy_seed="${report_dir_abs}/schemathesis-matchy-seed.json"
-    if seed_matchy_data_for_schemathesis "$schemathesis_matchy_seed" "$dast_run_id" > "${report_dir_abs}/schemathesis-matchy-seed.log"; then
-      echo "▶ Schemathesis matchy seed prepared at ${schemathesis_matchy_seed}"
+    if [[ "${DAST_DB_INTEGRATION:-true}" == "true" ]]; then
+      if seed_matchy_data_for_schemathesis "$schemathesis_matchy_seed" "$dast_run_id" > "${report_dir_abs}/schemathesis-matchy-seed.log"; then
+        echo "▶ Schemathesis matchy seed prepared at ${schemathesis_matchy_seed}"
+      else
+        echo "⚠️  Schemathesis matchy seed preparation failed; proceeding with live data only."
+      fi
     else
-      echo "⚠️  Schemathesis matchy seed preparation failed; proceeding with live data only."
+      echo "ℹ️  Schemathesis matchy DB seeding skipped (DAST_DB_INTEGRATION=false)."
     fi
-    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" "$dast_write_token" "$schemathesis_matchy_seed" "$dast_run_id" \
+    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" "$dast_write_token" "$WRITE_TOKEN_HEADER_NAME" "$schemathesis_matchy_seed" "$dast_run_id" \
       > "${report_dir_abs}/schemathesis-fixture.json"; then
       schemathesis_location="$schemathesis_openapi_fixture"
       echo "▶ Schemathesis fixture prepared at ${schemathesis_location}"
@@ -1090,13 +1115,14 @@ PY
       "$base_url" \
       "${report_dir_abs}/schemathesis-delete-category-contract.json" \
       "$dast_write_token" \
+      "$WRITE_TOKEN_HEADER_NAME" \
       "$dast_run_id" \
       | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
     #R050: Write raw output temporarily, then persist only token-redacted artifacts.
     local schemathesis_raw_log="${report_dir_abs}/schemathesis-raw.log"
     set +e
     "$dast_app_python" - "$schemathesis_raw_log" "$report_dir_abs" "$schemathesis_location" "$base_url" \
-      "$dast_write_token" "$schemathesis_mode" "$schemathesis_seed" "$schemathesis_max_examples" \
+      "$dast_write_token" "$WRITE_TOKEN_HEADER_NAME" "$schemathesis_mode" "$schemathesis_seed" "$schemathesis_max_examples" \
       "$schemathesis_timeout_seconds" <<'PY'
 import subprocess
 import sys
@@ -1107,10 +1133,11 @@ working_directory = Path(sys.argv[2])
 schemathesis_location = sys.argv[3]
 base_url = sys.argv[4]
 write_token = sys.argv[5]
-schemathesis_mode = sys.argv[6]
-schemathesis_seed = sys.argv[7]
-schemathesis_max_examples = sys.argv[8]
-timeout_seconds = int(sys.argv[9])
+write_token_header = sys.argv[6]
+schemathesis_mode = sys.argv[7]
+schemathesis_seed = sys.argv[8]
+schemathesis_max_examples = sys.argv[9]
+timeout_seconds = int(sys.argv[10])
 
 command = [
     "schemathesis",
@@ -1120,7 +1147,7 @@ command = [
     base_url,
     "--tls-verify=false",
     "--header",
-    f"X-Teller-Write-Token: {write_token}",
+    f"{write_token_header}: {write_token}",
     "--mode",
     schemathesis_mode,
     "--seed",
@@ -1287,8 +1314,12 @@ EOF
   #R025: invariants so the integrity check also asserts cleanup succeeded.
   _cleanup_dast_state || true
 
-  # Enforce post-DAST category table integrity invariants (post-cleanup).
-  run_category_integrity_checks "$report_dir_abs"
+  # Enforce post-DAST category table integrity invariants (post-cleanup) when DB-integrated.
+  if [[ "${DAST_DB_INTEGRATION:-true}" == "true" ]]; then
+    run_category_integrity_checks "$report_dir_abs"
+  else
+    echo "ℹ️  Post-DAST category integrity skipped (DAST_DB_INTEGRATION=false)."
+  fi
 
   echo "✅ Dynamic Application Security Testing (DAST) checks completed."
 )
@@ -1306,8 +1337,8 @@ configure_pip_audit_python() {
   local project_python=""
   if [[ -n "${VIRTUAL_ENV:-}" ]] && python_interpreter_usable "${VIRTUAL_ENV}/bin/python3"; then
     project_python="${VIRTUAL_ENV}/bin/python3"
-  elif python_interpreter_usable "./teller-venv/bin/python3"; then
-    project_python="./teller-venv/bin/python3"
+  elif python_interpreter_usable "./${VENV_NAME}/bin/python3"; then
+    project_python="./${VENV_NAME}/bin/python3"
   fi
 
   if [[ -n "$project_python" ]]; then
@@ -1385,7 +1416,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "https://github.com/Yelp/detect-secrets"
   echo "▶ Running detect-secrets"
   detect-secrets scan --all-files --force-use-all-plugins \
-    --exclude-files '(^\.git/|^teller-venv/|^artifacts/venv/security/|^artifacts/security/|^artifacts/security-dast/|^artifacts/parallel/|^artifacts/mutation/|^artifacts/fuzz/|^artifacts/cache/ruff/|^artifacts/cache/pytest/|^artifacts/cache/hypothesis/|^artifacts/cache/egg-info/|^backups/|^archive/backup_extracts/|^config/bank_statements/|^src/macos-ui/\.derivedData-ui-tests/|^src/macos-ui/\.build/|^requirements/)' \
+    --exclude-files '(^\.git/|^${VENV_NAME}/|^artifacts/venv/security/|^artifacts/security/|^artifacts/security-dast/|^artifacts/parallel/|^artifacts/mutation/|^artifacts/fuzz/|^artifacts/cache/ruff/|^artifacts/cache/pytest/|^artifacts/cache/hypothesis/|^artifacts/cache/egg-info/|^backups/|^archive/backup_extracts/|^config/bank_statements/|^src/macos-ui/\.derivedData-ui-tests/|^src/macos-ui/\.build/|^requirements/)' \
     > "${REPORT_DIR}/detect-secrets.json"
 
   run_gitleaks_sast "${REPORT_DIR}/gitleaks.json"
@@ -1395,7 +1426,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   run_swift_sast "${REPORT_DIR}/swiftlint.json"
 
   # Produce consolidated SAST gate summary and enforce blocking policy.
-  python3 "./tests/py/security/sast_summary_gate.py"     "${REPORT_DIR}"     "${FAIL_ON_HIGH_CRITICAL}"     "high"
+  python3 "${SECURITY_PY_DIR}/sast_summary_gate.py"     "${REPORT_DIR}"     "${FAIL_ON_HIGH_CRITICAL}"     "high"
   echo "✅ Static Application Security Testing (SAST) checks completed."
 fi
 

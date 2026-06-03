@@ -39,12 +39,15 @@ RUN_SWIFT_SAST="${RUN_SWIFT_SAST:-true}"
 #R090: Default financial-app policy blocks medium-or-higher security findings.
 FAIL_ON_MEDIUM_OR_HIGHER="${SECURITY_FAIL_ON_MEDIUM_OR_HIGHER:-${SECURITY_FAIL_ON_HIGH_CRITICAL:-true}}"
 SECURITY_VENV_DIR="${SECURITY_VENV_DIR:-./artifacts/venv/security}"
-SECURITY_REQUIREMENTS_FILE="${SECURITY_REQUIREMENTS_FILE:-./requirements/security/requirements-security.txt}"
+#R105: Runner-owned security lockfile (repo override else runner default).
+SECURITY_REQUIREMENTS_FILE="${SECURITY_REQUIREMENTS_FILE:-$(security_resolve_asset requirements/security/requirements-security.txt)}"
 RUNTIME_REQUIREMENTS_FILE="${RUNTIME_REQUIREMENTS_FILE:-./requirements.txt}"
-SECURITY_CONFIG_DIR="${SECURITY_CONFIG_DIR:-./config/security}"
-SEMGREP_CONFIG_PATH="${SEMGREP_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/semgrep.yml}"
-BANDIT_CONFIG_PATH="${BANDIT_CONFIG_PATH:-${SECURITY_CONFIG_DIR}/bandit.yml}"
-GITLEAKS_IGNORE_PATH="${GITLEAKS_IGNORE_PATH:-${SECURITY_CONFIG_DIR}/gitleaksignore}"
+#R090: Security tool config (repo override else runner default).
+SECURITY_CONFIG_DIR="${SECURITY_CONFIG_DIR:-$(security_resolve_asset config/security)}"
+#R090: Resolve each config file independently (a repo may have a partial config/security dir).
+SEMGREP_CONFIG_PATH="${SEMGREP_CONFIG_PATH:-$(security_resolve_asset config/security/semgrep.yml)}"
+BANDIT_CONFIG_PATH="${BANDIT_CONFIG_PATH:-$(security_resolve_asset config/security/bandit.yml)}"
+GITLEAKS_IGNORE_PATH="${GITLEAKS_IGNORE_PATH:-$(security_resolve_asset config/security/gitleaksignore)}"
 SUPPLY_CHAIN_ARTIFACTS_DIR="${SUPPLY_CHAIN_ARTIFACTS_DIR:-${REPORT_DIR}}"
 #R115: Default supply-chain signing mode to required in CI when unset.
 if [[ -z "${SUPPLY_CHAIN_SIGNING_MODE:-}" ]]; then
@@ -54,7 +57,8 @@ if [[ -z "${SUPPLY_CHAIN_SIGNING_MODE:-}" ]]; then
     SUPPLY_CHAIN_SIGNING_MODE="scaffold"
   fi
 fi
-WRITE_TOKEN_PSA_ITEM="TELLER_CLASSIFIER_WRITE_TOKEN"
+WRITE_TOKEN_PSA_ITEM="${WRITE_TOKEN_PSA_ITEM:-TELLER_CLASSIFIER_WRITE_TOKEN}"
+WRITE_TOKEN_HEADER_NAME="${WRITE_TOKEN_HEADER_NAME:-X-Teller-Write-Token}"
 
 mkdir -p "$REPORT_DIR"
 
@@ -65,12 +69,12 @@ python_interpreter_usable() {
 }
 
 #R001: Prefer project venv when available.
-if [[ -d "./teller-venv" ]] && [[ -f "./teller-venv/bin/activate" ]]; then
-  if ! python_interpreter_usable "./teller-venv/bin/python"; then
-    echo "⚠️  Skipping teller-venv activation because its interpreter is not usable."
+if [[ -d "./${VENV_NAME}" ]] && [[ -f "./${VENV_NAME}/bin/activate" ]]; then
+  if ! python_interpreter_usable "./${VENV_NAME}/bin/python"; then
+    echo "⚠️  Skipping ${VENV_NAME} activation because its interpreter is not usable."
   else
   # shellcheck disable=SC1091
-    source "./teller-venv/bin/activate"
+    source "./${VENV_NAME}/bin/activate"
   fi
 fi
 
@@ -247,7 +251,7 @@ require_hashed_requirements_file() {
 generate_supply_chain_artifacts() {
   require_hashed_requirements_file "$RUNTIME_REQUIREMENTS_FILE"
   require_hashed_requirements_file "$SECURITY_REQUIREMENTS_FILE"
-  local generator_script="./src/scripts/security/generate_supply_chain_artifacts.py"
+  local generator_script="${SECURITY_RUNNER_HOME}/src/scripts/security/generate_supply_chain_artifacts.py"
   require_file "$generator_script"
   echo "▶ Generating supply-chain artifacts (SBOM + signing scaffold)"
   python3 "$generator_script" \
@@ -439,7 +443,7 @@ run_ruff_sast() {
   ruff check \
     --output-format json \
     --force-exclude \
-    --exclude mutants,artifacts/security,artifacts/security-dast,.pytest_cache,.ruff_cache \
+    --exclude "${VENV_NAME},.venv,mutants,artifacts,.pytest_cache,.ruff_cache,deprecated" \
     . > "$ruff_report"
   RUFF_EXIT=$?
   set -e
@@ -543,7 +547,8 @@ run_dast_checks() (
     local source_base_url="$2"
     local output_schema_path="$3"
     local write_token="$4"
-    python3 "./tests/py/security/schemathesis_fixture_prep.py"       "$source_openapi_url"       "$source_base_url"       "$output_schema_path"       "$write_token"       ""       "${DAST_RUN_ID:-unknown}"
+    local write_token_header_name="$5"
+    python3 "./tests/py/security/schemathesis_fixture_prep.py"       "$source_openapi_url"       "$source_base_url"       "$output_schema_path"       "$write_token"       "$write_token_header_name"       ""       "${DAST_RUN_ID:-unknown}"
   }
 
   run_delete_category_contract_check() {
@@ -551,7 +556,8 @@ run_dast_checks() (
     local source_base_url="$2"
     local output_json_path="$3"
     local write_token="$4"
-    python3 "./tests/py/security/delete_category_contract_check.py"       "$schema_path"       "$source_base_url"       "$output_json_path"       "$write_token"       "${DAST_RUN_ID:-unknown}"
+    local write_token_header_name="$5"
+    python3 "./tests/py/security/delete_category_contract_check.py"       "$schema_path"       "$source_base_url"       "$output_json_path"       "$write_token"       "$write_token_header_name"       "${DAST_RUN_ID:-unknown}"
   }
 
   local report_dir="$1"
@@ -623,7 +629,7 @@ run_dast_checks() (
     echo "▶ Running Schemathesis against ${openapi_url}"
     local schemathesis_location="$openapi_url"
     local schemathesis_openapi_fixture="${report_dir_abs}/schemathesis-openapi.json"
-    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" "$dast_write_token" \
+    if prepare_schemathesis_openapi_fixture "$openapi_url" "$base_url" "$schemathesis_openapi_fixture" "$dast_write_token" "$WRITE_TOKEN_HEADER_NAME" \
       > "${report_dir_abs}/schemathesis-fixture.json"; then
       schemathesis_location="$schemathesis_openapi_fixture"
       echo "▶ Schemathesis fixture prepared at ${schemathesis_location}"
@@ -636,6 +642,7 @@ run_dast_checks() (
       "$base_url" \
       "${report_dir_abs}/schemathesis-delete-category-contract.json" \
       "$dast_write_token" \
+      "$WRITE_TOKEN_HEADER_NAME" \
       | tee "${report_dir_abs}/schemathesis-delete-category-contract.log"
     #R100: Write raw output temporarily, then persist only token-redacted artifacts.
     local schemathesis_raw_log="${report_dir_abs}/schemathesis-raw.log"
@@ -644,7 +651,7 @@ run_dast_checks() (
       cd "$report_dir_abs"
       schemathesis run "$schemathesis_location" \
         --url "$base_url" \
-        --header "X-Teller-Write-Token: ${dast_write_token}" \
+        --header "${WRITE_TOKEN_HEADER_NAME}: ${dast_write_token}" \
         --mode positive \
         --seed "$schemathesis_seed" \
         --max-examples "$schemathesis_max_examples" \
@@ -761,8 +768,8 @@ configure_pip_audit_python() {
   local project_python=""
   if [[ -n "${VIRTUAL_ENV:-}" ]] && python_interpreter_usable "${VIRTUAL_ENV}/bin/python3"; then
     project_python="${VIRTUAL_ENV}/bin/python3"
-  elif python_interpreter_usable "./teller-venv/bin/python3"; then
-    project_python="./teller-venv/bin/python3"
+  elif python_interpreter_usable "./${VENV_NAME}/bin/python3"; then
+    project_python="./${VENV_NAME}/bin/python3"
   fi
 
   if [[ -n "$project_python" ]]; then
@@ -775,7 +782,12 @@ configure_pip_audit_python() {
 }
 
 configure_pip_audit_python
-generate_supply_chain_artifacts
+#R110: Supply-chain SBOM/signing requires hash-pinned lockfiles; presence-gate it for repos without them.
+if [[ "${RUN_SUPPLY_CHAIN:-true}" == "true" ]] && requirements_file_has_hashes "$RUNTIME_REQUIREMENTS_FILE"; then
+  generate_supply_chain_artifacts
+else
+  echo "ℹ️  Supply-chain artifact generation skipped (RUN_SUPPLY_CHAIN!=true or runtime requirements not hash-pinned)."
+fi
 
 if [[ "$RUN_SAST" == "true" ]]; then
   #R020: Run SAST scanners and persist machine-readable artifacts.
@@ -804,6 +816,9 @@ if [[ "$RUN_SAST" == "true" ]]; then
     --config "p/security-audit" \
     --config "p/python" \
     --config "$SEMGREP_CONFIG_PATH" \
+    --exclude "${VENV_NAME}" \
+    --exclude ".venv" \
+    --exclude "artifacts" \
     --json \
     --output "${REPORT_DIR}/semgrep.json" \
     . 2>"$semgrep_stderr_log"
@@ -814,6 +829,9 @@ if [[ "$RUN_SAST" == "true" ]]; then
     set +e
     HOME="$SEMGREP_HOME_DIR" semgrep scan \
       --config "$SEMGREP_CONFIG_PATH" \
+      --exclude "${VENV_NAME}" \
+      --exclude ".venv" \
+      --exclude "artifacts" \
       --json \
       --output "${REPORT_DIR}/semgrep.json" \
       . 2>>"$semgrep_stderr_log"
@@ -839,12 +857,33 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "Flags known insecure coding patterns and risky API usage." \
     "https://bandit.readthedocs.io/"
   echo "▶ Running Bandit"
+  #R050: Autodiscover Python app targets: src/<package> dirs (excluding tooling `scripts` and Swift
+  #R050: `macos-ui`), tests/py, and numbered root scripts. Matches teller's intent without scanning
+  #R050: runner-owned tooling copies under src/scripts.
+  bandit_targets=()
+  if [[ -d ./src ]]; then
+    for bandit_src_sub in ./src/*/; do
+      bandit_src_base="$(basename "$bandit_src_sub")"
+      [[ "$bandit_src_base" == "scripts" || "$bandit_src_base" == "macos-ui" ]] && continue
+      [[ -n "$(find "$bandit_src_sub" -name '*.py' -print 2>/dev/null | head -n 1)" ]] && bandit_targets+=("${bandit_src_sub%/}")
+    done
+  fi
+  [[ -d ./tests/py ]] && bandit_targets+=(./tests/py)
+  shopt -s nullglob
+  bandit_root_py=(./[0-9][0-9]_*.py)
+  shopt -u nullglob
+  [[ "${#bandit_root_py[@]}" -gt 0 ]] && bandit_targets+=("${bandit_root_py[@]}")
   # Distinguish scanner findings from scanner execution failures.
-  set +e
-  bandit -r ./src/teller ./tests/py ./07_fetch_teller_api_data.py ./08_backfill_bank_statements.py ./09_run_classification_api.py \
-    -c "$BANDIT_CONFIG_PATH" -f json -o "${REPORT_DIR}/bandit.json"
-  BANDIT_EXIT=$?
-  set -e
+  if [[ "${#bandit_targets[@]}" -eq 0 ]]; then
+    echo "ℹ️  Bandit skipped (no Python sources discovered)."
+    printf '{"results":[]}\n' > "${REPORT_DIR}/bandit.json"
+    BANDIT_EXIT=0
+  else
+    set +e
+    bandit -r "${bandit_targets[@]}" -c "$BANDIT_CONFIG_PATH" -f json -o "${REPORT_DIR}/bandit.json"
+    BANDIT_EXIT=$?
+    set -e
+  fi
   if [[ "$BANDIT_EXIT" -gt 1 ]]; then
     echo "❌ Bandit failed to execute."
     exit 1
@@ -879,7 +918,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   echo "▶ Running detect-secrets"
   set +e
   detect-secrets scan --all-files --force-use-all-plugins \
-    --exclude-files '(^\.git/|^teller-venv/|^artifacts/venv/security/|^artifacts/security/|^artifacts/security-dast/|^artifacts/parallel/|^artifacts/mutation/|^artifacts/fuzz/|^artifacts/macos-ui-regression/|^artifacts/cache/ruff/|^artifacts/cache/pytest/|^artifacts/cache/hypothesis/|^artifacts/cache/egg-info/|^\.ruff_cache/|^\.pytest_cache/|^__pycache__/|^backups/|^archive/backup_extracts/|^README\.md$|^config/bank_statements/|^config/security/binary-integrity-policy\.json$|^tests/sh/99_restore_database\.bats$|^src/macos-ui/\.derivedData-ui-tests/|^src/macos-ui/\.build/|^requirements/)' \
+    --exclude-files "(^\.git/|^${VENV_NAME}/|^\.venv/|^artifacts/|^\.ruff_cache/|^\.pytest_cache/|^__pycache__/|^backups/|^archive/backup_extracts/|^README\.md\$|^config/bank_statements/|^config/security/binary-integrity-policy\.json\$|^tests/sh/99_restore_database\.bats\$|^src/macos-ui/\.derivedData-ui-tests/|^src/macos-ui/\.build/|^requirements/)" \
     > "${REPORT_DIR}/detect-secrets.json"
   DETECT_SECRETS_EXIT=$?
   set -e
@@ -900,7 +939,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
   run_swift_sast "${REPORT_DIR}/swiftlint.json"
 
   # Produce consolidated SAST gate summary and enforce blocking policy.
-  python3 "./tests/py/security/sast_summary_gate.py"     "${REPORT_DIR}"     "${FAIL_ON_MEDIUM_OR_HIGHER}"     "medium"
+  python3 "${SECURITY_RUNNER_HOME}/tests/py/security/sast_summary_gate.py"     "${REPORT_DIR}"     "${FAIL_ON_MEDIUM_OR_HIGHER}"     "medium"
   echo "✅ Static Application Security Testing (SAST) checks completed."
 fi
 

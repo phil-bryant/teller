@@ -1,21 +1,25 @@
-# Run Teller Live Canary Requirements
+# t17 run teller live canary test Wrapper Requirements
 
 ## Scope
 
 Applies to `tests/t17_run_teller_live_canary_test.sh`.
 
-## Ownership Boundaries
-
-This document owns strict live-canary wrapper orchestration behavior.
-Canary implementation details are owned by:
-- `requirements/src/scripts/check_teller_api_drift-requirements.md`
-
-R001  Statement: Resolve repository root from script path before launching live canary checks.
-Design: Resolve script directory via `${BASH_SOURCE[0]}` and `cd` to repo root so script works from any caller CWD.
+R001  Statement: Wrapper runs in strict shell mode with secure umask.
+Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
 Tests:
-- R001-T01: Verify script contains repository-root resolution and invokes the live canary script via repo-relative path.
+- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
 
-R005  Statement: Enforce strict live-only canary semantics.
-Design: Invoke `check_teller_api_drift.py` with `--require-live` and `--fail-on-warn` so fallback mode and warning status fail this lane.
+R005  Statement: Wrapper resolves repository root and runner root from script location.
+Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
 Tests:
-- R005-T01: Verify wrapper passes both strict flags to the live canary command.
+- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
+
+R010  Statement: Wrapper loads teller runbook profile before delegation.
+Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/teller.env` prior to `exec`.
+Tests:
+- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
+
+R015  Statement: Wrapper delegates execution to the mapped runner golden.
+Design: Use `exec "${RUNNER_HOME}/tests/t17_run_teller_live_canary_test.sh" "$@"` so arguments pass through unchanged.
+Tests:
+- R015-T01: Verify wrapper source delegates to `tests/t17_run_teller_live_canary_test.sh` with `"$@"`.
