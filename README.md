@@ -7,6 +7,12 @@ Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema + bank
 > `../classy/10_run_classification_macos_ui.sh`). `classy` imports this package for DB/session/profile/mailcart-client
 > and reads/writes the teller-owned schema. Scripts `05`/`09`/`10` and their lanes (t10/t14/t15/t16) now live in `classy`.
 
+## Pre-release CI/CD Policy
+
+Until `v1.0` customer release, this repo intentionally does not use GitHub-hosted CI/CD workflows (GitHub Actions).
+Quality and security gates run locally through numbered test lanes and `./06_run_all_tests_parallel.sh`.
+GitHub workflow automation is deferred until `v1.0`.
+
 ## Script Execution Order
 
 Run setup scripts in numeric order. The workflow is designed around:
