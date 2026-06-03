@@ -2,6 +2,7 @@
 *.pyc
 __pycache__/
 /__pycache__/
+*.egg-info/
 teller-venv/*
 .DS_Store
 src/macos-ui/.build/
