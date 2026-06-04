@@ -15,10 +15,11 @@ Tests:
 - R005-T01: Persist the same account payload twice and verify one logical account row remains with updated mutable fields.
 
 R010  Statement: Upsert identity graph and account-to-identity links without duplication.
-Design: Reuse identity by matching known email rows when present; upsert names/emails/phones/addresses and link identities to accounts via `account_identities`.
+Design: Reuse identity by matching known email rows when present; upsert names/emails/phones/addresses and link identities to accounts via `account_identities`. Identity-email upserts must not reassign an existing email to a different identity (`ON CONFLICT (data) DO NOTHING`).
 Tests:
 - R010-T01: Persist repeated owner payloads and verify identity rows are reused/updated rather than duplicated.
 - R010-T02: Verify account-identity link insert is conflict-safe.
+- R010-T03: Verify identity-email upsert does not reassign ownership when the email already exists for another identity.
 
 R015  Statement: Upsert transactions with normalized relation rows and numeric casting.
 Design: Upsert transaction type, details, links, and transaction rows; cast `amount` and optional `running_balance` to `Decimal`. For SQLite targets, convert money values to integer cents before write to avoid floating-point storage drift.
