@@ -18,3 +18,8 @@ R010  Statement: Fail clearly when profile resolution fails.
 Design: Surface `ProfileError` diagnostics to stderr and exit non-zero without emitting partial export payloads.
 Tests:
 - R010-T01: Simulate profile-resolution failure and verify stderr guidance plus failing exit status.
+
+R015  Statement: Avoid exporting SQLCipher secrets by default.
+Design: Default export mode must omit `SQLCIPHER_KEY`; scripts that need the key may request it explicitly via `--print-sqlcipher-key` and consume it without sourcing.
+Tests:
+- R015-T01: Verify default output omits SQLCIPHER key exports and explicit key mode returns the key value.

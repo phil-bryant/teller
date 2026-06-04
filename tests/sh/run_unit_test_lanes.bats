@@ -39,7 +39,6 @@ echo "PG_DBNAME=prod"
 echo "PG_USER=teller"
 echo "PG_SSLMODE=disable"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
-echo "SQLCIPHER_KEY=''"
 echo "PROFILE_TARGET=$(pwd)"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
@@ -74,7 +73,6 @@ echo "PG_DBNAME=prod"
 echo "PG_USER=teller"
 echo "PG_SSLMODE=disable"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
-echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 
@@ -124,7 +122,6 @@ echo "PG_DBNAME=prod"
 echo "PG_USER=teller"
 echo "PG_SSLMODE=disable"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
-echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 
@@ -173,7 +170,6 @@ echo "PG_DBNAME=prod"
 echo "PG_USER=teller"
 echo "PG_SSLMODE=disable"
 echo "PG_ONEPSA_ITEM=localhost_postgres_teller"
-echo "SQLCIPHER_KEY=''"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 
@@ -213,11 +209,14 @@ EOF
   #R005-T01 #R025-T01
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<EOF
 #!/usr/bin/env bash
+if [[ "\${1:-}" == "--print-sqlcipher-key" ]]; then
+  printf '%s' "cipher-key"
+  exit 0
+fi
 echo "DB_DIALECT=sqlite"
 echo "PROFILE_NAME=sqlite"
 echo "PROFILE_TARGET=sqlite"
 echo "SQLITE_PATH=${FIXTURE_ROOT}/sqlite-dev.db"
-echo "SQLCIPHER_KEY='cipher-key'"
 EOF
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
   printf 'db' > "${FIXTURE_ROOT}/sqlite-dev.db"

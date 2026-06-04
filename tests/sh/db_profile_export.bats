@@ -13,7 +13,7 @@ teardown() {
   teardown_shell_test
 }
 
-@test "prints expected export keys" {
+@test "prints expected export keys and omits sqlcipher secret" {
   #R001-T01
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
@@ -40,10 +40,10 @@ EOF
   [[ "$output" == *"PROFILE_NAME=local"* ]]
   [[ "$output" == *"PG_DBNAME=prod"* ]]
   [[ "$output" == *"PG_ONEPSA_ITEM=localhost_postgres_teller"* ]]
-  [[ "$output" == *"SQLCIPHER_KEY=''"* ]]
+  [[ "$output" != *"SQLCIPHER_KEY="* ]]
 }
 
-@test "prints sqlite exports for sqlite profile" {
+@test "prints sqlite exports without sqlcipher key by default" {
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 cat <<'OUT'
@@ -60,7 +60,20 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"DB_DIALECT=sqlite"* ]]
   [[ "$output" == *"SQLITE_PATH=/tmp/teller.sqlite3"* ]]
-  [[ "$output" == *"SQLCIPHER_KEY='cipher-key'"* ]]
+  [[ "$output" != *"SQLCIPHER_KEY="* ]]
+}
+
+@test "prints sqlcipher key only when explicitly requested" {
+  #R015-T01
+  cat > "${STUB_BIN}/python3" <<'EOF'
+#!/usr/bin/env bash
+printf '%s' "cipher-key"
+EOF
+  chmod +x "${STUB_BIN}/python3"
+
+  run bash -c "cd '${FIXTURE_ROOT}' && ./src/scripts/db_profile_export.sh --print-sqlcipher-key"
+  [ "$status" -eq 0 ]
+  [ "$output" = "cipher-key" ]
 }
 
 @test "supports profile override and rejects unknown args" {

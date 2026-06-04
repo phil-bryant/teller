@@ -32,7 +32,7 @@ load_profile_exports_from_file() {
       key=$0
       sub(/^export[[:space:]]+/, "", key)
       sub(/=.*/, "", key)
-      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH|SQLCIPHER_KEY)$/) {
+      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
         print
       }
     }
@@ -48,6 +48,10 @@ load_profile_exports_from_file() {
   # shellcheck disable=SC1090
   source "$exports_file"
   set +a
+}
+
+resolve_sqlcipher_key_from_profile() {
+  "$DB_PROFILE_HELPER" --print-sqlcipher-key
 }
 
 profile_exports_file="$(mktemp)"
@@ -66,7 +70,13 @@ DB_DIALECT="${DB_DIALECT:-postgresql}"
 #R066: Run SQLite-specific verification checks when the active profile target is SQLite.
 if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
   SQLITE_DB_PATH="${SQLITE_PATH:-${TELLER_DB_SQLITE_PATH:-}}"
-  SQLITE_CIPHER_KEY="${SQLCIPHER_KEY:-${TELLER_DB_SQLCIPHER_KEY:-}}"
+  SQLITE_CIPHER_KEY="${TELLER_DB_SQLCIPHER_KEY:-}"
+  if [[ -z "$SQLITE_CIPHER_KEY" ]]; then
+    if ! SQLITE_CIPHER_KEY="$(resolve_sqlcipher_key_from_profile)"; then
+      echo "❌ FAIL: SQLite verification could not resolve SQLCipher key from profile helper."
+      exit 1
+    fi
+  fi
   SQLITE_ESCAPED_KEY="$(printf "%s" "$SQLITE_CIPHER_KEY" | sed "s/'/''/g")"
   sqlcipher_scalar() {
     local query="$1"
@@ -81,7 +91,7 @@ SQL
     exit 1
   fi
   if [[ -z "$SQLITE_CIPHER_KEY" ]]; then
-    echo "❌ FAIL: SQLite verification requires SQLCIPHER_KEY from db profile export."
+    echo "❌ FAIL: SQLite verification requires SQLCIPHER_KEY via TELLER_DB_SQLCIPHER_KEY or profile sqlcipher_key."
     exit 1
   fi
   if [[ ! -f "$SQLITE_DB_PATH" ]]; then

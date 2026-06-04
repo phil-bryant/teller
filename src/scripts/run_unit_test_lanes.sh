@@ -45,7 +45,7 @@ load_profile_exports_from_file() {
       key=$0
       sub(/^export[[:space:]]+/, "", key)
       sub(/=.*/, "", key)
-      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH|SQLCIPHER_KEY)$/) {
+      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
         print
       }
     }
@@ -59,6 +59,10 @@ load_profile_exports_from_file() {
   # shellcheck disable=SC1090
   source "$exports_file"
   set +a
+}
+
+resolve_sqlcipher_key_from_profile() {
+  "$DB_PROFILE_HELPER" --print-sqlcipher-key
 }
 
 profile_exports_file="$(mktemp)"
@@ -81,7 +85,7 @@ DB_USER="${TELLER_DB_USER:-${PG_USER:-teller}}"
 DB_PASSWORD="${TELLER_DB_PASSWORD:-${DB_PASSWORD:-}}"
 DB_DIALECT="${DB_DIALECT:-postgresql}"
 SQLITE_PATH="${TELLER_DB_SQLITE_PATH:-${SQLITE_PATH:-}}"
-SQLCIPHER_KEY="${TELLER_DB_SQLCIPHER_KEY:-${SQLCIPHER_KEY:-}}"
+SQLCIPHER_KEY="${TELLER_DB_SQLCIPHER_KEY:-}"
 if [[ -z "$SQL_TESTS_DIR" ]]; then
   if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
     SQL_TESTS_DIR="./tests/sql/sqlite"
@@ -289,7 +293,13 @@ if [[ "$RUN_SQL_TESTS" == "true" ]]; then
         exit 1
       fi
       if [[ -z "$SQLCIPHER_KEY" ]]; then
-        echo "❌ SQLite SQL lane requires SQLCIPHER_KEY from profile export."
+        if ! SQLCIPHER_KEY="$(resolve_sqlcipher_key_from_profile)"; then
+          echo "❌ SQLite SQL lane could not resolve SQLCipher key from profile helper."
+          exit 1
+        fi
+      fi
+      if [[ -z "$SQLCIPHER_KEY" ]]; then
+        echo "❌ SQLite SQL lane requires SQLCIPHER_KEY via TELLER_DB_SQLCIPHER_KEY or profile sqlcipher_key."
         exit 1
       fi
       if ! command -v sqlcipher >/dev/null 2>&1; then
