@@ -1,8 +1,8 @@
-# t13 run teller api smoke tests Wrapper Requirements
+# t10 run fuzz tests Wrapper Requirements
 
 ## Scope
 
-Applies to `tests/t13_run_teller_api_smoke_tests.sh`.
+Applies to `tests/t10_run_fuzz_tests.sh`.
 
 R001  Statement: Wrapper runs in strict shell mode with secure umask.
 Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
@@ -20,6 +20,6 @@ Tests:
 - R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
 R015  Statement: Wrapper delegates execution to the mapped runner golden.
-Design: Use `exec "${RUNNER_HOME}/tests/t13_run_teller_api_smoke_tests.sh" "$@"` so arguments pass through unchanged.
+Design: Use `exec "${RUNNER_HOME}/tests/t08_run_fuzz_tests.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Verify wrapper source delegates to `tests/t13_run_teller_api_smoke_tests.sh` with `"$@"`.
+- R015-T01: Verify wrapper source delegates to `tests/t08_run_fuzz_tests.sh` with `"$@"`.

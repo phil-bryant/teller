@@ -7,7 +7,7 @@ teardown() {
 }
 
 src() {
-  printf '%s' "$(repo_root)/tests/t13_run_teller_api_smoke_tests.sh"
+  printf '%s' "$(repo_root)/tests/t10_run_fuzz_tests.sh"
 }
 
 @test "enables secure umask and strict shell mode" {
@@ -38,6 +38,6 @@ src() {
 
 @test "delegates to mapped runner golden script" {
   #R015-T01
-  run grep "exec \"\${RUNNER_HOME}/tests/t13_run_teller_api_smoke_tests.sh\" \"\$@\"" "$(src)"
+  run grep "exec \"\${RUNNER_HOME}/tests/t08_run_fuzz_tests.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
 }

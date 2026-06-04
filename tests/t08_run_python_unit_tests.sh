@@ -12,4 +12,4 @@ export RUNBOOK_REPO_ROOT
 # shellcheck source=/dev/null
 source "${RUNNER_HOME}/config/runbook/teller.env"
 #R015: Delegate to the mapped runner golden with argument passthrough.
-exec "${RUNNER_HOME}/tests/t08_run_python_unit_tests.sh" "$@"
+exec "${RUNNER_HOME}/tests/t06_run_python_unit_tests.sh" "$@"

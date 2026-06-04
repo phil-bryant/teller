@@ -1,8 +1,8 @@
-# t12 run dynamic security tests Wrapper Requirements
+# t11 run dynamic security tests Wrapper Requirements
 
 ## Scope
 
-Applies to `tests/t12_run_dynamic_security_tests.sh`
+Applies to `tests/t11_run_dynamic_security_tests.sh`
 and `src/scripts/security/run_dynamic_security_lane.sh`.
 
 R001  Statement: Wrapper runs in strict shell mode with secure umask.
@@ -21,9 +21,9 @@ Tests:
 - R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
 R015  Statement: Wrapper delegates execution to the mapped runner golden.
-Design: Use `exec "${RUNNER_HOME}/tests/t12_run_dynamic_security_tests.sh" "$@"` so arguments pass through unchanged.
+Design: Use `exec "${RUNNER_HOME}/tests/t09_run_dynamic_security_tests.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Verify wrapper source delegates to `tests/t12_run_dynamic_security_tests.sh` with `"$@"`.
+- R015-T01: Verify wrapper source delegates to `tests/t09_run_dynamic_security_tests.sh` with `"$@"`.
 
 R020  Statement: Wrapper preserves runner dynamic-lane completion marker behavior.
 Design: Delegate unchanged to the runner dynamic security golden so completion output contracts remain intact.

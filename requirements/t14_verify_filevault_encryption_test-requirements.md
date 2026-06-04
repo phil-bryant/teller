@@ -1,8 +1,8 @@
-# t18 verify filevault encryption test Wrapper Requirements
+# t14 verify filevault encryption test Wrapper Requirements
 
 ## Scope
 
-Applies to `tests/t18_verify_filevault_encryption_test.sh`.
+Applies to `tests/t14_verify_filevault_encryption_test.sh`.
 
 R001  Statement: Wrapper runs in strict shell mode with secure umask.
 Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
@@ -20,6 +20,6 @@ Tests:
 - R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
 R015  Statement: Wrapper delegates execution to the mapped runner golden.
-Design: Use `exec "${RUNNER_HOME}/tests/t18_verify_filevault_encryption_test.sh" "$@"` so arguments pass through unchanged.
+Design: Use `exec "${RUNNER_HOME}/tests/t10_verify_filevault_encryption_test.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Verify wrapper source delegates to `tests/t18_verify_filevault_encryption_test.sh` with `"$@"`.
+- R015-T01: Verify wrapper source delegates to `tests/t10_verify_filevault_encryption_test.sh` with `"$@"`.

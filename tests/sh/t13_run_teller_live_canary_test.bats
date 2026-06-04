@@ -7,10 +7,10 @@ teardown() {
 }
 
 src() {
-  printf '%s' "$(repo_root)/tests/t06_run_sql_unit_tests.sh"
+  printf '%s' "$(repo_root)/tests/t13_run_teller_live_canary_test.sh"
 }
 
-@test "R005: Execute only the SQL unit-test lane." {
+@test "R005: Enforce live-only canary semantics; fallback mode and warnin" {
   #R005-T01
   run grep -- "#R005:" "$(src)"
   [ "$status" -eq 0 ]

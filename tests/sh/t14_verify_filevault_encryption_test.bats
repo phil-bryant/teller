@@ -7,7 +7,7 @@ teardown() {
 }
 
 src() {
-  printf '%s' "$(repo_root)/tests/t11_run_fuzz_tests.sh"
+  printf '%s' "$(repo_root)/tests/t14_verify_filevault_encryption_test.sh"
 }
 
 @test "enables secure umask and strict shell mode" {
@@ -38,6 +38,6 @@ src() {
 
 @test "delegates to mapped runner golden script" {
   #R015-T01
-  run grep "exec \"\${RUNNER_HOME}/tests/t11_run_fuzz_tests.sh\" \"\$@\"" "$(src)"
+  run grep "exec \"\${RUNNER_HOME}/tests/t10_verify_filevault_encryption_test.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
 }

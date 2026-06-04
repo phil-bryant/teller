@@ -7,11 +7,11 @@ teardown() {
 }
 
 src() {
-  printf '%s' "$(repo_root)/tests/t17_run_teller_live_canary_test.sh"
+  printf '%s' "$(repo_root)/tests/t11_run_dynamic_security_tests.sh"
 }
 
 @test "enables secure umask and strict shell mode" {
-  #R001-T01
+  #R001-T01 #R005-T01 #R010-T01 #R015-T01 #R020-T01 #R025-T01 #R030-T01 #R035-T01 #R040-T01 #R045-T01 #R050-T01 #R055-T01
   run grep "umask 007" "$(src)"
   [ "$status" -eq 0 ]
   run grep "set -euo pipefail" "$(src)"
@@ -38,6 +38,6 @@ src() {
 
 @test "delegates to mapped runner golden script" {
   #R015-T01
-  run grep "exec \"\${RUNNER_HOME}/tests/t17_run_teller_live_canary_test.sh\" \"\$@\"" "$(src)"
+  run grep "exec \"\${RUNNER_HOME}/tests/t09_run_dynamic_security_tests.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
 }

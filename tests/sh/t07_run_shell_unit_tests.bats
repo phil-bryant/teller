@@ -38,6 +38,6 @@ src() {
 
 @test "delegates to mapped runner golden script" {
   #R015-T01
-  run grep "exec \"\${RUNNER_HOME}/tests/t07_run_shell_unit_tests.sh\" \"\$@\"" "$(src)"
+  run grep "exec \"\${RUNNER_HOME}/tests/t05_run_shell_unit_tests.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
 }

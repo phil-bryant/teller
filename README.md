@@ -6,7 +6,7 @@ Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema and th
 > [`classy`](../classy) repo. Run them from there (`../classy/05_run_classification_api.py`,
 > `../classy/06_run_classification_macos_ui.sh`). `classy` imports this package for DB/session/profile/mailcart-client
 > and reads/writes the teller-owned schema. The classifier API/UI scripts, their TLS installer, and the
-> Swift/macOS lanes (t10/t14/t15/t16) now live in `classy`.
+> Swift/macOS lanes (classy `t08`/`t11`/`t12`/`t13`) now live in `classy`.
 >
 > The standalone bank-ingest scripts (`07_fetch_teller_api_data.py`, `08_backfill_bank_statements.py`) are
 > **deprecated** and retained only under [`deprecated/`](deprecated). The ingest/normalization/persistence logic
@@ -93,7 +93,7 @@ source ./teller-venv/bin/activate
 ./tests/t07_run_shell_unit_tests.sh
 ./tests/t08_run_python_unit_tests.sh
 ./tests/t06_run_sql_unit_tests.sh
-RUN_SCHEMATHESIS=true RUN_ZAP=false SCHEMATHESIS_FAIL_ON_FINDINGS=true ./tests/t12_run_dynamic_security_tests.sh
+RUN_SCHEMATHESIS=true RUN_ZAP=false SCHEMATHESIS_FAIL_ON_FINDINGS=true ./tests/t11_run_dynamic_security_tests.sh
 ```
 
 Full-confidence profile (parallel aggregate gate):
@@ -136,13 +136,13 @@ All primary lanes live under `tests/t*.sh`:
 - `./tests/t07_run_shell_unit_tests.sh` - shell unit tests (`bats`)
 - `./tests/t08_run_python_unit_tests.sh` - Python unit tests
 - `./tests/t09_run_mutation_tests.sh` - mutation testing (`mutmut`)
-- `./tests/t11_run_fuzz_tests.sh` - property/stateful fuzz tests (Hypothesis)
-- `./tests/t12_run_dynamic_security_tests.sh` - dynamic security scanning (DAST, optional ZAP)
-- `./tests/t13_run_teller_api_smoke_tests.sh` - Teller API smoke checks
-- `./tests/t17_run_teller_live_canary_test.sh` - strict live Teller upstream canary (requires mTLS + token)
-- `./tests/t18_verify_filevault_encryption_test.sh` - macOS FileVault encryption verification
+- `./tests/t10_run_fuzz_tests.sh` - property/stateful fuzz tests (Hypothesis)
+- `./tests/t11_run_dynamic_security_tests.sh` - dynamic security scanning (DAST, optional ZAP)
+- `./tests/t12_run_teller_api_smoke_tests.sh` - Teller API smoke checks
+- `./tests/t13_run_teller_live_canary_test.sh` - strict live Teller upstream canary (requires mTLS + token)
+- `./tests/t14_verify_filevault_encryption_test.sh` - macOS FileVault encryption verification
 
-The Swift/macOS UI lanes (`t10`, `t14`, `t15`) and classification-persistence lane (`t16`) live in `classy`.
+The Swift/macOS UI lanes (classy `t08`, `t11`, `t12`) and classification-persistence lane (classy `t13`) live in `classy`.
 
 Equivalent direct Python invocation:
 
@@ -225,15 +225,15 @@ Core lane scripts under `tests/`:
   - Runs only Python unit-test lane.
 - `tests/t09_run_mutation_tests.sh`
   - Runs mutation testing (`mutmut`) with score/coverage gating and mutation telemetry output.
-- `tests/t11_run_fuzz_tests.sh`
+- `tests/t10_run_fuzz_tests.sh`
   - Runs property/stateful fuzz tests (Hypothesis) with budget/time gating.
-- `tests/t12_run_dynamic_security_tests.sh`
+- `tests/t11_run_dynamic_security_tests.sh`
   - Runs DAST lane (including Schemathesis and optional ZAP flows).
-- `tests/t13_run_teller_api_smoke_tests.sh`
+- `tests/t12_run_teller_api_smoke_tests.sh`
   - Runs Teller API smoke checks and writes JSON/text smoke artifacts.
-- `tests/t17_run_teller_live_canary_test.sh`
+- `tests/t13_run_teller_live_canary_test.sh`
   - Runs the strict live Teller upstream canary (requires mTLS + token).
-- `tests/t18_verify_filevault_encryption_test.sh`
+- `tests/t14_verify_filevault_encryption_test.sh`
   - Verifies macOS FileVault encryption.
 
 Operational recovery scripts:
@@ -288,7 +288,7 @@ optional destructive teardown?
 post-restore verification
       |
       +--> ./tests/t05_deploy_database_verification_test.sh
-      +--> ../classy/tests/t16_classification_persistence_verification_test.sh
+      +--> ../classy/tests/t13_classification_persistence_verification_test.sh
 ```
 
 Credential source resolution order used by recovery scripts:

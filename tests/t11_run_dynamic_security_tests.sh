@@ -20,4 +20,4 @@ source "${RUNNER_HOME}/config/runbook/teller.env"
 #R050: Preserve runner Schemathesis token-redaction behavior through passthrough delegation.
 #R055: Preserve runner hash-pinned toolchain enforcement through passthrough delegation.
 #R015: Delegate to the mapped runner golden with argument passthrough.
-exec "${RUNNER_HOME}/tests/t12_run_dynamic_security_tests.sh" "$@"
+exec "${RUNNER_HOME}/tests/t09_run_dynamic_security_tests.sh" "$@"

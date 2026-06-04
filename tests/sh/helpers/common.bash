@@ -90,12 +90,12 @@ copy_script_to_fixture() {
   cp "$source_path" "${FIXTURE_ROOT}/${script_name}"
   chmod +x "${FIXTURE_ROOT}/${script_name}"
   case "$script_name" in
-    t03_run_static_security_tests.sh|t09_run_mutation_tests.sh|t11_run_fuzz_tests.sh|t12_run_dynamic_security_tests.sh)
+    t03_run_static_security_tests.sh|t09_run_mutation_tests.sh|t10_run_fuzz_tests.sh|t11_run_dynamic_security_tests.sh)
       copy_test_cache_env_scripts_to_fixture
       ;;
   esac
   case "$script_name" in
-    t03_run_static_security_tests.sh|t12_run_dynamic_security_tests.sh)
+    t03_run_static_security_tests.sh|t11_run_dynamic_security_tests.sh)
       copy_security_lane_assets_to_fixture
       ;;
   esac
