@@ -184,9 +184,13 @@ def _resolve_target(target: str | None) -> str:
 def _resolve_sslmode(sslmode: str | None, resolved_target: str) -> str:
     if resolved_target == "sqlite":
         return "disable"
-    if not sslmode:
-        sslmode = "require" if resolved_target == "managed" else "disable"
-    return sslmode if sslmode in _ALLOWED_SSLMODES else "disable"
+    candidate = (sslmode or "").strip()
+    if not candidate:
+        return "require" if resolved_target == "managed" else "disable"
+    if candidate in _ALLOWED_SSLMODES:
+        return candidate
+    allowed = ", ".join(sorted(_ALLOWED_SSLMODES))
+    raise ProfileError(f"DB profile sslmode must be one of {allowed}; got {candidate!r}")
 
 
 def _build_record(

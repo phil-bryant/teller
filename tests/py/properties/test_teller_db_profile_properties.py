@@ -1,6 +1,8 @@
 from hypothesis import given, settings, strategies as st
 
-from teller.teller_db_profile import _build_record
+from teller.teller_db_profile import ProfileError, _build_record
+
+_VALID_SSLMODES = ("disable", "allow", "prefer", "require", "verify-ca", "verify-full")
 
 
 @given(
@@ -11,7 +13,7 @@ from teller.teller_db_profile import _build_record
     schema=st.one_of(st.none(), st.text(min_size=0, max_size=24)),
     runtime_role=st.one_of(st.none(), st.text(min_size=0, max_size=24)),
     target=st.one_of(st.none(), st.text(min_size=0, max_size=24)),
-    sslmode=st.one_of(st.none(), st.text(min_size=0, max_size=24)),
+    sslmode=st.one_of(st.none(), st.sampled_from(_VALID_SSLMODES)),
 )
 @settings(max_examples=500, deadline=None, derandomize=True)
 def test_build_record_always_returns_expected_shape(
@@ -43,3 +45,13 @@ def test_build_record_invalid_port_falls_back_to_default(port_raw):
         assert result["port"] == int(port_raw)
     else:
         assert result["port"] == 5432
+
+
+@given(st.text(min_size=1, max_size=24).filter(lambda value: value.strip() not in set(_VALID_SSLMODES)))
+@settings(max_examples=500, deadline=None, derandomize=True)
+def test_build_record_invalid_sslmode_raises_profile_error(sslmode):
+    try:
+        _build_record("localhost", "5432", "prod", "teller", "teller", "", "local", sslmode)
+    except ProfileError:
+        return
+    raise AssertionError(f"Expected ProfileError for invalid sslmode {sslmode!r}")

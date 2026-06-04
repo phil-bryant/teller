@@ -156,6 +156,20 @@ class ResolveProfileTests(_IsolatedEnvTest):
         profile = resolve_profile()
         self.assertEqual(profile.target, "local")
 
+    @patch("teller.teller_db_profile._read_onepsa_fields")
+    def test_invalid_sslmode_from_profile_fields_raises_profile_error(self, mock_read):
+        fields = dict(_SUPABASE_FIELDS, sslmode="bogus")
+        mock_read.side_effect = _make_onepsa_stub(fields)
+        self._write_profile_file(
+            {
+                "default_profile": "remote",
+                "profiles": {"remote": {"1psa_item": "eggnest_supabase"}},
+            }
+        )
+        with self.assertRaises(ProfileError) as ctx:
+            resolve_profile()
+        self.assertIn("DB profile sslmode must be one of", str(ctx.exception))
+
     # #R015: TELLER_DB_PROFILE overrides default_profile.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
     def test_env_profile_name_overrides_default(self, _mock):
