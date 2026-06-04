@@ -144,5 +144,50 @@ class MainExitPolicyTests(unittest.TestCase):
         self.assertEqual(exit_code, 1)
 
 
+class FallbackSourcePathTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.module = load_module()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.repo_root = Path(self.temp_dir.name)
+        self.original_cwd = Path.cwd()
+        os.chdir(self.repo_root)
+        self.addCleanup(lambda: os.chdir(self.original_cwd))
+
+    def _write_fallback_docs(self) -> None:
+        docs_dir = self.repo_root / "docs" / "teller-api-reference"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        for filename in (
+            "teller-api-reference-institutions.md",
+            "teller-api-reference-accounts.md",
+            "teller-api-reference-identity.md",
+        ):
+            (docs_dir / filename).write_text("# ok\n", encoding="utf-8")
+
+    def test_fallback_checks_use_deprecated_fetch_script_when_present(self) -> None:
+        self._write_fallback_docs()
+        fetch_script = self.repo_root / "deprecated" / "07_fetch_teller_api_data.py"
+        fetch_script.parent.mkdir(parents=True, exist_ok=True)
+        fetch_script.write_text(
+            "INSTITUTIONS='/institutions'\nACCOUNTS='/accounts'\nIDENTITY='/identity'\n",
+            encoding="utf-8",
+        )
+
+        report = self.module.run_fallback_checks()
+        self.assertEqual(report["status"], "pass")
+        source_checks = [check for check in report["checks"] if check["name"].startswith("source:")]
+        self.assertEqual(len(source_checks), 1)
+        self.assertTrue(source_checks[0]["name"].endswith("deprecated/07_fetch_teller_api_data.py"))
+        self.assertEqual(source_checks[0]["status"], "pass")
+
+    def test_fallback_checks_warn_when_no_known_source_files_are_present(self) -> None:
+        self._write_fallback_docs()
+        report = self.module.run_fallback_checks()
+        self.assertEqual(report["status"], "warn")
+        discovery = [check for check in report["checks"] if check["name"] == "source:discovery"]
+        self.assertEqual(len(discovery), 1)
+        self.assertEqual(discovery[0]["status"], "warn")
+
+
 if __name__ == "__main__":
     unittest.main()

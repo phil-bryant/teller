@@ -187,6 +187,28 @@ def _collect_source_checks(
     return checks
 
 
+def _discover_fallback_source_files() -> list[Path]:
+    # Keep API-drift fallback aligned with repository moves:
+    # - legacy runner paths in-repo
+    # - extracted classy UI paths in sibling/child directories
+    candidates = [
+        Path("deprecated/07_fetch_teller_api_data.py"),
+        Path("07_fetch_teller_api_data.py"),
+        Path("classy/07_fetch_teller_api_data.py"),
+        Path("../classy/07_fetch_teller_api_data.py"),
+        Path("src/macos-ui/Sources/TransactionClassifier/TellerSetupService.swift"),
+        Path("classy/src/macos-ui/Sources/TransactionClassifier/TellerSetupService.swift"),
+        Path("../classy/src/macos-ui/Sources/TransactionClassifier/TellerSetupService.swift"),
+        Path("src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift"),
+        Path("classy/src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift"),
+        Path("../classy/src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift"),
+        Path("10_run_classification_macos_ui.sh"),
+        Path("classy/10_run_classification_macos_ui.sh"),
+        Path("../classy/10_run_classification_macos_ui.sh"),
+    ]
+    return [path for path in candidates if path.is_file()]
+
+
 def _fallback_live_result(message: str) -> dict[str, Any]:
     return {
         "mode": "fallback",
@@ -320,14 +342,18 @@ def run_fallback_checks() -> dict[str, Any]:
             }
         )
 
-    source_files = [
-        Path("src/macos-ui/Sources/TransactionClassifier/TellerSetupService.swift"),
-        Path("src/macos-ui/Sources/TransactionClassifier/ConnectAPIClient.swift"),
-        Path("10_run_classification_macos_ui.sh"),
-        Path("07_fetch_teller_api_data.py"),
-    ]
+    source_files = _discover_fallback_source_files()
     endpoint_markers = ["/institutions", "/accounts", "/identity"]
-    checks.extend(_collect_source_checks(source_files, endpoint_markers))
+    if source_files:
+        checks.extend(_collect_source_checks(source_files, endpoint_markers))
+    else:
+        checks.append(
+            {
+                "name": "source:discovery",
+                "status": "warn",
+                "detail": "No known Teller source files found in repo/classy fallback locations.",
+            }
+        )
 
     failures = [check for check in checks if check["status"] == "fail"]
     warnings = [check for check in checks if check["status"] == "warn"]

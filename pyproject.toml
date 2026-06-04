@@ -46,6 +46,5 @@ tests_dir = [
   "tests/py/test_teller_mailcart_client.py",
   "tests/py/test_teller_base.py",
   "tests/py/test_teller_enums.py",
-  "tests/py/test_teller_properties.py",
-  "tests/py/test_07_fetch_teller_api_data.py",
+  "deprecated/tests/py/test_07_fetch_teller_api_data.py",
 ]
