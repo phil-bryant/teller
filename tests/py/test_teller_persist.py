@@ -126,6 +126,15 @@ class TellerPersistTests(unittest.TestCase):
         sql = str(exec_mock.call_args.args[1])
         self.assertIn("ON CONFLICT (account_id, identity_id) DO NOTHING", sql)
 
+    @patch("teller.teller_persist._exec")
+    def test_upsert_identity_emails_does_not_reassign_existing_email_owner(self, exec_mock):
+        #R010-T03
+        session = MagicMock()
+        teller_persist._upsert_identity_emails(session, [{"data": "pat@example.com"}], 7)
+        sql = str(exec_mock.call_args.args[1])
+        self.assertIn("ON CONFLICT (data) DO NOTHING", sql)
+        self.assertNotIn("identity_id = EXCLUDED.identity_id", sql)
+
     @patch("teller.teller_persist._upsert_transaction_type", return_value=8)
     @patch("teller.teller_persist._upsert_transaction_details", return_value=9)
     @patch("teller.teller_persist._upsert_transaction_links", return_value=10)
@@ -209,15 +218,12 @@ class TellerPersistTests(unittest.TestCase):
         self.assertEqual(deleted, ["txn_old", "txn_older"])
 
     @patch("teller.teller_persist._exec")
-    def test_reconcile_with_empty_fetched_ids_removes_all_pending(self, exec_mock):
+    def test_reconcile_with_empty_fetched_ids_skips_deletion(self, exec_mock):
         #R025-T02
         #R050-T02
-        exec_mock.return_value = _Result(many=[("txn_1",)])
         deleted = teller_persist._reconcile_missing_pending_transactions(MagicMock(), "acc_1", [])
-        sql = str(exec_mock.call_args.args[1])
-        self.assertIn('DELETE FROM teller."transaction"', sql)
-        self.assertNotIn("!= ALL", sql)
-        self.assertEqual(deleted, ["txn_1"])
+        self.assertEqual(deleted, [])
+        exec_mock.assert_not_called()
 
     @patch("teller.teller_persist._exec")
     def test_prune_unreferenced_transaction_relations_reports_counts(self, exec_mock):
@@ -302,12 +308,12 @@ class TellerPersistTests(unittest.TestCase):
     @patch("teller.teller_persist._prune_unreferenced_transaction_relations", return_value={"transaction_links": 0, "transaction_details": 0, "transaction_details_counterparty": 0})
     @patch("teller.teller_persist._reconcile_missing_pending_transactions", return_value=[])
     @patch("teller.teller_persist._upsert_transaction")
-    @patch("teller.teller_persist._canonicalize_transactions", return_value=[{"id": "txn_1"}])
+    @patch("teller.teller_persist._canonicalize_transactions", return_value=[])
     @patch("teller.teller_persist._upsert_account_balances")
     @patch("teller.teller_persist._upsert_account_identity")
     @patch("teller.teller_persist._upsert_identity", return_value=66)
     @patch("teller.teller_persist._upsert_account")
-    def test_persist_all_allows_omitting_balances(self, _upsert_account, _upsert_identity, _upsert_account_identity, upsert_balances, _canonicalize, _upsert_transaction, _reconcile, _prune):
+    def test_persist_all_allows_omitting_balances(self, _upsert_account, _upsert_identity, _upsert_account_identity, upsert_balances, _canonicalize, _upsert_transaction, reconcile, _prune):
         #R040-T02
         session = _Session(_Result())
         teller_persist.persist_all(
@@ -317,6 +323,7 @@ class TellerPersistTests(unittest.TestCase):
             raw_balances_by_account=None,
         )
         upsert_balances.assert_not_called()
+        reconcile.assert_not_called()
         self.assertEqual(session.commits, 1)
 
     @patch("teller.teller_persist._upsert_account", side_effect=RuntimeError("boom"))

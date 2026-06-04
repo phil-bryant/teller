@@ -132,7 +132,7 @@ def _upsert_identity_emails(session, emails, identity_id):
         _exec(session, """
             INSERT INTO teller.identity_email (data, identity_id)
             VALUES (:data, :identity_id)
-            ON CONFLICT (data) DO UPDATE SET identity_id = EXCLUDED.identity_id
+            ON CONFLICT (data) DO NOTHING
         """, {"data": e["data"], "identity_id": identity_id})
 
 
@@ -290,26 +290,20 @@ def _canonicalize_transactions(txns):
 
 def _reconcile_missing_pending_transactions(session, account_id, fetched_transaction_ids):
     #R025: Delete stale pending transactions absent from current fetch.
-    if fetched_transaction_ids:
-        deleted = session.execute(
-            text(
-                """
-                DELETE FROM teller."transaction"
-                WHERE account_id = :account_id
-                  AND status = 'pending'
-                  AND transaction_id NOT IN :fetched_ids
-                RETURNING transaction_id
+    if not fetched_transaction_ids:
+        return []
+    deleted = session.execute(
+        text(
             """
-            ).bindparams(bindparam("fetched_ids", expanding=True)),
-            {"account_id": account_id, "fetched_ids": fetched_transaction_ids},
-        ).fetchall()
-    else:
-        deleted = _exec(session, """
             DELETE FROM teller."transaction"
             WHERE account_id = :account_id
               AND status = 'pending'
+              AND transaction_id NOT IN :fetched_ids
             RETURNING transaction_id
-        """, {"account_id": account_id}).fetchall()
+        """
+        ).bindparams(bindparam("fetched_ids", expanding=True)),
+        {"account_id": account_id, "fetched_ids": fetched_transaction_ids},
+    ).fetchall()
     return [row[0] for row in deleted]
 
 def _prune_unreferenced_transaction_relations(session):
@@ -410,11 +404,14 @@ def persist_all(session, raw_identities, raw_transactions_by_account, raw_balanc
             canonical_txns = _canonicalize_transactions(txns)
             for txn_data in canonical_txns:
                 _upsert_transaction(session, txn_data)
-            deleted_pending_ids = _reconcile_missing_pending_transactions(
-                session,
-                account_id,
-                [txn_data["id"] for txn_data in canonical_txns],
-            )
+            fetched_transaction_ids = [txn_data["id"] for txn_data in canonical_txns]
+            deleted_pending_ids = []
+            if fetched_transaction_ids:
+                deleted_pending_ids = _reconcile_missing_pending_transactions(
+                    session,
+                    account_id,
+                    fetched_transaction_ids,
+                )
             log.info("Persisted transactions", account_id=account_id, count=len(canonical_txns))
             if deleted_pending_ids:
                 log.info("Removed stale pending transactions", account_id=account_id, count=len(deleted_pending_ids))
