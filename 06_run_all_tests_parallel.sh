@@ -13,4 +13,4 @@ export RUNBOOK_REPO_ROOT
 source "${RUNNER_HOME}/config/runbook/teller.env"
 #R015: Delegate to the mapped runner golden with argument passthrough.
 #R020: Delegated runner enforces single-run locking per RUNBOOK_REPO_ROOT.
-exec "${RUNNER_HOME}/11_run_all_tests_parallel.sh" "$@"
+exec "${RUNNER_HOME}/07_run_all_tests_parallel.sh" "$@"

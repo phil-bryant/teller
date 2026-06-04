@@ -20,6 +20,6 @@ Tests:
 - R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
 R015  Statement: Wrapper delegates execution to the mapped runner golden.
-Design: Use `exec "${RUNNER_HOME}/14_prune_quality_telemetry.sh" "$@"` so arguments pass through unchanged.
+Design: Use `exec "${RUNNER_HOME}/10_prune_quality_telemetry.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Verify wrapper source delegates to `14_prune_quality_telemetry.sh` with `"$@"`.
+- R015-T01: Verify wrapper source delegates to `10_prune_quality_telemetry.sh` with `"$@"`.

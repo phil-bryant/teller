@@ -20,9 +20,9 @@ Tests:
 - R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
 
 R015  Statement: Wrapper delegates execution to the mapped runner golden.
-Design: Use `exec "${RUNNER_HOME}/11_run_all_tests_parallel.sh" "$@"` so arguments pass through unchanged.
+Design: Use `exec "${RUNNER_HOME}/07_run_all_tests_parallel.sh" "$@"` so arguments pass through unchanged.
 Tests:
-- R015-T01: Verify wrapper source delegates to `11_run_all_tests_parallel.sh` with `"$@"`.
+- R015-T01: Verify wrapper source delegates to `07_run_all_tests_parallel.sh` with `"$@"`.
 
 R020  Statement: Delegated runner uses a per-repository single-run lock.
 Design: Runner lock path is keyed by `RUNBOOK_REPO_ROOT` so one parallel runner may execute per repo while preventing same-repo overlap.
