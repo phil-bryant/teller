@@ -164,10 +164,9 @@ class FallbackSourcePathTests(unittest.TestCase):
         ):
             (docs_dir / filename).write_text("# ok\n", encoding="utf-8")
 
-    def test_fallback_checks_use_deprecated_fetch_script_when_present(self) -> None:
+    def test_fallback_checks_use_root_fetch_script_when_present(self) -> None:
         self._write_fallback_docs()
-        fetch_script = self.repo_root / "deprecated" / "07_fetch_teller_api_data.py"
-        fetch_script.parent.mkdir(parents=True, exist_ok=True)
+        fetch_script = self.repo_root / "07_fetch_teller_api_data.py"
         fetch_script.write_text(
             "INSTITUTIONS='/institutions'\nACCOUNTS='/accounts'\nIDENTITY='/identity'\n",
             encoding="utf-8",
@@ -177,7 +176,7 @@ class FallbackSourcePathTests(unittest.TestCase):
         self.assertEqual(report["status"], "pass")
         source_checks = [check for check in report["checks"] if check["name"].startswith("source:")]
         self.assertEqual(len(source_checks), 1)
-        self.assertTrue(source_checks[0]["name"].endswith("deprecated/07_fetch_teller_api_data.py"))
+        self.assertTrue(source_checks[0]["name"].endswith("07_fetch_teller_api_data.py"))
         self.assertEqual(source_checks[0]["status"], "pass")
 
     def test_fallback_checks_warn_when_no_known_source_files_are_present(self) -> None:

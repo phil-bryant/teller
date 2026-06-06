@@ -192,7 +192,6 @@ def _discover_fallback_source_files() -> list[Path]:
     # - legacy runner paths in-repo
     # - extracted classy UI paths in sibling/child directories
     candidates = [
-        Path("deprecated/07_fetch_teller_api_data.py"),
         Path("07_fetch_teller_api_data.py"),
         Path("classy/07_fetch_teller_api_data.py"),
         Path("../classy/07_fetch_teller_api_data.py"),
