@@ -62,6 +62,7 @@ class TellerObject(Base, TimestampMixin):
                 for f in fields(self.__class__)
                 if col_info.get(f.name, {}).get("api_name", f.name) in self._api_data}
 
+    # #R025: Unpack list/scalar annotations for hydration type coercion.
     def _unpack_annotation(self, ann):
         args = typing.get_args(ann)
         inner = args[0] if args else ann
@@ -85,6 +86,7 @@ class TellerObject(Base, TimestampMixin):
                 except (TypeError, ValueError, KeyError):
                     setattr(self, key, value)
 
+    # #R030: Collect dataclass fields marked for debug-string rendering.
     def _str_field_names(self):
         return [field.name for field in fields(self.__class__) if field.metadata.get("__str__", False)]
 

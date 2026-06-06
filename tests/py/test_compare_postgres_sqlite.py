@@ -116,7 +116,7 @@ def test_connect_postgres_builds_connect_args_and_session_setup() -> None:
             return self
 
         #R600: Helper for compare traceability test setup and fixtures.
-        def __exit__(self, exc_type, exc, tb):
+        def __exit__(self, *args):
             #R600: Helper for compare traceability test setup and fixtures.
             return False
 
@@ -168,7 +168,7 @@ def test_connect_postgres_builds_connect_args_and_session_setup() -> None:
         MODULE._read_password = original_read_password
 
     assert conn is fake_conn
-    assert captured["kwargs"]["password"] == "pw"
+    assert captured["kwargs"]["password"] == "pw"  # pragma: allowlist secret
     executed_sql = [sql for sql, _ in fake_conn.cursor_obj.executed]
     assert any("SET search_path TO" in sql for sql in executed_sql)
     assert any("SET ROLE" in sql for sql in executed_sql)

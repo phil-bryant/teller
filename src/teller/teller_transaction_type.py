@@ -9,6 +9,7 @@ class TellerTransactionType(TellerObject): ## https://teller.io/docs/api/account
     description: Mapped[str] = mapped_column(String)
     transaction_type_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
+    #R001: Accept transaction type code strings or hydrated API payload objects.
     def __init__(self, api_data):
         if isinstance(api_data, str):
             self.code = api_data

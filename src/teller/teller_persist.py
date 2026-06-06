@@ -31,11 +31,13 @@ def _sqlite_safe_params(params):
     return params
 
 
+#R045: Detect sqlite-bound sessions for backend-specific binding behavior.
 def _is_sqlite_session(session):
     dialect = getattr(getattr(session, "bind", None), "dialect", None)
     return getattr(dialect, "name", None) == "sqlite"
 
 
+#R015: Normalize Decimal money values to integer cents for sqlite writes.
 def _sqlite_money_to_minor_units(value):
     if value is None:
         return None
@@ -54,6 +56,7 @@ def _exec(session, sql, params=None):
 def _exec_returning(session, sql, params=None):
     return _exec(session, sql, params).fetchone()
 
+#R005: Upsert institution rows idempotently for account persistence.
 def _upsert_institution(session, inst_data):
     _exec(session, """
         INSERT INTO teller.institution (institution_id, name)
@@ -61,6 +64,7 @@ def _upsert_institution(session, inst_data):
         ON CONFLICT (institution_id) DO UPDATE SET name = EXCLUDED.name
     """, {"id": inst_data["id"], "name": inst_data["name"]})
 
+#R005: Upsert account link rows while preserving existing link identities.
 def _upsert_account_links(session, links_data, existing_links_id=None):
     vals = {"self_link": links_data.get("self", ""), "details": links_data.get("details"),
             "balances": links_data.get("balances"), "transactions": links_data.get("transactions")}
@@ -109,6 +113,7 @@ def _existing_identity_id_by_email(session, emails):
     return None
 
 
+#R010: Upsert/reuse identity records for account owners.
 def _upsert_identity_record(session, owner_type, identity_id=None):
     if identity_id:
         _exec(session, "UPDATE teller.identity SET type = :type WHERE identity_id = :id", {"type": owner_type, "id": identity_id})
@@ -118,6 +123,7 @@ def _upsert_identity_record(session, owner_type, identity_id=None):
     """, {"type": owner_type})[0]
 
 
+#R010: Upsert identity name rows without duplication.
 def _upsert_identity_names(session, names, identity_id):
     for n in names:
         _exec(session, """
@@ -127,6 +133,7 @@ def _upsert_identity_names(session, names, identity_id):
         """, {"type": n["type"], "data": n["data"], "identity_id": identity_id})
 
 
+#R010: Upsert identity emails with conflict-safe ownership semantics.
 def _upsert_identity_emails(session, emails, identity_id):
     for e in emails:
         _exec(session, """
@@ -136,6 +143,7 @@ def _upsert_identity_emails(session, emails, identity_id):
         """, {"data": e["data"], "identity_id": identity_id})
 
 
+#R010: Upsert identity phone-number rows with idempotent updates.
 def _upsert_identity_phone_numbers(session, phone_numbers, identity_id):
     for p in phone_numbers:
         _exec(session, """
@@ -145,6 +153,7 @@ def _upsert_identity_phone_numbers(session, phone_numbers, identity_id):
         """, {"type": p["type"], "data": p["data"], "identity_id": identity_id})
 
 
+#R010: Upsert identity address records and link rows for owners.
 def _upsert_identity_addresses(session, addresses, identity_id):
     for a in addresses:
         addr = a["data"]
@@ -161,6 +170,7 @@ def _upsert_identity_addresses(session, addresses, identity_id):
         """, {"primary": a.get("primary", False), "addr_data_id": addr_data_id, "identity_id": identity_id})
 
 
+#R010: Persist a full identity graph and return the linked identity ID.
 def _upsert_identity(session, owner_data):
     emails = owner_data.get("emails") or []
     identity_id = None
@@ -172,6 +182,7 @@ def _upsert_identity(session, owner_data):
     _upsert_identity_addresses(session, owner_data.get("addresses") or [], identity_id)
     return identity_id
 
+#R010: Upsert account-to-identity linkage records without duplication.
 def _upsert_account_identity(session, account_id, identity_id):
     _exec(session, """
         INSERT INTO teller.account_identities (account_id, identity_id)
@@ -179,6 +190,7 @@ def _upsert_account_identity(session, account_id, identity_id):
         ON CONFLICT (account_id, identity_id) DO NOTHING
     """, {"account_id": account_id, "identity_id": identity_id})
 
+#R015: Upsert transaction type rows and return stable type IDs.
 def _upsert_transaction_type(session, type_code):
     row = _exec(session, "SELECT transaction_type_id FROM teller.transaction_type WHERE code = :code", {"code": type_code}).fetchone()
     if row:
@@ -187,6 +199,7 @@ def _upsert_transaction_type(session, type_code):
         INSERT INTO teller.transaction_type (code) VALUES (:code) RETURNING transaction_type_id
     """, {"code": type_code})[0]
 
+#R015: Upsert transaction link rows while preserving relational integrity.
 def _upsert_transaction_links(session, links_data, existing_links_id=None):
     self_link = links_data.get("self", "")
     account_link = links_data.get("account", "")
@@ -205,6 +218,7 @@ def _upsert_transaction_links(session, links_data, existing_links_id=None):
         RETURNING transaction_links_id
     """, {"self_link": self_link, "account": account_link})[0]
 
+#R015: Upsert transaction detail/counterparty rows for transaction writes.
 def _upsert_transaction_details(session, details_data, existing_details_id=None):
     counterparty_id = None
     cp = details_data.get("counterparty")
@@ -342,6 +356,7 @@ def _prune_unreferenced_transaction_relations(session):
         "transaction_details_counterparty": len(removed_counterparties),
     }
 
+#R035: Upsert account-balance link rows with conflict-safe behavior.
 def _upsert_account_balances_links(session, links_data, existing_links_id=None):
     self_link = links_data.get("self", "")
     account_link = links_data.get("account", "")

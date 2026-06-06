@@ -10,10 +10,12 @@ from teller.teller_db_profile import ResolvedProfile, resolve_profile
 log = structlog.get_logger()
 
 
+#R025: Build the canonical 1psa password lookup command for diagnostics.
 def _onepsa_password_command(item: str) -> str:
     return f"1psa -p {shlex.quote(item)}"
 
 
+#R025: Read the DB password from libonepsa for the selected profile item.
 def _read_password_from_onepsa(item: str) -> str:
     lib_path = os.environ.get("ONEPSA_LIB_PATH", "/usr/local/lib/libonepsa.dylib")
     lib = ctypes.CDLL(lib_path)
@@ -92,11 +94,13 @@ def _read_password(profile: ResolvedProfile) -> str:
     return password
 
 
+#R030: Escape SQLCipher/sqlite literal inputs used in PRAGMA/ATTACH statements.
 def _escape_sqlite_literal(value: str) -> str:
     """Escape a string literal for sqlite/sqlcipher PRAGMA statements."""
     return value.replace("'", "''")
 
 
+#R030: Resolve SQLCipher key from env override or profile configuration.
 def _resolve_sqlcipher_key(profile: ResolvedProfile) -> str:
     key = os.environ.get("TELLER_DB_SQLCIPHER_KEY")
     if key:
@@ -122,6 +126,7 @@ def get_engine():
             sqlite_path = profile.sqlite_path or ""
             sqlcipher_key = _resolve_sqlcipher_key(profile)
 
+            #R030: Open SQLCipher connection and attach the configured Teller database.
             def _connect_sqlcipher():
                 try:
                     from pysqlcipher3 import dbapi2 as sqlcipher_dbapi
@@ -200,5 +205,6 @@ def get_engine():
     return _engine
 
 
+#R030: Create a SQLAlchemy session bound to the cached process engine.
 def get_session():
     return sessionmaker(bind=get_engine())()

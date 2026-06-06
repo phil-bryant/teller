@@ -118,6 +118,7 @@ class GenerateSupplyChainArtifactsTests(unittest.TestCase):
 
             def _fake_run(command, check, capture_output, text):
                 #R409: Cover traceability for this helper/test behavior.
+                _ = (check, capture_output, text)
                 self.assertIn("--output-signature", command)
                 signature_path.write_text("sig", encoding="utf-8")
                 return subprocess.CompletedProcess(command, 0, "", "")

@@ -51,6 +51,7 @@ class ProfileError(RuntimeError):
     """Raised when profile lookup or validation fails."""
 
 
+#R010: Read required profile connection fields from libonepsa.
 def _read_onepsa_fields(item: str, fields: tuple[str, ...]) -> dict[str, str]:
     """Read multiple fields from a 1psa item in a single CLI call. Returns field→value map."""
     parsed: dict[str, str] = {}
@@ -98,6 +99,7 @@ def _read_onepsa_fields(item: str, fields: tuple[str, ...]) -> dict[str, str]:
     return parsed
 
 
+#R010: Read a single profile field from libonepsa.
 def _read_onepsa_field(item: str, field: str) -> Optional[str]:
     """Read a single field from a 1psa item. Returns None on missing field."""
     fields = _read_onepsa_fields(item, (field,))
@@ -117,6 +119,7 @@ _CONNECTION_FIELDS = (
 )
 
 
+#R010: Parse ~/.env fallback values for profile connection fields.
 def _read_env_file_fields(item: str) -> dict[str, str]:
     """Parse ~/.env for lines matching ITEM.field=value and return a field→value dict."""
     env_path = Path.home() / ".env"
@@ -154,6 +157,7 @@ def _fetch_record_from_onepsa(item: str) -> dict:
     return _record_from_fields(fields)
 
 
+#R010: Normalize raw field maps into validated connection records.
 def _record_from_fields(fields: dict[str, str]) -> dict:
     """Build a record dict from a flat field→value mapping (either 1psa or ~/.env)."""
     return _build_record(
@@ -170,6 +174,7 @@ def _record_from_fields(fields: dict[str, str]) -> dict:
     )
 
 
+#R010: Parse profile port values with safe default fallback.
 def _parse_port(port_raw: str | None) -> int:
     try:
         return int(port_raw) if port_raw else 5432
@@ -177,10 +182,12 @@ def _parse_port(port_raw: str | None) -> int:
         return 5432
 
 
+#R010: Resolve the profile target to an allowed runtime backend.
 def _resolve_target(target: str | None) -> str:
     return target if target in _ALLOWED_TARGETS else "local"
 
 
+#R010: Validate and normalize sslmode for the resolved backend target.
 def _resolve_sslmode(sslmode: str | None, resolved_target: str) -> str:
     if resolved_target == "sqlite":
         return "disable"
@@ -193,6 +200,7 @@ def _resolve_sslmode(sslmode: str | None, resolved_target: str) -> str:
     raise ProfileError(f"DB profile sslmode must be one of {allowed}; got {candidate!r}")
 
 
+#R010: Build canonical profile records for postgres/supabase/sqlite targets.
 def _build_record(
     host,
     port_raw,
@@ -227,6 +235,7 @@ def _build_record(
     }
 
 
+#R021: Coerce resolved records to sqlite semantics when sqlite profile is selected.
 def _force_sqlite_target(record: dict) -> dict:
     """Normalize a resolved record to sqlite target semantics."""
     sqlite_path = (record.get("sqlite_path") or "").strip()
@@ -260,6 +269,7 @@ def _candidate_profile_paths() -> list[Path]:
     return paths
 
 
+#R001: Fingerprint profile files so cache invalidates when files change.
 def _profile_file_fingerprint(path: Path) -> tuple[str, int, int]:
     try:
         stat = path.stat()
@@ -268,6 +278,7 @@ def _profile_file_fingerprint(path: Path) -> tuple[str, int, int]:
     return (str(path), stat.st_mtime_ns, stat.st_size)
 
 
+#R001: Build the cache key from env overrides and profile-file fingerprints.
 def _profile_cache_key() -> tuple:
     env_values = tuple(
         os.environ.get(name, "")
@@ -324,6 +335,7 @@ def _select_profile_name(document: dict) -> str:
     )
 
 
+#R010: Resolve and validate the onepsa item pointer for the selected profile.
 def _resolve_onepsa_item(document: dict, name: str) -> str:
     """Get the 1psa item name for a given profile."""
     profiles = document.get("profiles") or {}
@@ -413,6 +425,7 @@ def resolve_profile() -> ResolvedProfile:
     return _resolve_profile_cached(_profile_cache_key())
 
 
+#R001: Expose cache reset hook for tests that mutate profile inputs.
 def reset_profile_cache() -> None:
     """Clear the cached profile so tests can mutate env/files between assertions."""
     _resolve_profile_cached.cache_clear()
