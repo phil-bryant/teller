@@ -9,6 +9,7 @@ Design: `resolve_profile()` returns a frozen `ResolvedProfile` dataclass with di
 Rationale: Centralizes connection metadata so a single switch (profile name) flips between local PostgreSQL, Supabase, and SQLite without code edits.
 Tests:
 - R001-T01: Resolve with no profile file present and verify a `ProfileError` explains how to create `config/db-profiles.json` from `config/db-profiles-EXAMPLE.json`.
+- R001-T02: Resolve a sqlite-target profile and verify sqlite target/path fields are returned.
 
 R005  Statement: Search the canonical profile-file locations in order.
 Design: Resolution checks `TELLER_DB_PROFILE_FILE`, then `~/.teller/db_profiles.json`, then `./config/db-profiles.local.json`, then `./config/db-profiles.json`; the first existing file wins.
@@ -21,6 +22,7 @@ Design: PostgreSQL-family profiles validate host/port/dbname/user and sslmode; S
 Tests:
 - R010-T01: Load a profile missing `host` and verify a `ProfileError` is raised.
 - R010-T02: Load a profile with `sslmode = "bogus"` and verify a `ProfileError` is raised.
+- R010-T03: Load profile fields with invalid sslmode and verify resolution raises `ProfileError`.
 
 R015  Statement: Select the active profile by name with override precedence.
 Design: `TELLER_DB_PROFILE` env var beats the file's `default_profile` field; if neither is present, raise `ProfileError` instead of falling back.
@@ -33,6 +35,9 @@ Rationale: Existing bats tests and shell scripts that set these vars must keep w
 Tests:
 - R020-T01: Resolve with the local profile and `TELLER_DB_HOST=remote.example` set; verify host is overridden but other fields come from the profile.
 - R020-T02: Resolve with `TELLER_DB_USER=custom_user` set; verify only the runtime user field is overridden.
+- R020-T03: Resolve with `TELLER_DB_SQLCIPHER_KEY` set and verify it overrides profile sqlcipher key.
+- R020-T04: Change override env vars between calls and verify `resolve_profile()` refreshes cached values.
+- R020-T05: Set non-integer `TELLER_DB_PORT` override and verify a `ProfileError` is raised.
 
 R021  Statement: Treat the `sqlite` profile name as authoritative for SQLite runtime resolution.
 Design: If the selected profile name is `sqlite`, coerce the resolved profile to SQLite semantics even when upstream 1psa/env target metadata reports `local`; set `target=sqlite`, clear PostgreSQL connection fields, force `sslmode=disable`, and provide a default sqlite path when absent.

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .teller_account import TellerAccount
 
+#R600: Define transaction ORM model fields and account relationship mapping.
 @dataclass
 class TellerTransaction(TellerObject): ## https://teller.io/docs/api/account/transactions
     account_id: Mapped[str] = mapped_column(String, ForeignKey("teller.account.account_id"))

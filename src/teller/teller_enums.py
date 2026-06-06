@@ -2,10 +2,12 @@ from enum import Enum
 
 ## https://teller.io/docs/api
 
+#R600: Preserve stable account-type enum values.
 class TellerAccountType(Enum):
     DEPOSITORY = "depository"
     CREDIT = "credit"
 
+#R605: Preserve account-subtype coverage for common bank products.
 class TellerAccountSubtype(Enum):
     CHECKING = "checking"
     SAVINGS = "savings" 
@@ -15,6 +17,7 @@ class TellerAccountSubtype(Enum):
     SWEEP = "sweep"
     CREDIT_CARD = "credit_card"
 
+#R615: Preserve account-status enum values for open/closed states.
 class TellerAccountStatus(Enum):
     OPEN = "open"
     CLOSED = "closed"
@@ -23,6 +26,7 @@ class TellerTransactionDetailsProcessingStatus(Enum):
     PENDING = "pending"
     COMPLETE = "complete"
 
+#R610: Preserve transaction-status enum values for posted/pending states.
 class TellerTransactionStatus(Enum):
     POSTED = "posted"
     PENDING = "pending"
@@ -35,6 +39,7 @@ class TellerIdentityType(Enum):
     ORGANIZATION = "organization"
     PERSON = "person"
 
+#R620: Preserve unknown phone-number enum sentinel value.
 class TellerIdentityPhoneNumberType(Enum):
     MOBILE = "mobile"
     HOME = "home"

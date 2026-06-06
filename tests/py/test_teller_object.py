@@ -9,6 +9,7 @@ from teller.teller_account_identities import TellerAccountIdentities  # noqa: F4
 from teller.teller_object import TellerObject
 
 
+#R001: Resolve SQLAlchemy default callables for deterministic assertions.
 def _resolve_column_default(default_obj):
     arg = default_obj.arg
     if not callable(arg):
@@ -89,6 +90,7 @@ class TellerObjectTests(unittest.TestCase):
         self.assertFalse(hasattr(row, "_api_data"))
 
     def test_unpack_annotation_identifies_list_inner_type(self):
+        #R025-T03: Verify annotation unpacking identifies list inner type hints.
         row = TellerTransactionDetails()
         target, is_list = row._unpack_annotation(Optional[list[int]])
         self.assertIs(target, int)

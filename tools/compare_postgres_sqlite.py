@@ -27,6 +27,7 @@ from psycopg2.extensions import cursor as PgCursor
 from sqlite3 import Connection as SqliteConnection
 
 # Allow direct execution regardless of script directory.
+#R600: Discover repository root from script location.
 def _discover_repo_root(start: Path) -> Path:
     for candidate in [start, *start.parents]:
         if (candidate / "src" / "teller").is_dir():
@@ -56,6 +57,7 @@ class TableDiff:
     details: str
 
 
+#R605: Resolve named database profile with env override handling.
 def _resolve_named_profile(profile_name: str) -> ResolvedProfile:
     original = os.environ.get("TELLER_DB_PROFILE")
     try:
@@ -70,6 +72,7 @@ def _resolve_named_profile(profile_name: str) -> ResolvedProfile:
         reset_profile_cache()
 
 
+#R610: Open PostgreSQL connection from resolved profile settings.
 def _connect_postgres(profile: ResolvedProfile) -> PgConnection:
     password = _read_password(profile)
     connect_args: dict[str, Any] = {
@@ -96,6 +99,7 @@ def _connect_postgres(profile: ResolvedProfile) -> PgConnection:
     return conn
 
 
+#R615: Open SQLite SQLCipher connection from resolved profile settings.
 def _connect_sqlite(profile: ResolvedProfile) -> SqliteConnection:
     sqlite_path = profile.sqlite_path or str(Path.cwd() / ".database" / "teller.sqlite3")
     if not Path(sqlite_path).exists():
@@ -123,11 +127,13 @@ def _connect_sqlite(profile: ResolvedProfile) -> SqliteConnection:
     return conn
 
 
+#R620: Resolve active PostgreSQL schema for table discovery.
 def _get_postgres_schema(profile: ResolvedProfile) -> str:
     first_schema = next((part.strip() for part in profile.search_path.split(",") if part.strip()), "")
     return first_schema or "teller"
 
 
+#R620: Enumerate PostgreSQL tables in the resolved schema.
 def _pg_tables(cur: PgCursor, schema_name: str) -> list[str]:
     cur.execute(
         """
@@ -142,6 +148,7 @@ def _pg_tables(cur: PgCursor, schema_name: str) -> list[str]:
     return [row[0] for row in cur.fetchall()]
 
 
+#R620: Enumerate SQLite tables in attached teller catalog.
 def _sqlite_tables(cur: sqlite3.Cursor) -> list[str]:
     cur.execute(
         """
@@ -155,6 +162,7 @@ def _sqlite_tables(cur: sqlite3.Cursor) -> list[str]:
     return [row[0] for row in cur.fetchall()]
 
 
+#R625: Enumerate ordered PostgreSQL column names for a table.
 def _pg_columns(cur: PgCursor, schema_name: str, table_name: str) -> list[str]:
     cur.execute(
         """
@@ -169,20 +177,24 @@ def _pg_columns(cur: PgCursor, schema_name: str, table_name: str) -> list[str]:
     return [row[0] for row in cur.fetchall()]
 
 
+#R625: Enumerate ordered SQLite column names for a table.
 def _sqlite_columns(cur: sqlite3.Cursor, table_name: str) -> list[str]:
     escaped = table_name.replace("'", "''")
     cur.execute(f"PRAGMA teller.table_info('{escaped}')")
     return [row[1] for row in cur.fetchall()]
 
 
+#R630: Quote PostgreSQL identifiers safely for SQL generation.
 def _quote_pg_ident(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
+#R630: Quote SQLite identifiers safely for SQL generation.
 def _quote_sqlite_ident(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
+#R645: Canonicalize scalar and structured values for cross-engine comparison.
 def _canonicalize(value: Any) -> Any:
     if isinstance(value, str):
         # Align date/datetime textual values with typed values from the other engine.
@@ -225,6 +237,7 @@ def _canonicalize(value: Any) -> Any:
     return ("repr", repr(value))
 
 
+#R655: Strip volatile timestamp keys from nested payload structures.
 def _strip_timestamp_keys(value: Any) -> Any:
     if isinstance(value, dict):
         return {
@@ -237,6 +250,7 @@ def _strip_timestamp_keys(value: Any) -> Any:
     return value
 
 
+#R645: Normalize decimal representations for stable value comparison.
 def _normalize_decimal_str(value: Decimal) -> str:
     normalized = format(value.normalize(), "f")
     if "." in normalized:
@@ -244,6 +258,7 @@ def _normalize_decimal_str(value: Decimal) -> str:
     return normalized or "0"
 
 
+#R650: Canonicalize money values into unified cents representation.
 def _canonicalize_money_value(value: Any, *, source: str) -> tuple[str, str]:
     if value is None:
         return ("null", None)
@@ -256,6 +271,7 @@ def _canonicalize_money_value(value: Any, *, source: str) -> tuple[str, str]:
     return ("money_cents", str(cents))
 
 
+#R655: Normalize audit JSON payloads before parity comparison.
 def _normalize_audit_json_payload(value: Any, *, target_table: str, source: str, current_key: str | None = None) -> Any:
     if isinstance(value, dict):
         normalized: dict[str, Any] = {}
@@ -284,6 +300,7 @@ def _normalize_audit_json_payload(value: Any, *, target_table: str, source: str,
     return value
 
 
+#R645: Canonicalize values with table/column-specific comparison context.
 def _canonicalize_with_context(
     value: Any,
     *,
@@ -313,6 +330,7 @@ def _canonicalize_with_context(
     return _canonicalize(value)
 
 
+#R660: Build order-independent row multisets with duplicate counts.
 def _row_counter(
     rows: Iterable[tuple[Any, ...]],
     *,
@@ -337,6 +355,7 @@ def _row_counter(
     return counter
 
 
+#R635: Fetch canonicalized row multiset from PostgreSQL table data.
 def _fetch_pg_rows(cur: PgCursor, schema_name: str, table_name: str, columns: list[str]) -> collections.Counter[tuple[Any, ...]]:
     projected = ", ".join(_quote_pg_ident(column) for column in columns)
     query = f"SELECT {projected} FROM {_quote_pg_ident(schema_name)}.{_quote_pg_ident(table_name)}"
@@ -344,6 +363,7 @@ def _fetch_pg_rows(cur: PgCursor, schema_name: str, table_name: str, columns: li
     return _row_counter(cur.fetchall(), table_name=table_name, columns=columns, source="postgres")
 
 
+#R635: Fetch canonicalized row multiset from SQLite table data.
 def _fetch_sqlite_rows(cur: sqlite3.Cursor, table_name: str, columns: list[str]) -> collections.Counter[tuple[Any, ...]]:
     projected = ", ".join(_quote_sqlite_ident(column) for column in columns)
     query = f"SELECT {projected} FROM teller.{_quote_sqlite_ident(table_name)}"
@@ -351,18 +371,21 @@ def _fetch_sqlite_rows(cur: sqlite3.Cursor, table_name: str, columns: list[str])
     return _row_counter(cur.fetchall(), table_name=table_name, columns=columns, source="sqlite")
 
 
+#R640: Count PostgreSQL rows for shared table parity checks.
 def _pg_row_count(cur: PgCursor, schema_name: str, table_name: str) -> int:
     query = f"SELECT COUNT(*) FROM {_quote_pg_ident(schema_name)}.{_quote_pg_ident(table_name)}"
     cur.execute(query)
     return int(cur.fetchone()[0])
 
 
+#R640: Count SQLite rows for shared table parity checks.
 def _sqlite_row_count(cur: sqlite3.Cursor, table_name: str) -> int:
     query = f"SELECT COUNT(*) FROM teller.{_quote_sqlite_ident(table_name)}"
     cur.execute(query)
     return int(cur.fetchone()[0])
 
 
+#R665: Format bounded counter-example rows for mismatch reporting.
 def _format_counter_examples(counter: collections.Counter[tuple[Any, ...]], limit: int) -> list[dict[str, Any]]:
     examples: list[dict[str, Any]] = []
     for row, count in counter.most_common(limit):
@@ -370,6 +393,8 @@ def _format_counter_examples(counter: collections.Counter[tuple[Any, ...]], limi
     return examples
 
 
+#R005: Compare table and column coverage between both database engines.
+#R010: Compare canonicalized row content for all shared tables.
 def compare_databases(
     postgres_profile: ResolvedProfile,
     sqlite_profile: ResolvedProfile,
@@ -456,6 +481,7 @@ def compare_databases(
     return diffs
 
 
+#R001: Parse profile and reporting options for dual-engine comparison runs.
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare every table/column/row between Postgres and SQLite Teller databases.")
     parser.add_argument(
@@ -482,6 +508,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+#R015: Emit machine-readable mismatch report and process exit status.
 def main() -> int:
     # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
     os.umask(0o007)

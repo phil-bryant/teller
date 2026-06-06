@@ -51,9 +51,11 @@ _SQLITE_FIELDS = {
 }
 
 
+#R001: Build deterministic onepsa field reader stub for profile tests.
 def _make_onepsa_stub(fields):
     """Return a function that mimics _read_onepsa_fields for the given field dict."""
 
+    #R001: Return selected onepsa fields for profile resolution fixtures.
     def stub(item, field_names):  # noqa: ARG001
         return {name: fields[name] for name in field_names if name in fields}
 
@@ -61,6 +63,7 @@ def _make_onepsa_stub(fields):
 
 
 class _IsolatedEnvTest(unittest.TestCase):
+    #R001: Isolate environment and cwd for profile-resolution tests.
     def setUp(self):
         self._saved_env = {key: os.environ.pop(key) for key in _DB_ENV_KEYS if key in os.environ}
         self._tempdir = tempfile.TemporaryDirectory()
@@ -69,6 +72,7 @@ class _IsolatedEnvTest(unittest.TestCase):
         from teller.teller_db_profile import reset_profile_cache
         reset_profile_cache()
 
+    #R001: Restore environment and cleanup profile-resolution test state.
     def tearDown(self):
         os.chdir(self._cwd_before)
         self._tempdir.cleanup()
@@ -77,6 +81,7 @@ class _IsolatedEnvTest(unittest.TestCase):
         for key, value in self._saved_env.items():
             os.environ[key] = value
 
+    #R001: Write temporary db profile fixture file for tests.
     def _write_profile_file(self, payload, name="config/db-profiles.json"):
         path = Path(self._tempdir.name) / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -158,6 +163,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     @patch("teller.teller_db_profile._read_onepsa_fields")
     def test_invalid_sslmode_from_profile_fields_raises_profile_error(self, mock_read):
+        #R010-T03: Verify invalid sslmode from profile fields raises ProfileError.
         fields = dict(_SUPABASE_FIELDS, sslmode="bogus")
         mock_read.side_effect = _make_onepsa_stub(fields)
         self._write_profile_file(
@@ -203,6 +209,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_profile_resolution_refreshes_when_env_changes_without_manual_cache_clear(self, _mock):
+        #R020-T04: Verify env changes refresh resolved profile without manual cache reset.
         self._write_profile_file({
             "default_profile": "local",
             "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
@@ -231,6 +238,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_invalid_port_override_raises_profile_error(self, _mock):
+        #R020-T05: Verify invalid env port override raises ProfileError.
         self._write_profile_file({
             "default_profile": "local",
             "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
@@ -254,6 +262,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SQLITE_FIELDS))
     def test_sqlite_profile_resolves_sqlite_target_and_path(self, _mock):
+        #R001-T02: Verify sqlite profile resolves sqlite target and sqlite_path fields.
         self._write_profile_file(
             {
                 "default_profile": "sqlite_local",
@@ -282,6 +291,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SQLITE_FIELDS))
     def test_sqlcipher_key_env_override(self, _mock):
+        #R020-T03: Verify sqlcipher key env override wins over profile value.
         self._write_profile_file(
             {
                 "default_profile": "sqlite_local",

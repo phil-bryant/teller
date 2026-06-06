@@ -54,6 +54,7 @@ Design: `persist_all` iterates identities, optional balances, and per-account tr
 Tests:
 - R040-T01: Run `persist_all` with representative payloads and verify all data domains are persisted and committed.
 - R040-T02: Verify `raw_balances_by_account` is optional and does not block persistence when omitted.
+- R040-T03: Force an orchestration failure and verify `persist_all` rolls back the session once.
 
 R045  Statement: Ensure SQLite-safe SQL parameter binding for Decimal values.
 Design: The shared `_exec` helper detects SQLite sessions and coerces unsupported bound parameter types (including `Decimal`) into SQLite-bindable scalar values before execution.

@@ -8,6 +8,8 @@ R001  Statement: Run all enabled unit-test lanes from repository root with stric
 Design: Resolve repository root from script location, enter that directory, and use fail-fast shell settings while honoring lane toggle environment variables.
 Tests:
 - R001-T01: Verify the helper re-roots execution and respects lane toggles for shell/python/sql/swift execution.
+- R001-T02: Verify invalid inherited `--cache-dir` pytest options are stripped before execution.
+- R001-T03: Verify python lane succeeds when inherited `PYTEST_ADDOPTS` includes invalid cache-dir options.
 
 R005  Statement: Resolve DB profile exports before SQL-lane execution and fail fast on profile/preflight gaps.
 Design: Require executable `db_profile_export.sh`, evaluate profile exports, and run target-specific SQL-lane preflight (`pg_prove` + pgtap for PostgreSQL-family targets, sqlite preflight/tooling for SQLite target), stopping immediately on prerequisite gaps.

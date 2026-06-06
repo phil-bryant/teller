@@ -2,6 +2,7 @@
 
 load "helpers/common.bash"
 
+#R001: Prepare bats fixture state for script-level verification tests.
 setup() {
   setup_shell_test
   create_repo_fixture
@@ -12,6 +13,7 @@ setup() {
   touch "${FIXTURE_ROOT}/pyproject.toml"
 }
 
+#R001: Cleanup bats fixture state after script-level verification tests.
 teardown() {
   teardown_shell_test
 }

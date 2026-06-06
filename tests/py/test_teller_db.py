@@ -42,10 +42,12 @@ _SQLITE_PROFILE = ResolvedProfile(
 
 
 class _IsolatedEnvTest(unittest.TestCase):
+    #R030: Prepare isolated environment for engine-construction tests.
     def setUp(self):
         self._saved_env = {key: os.environ.pop(key) for key in _DB_ENV_KEYS if key in os.environ}
         teller_db._engine = None
 
+    #R030: Restore isolated environment after engine-construction tests.
     def tearDown(self):
         for key in _DB_ENV_KEYS:
             os.environ.pop(key, None)
@@ -116,6 +118,7 @@ class EngineConstructionTests(_IsolatedEnvTest):
         self.assertNotIn("sslmode", connect_args)
 
     def test_sqlite_profile_uses_sqlite_engine_without_password_lookup(self):
+        #R030-T02: Verify sqlite profile builds sqlite engine without password lookup.
         with patch("teller.teller_db.resolve_profile", return_value=_SQLITE_PROFILE), \
              patch("teller.teller_db._read_password") as fake_read_password, \
              patch("teller.teller_db.create_engine") as fake_create_engine, \
@@ -129,11 +132,14 @@ class EngineConstructionTests(_IsolatedEnvTest):
 
 
 class ConnectListenerTests(_IsolatedEnvTest):
+    #R030: Capture SQLAlchemy connect-listener callback under test.
     def _capture_connect_listener(self, profile=None):
         os.environ["TELLER_DB_PASSWORD"] = "pw"  # pragma: allowlist secret
         captured = {}
 
+        #R030: Stub SQLAlchemy event registration for listener capture.
         def fake_listens_for(target, _event_name):  # noqa: ARG001
+            #R030: Register captured listener callable for assertions.
             def decorator(fn):
                 captured["fn"] = fn
                 return fn

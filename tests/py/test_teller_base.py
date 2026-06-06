@@ -7,10 +7,12 @@ from teller.teller_base import Base
 
 class TellerBaseTests(unittest.TestCase):
     def test_base_exposes_registry_and_metadata(self):
+        #R600-T01: Verify Base exposes shared registry metadata.
         self.assertTrue(hasattr(Base, "registry"))
         self.assertIs(Base.registry.metadata, Base.metadata)
 
     def test_declarative_subclass_binds_to_base_registry(self):
+        #R605-T01: Verify declarative subclass binds to shared base registry.
         # This probe model registers on the shared, module-global Base.metadata.
         # Tear it back down so the test stays idempotent when the configured suite
         # is executed more than once within a single process -- e.g. mutmut's

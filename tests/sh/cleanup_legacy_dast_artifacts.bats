@@ -2,14 +2,17 @@
 
 load "helpers/common.bash"
 
+#R001: Prepare bats fixture state for script-level verification tests.
 setup() {
   setup_shell_test
 }
 
+#R001: Cleanup bats fixture state after script-level verification tests.
 teardown() {
   teardown_shell_test
 }
 
+#R001: Resolve SQL fixture path used by companion bats checks.
 sql_file() {
   printf '%s' "$(repo_root)/src/scripts/cleanup_legacy_dast_artifacts.sql"
 }

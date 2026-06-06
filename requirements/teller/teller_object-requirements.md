@@ -37,6 +37,7 @@ Design: `__post_init__` resolves type hints, unwraps list element types, and cas
 Tests:
 - R025-T01: Hydrate list-typed and scalar-typed fields and verify converted Python types.
 - R025-T02: Provide non-castable input and verify raw value fallback is retained.
+- R025-T03: Call annotation-unpack helper with list annotation and verify inner type extraction.
 
 R030  Statement: Provide a concise debug string with selected field values.
 Design: `__str__` includes values for dataclass fields marked with metadata `{"__str__": True}` and appends `_api_data`.

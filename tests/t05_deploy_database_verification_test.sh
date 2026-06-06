@@ -23,6 +23,7 @@ if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
   echo "❌ FAIL: DB profile helper is missing or not executable: ${DB_PROFILE_HELPER}"
   exit 1
 fi
+#R050: Load and validate profile export lines before verification.
 load_profile_exports_from_file() {
   local exports_file="$1"
   local invalid_lines=""
@@ -50,6 +51,7 @@ load_profile_exports_from_file() {
   set +a
 }
 
+#R055: Resolve SQLCipher key from profile helper output.
 resolve_sqlcipher_key_from_profile() {
   "$DB_PROFILE_HELPER" --print-sqlcipher-key
 }
@@ -78,6 +80,7 @@ if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; th
     fi
   fi
   SQLITE_ESCAPED_KEY="$(printf "%s" "$SQLITE_CIPHER_KEY" | sed "s/'/''/g")"
+  #R066: Run scalar sqlite verification query via sqlcipher client.
   sqlcipher_scalar() {
     local query="$1"
     sqlcipher "$SQLITE_DB_PATH" <<SQL
@@ -173,6 +176,7 @@ if [[ -z "$DB_PASSWORD" ]]; then
   exit 1
 fi
 
+#R020: Run scalar postgres verification query for schema checks.
 db_scalar() {
   PGPASSWORD="$DB_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql \
     -h "$DB_HOST" \
@@ -183,6 +187,7 @@ db_scalar() {
     -Atc "$1"
 }
 
+#R040: Run postgres verification query returning newline-delimited rows.
 db_lines() {
   PGPASSWORD="$DB_PASSWORD" PGSSLMODE="$PG_SSLMODE" psql \
     -h "$DB_HOST" \
@@ -195,6 +200,7 @@ db_lines() {
 }
 
 failures=()
+#R035: Record explicit verification failure for final report output.
 record_failure() {
   failures+=("$1")
 }

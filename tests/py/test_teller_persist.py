@@ -6,36 +6,44 @@ from teller import teller_persist
 
 
 class _Result:
+    #R001: Initialize persistence test doubles with execution capture state.
     def __init__(self, one=None, many=None):
         self._one = one
         self._many = many or []
 
+    #R001: Return one-row SQL result for persistence helper tests.
     def fetchone(self):
         return self._one
 
+    #R001: Return multi-row SQL result for persistence helper tests.
     def fetchall(self):
         return self._many
 
 
 class _Session:
+    #R001: Initialize persistence test doubles with execution capture state.
     def __init__(self, execute_result):
         self.execute_result = execute_result
         self.calls = []
         self.commits = 0
         self.rollbacks = 0
 
+    #R001: Capture SQL execution calls for persistence assertions.
     def execute(self, sql, params):
         self.calls.append((sql, params))
         return self.execute_result
 
+    #R001: Track commit invocations in persistence test session.
     def commit(self):
         self.commits += 1
 
+    #R001: Track rollback invocations in persistence test session.
     def rollback(self):
         self.rollbacks += 1
 
 
 class _SQLiteSession(_Session):
+    #R001: Initialize persistence test doubles with execution capture state.
     def __init__(self, execute_result):
         super().__init__(execute_result)
         self.bind = type("Bind", (), {"dialect": type("Dialect", (), {"name": "sqlite"})()})()
@@ -328,6 +336,7 @@ class TellerPersistTests(unittest.TestCase):
 
     @patch("teller.teller_persist._upsert_account", side_effect=RuntimeError("boom"))
     def test_persist_all_rolls_back_when_any_step_fails(self, _upsert_account):
+        #R040-T03: Verify persist_all rolls back when any orchestration step fails.
         session = _Session(_Result())
         with self.assertRaises(RuntimeError):
             teller_persist.persist_all(

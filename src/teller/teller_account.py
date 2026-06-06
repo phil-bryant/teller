@@ -30,13 +30,16 @@ class TellerAccount(TellerObject):
     account_links_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("teller.account_links.account_links_id"))
     identities: Mapped[List["TellerAccountIdentities"]] = relationship(back_populates="account")  # noqa: F821
 
+    #R600: Return institution display name or empty fallback for account models.
     def institution_name(self) -> str:
         return self.institution.name if self.institution else ""
     
+    #R600: Fetch and store account details via shared API client links.
     def get_details(self) -> TellerAccountDetails:
         self.details = TellerAccountDetails(self._api_client.get(self.links.details))
         return self.details
     
+    #R600: Fetch and store account transactions with optional count filter.
     def get_transactions(self, count: int = None) -> list[TellerTransaction]:
         self.transactions = [TellerTransaction(td) for td in self._api_client.get(self.links.transactions, {'count': count} if count else {})]
         return self.transactions

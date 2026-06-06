@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 load "helpers/common.bash"
 
+#R001: Prepare bats fixture state for script-level verification tests.
 setup() {
   setup_shell_test
   create_repo_fixture
@@ -9,6 +10,7 @@ setup() {
   chmod +x "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh"
 }
 
+#R001: Cleanup bats fixture state after script-level verification tests.
 teardown() {
   teardown_shell_test
 }
@@ -44,6 +46,7 @@ EOF
 }
 
 @test "prints sqlite exports without sqlcipher key by default" {
+  #R015-T02: Verify sqlite exports omit sqlcipher key unless explicitly requested.
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 cat <<'OUT'

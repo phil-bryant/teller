@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os
 from functools import lru_cache
 from ipaddress import ip_address
@@ -17,6 +18,7 @@ _DEFAULT_TIMEOUT_SECONDS = 12.0
 
 
 class MailcartError(Exception):
+    #R600: Initialize typed MailcartError status/message payload.
     def __init__(self, status_code: int, message: str):
         super().__init__(message)
         self.status_code = status_code
@@ -24,9 +26,17 @@ class MailcartError(Exception):
 
 
 class MailcartClient:
-    #R060: Sync HTTP client for Mailcart; contract in Architecture.md § Teller ↔ Mailcart contract.
-    def __init__(self, base_url: str, token: Optional[str] = None, *, timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
-                 session: Optional[requests.Session] = None, max_connections: int = 32) -> None:
+    #R600: Build Mailcart client instances with validated HTTPS base URL defaults.
+    #R600: Initialize typed MailcartError status/message payload.
+    def __init__(
+        self,
+        base_url: str,
+        token: Optional[str] = None,
+        *,
+        timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+        session: Optional[requests.Session] = None,
+        max_connections: int = 32,
+    ) -> None:
         self._base_url = _validated_https_base_url(base_url).rstrip("/")
         self._token = (token or "").strip()
         self._timeout = timeout_seconds
@@ -49,6 +59,12 @@ class MailcartClient:
             session.verify = False
         self._session = session
 
+    #R625: Attach bearer token header when configured for outbound requests.
+    #R630: Map upstream HTTP 429 responses to contextual gateway failures.
+    #R635: Convert request transport exceptions into typed gateway failures.
+    #R640: Reject success responses that are not valid JSON payloads.
+    #R645: Surface bounded preview text for upstream error responses.
+    #R650: Map upstream 404 responses to typed not-found Mailcart errors.
     def _request(self, method: str, path: str, *, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         url = f"{self._base_url}{path}"
         headers = {"Accept": "application/json"}
@@ -77,20 +93,24 @@ class MailcartClient:
             message=f"mailcart: upstream returned {response.status_code}: {body_preview}".strip(),
         )
 
-    #R061: GET /v1/messages/{id}; response shape in Architecture.md § Teller ↔ Mailcart contract.
+    #R625: Fetch Mailcart message payload through shared request pipeline.
     def get_message(self, email_message_id: str) -> Dict[str, Any]:
         return self._request("GET", f"/v1/messages/{email_message_id}")
 
-    #R060: GET /v1/messages/search; limit bounds in Architecture.md § Teller ↔ Mailcart contract.
+    #R625: Search Mailcart messages through shared request pipeline.
     def search(self, query: str, limit: int) -> Dict[str, Any]:
         return self._request("GET", "/v1/messages/search", params={"query": query, "limit": limit})
 
 
 @lru_cache(maxsize=8)
+#R610: Cache Mailcart clients by normalized base URL and token settings.
 def _mailcart_client_for_config(base_url: str, token: str) -> MailcartClient:
     return MailcartClient(base_url=base_url, token=token or None)
 
 
+#R600: Build default Mailcart client configuration with cache-backed reuse.
+#R605: Honor environment overrides for Mailcart base URL and token.
+#R620: Reject insecure base URL values provided through environment settings.
 def get_mailcart_client() -> MailcartClient:
     base_url = (os.environ.get(_BASE_URL_ENV) or _DEFAULT_BASE_URL).strip() or _DEFAULT_BASE_URL
     token = (os.environ.get(_TOKEN_ENV) or "").strip()
@@ -98,11 +118,12 @@ def get_mailcart_client() -> MailcartClient:
     return _mailcart_client_for_config(normalized_base_url, token)
 
 
+#R600: Reset cached Mailcart clients for deterministic runtime/test rebuilds.
 def reset_mailcart_client_cache() -> None:
-    #R060: Allow tests to drop cached clients without monkeypatching internals.
     _mailcart_client_for_config.cache_clear()
 
 
+#R615: Reject explicit non-HTTPS Mailcart base URL configuration.
 def _validated_https_base_url(base_url: str) -> str:
     normalized = (base_url or "").strip()
     if not normalized:
@@ -119,6 +140,7 @@ def _validated_https_base_url(base_url: str) -> str:
     return normalized
 
 
+#R600: Detect loopback hosts for local HTTPS certificate handling.
 def _is_loopback_host(host: str | None) -> bool:
     normalized = (host or "").strip().lower()
     if normalized in {"localhost", "127.0.0.1", "::1"}:

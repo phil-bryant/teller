@@ -2,6 +2,7 @@
 
 load "helpers/common.bash"
 
+#R001: Prepare bats fixture state for script-level verification tests.
 setup() {
   setup_shell_test
   create_repo_fixture
@@ -10,6 +11,7 @@ setup() {
   chmod +x "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh"
 }
 
+#R001: Cleanup bats fixture state after script-level verification tests.
 teardown() {
   teardown_shell_test
 }

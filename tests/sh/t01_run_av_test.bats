@@ -2,10 +2,12 @@
 
 load "helpers/common.bash"
 
+#R001: Cleanup bats fixture state after script-level verification tests.
 teardown() {
   teardown_shell_test
 }
 
+#R001: Resolve script-under-test pointer path for assertions.
 src() {
   printf '%s' "$(repo_root)/tests/t01_run_av_test.sh"
 }

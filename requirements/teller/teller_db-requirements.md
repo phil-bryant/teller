@@ -14,6 +14,7 @@ R030  Statement: Build one cached SQLAlchemy engine per process.
 Design: `get_engine()` lazily creates a SQLAlchemy engine from the resolved profile, using PostgreSQL settings for postgres/supabase targets and SQLite settings for sqlite target, caching it in module state.
 Tests:
 - R030-T01: Patch `create_engine` and verify two `get_engine()` calls produce one engine and one underlying call.
+- R030-T02: Resolve SQLite profile and verify `get_engine()` builds sqlite engine without password lookup.
 
 R035  Statement: Apply profile sslmode to the connection.
 Design: For PostgreSQL-family targets, when profile sslmode is non-empty and not `disable`, include it in `connect_args` so Supabase TLS is enforced; SQLite targets skip sslmode handling.

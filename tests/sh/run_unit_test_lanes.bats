@@ -2,6 +2,7 @@
 
 load "helpers/common.bash"
 
+#R001: Prepare bats fixture state for script-level verification tests.
 setup() {
   setup_shell_test
   create_repo_fixture
@@ -12,6 +13,7 @@ setup() {
   chmod +x "${FIXTURE_ROOT}/src/scripts/run_unit_test_lanes.sh" "${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh" "${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh"
 }
 
+#R001: Cleanup bats fixture state after script-level verification tests.
 teardown() {
   teardown_shell_test
 }
@@ -154,6 +156,7 @@ EOF
 }
 
 @test "strips invalid --cache-dir from inherited PYTEST_ADDOPTS" {
+  #R001-T02: Verify inherited PYTEST_ADDOPTS strips invalid --cache-dir entries.
   run bash -c "
     export PYTEST_ADDOPTS='--cache-dir=./artifacts/cache/pytest -q'
     source '${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh'
@@ -166,6 +169,7 @@ EOF
 }
 
 @test "python lane survives invalid --cache-dir in PYTEST_ADDOPTS" {
+  #R001-T03: Verify python lane succeeds after invalid PYTEST_ADDOPTS cache-dir is stripped.
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"

@@ -2,10 +2,12 @@
 
 load "helpers/common.bash"
 
+#R005: Cleanup bats fixture state for profile-aware script verification.
 teardown() {
   teardown_shell_test
 }
 
+#R005: Resolve profile-aware script pointer path for assertions.
 src() {
   printf '%s' "$(repo_root)/tests/t06_run_sql_unit_tests.sh"
 }
