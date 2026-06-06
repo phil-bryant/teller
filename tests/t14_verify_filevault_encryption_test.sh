@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
-# Thin wrapper pointer: sets RUNBOOK_REPO_ROOT + teller profile, execs the runner golden.
-#R001: Enable secure umask and strict shell mode before delegation.
-umask 007
-set -euo pipefail
-#R005: Resolve script and runner locations from the wrapper path.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-RUNNER_HOME="$(cd "${SCRIPT_DIR}/../../runner" && pwd -P)"
-#R010: Export repo root context and load teller runbook profile.
-RUNBOOK_REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
-export RUNBOOK_REPO_ROOT
+# Thin pointer: selects the teller runbook profile and delegates to the runner golden via the shared shim.
+#R001: Secure umask and strict shell mode are centralized in pointer_shim.sh.
+#R005: RUNNER_HOME and RUNBOOK_REPO_ROOT resolution are centralized in pointer_shim.sh.
+#R010: Pointer selects its runbook profile; the shim sources the matching runner/config/runbook profile and exports RUNBOOK_REPO_ROOT.
+RUNBOOK_PROFILE="teller"
 # shellcheck source=/dev/null
-source "${RUNNER_HOME}/config/runbook/teller.env"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../runner/src/scripts" && pwd -P)/pointer_shim.sh"
 #R015: Delegate to the mapped runner golden with argument passthrough.
-exec "${RUNNER_HOME}/tests/t10_verify_filevault_encryption_test.sh" "$@"
+delegate_golden "tests/t10_verify_filevault_encryption_test.sh" "$@"

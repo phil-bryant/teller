@@ -4,22 +4,22 @@
 
 Applies to `tests/t00_run_code_quality_tests.sh`.
 
-R001  Statement: Wrapper runs in strict shell mode with secure umask.
-Design: Configure `umask 007` and `set -euo pipefail` before any path resolution or delegation.
+R001  Statement: Pointer runs with secure umask and strict shell mode via the shared shim.
+Design: Source `src/scripts/pointer_shim.sh`, which sets `umask 007` and `set -euo pipefail` before delegation.
 Tests:
-- R001-T01: Verify wrapper source sets `umask 007` and strict shell mode.
+- R001-T01: Verify the pointer sources `pointer_shim.sh`.
 
-R005  Statement: Wrapper resolves repository root and runner root from script location.
-Design: Compute `SCRIPT_DIR` from `${BASH_SOURCE[0]}` and derive `RUNNER_HOME` from the script-relative runner path.
+R005  Statement: Pointer resolves runner and repo roots through the shared shim.
+Design: The sourced `pointer_shim.sh` resolves `RUNNER_HOME` and `RUNBOOK_REPO_ROOT`; the pointer locates the shim under `runner/src/scripts`.
 Tests:
-- R005-T01: Verify wrapper source derives `SCRIPT_DIR` and `RUNNER_HOME` from script-relative paths.
+- R005-T01: Verify the pointer locates the shim under `runner/src/scripts`.
 
-R010  Statement: Wrapper loads teller runbook profile before delegation.
-Design: Export `RUNBOOK_REPO_ROOT` and source `runner/config/runbook/teller.env` prior to `exec`.
+R010  Statement: Pointer selects its runbook profile explicitly before delegation.
+Design: Set `RUNBOOK_PROFILE="teller"` so the shim sources `runner/config/runbook/teller.env` and exports `RUNBOOK_REPO_ROOT`.
 Tests:
-- R010-T01: Verify wrapper source exports `RUNBOOK_REPO_ROOT` and sources `teller.env`.
+- R010-T01: Verify the pointer sets `RUNBOOK_PROFILE` to the repo profile.
 
-R015  Statement: Wrapper delegates execution to the mapped runner golden.
-Design: Use `exec "${RUNNER_HOME}/tests/t00_run_code_quality_tests.sh" "$@"` so arguments pass through unchanged.
+R015  Statement: Pointer delegates execution to the mapped runner golden.
+Design: Call `delegate_golden "tests/t00_run_code_quality_tests.sh" "$@"` so the shim execs `${RUNNER_HOME}/tests/t00_run_code_quality_tests.sh` with arguments passed through unchanged.
 Tests:
-- R015-T01: Verify wrapper source delegates to `tests/t00_run_code_quality_tests.sh` with `"$@"`.
+- R015-T01: Verify the pointer calls `delegate_golden "tests/t00_run_code_quality_tests.sh"` with `"$@"`.

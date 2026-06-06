@@ -10,34 +10,26 @@ src() {
   printf '%s' "$(repo_root)/tests/t07_run_shell_unit_tests.sh"
 }
 
-@test "enables secure umask and strict shell mode" {
+@test "centralizes umask/strict mode via the shared pointer shim" {
   #R001-T01
-  run grep "umask 007" "$(src)"
-  [ "$status" -eq 0 ]
-  run grep "set -euo pipefail" "$(src)"
+  run grep "pointer_shim.sh" "$(src)"
   [ "$status" -eq 0 ]
 }
 
-@test "derives script and runner paths from script location" {
+@test "resolves the shim from the runner src/scripts tree" {
   #R005-T01
-  run grep "SCRIPT_DIR=" "$(src)"
-  [ "$status" -eq 0 ]
-  run grep "RUNNER_HOME=" "$(src)"
-  [ "$status" -eq 0 ]
-  run grep "runner" "$(src)"
+  run grep "runner/src/scripts" "$(src)"
   [ "$status" -eq 0 ]
 }
 
-@test "loads teller runbook profile before delegation" {
+@test "selects its runbook profile explicitly before delegation" {
   #R010-T01
-  run grep "export RUNBOOK_REPO_ROOT" "$(src)"
-  [ "$status" -eq 0 ]
-  run grep "config/runbook/teller.env" "$(src)"
+  run grep 'RUNBOOK_PROFILE="teller"' "$(src)"
   [ "$status" -eq 0 ]
 }
 
-@test "delegates to mapped runner golden script" {
+@test "delegates to the mapped runner golden" {
   #R015-T01
-  run grep "exec \"\${RUNNER_HOME}/tests/t05_run_shell_unit_tests.sh\" \"\$@\"" "$(src)"
+  run grep 'delegate_golden "tests/t05_run_shell_unit_tests.sh" "$@"' "$(src)"
   [ "$status" -eq 0 ]
 }
