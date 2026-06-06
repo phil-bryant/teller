@@ -33,6 +33,7 @@ artifacts/cache/pycache/private/var/folders/
 artifacts/telemetry/quality-history.ndjson
 artifacts/telemetry/quality-trend.json
 artifacts/telemetry/lane-summary-*.json
+artifacts/quality/reports/periphery.txt
 .ruff_cache/
 .hypothesis/
 .schemathesis/
