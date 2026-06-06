@@ -11,9 +11,20 @@ class TellerBaseTests(unittest.TestCase):
         self.assertIs(Base.registry.metadata, Base.metadata)
 
     def test_declarative_subclass_binds_to_base_registry(self):
+        # This probe model registers on the shared, module-global Base.metadata.
+        # Tear it back down so the test stays idempotent when the configured suite
+        # is executed more than once within a single process -- e.g. mutmut's
+        # prepare phase runs coverage gathering and stats collection back-to-back
+        # in-process. Without cleanup the second run re-defines the table and
+        # raises "Table 'example_record' is already defined for this MetaData
+        # instance", which made teller's mutation lane skip instead of producing
+        # verdicts.
         class ExampleRecord(Base):
             __tablename__ = "example_record"
             id: Mapped[int] = mapped_column(primary_key=True)
+
+        self.addCleanup(Base.metadata.remove, ExampleRecord.__table__)
+        self.addCleanup(Base.registry._dispose_cls, ExampleRecord)
 
         self.assertEqual(ExampleRecord.__tablename__, "example_record")
         self.assertIs(ExampleRecord.metadata, Base.metadata)
