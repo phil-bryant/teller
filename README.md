@@ -14,9 +14,18 @@ Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema and th
 
 ## Pre-release CI/CD Policy
 
-Until `v1.0` customer release, this repo intentionally does not use GitHub-hosted CI/CD workflows (GitHub Actions).
-Quality and security gates run locally through numbered test lanes and `./06_run_all_tests_parallel.sh`.
-GitHub workflow automation is deferred until `v1.0`.
+Until the `v1.0` customer release, GitHub Actions CI is **implemented but intentionally disabled for automatic
+runs**. A workflow exists at `.github/workflows/ci.yml`, but it is **manual-dispatch-only**
+(`on: workflow_dispatch`) — it does **not** trigger on `push`, `pull_request`, or `schedule`. Pre-release, the
+enforcement mechanism is the local numbered test lanes (`tests/tNN_*.sh` + `./06_run_all_tests_parallel.sh`),
+not GitHub-hosted CI: this project is solo and red X's on every push are noise rather than signal. The workflow
+runs only the Linux-portable subset (code quality `t00` + Python unit `t08` + requirements traceability `t04`);
+the macOS / Swift / 1psa / SQLCipher / PostgreSQL / pgTAP / ZAP / Teller-live / FileVault lanes cannot run on a
+Linux runner and stay local. It is kept correct and manually runnable so it can simply be wired to
+`push`/`pull_request` as the project approaches `v1.0`.
+
+This policy is consistent across the eggnest workspace (`classy`, `matchy`, `mailcart`, `runner`, and the
+`eggnest` umbrella each carry the same manual-dispatch-only workflow and policy note).
 Git submodules are intentionally avoided until `v1.0` ships to customers.
 
 ## Script Execution Order

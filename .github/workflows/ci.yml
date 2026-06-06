@@ -1,0 +1,89 @@
+# =============================================================================
+# CI POLICY: INTENTIONALLY DISABLED FOR AUTO-RUNS (pre-release, solo dev).
+#
+# This workflow is manual-dispatch-only (`on: workflow_dispatch`). It does NOT
+# run on push, pull_request, or schedule. That is deliberate: until the project
+# approaches ~v1.0, the enforcement mechanism is the LOCAL numbered test lanes
+# (`./0N_*.sh` + `tests/tNN_*.sh`), not GitHub-hosted CI. The workflow is kept
+# present, correct, and manually runnable so it can simply be wired to
+# push/pull_request as we approach v1.0. Until then, nothing here auto-runs.
+#
+# See the "Pre-release CI/CD Policy" section in this repo's README.md.
+#
+# SCOPE (honest): a Linux GitHub runner CANNOT run teller's macOS / Swift /
+# 1psa / SQLCipher / PostgreSQL / pgTAP / ZAP / Teller-live / FileVault lanes.
+# This workflow runs ONLY the Linux-portable subset and delegates to teller's
+# numbered lane pointers, which exec the shared `runner` goldens:
+#   - t00 code quality (Python: Vulture/Radon/Xenon)
+#   - t08 Python unit tests
+#   - t04 requirements traceability
+# Intentionally EXCLUDED here (stay local honor-system): t01 AV, t02 dependency
+# freshness, t03 SAST, t05 DB-deploy verify, t06 SQL/pgTAP, t07 shell/bats,
+# t09 mutation, t10 fuzz, t11 DAST/ZAP, t12 Teller API smoke, t13 live canary,
+# t14 FileVault. teller's lane pointers require the sibling `runner` repo, so it
+# is checked out next to teller below.
+# =============================================================================
+name: CI (manual, disabled pre-release) — teller
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-subset:
+    name: teller Linux subset (t00/t08/t04)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      CI: "true"
+
+    steps:
+      - name: Checkout teller
+        uses: actions/checkout@v4
+        with:
+          path: teller
+
+      # teller's tNN_*.sh / 0N_*.sh are thin pointers that exec the shared
+      # `runner` goldens (RUNNER_HOME=../runner). Check runner out as a sibling.
+      # Adjust `repository` if the runner repo lives under a different owner/name.
+      - name: Checkout sibling runner
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/runner
+          path: runner
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Linux test tools
+        run: sudo apt-get update && sudo apt-get install -y bats shellcheck
+
+      - name: Create venv and load requirements
+        working-directory: teller
+        run: |
+          ./02_create_venv.sh
+          source ./teller-venv/bin/activate
+          ./04_load_requirements.sh
+
+      - name: Code quality (t00, Python lane)
+        working-directory: teller
+        run: |
+          source ./teller-venv/bin/activate
+          ./tests/t00_run_code_quality_tests.sh
+
+      - name: Python unit tests (t08)
+        working-directory: teller
+        run: |
+          source ./teller-venv/bin/activate
+          ./tests/t08_run_python_unit_tests.sh
+
+      - name: Requirements traceability (t04)
+        working-directory: teller
+        run: |
+          source ./teller-venv/bin/activate
+          ./tests/t04_run_requirements_traceability_tests.sh
