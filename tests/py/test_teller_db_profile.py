@@ -3,7 +3,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from teller.teller_db_profile import ProfileError, resolve_profile
 
@@ -303,6 +303,144 @@ class ResolveProfileTests(_IsolatedEnvTest):
         self.assertEqual(profile.target, "sqlite")
         self.assertEqual(profile.sqlcipher_key, "env-key")
 
+
+class HelperBranchCoverageTests(_IsolatedEnvTest):
+    def test_read_onepsa_fields_returns_empty_when_library_missing(self):
+        #R010-T04: _read_onepsa_fields returns {} when libonepsa cannot be loaded.
+        from teller import teller_db_profile as profile_mod
+
+        with patch.object(profile_mod.ctypes, "CDLL", side_effect=OSError("missing")):
+            self.assertEqual(profile_mod._read_onepsa_fields("item", ("host", "port")), {})
+
+    def test_read_onepsa_fields_stops_after_first_error(self):
+        #R010-T05: libonepsa field errors stop further field reads.
+        from teller import teller_db_profile as profile_mod
+
+        fake_lib = MagicMock()
+        fake_lib.calls = 0
+
+        def _onepsa_get_field(item, field, err_ptr):  # noqa: ARG001
+            fake_lib.calls += 1
+            err_ptr._obj.value = b"lookup failed"
+            return None
+
+        fake_lib.OnepsaGetField = MagicMock(side_effect=_onepsa_get_field)
+        fake_lib.OnepsaStringFree = MagicMock(return_value=None)
+        with patch.object(profile_mod.ctypes, "CDLL", return_value=fake_lib):
+            parsed = profile_mod._read_onepsa_fields("item", ("host", "port", "database"))
+        self.assertEqual(parsed, {})
+        self.assertEqual(fake_lib.calls, 1)
+
+    def test_read_env_file_fields_parses_only_item_prefixed_lines(self):
+        #R010-T06: ~/.env fallback parser reads only ITEM.field=value entries.
+        from teller import teller_db_profile as profile_mod
+
+        with tempfile.TemporaryDirectory() as home_dir:
+            env_path = Path(home_dir) / ".env"
+            env_path.write_text(
+                "\n".join(
+                    [
+                        "item.host=localhost",
+                        "item.port=5432",
+                        "other.host=ignore",
+                        "item.bad_line",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            with patch.object(profile_mod.Path, "home", return_value=Path(home_dir)):
+                fields = profile_mod._read_env_file_fields("item")
+        self.assertEqual(fields["host"], "localhost")
+        self.assertEqual(fields["port"], "5432")
+        self.assertNotIn("bad_line", fields)
+
+    def test_fetch_record_from_onepsa_falls_back_to_env_when_host_missing(self):
+        #R010-T07: onepsa host-missing records fall back to ~/.env-derived fields.
+        from teller import teller_db_profile as profile_mod
+
+        with (
+            patch.object(profile_mod, "_read_onepsa_fields", return_value={"database": "prod"}),
+            patch.object(
+                profile_mod,
+                "_read_env_file_fields",
+                return_value={
+                    "host": "fallback.example",
+                    "port": "5432",
+                    "database": "prod",
+                    "username": "teller",
+                    "schema": "teller",
+                    "runtime_role": "teller_write",
+                    "target": "local",
+                },
+            ),
+        ):
+            record = profile_mod._fetch_record_from_onepsa("item")
+        self.assertEqual(record["host"], "fallback.example")
+        self.assertEqual(record["target"], "local")
+
+    def test_load_profile_document_reports_invalid_shapes(self):
+        #R010-T08: invalid JSON/non-dict/empty-profiles documents fail with ProfileError.
+        from teller import teller_db_profile as profile_mod
+
+        bad_json = self._write_profile_file("{}", name="config/db-profiles.local.json")
+        bad_json.write_text("{", encoding="utf-8")
+        with self.assertRaises(ProfileError):
+            profile_mod._load_profile_document()
+
+        bad_json.write_text("[]", encoding="utf-8")
+        with self.assertRaises(ProfileError):
+            profile_mod._load_profile_document()
+
+        bad_json.write_text(json.dumps({"default_profile": "x", "profiles": {}}), encoding="utf-8")
+        with self.assertRaises(ProfileError):
+            profile_mod._load_profile_document()
+
+    def test_select_profile_name_requires_default_when_no_override(self):
+        #R015-T02: selection fails when override/default_profile are both missing.
+        from teller import teller_db_profile as profile_mod
+
+        with self.assertRaises(ProfileError):
+            profile_mod._select_profile_name({"profiles": {"x": {"1psa_item": "item"}}})
+
+    def test_resolve_onepsa_item_reports_available_profiles(self):
+        #R010-T09: missing profile name error includes available profile names.
+        from teller import teller_db_profile as profile_mod
+
+        doc = {"profiles": {"a": {"1psa_item": "item_a"}, "b": {"1psa_item": "item_b"}}}
+        with self.assertRaises(ProfileError) as ctx:
+            profile_mod._resolve_onepsa_item(doc, "missing")
+        self.assertIn("available profiles", str(ctx.exception))
+        self.assertIn("a", str(ctx.exception))
+        self.assertIn("b", str(ctx.exception))
+
+    def test_apply_env_overrides_sqlite_path_forces_sqlite_semantics(self):
+        #R020-T06: sqlite-path env override forces sqlite target and clears postgres fields.
+        from teller import teller_db_profile as profile_mod
+
+        record = {
+            "host": "localhost",
+            "port": 5432,
+            "dbname": "prod",
+            "user": "teller",
+            "runtime_role": "teller_write",
+            "search_path": "teller",
+            "target": "local",
+            "sslmode": "disable",
+            "sqlite_path": "",
+            "sqlcipher_key": "",
+        }
+        with patch.dict(
+            os.environ,
+            {"TELLER_DB_SQLITE_PATH": "/tmp/x.sqlite3", "TELLER_DB_SQLCIPHER_KEY": "abc"},
+            clear=False,
+        ):
+            overridden = profile_mod._apply_env_overrides(record)
+        self.assertEqual(overridden["target"], "sqlite")
+        self.assertEqual(overridden["host"], "")
+        self.assertEqual(overridden["port"], 0)
+        self.assertEqual(overridden["sslmode"], "disable")
+        self.assertEqual(overridden["sqlite_path"], "/tmp/x.sqlite3")
+        self.assertEqual(overridden["sqlcipher_key"], "abc")
 
 if __name__ == "__main__":
     unittest.main()

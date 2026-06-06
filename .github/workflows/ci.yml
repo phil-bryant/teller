@@ -82,6 +82,14 @@ jobs:
           source ./teller-venv/bin/activate
           ./tests/t08_run_python_unit_tests.sh
 
+      - name: Upload Python coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: teller-coverage
+          path: teller/artifacts/coverage
+          if-no-files-found: warn
+
       - name: Requirements traceability (t04)
         working-directory: teller
         run: |

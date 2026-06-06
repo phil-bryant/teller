@@ -77,6 +77,54 @@ class PasswordResolutionTests(_IsolatedEnvTest):
         with self.assertRaises(RuntimeError):
             teller_db._read_password(empty_profile)
 
+    def test_onepsa_password_command_quotes_item_name(self):
+        #R025-T03: onepsa password command safely quotes item names.
+        command = teller_db._onepsa_password_command("item with spaces")
+        self.assertIn("1psa -p", command)
+        self.assertIn("'item with spaces'", command)
+
+    def test_read_password_from_onepsa_raises_when_error_pointer_is_set(self):
+        #R025-T04: libonepsa error pointer is surfaced as RuntimeError.
+        fake_lib = MagicMock()
+        fake_lib.OnepsaGetField.side_effect = lambda *_args: None
+
+        def _set_err(_item, _field, err_ptr):
+            err_ptr._obj.value = b"boom"
+            return None
+
+        fake_lib.OnepsaGetField.side_effect = _set_err
+        with patch.object(teller_db.ctypes, "CDLL", return_value=fake_lib):
+            with self.assertRaisesRegex(RuntimeError, "boom"):
+                teller_db._read_password_from_onepsa("item")
+
+    def test_read_password_from_onepsa_raises_on_null_pointer_without_error(self):
+        #R025-T05: null libonepsa pointer without error is rejected.
+        fake_lib = MagicMock()
+
+        def _null_without_error(_item, _field, err_ptr):
+            err_ptr._obj.value = None
+            return None
+
+        fake_lib.OnepsaGetField.side_effect = _null_without_error
+        with patch.object(teller_db.ctypes, "CDLL", return_value=fake_lib):
+            with self.assertRaisesRegex(RuntimeError, "null password"):
+                teller_db._read_password_from_onepsa("item")
+
+    def test_read_password_falls_back_to_env_fields_when_onepsa_fails(self):
+        #R025-T06: password resolution falls back to profile env fields when onepsa read fails.
+        with (
+            patch("teller.teller_db._read_password_from_onepsa", side_effect=RuntimeError("unavailable")),
+            patch("teller.teller_db_profile._read_env_file_fields", return_value={"password": "from-env-file"}),
+        ):
+            password = teller_db._read_password(_LOCAL_PROFILE)
+        self.assertEqual(password, "from-env-file")
+
+    def test_read_password_raises_keyboard_interrupt_from_onepsa(self):
+        #R025-T07: keyboard interrupts during onepsa lookup are re-raised.
+        with patch("teller.teller_db._read_password_from_onepsa", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                teller_db._read_password(_LOCAL_PROFILE)
+
 
 class EngineConstructionTests(_IsolatedEnvTest):
     # #R030: Engine is built once and cached.
@@ -130,6 +178,33 @@ class EngineConstructionTests(_IsolatedEnvTest):
         self.assertEqual(engine_url, "sqlite://")
         self.assertIn("creator", fake_create_engine.call_args.kwargs)
 
+    def test_resolve_sqlcipher_key_prefers_env_then_profile(self):
+        #R030-T03: SQLCipher key resolver prefers env override and falls back to profile key.
+        with patch.dict(os.environ, {"TELLER_DB_SQLCIPHER_KEY": "env-k"}, clear=False):
+            self.assertEqual(teller_db._resolve_sqlcipher_key(_SQLITE_PROFILE), "env-k")
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(teller_db._resolve_sqlcipher_key(_SQLITE_PROFILE), "k")
+
+    def test_resolve_sqlcipher_key_raises_when_missing(self):
+        #R030-T04: SQLCipher key resolver raises when neither env nor profile provide a key.
+        missing_key_profile = ResolvedProfile(
+            name="sqlite",
+            host="",
+            port=0,
+            dbname="",
+            user="",
+            onepsa_item="",
+            search_path="teller",
+            runtime_role="",
+            sslmode="disable",
+            target="sqlite",
+            sqlite_path="/tmp/empty.sqlite3",
+            sqlcipher_key="",
+        )
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(RuntimeError):
+                teller_db._resolve_sqlcipher_key(missing_key_profile)
+
 
 class ConnectListenerTests(_IsolatedEnvTest):
     #R030: Capture SQLAlchemy connect-listener callback under test.
@@ -181,6 +256,16 @@ class ConnectListenerTests(_IsolatedEnvTest):
         self.assertIn("SELECT string_agg(quote_ident(trim(schema_name)), ',')", executed_sql[0])
         self.assertEqual(executed_sql[1], 'SET search_path TO "teller"')
         self.assertFalse(any(sql.startswith("SET ROLE ") for sql in executed_sql))
+
+    def test_empty_search_path_identifiers_raise_runtime_error(self):
+        #R040-T03: connect listener rejects profiles whose search_path resolves to no identifiers.
+        listener = self._capture_connect_listener(profile=_LOCAL_PROFILE)
+        cursor = MagicMock()
+        cursor.fetchone.return_value = (None,)
+        dbapi_conn = MagicMock()
+        dbapi_conn.cursor.return_value = cursor
+        with self.assertRaises(RuntimeError):
+            listener(dbapi_conn, MagicMock())
 
 
 if __name__ == "__main__":
