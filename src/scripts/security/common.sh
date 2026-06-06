@@ -22,6 +22,10 @@
 #R105: Shared helpers support hash-pinned requirements enforcement for security toolchains.
 #R110: Shared helpers support supply-chain artifact generation wiring (SBOM/signing scaffold).
 #R115: Shared helpers support CI-default required signing mode behavior in static security lane.
+#R420: Shared helper surface remains compatible with static-lane finding-count workflows.
+#R421: Shared helper surface remains compatible with static-lane Semgrep formatting workflows.
+#R422: Shared helper surface remains compatible with static-lane hash-pin enforcement workflows.
+#R423: Shared helper surface remains compatible with static-lane supply-chain generation workflows.
 security_init_repo_root() {
   local script_path="${1:-${BASH_SOURCE[0]-$0}}"
   local script_dir
@@ -57,12 +61,14 @@ security_resolve_asset() {
 }
 
 python_interpreter_usable() {
+  #R080: Validate shared Python interpreter availability.
   local candidate="$1"
   [[ -x "$candidate" ]] || return 1
   "$candidate" -c "import site" >/dev/null 2>&1
 }
 
 require_command() {
+  #R010: Require command availability for lane prerequisites.
   if ! command -v "$1" >/dev/null 2>&1; then
     local requirements_file="${SECURITY_REQUIREMENTS_FILE:-./requirements/security/requirements-security.txt}"
     echo "❌ Missing required command: $1"
@@ -72,6 +78,7 @@ require_command() {
 }
 
 require_file() {
+  #R010: Shared helper validates required file presence before continuing.
   if [[ ! -f "$1" ]]; then
     echo "❌ Missing required file: $1"
     exit 1
@@ -79,6 +86,7 @@ require_file() {
 }
 
 rb_read_1psa_item() {
+  #R100: Read 1Password fields for shared security helpers.
   local item="$1"
   local timeout_seconds="${RB_ONEPSA_TIMEOUT_SECONDS:-12}"
   local output=""
@@ -120,6 +128,7 @@ PY
 }
 
 print_tool_header() {
+  #R020: Print shared static-lane tool headers.
   local tool_name="$1"
   local explainer_line_1="$2"
   local explainer_line_2="$3"
@@ -134,6 +143,7 @@ print_tool_header() {
 }
 
 wait_for_http() {
+  #R020: Shared helper polls an HTTP endpoint until ready or timeout.
   local url="$1"
   local timeout_seconds="${2:-30}"
   local curl_args=(-fsS)
@@ -155,6 +165,7 @@ wait_for_http() {
 }
 
 redact_secret_in_file() {
+  #R100: Redact sensitive tokens in files.
   local input_path="$1"
   local output_path="$2"
   local secret="${3:-}"
@@ -175,6 +186,7 @@ PY
 }
 
 redact_secret_in_place() {
+  #R100: Redact sensitive tokens in-place safely.
   local path="$1"
   local secret="${2:-}"
   local tmp_path="${path}.redacted"

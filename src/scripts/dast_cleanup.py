@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-#R001: Restore baseline-captured mutable data and delete post-baseline inserts transactionally.
-#R005: Refuse cleanup when baseline profile mismatches active profile unless force-enabled.
-#R010: Handle missing/non-captured baselines as non-fatal skips with diagnostics.
 """Restore the database to the pre-DAST baseline captured by dast_baseline.py.
 
 The companion to tests/t11_run_dynamic_security_tests.sh's EXIT trap. Runs:
@@ -41,11 +38,13 @@ from sqlalchemy import text
 
 
 def _load_baseline(path: pathlib.Path) -> dict[str, Any]:
+    #R350: Load baseline JSON payloads from disk.
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
 
 
 def _write_summary(path: pathlib.Path, summary: dict[str, Any]) -> None:
+    #R351: Write cleanup summary payloads to disk.
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=2, default=str)
@@ -53,12 +52,14 @@ def _write_summary(path: pathlib.Path, summary: dict[str, Any]) -> None:
 
 
 def _emit_summary(summary_path: pathlib.Path, summary: dict[str, Any], payload: dict[str, Any], exit_code: int) -> int:
+    #R352: Emit summary and return corresponding exit code.
     _write_summary(summary_path, summary)
     print(json.dumps(payload))
     return exit_code
 
 
 def _skip_with_error(summary: dict[str, Any], summary_path: pathlib.Path, error: str) -> int:
+    #R353: Return skipped status with recorded error payload.
     summary["status"] = "skipped"
     summary["errors"].append(error)
     return _emit_summary(
@@ -70,6 +71,7 @@ def _skip_with_error(summary: dict[str, Any], summary_path: pathlib.Path, error:
 
 
 def _refuse_with_error(summary: dict[str, Any], summary_path: pathlib.Path, error: str) -> int:
+    #R354: Return refused status with recorded error payload.
     summary["status"] = "refused"
     summary["errors"].append(error)
     return _emit_summary(
@@ -81,6 +83,7 @@ def _refuse_with_error(summary: dict[str, Any], summary_path: pathlib.Path, erro
 
 
 def _restore_matches(conn, matches_baseline: list[dict[str, Any]], baseline_max_match_id: int) -> int:
+    #R355: Restore baseline transaction email match rows.
     restored_matches = 0
     for match in matches_baseline:
         match_id = int(match["match_id"])
@@ -118,6 +121,7 @@ def _restore_matches(conn, matches_baseline: list[dict[str, Any]], baseline_max_
 
 
 def _delete_post_baseline_audits(conn, baseline_max_match_audit_id: int) -> int:
+    #R356: Delete post-baseline audit rows.
     return conn.execute(
         text(
             """
@@ -130,6 +134,7 @@ def _delete_post_baseline_audits(conn, baseline_max_match_audit_id: int) -> int:
 
 
 def _delete_post_baseline_matches(conn, baseline_max_match_id: int) -> int:
+    #R357: Delete post-baseline match rows.
     return conn.execute(
         text(
             """
@@ -142,6 +147,7 @@ def _delete_post_baseline_matches(conn, baseline_max_match_id: int) -> int:
 
 
 def _reconcile_classifications(conn, classifications_baseline: list[dict[str, Any]]) -> tuple[int, int]:
+    #R358: Reconcile classifications to baseline state.
     baseline_classification_tx = {row["transaction_id"] for row in classifications_baseline}
     if baseline_classification_tx:
         deleted_classifications = conn.execute(
@@ -187,6 +193,7 @@ def _reconcile_classifications(conn, classifications_baseline: list[dict[str, An
 
 
 def _delete_post_baseline_categories(conn, baseline_max_category_id: int, run_id: str) -> int:
+    #R359: Delete post-baseline category rows.
     return conn.execute(
         text(
             """
@@ -206,6 +213,7 @@ def _delete_post_baseline_categories(conn, baseline_max_category_id: int, run_id
 
 
 def _restore_categories(conn, categories_baseline: list[dict[str, Any]], baseline_max_category_id: int) -> int:
+    #R360: Restore baseline category rows.
     restored_categories = 0
     for row in categories_baseline:
         if bool(row.get("is_seed")):
@@ -247,6 +255,7 @@ def _restore_categories(conn, categories_baseline: list[dict[str, Any]], baselin
 
 
 def _profile_refusal_message(baseline_profile: str | None, current_profile_name: str) -> str | None:
+    #R361: Build profile mismatch refusal diagnostics.
     if not baseline_profile:
         return None
     force_cleanup = os.environ.get("DAST_CLEANUP_FORCE", "false").lower() == "true"
@@ -270,6 +279,8 @@ def _run_cleanup_transaction(
     baseline_max_category_id: int,
     run_id: str,
 ) -> dict[str, int]:
+    #R001: Restore baseline-captured database state transactionally.
+    #R362: Execute cleanup transaction sequence.
     counts: dict[str, int] = {}
     with engine.begin() as conn:
         counts["matches_restored"] = _restore_matches(conn, matches_baseline, baseline_max_match_id)
@@ -285,6 +296,9 @@ def _run_cleanup_transaction(
 
 def main() -> int:
     # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    #R005: Refuse unsafe cleanup on profile mismatch by default.
+    #R010: Handle missing or non-captured baselines as non-fatal skips.
+    #R363: Orchestrate cleanup flow and exit-code policy.
     os.umask(0o007)
     if len(sys.argv) != 4:
         print(

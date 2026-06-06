@@ -37,6 +37,7 @@ if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
   exit 1
 fi
 load_profile_exports_from_file() {
+  #R025: Load and validate DB profile export lines.
   local exports_file="$1"
   local invalid_lines=""
   invalid_lines="$(awk '
@@ -62,6 +63,7 @@ load_profile_exports_from_file() {
 }
 
 resolve_sqlcipher_key_from_profile() {
+  #R025: Resolve SQLCipher key through profile helper.
   "$DB_PROFILE_HELPER" --print-sqlcipher-key
 }
 
@@ -95,12 +97,14 @@ if [[ -z "$SQL_TESTS_DIR" ]]; then
 fi
 
 python_interpreter_usable() {
+  #R001: Validate candidate Python interpreter usability.
   local candidate="$1"
   [[ -x "$candidate" ]] || return 1
   "$candidate" -c "import site" >/dev/null 2>&1
 }
 
 resolve_bats_jobs() {
+  #R001: Resolve bounded Bats parallel job count.
   local default_jobs cap
   default_jobs="$(sysctl -n hw.ncpu 2>/dev/null || echo 8)"
   if [[ "${PARALLEL_LANES:-1}" =~ ^[0-9]+$ ]] && [[ "${PARALLEL_LANES:-1}" -gt 1 ]]; then
@@ -117,6 +121,7 @@ resolve_bats_jobs() {
 }
 
 run_single_bats_file() {
+  #R015: Run one Bats file and propagate failures.
   local bats_file="$1"
   local -a bats_env_unsets=(
     -u TELLER_DB_PASSWORD
@@ -149,6 +154,7 @@ run_single_bats_file() {
 }
 
 swiftpm_state_looks_stale() {
+  #R020: Detect stale SwiftPM checkout state errors.
   local output_text="$1"
   [[ "$output_text" == *"cannot be accessed"* && "$output_text" == *".build/"* ]] && return 0
   [[ "$output_text" == *"was compiled with module cache path"* ]] && return 0
@@ -157,6 +163,7 @@ swiftpm_state_looks_stale() {
 }
 
 clear_conflicting_swiftpm_build_dirs() {
+  #R020: Clear conflicting SwiftPM build directories.
   local output_text="$1"
   local cache_roots=""
   cache_roots="$(
@@ -441,6 +448,7 @@ if [[ "$RUN_SWIFT_TESTS" == "true" ]]; then
     # shellcheck disable=SC1090
     source "$MACOS_UI_SWIFT_LOCK_HELPER"
     run_swift_tests_with_lock() {
+      #R010: Run Swift tests under shared lock with retry policy.
       macos_ui_with_swiftpm_lock "$MACOS_UI_SWIFTPM_LOCK" "$MACOS_UI_SWIFT_LOCK_TIMEOUT_SECONDS" "run_unit_test_lanes:swift-test" \
         swift test --package-path ./src/macos-ui 2>&1
     }

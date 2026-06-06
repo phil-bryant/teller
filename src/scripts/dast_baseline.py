@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-#R001: Capture baseline maxima and mutable-row snapshots for DAST-affected tables.
-#R005: Degrade safely to skipped payload when DB dependencies are unavailable.
-#R010: Emit concise JSON summary output after writing baseline artifacts.
 """Capture a pre-DAST snapshot of every database row tests/t11_run_dynamic_security_tests.sh may touch.
 
 Writes a JSON document containing:
@@ -32,6 +29,7 @@ from typing import Any
 
 
 def _iso(value: Any) -> Any:
+    #R345: Serialize datetime values to ISO-8601 text.
     if isinstance(value, datetime):
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
@@ -40,11 +38,16 @@ def _iso(value: Any) -> Any:
 
 
 def _serialize_row(row, columns: list[str]) -> dict[str, Any]:
+    #R346: Serialize DB rows into keyed dictionaries.
     return {col: _iso(row[idx]) for idx, col in enumerate(columns)}
 
 
 def main() -> int:
     # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    #R001: Capture baseline snapshot data for mutable DAST tables.
+    #R005: Degrade safely to skipped payloads on dependency failures.
+    #R010: Emit concise baseline summary output payloads.
+    #R347: Orchestrate DAST baseline snapshot capture flow.
     os.umask(0o007)
     if len(sys.argv) != 2:
         print("usage: dast_baseline.py <output_json_path>", file=sys.stderr)

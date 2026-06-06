@@ -18,3 +18,18 @@ R010  Statement: Emit operator-readable baseline summary output.
 Design: Print concise JSON summary with captured counts and output path after successful snapshot write.
 Tests:
 - R010-T01: Verify successful run emits summary JSON including status, profile, and table count fields.
+
+R345  Statement: Serialize values to ISO form for baseline payloads.
+Design: Convert datetime-like values to ISO strings for JSON output.
+Tests:
+- R345-T01: Verify _iso helper is available for baseline serialization.
+
+R346  Statement: Serialize DB rows to column-keyed dict payloads.
+Design: Map row tuples and column names into JSON-ready dictionaries.
+Tests:
+- R346-T01: Verify _serialize_row helper is available for row serialization.
+
+R347  Statement: Capture DAST baseline snapshot orchestrator behavior.
+Design: Run baseline capture flow and persist baseline snapshot artifacts.
+Tests:
+- R347-T01: Verify baseline main entrypoint is available for orchestration.

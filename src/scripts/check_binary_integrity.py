@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-#R001: Collect executable path/version/hash metadata for configured binaries.
-#R005: Evaluate required/min-version/hash policy and emit JSON/text reports.
-#R010: Support strict exit gates for required-missing/version/hash failures.
 """Generate binary integrity reports for runtime and security toolchain commands."""
 
 from __future__ import annotations
@@ -38,10 +35,12 @@ class BinaryPolicy:
 
 
 def _normalize_hex_digest(value: str) -> str:
+    #R200: Normalize hex digests to canonical lowercase form.
     return value.strip().lower()
 
 
 def _parse_binary_policy(entry: dict[str, Any], index: int) -> BinaryPolicy:
+    #R201: Parse and validate one binary policy entry.
     identifier = str(entry.get("id") or entry.get("name") or f"binary-{index}").strip()
     command = str(entry.get("command", "")).strip()
     if not command:
@@ -67,6 +66,7 @@ def _parse_binary_policy(entry: dict[str, Any], index: int) -> BinaryPolicy:
 
 
 def load_policy(path: Path) -> list[BinaryPolicy]:
+    #R202: Load binary integrity policy entries from JSON.
     payload = json.loads(path.read_text(encoding="utf-8"))
     binaries = payload.get("binaries")
     if not isinstance(binaries, list):
@@ -80,6 +80,7 @@ def load_policy(path: Path) -> list[BinaryPolicy]:
 
 
 def resolve_executable(command: str) -> str | None:
+    #R203: Resolve a command name to an executable path.
     if os.path.sep in command:
         path = Path(command).expanduser()
         if path.exists() and os.access(path, os.X_OK):
@@ -92,6 +93,7 @@ def resolve_executable(command: str) -> str | None:
 
 
 def run_version_probe(executable_path: str, version_args: tuple[str, ...]) -> tuple[str | None, str | None]:
+    #R204: Execute a version probe command safely.
     cmd = [executable_path, *version_args]
     try:
         result = subprocess.run(
@@ -115,6 +117,7 @@ def run_version_probe(executable_path: str, version_args: tuple[str, ...]) -> tu
 
 
 def parse_version(raw_output: str | None, pattern: str) -> str | None:
+    #R205: Extract version text from probe output.
     if not raw_output:
         return None
     try:
@@ -130,6 +133,7 @@ def parse_version(raw_output: str | None, pattern: str) -> str | None:
 
 
 def compare_versions(current: str, minimum: str) -> int | None:
+    #R206: Compare current and minimum versions.
     if Version is not None:
         try:
             current_version = Version(current)
@@ -157,6 +161,7 @@ def compare_versions(current: str, minimum: str) -> int | None:
 
 
 def sha256_file(path: str) -> str:
+    #R207: Compute a file SHA256 digest.
     digest = hashlib.sha256()
     with Path(path).open("rb") as handle:
         for chunk in iter(lambda: handle.read(65536), b""):
@@ -165,6 +170,8 @@ def sha256_file(path: str) -> str:
 
 
 def evaluate_binary(policy: BinaryPolicy) -> dict[str, Any]:
+    #R001: Collect per-binary path/version/hash metadata.
+    #R015: Enforce SHA256 allowlists for pinned binaries.
     executable_path = resolve_executable(policy.command)
     if executable_path is None:
         return {
@@ -200,7 +207,6 @@ def evaluate_binary(policy: BinaryPolicy) -> dict[str, Any]:
         version_status = "not-configured"
 
     digest = sha256_file(executable_path)
-    #R015: Enforce optional SHA256 allowlists for pinned high-sensitivity binaries.
     hash_status = "not-configured"
     if policy.allowed_sha256:
         hash_status = "ok" if _normalize_hex_digest(digest) in policy.allowed_sha256 else "mismatch"
@@ -230,6 +236,7 @@ def evaluate_binary(policy: BinaryPolicy) -> dict[str, Any]:
 
 
 def build_summary(entries: list[dict[str, Any]]) -> dict[str, int]:
+    #R208: Aggregate per-binary status counters.
     summary = {
         "total": len(entries),
         "missing_required": 0,
@@ -257,6 +264,7 @@ def build_summary(entries: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def make_report(policy_path: Path) -> dict[str, Any]:
+    #R001: Assemble binary integrity report payload data.
     policies = load_policy(policy_path)
     entries = [evaluate_binary(policy) for policy in policies]
     return {
@@ -268,6 +276,7 @@ def make_report(policy_path: Path) -> dict[str, Any]:
 
 
 def format_report_text(report: dict[str, Any]) -> str:
+    #R005: Render the human-readable binary integrity report.
     summary = report["summary"]
     lines = [
         "Binary integrity report",
@@ -292,6 +301,7 @@ def format_report_text(report: dict[str, Any]) -> str:
 
 
 def parse_args() -> argparse.Namespace:
+    #R209: Parse CLI arguments for policy and strict gates.
     parser = argparse.ArgumentParser(description="Generate binary integrity reports.")
     parser.add_argument(
         "--policy",
@@ -328,6 +338,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    #R010: Apply strict exit-gate policy from report summary.
     os.umask(0o007)
     args = parse_args()
     policy_path = Path(args.policy)

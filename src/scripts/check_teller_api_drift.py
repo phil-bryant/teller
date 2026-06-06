@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-#R001: Resolve Teller credentials with predictable local-token fallback behavior.
-#R005: Run live canary checks when credentials exist and degrade safely otherwise.
-#R010: Persist smoke artifacts and fail only on hard check failures.
-#R015: Support strict live canary mode with live-only and warn-as-fail flags.
 """Run Teller API compatibility checks using live canary or local fallback."""
 
 from __future__ import annotations
@@ -19,12 +15,14 @@ HOME_TELLER_DIR = Path.home() / ".teller"
 
 
 def read_text(path: Path) -> str:
+    #R290: Read text files safely.
     if not path.is_file():
         return ""
     return path.read_text(encoding="utf-8").strip()
 
 
 def read_token(path: Path) -> str:
+    #R291: Read a token value from token JSON payloads.
     if not path.is_file():
         return ""
     try:
@@ -35,6 +33,7 @@ def read_token(path: Path) -> str:
 
 
 def discover_token_candidates() -> list[tuple[str, str]]:
+    #R292: Discover local token candidate files.
     candidates: list[tuple[str, str]] = []
     default_token = read_token(HOME_TELLER_DIR / "auth_token.json")
     if default_token:
@@ -50,6 +49,7 @@ def discover_token_candidates() -> list[tuple[str, str]]:
 
 
 def _resolve_cert_key_paths(cert_path: str, key_path: str) -> tuple[str, str]:
+    #R293: Resolve certificate and key path inputs.
     resolved_cert = cert_path
     resolved_key = key_path
     if not resolved_cert:
@@ -68,6 +68,7 @@ def _filter_token_candidates(
     institution_id: str,
     warnings: list[str],
 ) -> list[tuple[str, str]]:
+    #R294: Filter token candidates by institution hint.
     if not institution_id:
         return candidates
     filtered = [item for item in candidates if item[0] == institution_id]
@@ -84,6 +85,7 @@ def _select_local_token(
     institution_id: str,
     warnings: list[str],
 ) -> tuple[str, str]:
+    #R295: Select one local token candidate for use.
     filtered = _filter_token_candidates(candidates, institution_id, warnings)
     if institution_id:
         if len(filtered) > 1:
@@ -104,6 +106,8 @@ def _select_local_token(
 
 
 def resolve_credentials(institution_id: str = "", run_all_tokens: bool = False) -> dict[str, Any]:
+    #R001: Resolve teller credentials from env and token fallbacks.
+    #R296: Resolve credentials for one check run.
     cert_path = os.environ.get("TELLER_CERT_PATH", "").strip()
     key_path = os.environ.get("TELLER_KEY_PATH", "").strip()
     token = os.environ.get("TELLER_ACCESS_TOKEN", "").strip()
@@ -145,6 +149,7 @@ def _run_live_check(
     path: str,
     auth_token: str = "",
 ) -> None:
+    #R297: Run one live endpoint check.
     auth = (auth_token, "") if auth_token else None
     url = f"{BASE_URL}{path}"
     check_result: dict[str, Any] = {
@@ -170,6 +175,7 @@ def _collect_source_checks(
     source_files: list[Path],
     endpoint_markers: list[str],
 ) -> list[dict[str, Any]]:
+    #R298: Collect source-file-based check results.
     checks: list[dict[str, Any]] = []
     for source_path in source_files:
         status = "pass"
@@ -191,6 +197,7 @@ def _discover_fallback_source_files() -> list[Path]:
     # Keep API-drift fallback aligned with repository moves:
     # - legacy runner paths in-repo
     # - extracted classy UI paths in sibling/child directories
+    #R299: Discover fallback source files on disk.
     candidates = [
         Path("07_fetch_teller_api_data.py"),
         Path("classy/07_fetch_teller_api_data.py"),
@@ -209,6 +216,7 @@ def _discover_fallback_source_files() -> list[Path]:
 
 
 def _fallback_live_result(message: str) -> dict[str, Any]:
+    #R300: Build fallback result when live checks cannot run.
     return {
         "mode": "fallback",
         "status": "warn",
@@ -229,6 +237,7 @@ def _run_authenticated_live_checks(
     run_all_tokens: bool,
     warnings: list[str],
 ) -> None:
+    #R301: Run authenticated live check set.
     if run_all_tokens and token_candidates:
         for token_source, candidate_token in token_candidates:
             _run_live_check(
@@ -278,6 +287,8 @@ def _run_authenticated_live_checks(
 
 
 def run_live_canary(timeout_seconds: int, institution_id: str = "", run_all_tokens: bool = False) -> dict[str, Any]:
+    #R005: Run live canary checks and degrade safely when needed.
+    #R302: Run live canary across available token candidates.
     try:
         import requests
     except ImportError:
@@ -324,6 +335,7 @@ def run_live_canary(timeout_seconds: int, institution_id: str = "", run_all_toke
 
 
 def run_fallback_checks() -> dict[str, Any]:
+    #R303: Run fallback offline checks.
     checks: list[dict[str, Any]] = []
     expected_docs = [
         "teller-api-reference-institutions.md",
@@ -361,6 +373,7 @@ def run_fallback_checks() -> dict[str, Any]:
 
 
 def parse_args() -> argparse.Namespace:
+    #R304: Parse teller API drift CLI arguments.
     parser = argparse.ArgumentParser(description="Check Teller API drift/compatibility.")
     parser.add_argument(
         "--output-json",
@@ -402,6 +415,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_text_report(report: dict[str, Any]) -> str:
+    #R305: Build human-readable teller API drift report text.
     lines = [
         "Teller API smoke report",
         f"- Mode: {report['mode']}",
@@ -427,6 +441,9 @@ def build_text_report(report: dict[str, Any]) -> str:
 
 def main() -> int:
     # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    #R010: Persist drift artifacts and return policy exit codes.
+    #R015: Apply strict live-canary warning/fallback gates.
+    #R306: Orchestrate teller API drift run flow.
     os.umask(0o007)
     args = parse_args()
     output_json = Path(args.output_json)

@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-#R001: Provide macOS-safe mutmut prepare/execute flow without in-process forks.
-#R005: Run mutant tests via subprocess pytest with deterministic environment setup.
-#R010: Integrate with pre-import setproctitle stub to avoid Darwin mutmut crash path.
 """macOS mutmut: prepare stats/mutants, then run mutations via subprocess pytest (no os.fork)."""
 import argparse
 import json
@@ -14,6 +11,7 @@ from pathlib import Path
 
 
 def _purge_pycache_under(mutants_root: Path) -> None:
+    #R370: Purge __pycache__ folders under mutants roots.
     stamp = datetime.now().strftime("%Y-%m-%d-%H.%M.%S")
     for cache_dir in mutants_root.rglob("__pycache__"):
         if not cache_dir.is_dir():
@@ -26,10 +24,12 @@ def _purge_pycache_under(mutants_root: Path) -> None:
 
 
 def _repo_root() -> Path:
+    #R371: Resolve repository root path for execution.
     return Path(__file__).resolve().parent.parent
 
 
 def _prepare(root: Path, max_children: int) -> int:
+    #R372: Prepare mutant artifacts with bounded children setting.
     os.chdir(root)
     os.environ["MUTANT_UNDER_TEST"] = "mutant_generation"
     from mutmut.__main__ import (
@@ -76,11 +76,13 @@ def _prepare(root: Path, max_children: int) -> int:
 
 
 def _load_stats(root: Path) -> dict:
+    #R373: Load mutmut statistics payloads from disk.
     stats_path = root / "mutants" / "mutmut-stats.json"
     return json.loads(stats_path.read_text(encoding="utf-8"))
 
 
 def _tests_for_mutant(stats: dict, mutant_name: str) -> list[str]:
+    #R374: Resolve tests for a mutant candidate.
     from mutmut.__main__ import mangled_name_from_mutant_name
 
     key = mangled_name_from_mutant_name(mutant_name)
@@ -90,6 +92,8 @@ def _tests_for_mutant(stats: dict, mutant_name: str) -> list[str]:
 
 
 def _run_mutant_pytest(python: Path, root: Path, mutant_name: str, tests: list[str]) -> int:
+    #R005: Run mutant pytest in deterministic subprocess environments.
+    #R375: Run pytest for one mutant case.
     venv = root / "teller-venv"
     env = os.environ.copy()
     env["MUTANT_UNDER_TEST"] = mutant_name
@@ -119,10 +123,12 @@ def _run_mutant_pytest(python: Path, root: Path, mutant_name: str, tests: list[s
 
 
 def _should_rerun_mutant(prior: int | None, rerun_codes: set[int | None]) -> bool:
+    #R376: Decide whether a mutant should rerun.
     return prior in rerun_codes or prior == 33
 
 
 def _status_for_exit_code(exit_code: int) -> str:
+    #R377: Map process exit codes to mutant statuses.
     if exit_code in (1, 3):
         return "killed"
     if exit_code == 0:
@@ -138,6 +144,7 @@ def _run_and_record_mutant(
     python: Path,
     root: Path,
 ) -> bool:
+    #R378: Run and record one mutant execution result.
     tests = _tests_for_mutant(stats, mutant_name)
     if not tests:
         meta.exit_code_by_key[mutant_name] = 33
@@ -153,6 +160,7 @@ def _run_and_record_mutant(
 
 
 def _execute_mutants_for_path(path, *, mutmut, SourceFileMutationData, rerun_codes: set[int | None], stats: dict, python: Path, root: Path) -> int:
+    #R379: Execute mutants for one source path.
     if mutmut.config.should_ignore_for_mutation(path):
         return 0
     meta = SourceFileMutationData(path=path)
@@ -169,6 +177,7 @@ def _execute_mutants_for_path(path, *, mutmut, SourceFileMutationData, rerun_cod
 
 
 def _execute(root: Path, python: Path) -> int:
+    #R380: Execute full mutation run across candidate paths.
     os.chdir(root)
     import mutmut
     from mutmut.__main__ import SourceFileMutationData, ensure_config_loaded, load_stats, walk_source_files
@@ -199,6 +208,9 @@ def _execute(root: Path, python: Path) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     # New files/dirs from this process: no group/other access (aligns with umask 007 policy).
+    #R001: Provide macOS-safe mutmut prepare/execute orchestration.
+    #R010: Integrate setproctitle stub before mutmut execution flow.
+    #R381: Orchestrate command routing and exit policy.
     os.umask(0o007)
     parser = argparse.ArgumentParser(description="macOS-safe mutmut driver")
     parser.add_argument("command", choices=["prepare", "execute"])

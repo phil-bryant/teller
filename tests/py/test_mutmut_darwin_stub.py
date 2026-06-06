@@ -10,7 +10,7 @@ from pathlib import Path
 
 class MutmutDarwinStubTests(unittest.TestCase):
     def test_stub_registers_setproctitle_module(self) -> None:
-        #R010-T01: Verify the stub module installs a callable `setproctitle` symbol and can be imported before mutmut bootstrap.
+        #R384-T01: Verify the stub module installs a callable `setproctitle` symbol and can be imported before mutmut bootstrap.
         repo_root = Path(__file__).resolve().parents[2]
         script_path = repo_root / "src" / "scripts" / "mutmut_darwin_stub.py"
         sys.modules.pop("setproctitle", None)
