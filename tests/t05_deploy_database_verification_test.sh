@@ -156,16 +156,15 @@ echo "ℹ️  Verifying database via profile=${PROFILE_NAME} target=${PROFILE_TA
 #R055: Resolve DB password from environment or profile-driven 1psa fallback.
 #R010: Resolve DB password from environment or 1psa fallback.
 if [[ -z "$DB_PASSWORD" ]]; then
-  if ! command -v 1psa >/dev/null 2>&1; then
-    echo "❌ FAIL: TELLER_DB_PASSWORD is unset and 1psa is unavailable for fallback lookup."
-    exit 1
-  fi
   PSA_ITEM="${TELLER_PSA_ITEM:-${PG_ONEPSA_ITEM:-}}"
   if [[ -z "$PSA_ITEM" ]]; then
     echo "❌ FAIL: No 1psa item resolved from config/db-profiles.json; cannot look up password."
     exit 1
   fi
-  DB_PASSWORD="$(1psa -p "$PSA_ITEM")"
+  if ! DB_PASSWORD="$(rb_read_1psa_item "$PSA_ITEM" "password")"; then
+    echo "❌ FAIL: Failed to resolve teller DB password from item '${PSA_ITEM}'."
+    exit 1
+  fi
 fi
 
 #R015: Refuse verification when DB password resolves empty.

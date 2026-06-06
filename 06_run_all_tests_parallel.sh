@@ -6,6 +6,7 @@
 RUNBOOK_PROFILE="teller"
 # shellcheck source=/dev/null
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../runner/src/scripts" && pwd -P)/pointer_shim.sh"
+select_runbook_profile "$RUNBOOK_PROFILE"
 #R015: Delegate to the mapped runner golden with argument passthrough.
 #R020: Delegated runner enforces a per-RUNBOOK_REPO_ROOT single-run lock.
 delegate_golden "07_run_all_tests_parallel.sh" "$@"
