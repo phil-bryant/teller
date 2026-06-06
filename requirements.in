@@ -17,3 +17,4 @@ vulture==2.16
 radon==6.0.1
 xenon==0.9.3
 lizard==1.23.0
+tree-sitter-language-pack==1.8.1
