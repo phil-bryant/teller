@@ -7,7 +7,8 @@ import unittest
 
 class GenerateSupplyChainArtifactsTests(unittest.TestCase):
     def test_generates_sbom_signature_and_attestation(self):
-        #R110-T01 #R115-T01
+        #R110-T01: Run generator with sample lockfiles and verify SBOM, signature, and attestation artifacts are written.
+        #R115-T01: Verify generated SBOM components include `purl`, SHA256 hash entries, and non-empty `licenses[]` metadata for runtime and security dependencies (`tests/py/test_generate_supply_chain_artifacts.py`).
         repo_root = Path(__file__).resolve().parents[2]
         script = repo_root / "src/scripts/security/generate_supply_chain_artifacts.py"
         with tempfile.TemporaryDirectory() as tmp:
@@ -86,7 +87,7 @@ class GenerateSupplyChainArtifactsTests(unittest.TestCase):
             self.assertTrue(bandit_component["licenses"])
 
     def test_required_mode_fails_without_cosign_context(self):
-        #R120-T01
+        #R120-T01: Verify required signing mode fails with a clear context error when neither key-based nor keyless signing context is available (`tests/py/test_generate_supply_chain_artifacts.py`).
         repo_root = Path(__file__).resolve().parents[2]
         script = repo_root / "src/scripts/security/generate_supply_chain_artifacts.py"
         with tempfile.TemporaryDirectory() as tmp:

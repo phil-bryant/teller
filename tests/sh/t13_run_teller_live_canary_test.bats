@@ -11,7 +11,7 @@ src() {
 }
 
 @test "R005: Enforce live-only canary semantics; fallback mode and warnin" {
-  #R005-T01
+  #R005-T01: Verify `tests/t13_run_teller_live_canary_test.sh` carries the `#R005` implementation tag.
   run grep -- "#R005:" "$(src)"
   [ "$status" -eq 0 ]
 }

@@ -17,7 +17,7 @@ teardown() {
 }
 
 @test "exports hypothesis storage under artifacts/cache" {
-  #R038-T01
+  #R038-T01: Verify the helper exports `HYPOTHESIS_STORAGE_DIRECTORY` ending in `artifacts/cache/hypothesis`.
   run bash -c "
     # shellcheck disable=SC1091
     source '${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh'
@@ -29,7 +29,8 @@ teardown() {
 }
 
 @test "runs from repo root and honors disabled lanes" {
-  #R001-T01 #R030-T01
+  #R001-T01: Verify the helper re-roots execution and respects lane toggles for shell/python/sql/swift execution.
+  #R030-T01: Verify helper does not call crash-verification script when running default lanes.
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
@@ -52,7 +53,10 @@ EOF
 }
 
 @test "fails fast when db profile helper is missing" {
-  #R005-T01 #R015-T01 #R025-T01 #R035-T01
+  #R005-T01: Verify SQL preflight failures surface clear diagnostics and block SQL test execution.
+  #R015-T01: Verify helper exits non-zero when an enabled lane command returns failure.
+  #R025-T01: Verify missing or failing DB profile export helper prevents SQL lane startup.
+  #R035-T01: Verify SQL lane preflight exits with setup diagnostic when profile exports fail.
   run bash -c "
     cd '${FIXTURE_ROOT}'
     RUN_SHELL_TESTS=false RUN_PYTHON_TESTS=false RUN_SQL_TESTS=false RUN_SWIFT_TESTS=false \
@@ -63,7 +67,8 @@ EOF
 }
 
 @test "swift lane invokes lock helper and retries stale-cache failure once" {
-  #R010-T01 #R020-T01
+  #R010-T01: Verify lock helper invocation and single-retry stale-cache recovery path behavior.
+  #R020-T01: Verify stale-checkout signal triggers single retry and unrelated failures do not.
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
@@ -112,7 +117,7 @@ EOF
 }
 
 @test "swift lane skips gracefully when sandbox_apply is denied" {
-  #R020-T02
+  #R020-T02: Verify sandbox-denied Swift test startup is treated as a graceful skip path instead of a stale-cache retry loop.
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=local"
@@ -206,7 +211,8 @@ EOF
 }
 
 @test "sql lane runs sqlite sql tests when sqlite profile is active" {
-  #R005-T01 #R025-T01
+  #R005-T01: Verify SQL preflight failures surface clear diagnostics and block SQL test execution.
+  #R025-T01: Verify missing or failing DB profile export helper prevents SQL lane startup.
   cat > "${FIXTURE_ROOT}/src/scripts/db_profile_export.sh" <<EOF
 #!/usr/bin/env bash
 if [[ "\${1:-}" == "--print-sqlcipher-key" ]]; then

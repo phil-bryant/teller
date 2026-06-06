@@ -424,7 +424,8 @@ SQL
   fi
 fi
 
-#R020 #R015: Run Swift package tests and propagate failures.
+#R020: Run Swift lane with bounded stale-cache retry recovery.
+#R015: Propagate Swift suite failures by exiting on non-zero status.
 if [[ "$RUN_SWIFT_TESTS" == "true" ]]; then
   if [[ -d "./src/macos-ui/Tests" ]]; then
     if ! command -v swift >/dev/null 2>&1; then

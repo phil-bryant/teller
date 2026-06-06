@@ -29,7 +29,7 @@ class DastBaselineTests(unittest.TestCase):
         self.module = load_module()
 
     def test_helpers_serialize_row_payload(self) -> None:
-        #R001-T01
+        #R001-T01: Verify baseline payload structure includes profile details, maxima, and table snapshot arrays.
         row = [7, datetime(2026, 1, 1, tzinfo=timezone.utc), "x"]
         serialized = self.module._serialize_row(row, ["id", "ts", "value"])
         self.assertEqual(serialized["id"], 7)
@@ -37,7 +37,7 @@ class DastBaselineTests(unittest.TestCase):
         self.assertEqual(serialized["value"], "x")
 
     def test_import_failure_writes_skipped_payload(self) -> None:
-        #R005-T01
+        #R005-T01: Simulate database import failure and verify skipped payload generation with explanatory reason text.
         with tempfile.TemporaryDirectory() as tmp:
             output_path = Path(tmp) / "baseline.json"
             argv = sys.argv
@@ -53,7 +53,7 @@ class DastBaselineTests(unittest.TestCase):
             self.assertIn("db_import_failed", payload["reason"])
 
     def test_success_print_summary_shape(self) -> None:
-        #R010-T01
+        #R010-T01: Verify successful run emits summary JSON including status, profile, and table count fields.
         class FakeProfile:
             name = "local"
             host = "localhost"

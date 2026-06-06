@@ -27,7 +27,7 @@ class MutmutDarwinTests(unittest.TestCase):
         self.module = load_module()
 
     def test_main_routes_prepare_and_execute(self) -> None:
-        #R001-T01
+        #R001-T01: Verify command routing and execute-path behavior for prepared and unprepared mutant states.
         root = Path("/tmp/repo")
         with mock.patch.object(self.module, "_repo_root", return_value=root), mock.patch.object(
             self.module, "_prepare", return_value=0
@@ -40,7 +40,7 @@ class MutmutDarwinTests(unittest.TestCase):
         execute.assert_called_once()
 
     def test_run_mutant_pytest_invocation(self) -> None:
-        #R005-T01
+        #R005-T01: Verify subprocess pytest invocation arguments/environment and per-mutant metadata updates.
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             python = root / "teller-venv" / "bin" / "python3"

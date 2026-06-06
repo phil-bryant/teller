@@ -17,7 +17,7 @@ teardown() {
 }
 
 @test "appends teller cache marker to activate script idempotently" {
-  #R001-T01
+  #R001-T01: Verify activate script contains exactly one teller cache marker after two install calls.
   mkdir -p "${FIXTURE_ROOT}/fixture-venv/bin"
   cat > "${FIXTURE_ROOT}/fixture-venv/bin/activate" <<'EOF'
 # minimal activate stub
@@ -33,7 +33,7 @@ EOF
 }
 
 @test "fails when activate script is missing" {
-  #R005-T01
+  #R005-T01: Verify missing activate script produces an explicit failure message.
   run bash -c "
     bash '${FIXTURE_ROOT}/src/scripts/install_venv_test_cache_env.sh' '${FIXTURE_ROOT}/missing-venv'
   "

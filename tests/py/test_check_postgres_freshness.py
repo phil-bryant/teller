@@ -81,7 +81,7 @@ class CheckPostgresFreshnessTests(unittest.TestCase):
         return proc.returncode, report
 
     def test_fail_on_matching_cve_range(self) -> None:
-        #R025-T01
+        #R025-T01: Verify CVE matching, severity thresholds, stale snapshot handling, and fail-on-CVE behavior.
         snapshot = {
             "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "cves": [
@@ -111,7 +111,7 @@ class CheckPostgresFreshnessTests(unittest.TestCase):
         self.assertEqual(report["cve"]["vulnerabilities"][0]["component"], "client")
 
     def test_pass_when_versions_not_in_affected_ranges(self) -> None:
-        #R025-T01
+        #R025-T01: Verify CVE matching, severity thresholds, stale snapshot handling, and fail-on-CVE behavior.
         snapshot = {
             "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "cves": [
@@ -140,7 +140,7 @@ class CheckPostgresFreshnessTests(unittest.TestCase):
         self.assertEqual(report["cve"]["vulnerabilities"], [])
 
     def test_stale_snapshot_can_fail_policy(self) -> None:
-        #R025-T01
+        #R025-T01: Verify CVE matching, severity thresholds, stale snapshot handling, and fail-on-CVE behavior.
         old_ts = datetime.now(timezone.utc) - timedelta(days=30)
         snapshot = {
             "generated_at": old_ts.isoformat().replace("+00:00", "Z"),
@@ -158,7 +158,7 @@ class CheckPostgresFreshnessTests(unittest.TestCase):
         self.assertTrue(report["summary"]["gate_failed"])
 
     def test_empty_snapshot_reports_inconclusive_assurance(self) -> None:
-        #R025-T01
+        #R025-T01: Verify CVE matching, severity thresholds, stale snapshot handling, and fail-on-CVE behavior.
         snapshot = {
             "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "cves": [],
@@ -176,7 +176,7 @@ class CheckPostgresFreshnessTests(unittest.TestCase):
         self.assertFalse(report["summary"]["gate_failed"])
 
     def test_server_version_num_for_pg16_parses_minor_correctly(self) -> None:
-        #R025-T01
+        #R025-T01: Verify CVE matching, severity thresholds, stale snapshot handling, and fail-on-CVE behavior.
         snapshot = {
             "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "cves": [
@@ -216,7 +216,7 @@ class CheckPostgresFreshnessTests(unittest.TestCase):
         self.assertEqual(report["cve"]["vulnerabilities"], [])
 
     def test_server_warning_includes_attempted_target_details(self) -> None:
-        #R020-T01
+        #R020-T01: Verify client/server version parsing and stale-component gating for compliant and non-compliant versions.
         snapshot = {
             "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "cves": [],

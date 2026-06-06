@@ -14,7 +14,7 @@ sql_file() {
 }
 
 @test "define audit log table" {
-  #R001-T01
+  #R001-T01: Execute DDL and verify `teller.audit_log` exists with expected columns and action constraint.
   run grep -E "teller\.audit_log" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "JSONB" "$(sql_file)"
@@ -22,7 +22,8 @@ sql_file() {
 }
 
 @test "define primary key column lookup and audit trigger" {
-  #R005-T01 #R010-T01
+  #R005-T01: Call the function for a single-key table and a composite-key table and verify returned ordered column arrays.
+  #R010-T01: Perform insert, update, and delete against a trigger-managed table and verify one audit row per operation with correct payload shape.
   run grep "get_primary_key_columns" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "audit_trigger_func" "$(sql_file)"
@@ -32,7 +33,7 @@ sql_file() {
 }
 
 @test "normalize single and composite record ids" {
-  #R015-T01
+  #R015-T01: Audit events on a composite-key table and verify `record_id` stores all key parts.
   run grep "record_id" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep -E "array_length|FOREACH" "$(sql_file)"
@@ -40,7 +41,7 @@ sql_file() {
 }
 
 @test "attach audit triggers to teller base tables" {
-  #R020-T01
+  #R020-T01: Verify trigger creation excludes `audit_log` and includes other teller base tables.
   run grep "CREATE TRIGGER" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "audit_log" "$(sql_file)"

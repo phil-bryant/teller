@@ -33,7 +33,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         (self.teller_dir / filename).write_text(json.dumps(payload), encoding="utf-8")
 
     def test_suffix_only_token_is_resolved(self) -> None:
-        #R001-T01
+        #R001-T01: Verify default discovery, institution filtering, and run-all-token candidate expansion behavior.
         self._write_token("auth_token_chase.json", "token-chase")
 
         creds = self.module.resolve_credentials()
@@ -42,7 +42,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertEqual(creds["warnings"], [])
 
     def test_ambiguous_tokens_require_institution_id(self) -> None:
-        #R005-T01
+        #R005-T01: Verify live and fallback decision logic emits expected check lists and warning states.
         self._write_token("auth_token_chase.json", "token-chase")
         self._write_token("auth_token_fabt.json", "token-fabt")
 
@@ -53,7 +53,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertIn("--institution-id", creds["warnings"][0])
 
     def test_institution_id_selects_matching_suffix(self) -> None:
-        #R001
+        #R001-T01: Verify institution-id suffix filtering selects the matching local token candidate.
         self._write_token("auth_token_chase.json", "token-chase")
         self._write_token("auth_token_fabt.json", "token-fabt")
 
@@ -63,7 +63,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertEqual(creds["warnings"], [])
 
     def test_run_all_tokens_returns_all_candidates(self) -> None:
-        #R001-T01
+        #R001-T01: Verify default discovery, institution filtering, and run-all-token candidate expansion behavior.
         self._write_token("auth_token_chase.json", "token-chase")
         self._write_token("auth_token_fabt.json", "token-fabt")
 
@@ -75,8 +75,8 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertEqual(creds["warnings"], [])
 
     def test_run_all_tokens_respects_institution_filter(self) -> None:
-        #R001-T01
-        #R005-T01
+        #R001-T01: Verify default discovery, institution filtering, and run-all-token candidate expansion behavior.
+        #R005-T01: Verify live and fallback decision logic emits expected check lists and warning states.
         self._write_token("auth_token_chase.json", "token-chase")
         self._write_token("auth_token_fabt.json", "token-fabt")
 
@@ -86,7 +86,7 @@ class ResolveCredentialsTests(unittest.TestCase):
         self.assertEqual(candidates[0][0], "fabt")
 
     def test_build_text_report_includes_mode_status_and_checks(self) -> None:
-        #R010-T01
+        #R010-T01: Verify report persistence and process exit behavior for passing, warning, and failing scenarios.
         report = {
             "mode": "fallback",
             "status": "warn",
@@ -108,7 +108,7 @@ class MainExitPolicyTests(unittest.TestCase):
         self.report_dir = Path(self.temp_dir.name)
 
     def test_require_live_fails_when_fallback_mode_is_used(self) -> None:
-        #R015-T01
+        #R015-T01: Verify `--require-live` returns non-zero when run falls back.
         args = [
             "check_teller_api_drift.py",
             "--output-json",
@@ -127,7 +127,7 @@ class MainExitPolicyTests(unittest.TestCase):
         self.assertEqual(exit_code, 1)
 
     def test_fail_on_warn_promotes_warning_to_failure(self) -> None:
-        #R015-T02
+        #R015-T02: Verify `--fail-on-warn` returns non-zero when report status is warn.
         args = [
             "check_teller_api_drift.py",
             "--output-json",

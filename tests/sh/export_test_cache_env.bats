@@ -16,7 +16,7 @@ teardown() {
 }
 
 @test "exports canonical cache locations under artifacts/cache" {
-  #R001-T01
+  #R001-T01: Traceability anchor in `tests/sh/run_unit_test_lanes.bats`.
   run bash -c "
     # shellcheck disable=SC1091
     source '${FIXTURE_ROOT}/src/scripts/export_test_cache_env.sh'
@@ -33,7 +33,7 @@ teardown() {
 }
 
 @test "defaults hypothesis storage away from repository root" {
-  #R005-T01
+  #R005-T01: Traceability anchor in `tests/py/test_hypothesis_storage_location.py`.
   run bash -c "
     unset HYPOTHESIS_STORAGE_DIRECTORY
     # shellcheck disable=SC1091

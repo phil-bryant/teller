@@ -87,7 +87,7 @@ class _IsolatedEnvTest(unittest.TestCase):
 class ResolveProfileTests(_IsolatedEnvTest):
     # #R001: Missing profile files fail with setup guidance.
     def test_missing_profile_file_raises_with_copy_guidance(self):
-        #R001-T01
+        #R001-T01: Resolve with no profile file present and verify a `ProfileError` explains how to create `config/db-profiles.json` from `config/db-profiles-EXAMPLE.json`.
         with self.assertRaises(ProfileError) as ctx:
             resolve_profile()
         self.assertIn("cp config/db-profiles-EXAMPLE.json config/db-profiles.json", str(ctx.exception))
@@ -95,7 +95,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
     # #R005: TELLER_DB_PROFILE_FILE wins over repo-local defaults.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
     def test_explicit_profile_file_wins(self, _mock):
-        #R005-T01
+        #R005-T01: Point `TELLER_DB_PROFILE_FILE` at a temp file and verify it is loaded ahead of repo defaults.
         explicit = self._write_profile_file({
             "default_profile": "remote",
             "profiles": {"remote": {"1psa_item": "my_remote_item"}},
@@ -112,7 +112,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     # #R005: Missing profile files must not silently fall back.
     def test_no_file_anywhere_raises(self):
-        #R005-T02
+        #R005-T02: With no file at any candidate path, verify resolution fails fast with profile-setup guidance.
         with self.assertRaises(ProfileError):
             resolve_profile()
 
@@ -136,7 +136,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     # #R010: Missing 1psa_item field raises ProfileError.
     def test_missing_onepsa_item_rejected(self):
-        #R010-T01
+        #R010-T01: Load a profile missing `host` and verify a `ProfileError` is raised.
         self._write_profile_file({
             "default_profile": "broken",
             "profiles": {"broken": {}},
@@ -173,7 +173,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
     # #R015: TELLER_DB_PROFILE overrides default_profile.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_SUPABASE_FIELDS))
     def test_env_profile_name_overrides_default(self, _mock):
-        #R015-T01
+        #R015-T01: With `TELLER_DB_PROFILE=supabase` and a file whose `default_profile` is `local`, verify the supabase profile is resolved.
         self._write_profile_file({
             "default_profile": "local",
             "profiles": {
@@ -190,7 +190,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
     # #R020: TELLER_DB_HOST overrides the 1psa-sourced host without disturbing other fields.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_env_host_override_keeps_other_fields(self, _mock):
-        #R020-T01
+        #R020-T01: Resolve with the local profile and `TELLER_DB_HOST=remote.example` set; verify host is overridden but other fields come from the profile.
         self._write_profile_file({
             "default_profile": "local",
             "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
@@ -220,7 +220,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
     # Instead we verify TELLER_DB_USER can override the user field.
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_env_user_override(self, _mock):
-        #R020-T02
+        #R020-T02: Resolve with `TELLER_DB_USER=custom_user` set; verify only the runtime user field is overridden.
         self._write_profile_file({
             "default_profile": "local",
             "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
@@ -242,7 +242,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_invalid_sslmode_override_raises_profile_error(self, _mock):
-        #R010-T02
+        #R010-T02: Load a profile with `sslmode = "bogus"` and verify a `ProfileError` is raised.
         self._write_profile_file({
             "default_profile": "local",
             "profiles": {"local": {"1psa_item": "localhost_postgres_teller"}},
@@ -267,7 +267,7 @@ class ResolveProfileTests(_IsolatedEnvTest):
 
     @patch("teller.teller_db_profile._read_onepsa_fields", side_effect=_make_onepsa_stub(_LOCAL_FIELDS))
     def test_profile_named_sqlite_forces_sqlite_target_when_source_target_is_local(self, _mock):
-        #R021-T01
+        #R021-T01: Resolve with `default_profile=sqlite` while source fields report `target=local`; verify `target=sqlite` with default sqlite file path semantics.
         self._write_profile_file(
             {
                 "default_profile": "sqlite",

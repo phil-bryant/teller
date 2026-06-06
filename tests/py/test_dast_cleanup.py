@@ -32,7 +32,7 @@ class DastCleanupTests(unittest.TestCase):
         self.module = load_module()
 
     def test_missing_baseline_is_skipped(self) -> None:
-        #R010-T01
+        #R010-T01: Verify missing and skipped-status baselines produce non-fatal summaries with actionable error messages.
         with tempfile.TemporaryDirectory() as tmp:
             baseline = Path(tmp) / "missing.json"
             summary = Path(tmp) / "summary.json"
@@ -47,7 +47,7 @@ class DastCleanupTests(unittest.TestCase):
             self.assertEqual(payload["status"], "skipped")
 
     def test_profile_mismatch_refuses_without_force(self) -> None:
-        #R005-T01
+        #R005-T01: Verify profile mismatch returns non-zero refusal without mutating data unless force override is enabled.
         with tempfile.TemporaryDirectory() as tmp:
             baseline = Path(tmp) / "baseline.json"
             summary = Path(tmp) / "summary.json"
@@ -85,7 +85,7 @@ class DastCleanupTests(unittest.TestCase):
             self.assertEqual(payload["status"], "refused")
 
     def test_applied_status_writes_counts(self) -> None:
-        #R001-T01
+        #R001-T01: Verify cleanup applies expected delete/restore sequence and writes count metadata on success.
         class FakeResult:
             def __init__(self, rowcount=0):
                 self.rowcount = rowcount

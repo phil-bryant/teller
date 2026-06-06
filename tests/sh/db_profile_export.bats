@@ -14,7 +14,7 @@ teardown() {
 }
 
 @test "prints expected export keys and omits sqlcipher secret" {
-  #R001-T01
+  #R001-T01: Verify successful execution prints required export keys with shell-quoted values.
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 cat <<'OUT'
@@ -64,7 +64,7 @@ EOF
 }
 
 @test "prints sqlcipher key only when explicitly requested" {
-  #R015-T01
+  #R015-T01: Verify default output omits SQLCIPHER key exports and explicit key mode returns the key value.
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 printf '%s' "cipher-key"
@@ -77,7 +77,7 @@ EOF
 }
 
 @test "supports profile override and rejects unknown args" {
-  #R005-T01
+  #R005-T01: Verify profile override is propagated and unknown flags fail with an explicit error.
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 echo "PROFILE_NAME=${TELLER_DB_PROFILE:-unset}"
@@ -95,7 +95,7 @@ EOF
 }
 
 @test "fails clearly when profile resolver errors" {
-  #R010-T01
+  #R010-T01: Simulate profile-resolution failure and verify stderr guidance plus failing exit status.
   cat > "${STUB_BIN}/python3" <<'EOF'
 #!/usr/bin/env bash
 echo "profile resolution failed" >&2

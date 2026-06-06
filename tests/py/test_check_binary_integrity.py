@@ -33,7 +33,8 @@ class CheckBinaryIntegrityTests(unittest.TestCase):
         self.module = load_module()
 
     def test_make_report_detects_missing_and_version_stale(self) -> None:
-        #R001-T01 #R005-T01
+        #R001-T01: Evaluate a policy with present and missing commands and verify report includes executable path, version, and hash fields (`tests/py/test_check_binary_integrity.py`).
+        #R005-T01: Verify report generation counts missing required and stale-version statuses correctly (`tests/py/test_check_binary_integrity.py`).
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             fake_bin = tmp_path / "fake-tool"
@@ -82,7 +83,7 @@ class CheckBinaryIntegrityTests(unittest.TestCase):
         self.assertEqual(statuses["stale-tool"], "version_stale")
 
     def test_main_fails_on_hash_mismatch_when_enabled(self) -> None:
-        #R010-T01
+        #R010-T01: Verify `main()` returns failing exit status only when the corresponding strict gate is enabled and its condition is present (`tests/py/test_check_binary_integrity.py`).
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             fake_bin = tmp_path / "fake-hash-tool"
@@ -136,7 +137,7 @@ class CheckBinaryIntegrityTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["hash_mismatch"], 1)
 
     def test_make_report_marks_hash_allowlist_match_ok(self) -> None:
-        #R015-T01
+        #R015-T01: Verify a digest in `allowed_sha256` produces an `ok` hash status and no hash mismatch count (`tests/py/test_check_binary_integrity.py`).
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             fake_bin = tmp_path / "fake-hash-ok-tool"
@@ -176,7 +177,7 @@ class CheckBinaryIntegrityTests(unittest.TestCase):
         self.assertEqual(entry["hash_status"], "ok")
 
     def test_main_passes_without_failure_flags(self) -> None:
-        #R010-T01
+        #R010-T01: Verify `main()` returns failing exit status only when the corresponding strict gate is enabled and its condition is present (`tests/py/test_check_binary_integrity.py`).
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             fake_bin = tmp_path / "optional-tool"

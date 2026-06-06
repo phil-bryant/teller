@@ -14,7 +14,7 @@ sql_file() {
 }
 
 @test "view joins transaction to related teller data" {
-  #R001-T01
+  #R001-T01: Query the view after loading representative data and verify joined columns resolve as expected.
   run grep "teller\.transaction_info_view" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "JOIN" "$(sql_file)"
@@ -22,7 +22,7 @@ sql_file() {
 }
 
 @test "view orders by date and description" {
-  #R005-T01
+  #R005-T01: Insert multiple rows with different dates/descriptions and verify view output ordering is stable.
   run grep "ORDER BY" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "tt.date" "$(sql_file)"

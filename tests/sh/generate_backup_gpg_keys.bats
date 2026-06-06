@@ -3,7 +3,7 @@
 load "helpers/common.bash"
 
 @test "script defines strict mode and rejects unknown args" {
-  #R001-T01
+  #R001-T01: Verify the script declares strict shell mode and exits non-zero for unknown arguments (`tests/sh/generate_backup_gpg_keys.bats`).
   run grep 'set -euo pipefail' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"
   [ "$status" -eq 0 ]
 
@@ -12,7 +12,7 @@ load "helpers/common.bash"
 }
 
 @test "script exposes expected customization flags and env defaults" {
-  #R005-T01
+  #R005-T01: Verify the script includes all supported customization flags and corresponding default env vars (`tests/sh/generate_backup_gpg_keys.bats`).
   run grep 'OUTPUT_DIR="\${OUTPUT_DIR:-\./artifacts/security/backup-gpg}"' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"
   [ "$status" -eq 0 ]
   run grep 'KEY_NAME="\${BACKUP_GPG_KEY_NAME:-Teller Postgres Backup Encryption}"' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"
@@ -32,7 +32,7 @@ load "helpers/common.bash"
 }
 
 @test "script enforces non-empty passphrase handling" {
-  #R010-T01
+  #R010-T01: Verify the script contains explicit non-empty passphrase enforcement and mismatch failure handling (`tests/sh/generate_backup_gpg_keys.bats`).
   run grep 'Passphrase confirmation did not match' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"
   [ "$status" -eq 0 ]
   run grep 'Passphrase must be non-empty' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"
@@ -40,7 +40,7 @@ load "helpers/common.bash"
 }
 
 @test "script contains key generation, export, metadata and guidance output" {
-  #R015-T01
+  #R015-T01: Verify the script includes key generation, armored export, metadata output, and 1psa/.env guidance emission (`tests/sh/generate_backup_gpg_keys.bats`).
   run grep -- '--quick-gen-key' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"
   [ "$status" -eq 0 ]
   run grep -- '--export-secret-keys' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"

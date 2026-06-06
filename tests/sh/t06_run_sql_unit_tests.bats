@@ -11,7 +11,7 @@ src() {
 }
 
 @test "R005: Execute only the SQL unit-test lane." {
-  #R005-T01
+  #R005-T01: Verify `tests/t06_run_sql_unit_tests.sh` carries the `#R005` implementation tag.
   run grep -- "#R005:" "$(src)"
   [ "$status" -eq 0 ]
 }

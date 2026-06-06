@@ -31,8 +31,8 @@ class TellerTransactionDetails(TellerObject):
 
 class TellerObjectTests(unittest.TestCase):
     def test_timestamp_mixin_fields_exist_with_configured_defaults(self):
-        #R001-T01
-        #R001-T02
+        #R001-T01: Instantiate a concrete subclass and verify `created_at`/`updated_at` default values are assigned.
+        #R001-T02: Verify generated tables for subclasses target the `teller` schema.
         row = TellerTransactionDetails()
         self.assertTrue(hasattr(row, "created_at"))
         self.assertTrue(hasattr(row, "updated_at"))
@@ -54,21 +54,21 @@ class TellerObjectTests(unittest.TestCase):
         self.assertEqual(TellerTransactionDetails.__table__.schema, "teller")
 
     def test_tablename_is_derived_from_class_name(self):
-        #R005-T01
+        #R005-T01: Define a concrete class such as `TellerTransactionDetails` and verify table name resolves to `transaction_details`.
         self.assertEqual(TellerTransactionDetails.__tablename__, "transaction_details")
 
     def test_set_api_client_sets_class_shared_reference(self):
-        #R010-T01
+        #R010-T01: Call `set_api_client` on a subclass and verify subsequent instances can access the shared client reference.
         fake_client = object()
         TellerTransactionDetails.set_api_client(fake_client)
         row = TellerTransactionDetails()
         self.assertIs(row._api_client, fake_client)
 
     def test_init_with_api_payload_hydrates_mapped_fields(self):
-        #R015-T01
-        #R020-T01
-        #R020-T02
-        #R025-T01
+        #R015-T01: Instantiate with API payload and verify mapped fields are populated.
+        #R020-T01: Add a field with `api_name` metadata and verify hydration reads the aliased payload key.
+        #R020-T02: Verify unmapped payload keys are ignored.
+        #R025-T01: Hydrate list-typed and scalar-typed fields and verify converted Python types.
         row = TellerTransactionDetails(
             {
                 "api_name": "merchant",
@@ -83,7 +83,7 @@ class TellerObjectTests(unittest.TestCase):
         self.assertFalse(hasattr(row, "unknown"))
 
     def test_init_without_payload_skips_hydration(self):
-        #R015-T02
+        #R015-T02: Instantiate without API payload and verify no hydration pass runs.
         row = TellerTransactionDetails()
         self.assertEqual(row.amount, 0)
         self.assertFalse(hasattr(row, "_api_data"))
@@ -95,12 +95,12 @@ class TellerObjectTests(unittest.TestCase):
         self.assertTrue(is_list)
 
     def test_hydration_falls_back_to_raw_value_when_cast_fails(self):
-        #R025-T02
+        #R025-T02: Provide non-castable input and verify raw value fallback is retained.
         row = TellerTransactionDetails({"amount": "not-an-int"})
         self.assertEqual(row.amount, "not-an-int")
 
     def test_str_includes_only_marked_fields_plus_api_data(self):
-        #R030-T01
+        #R030-T01: Mark fields with `__str__` metadata and verify string output includes only marked fields plus `_api_data`.
         row = TellerTransactionDetails({"debug_label": "only_this", "hidden_label": "skip_this"})
         text = str(row)
         field_segment, _, api_segment = text.partition("):_api_data=")

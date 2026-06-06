@@ -15,7 +15,7 @@ sql_file() {
 }
 
 @test "uses conservative DAST cleanup predicates" {
-  #R001-T01
+  #R001-T01: Verify script predicates constrain deletions to expected DAST fingerprint columns/values.
   run grep "level_1 = 'DAST'" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "schemathesis-seed-%@example.invalid" "$(sql_file)"
@@ -25,7 +25,7 @@ sql_file() {
 }
 
 @test "wraps deletes in transaction and FK-safe sequence" {
-  #R005-T01
+  #R005-T01: Verify script contains explicit `BEGIN/COMMIT` and dependency-ordered delete statements.
   run grep "^BEGIN;" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "DELETE FROM teller.transaction_nys_snw_category" "$(sql_file)"
@@ -39,7 +39,7 @@ sql_file() {
 }
 
 @test "includes pre-delete count queries for operator visibility" {
-  #R010-T01
+  #R010-T01: Verify script contains pre-delete counting queries for each cleanup domain.
   run grep "SELECT 'nys_snw_category orphans" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "SELECT 'transaction_nys_snw_category mappings" "$(sql_file)"

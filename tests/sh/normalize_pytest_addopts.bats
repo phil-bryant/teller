@@ -15,7 +15,7 @@ teardown() {
 }
 
 @test "leaves PYTEST_ADDOPTS unchanged without invalid cache-dir flag" {
-  #R001-T01
+  #R001-T01: Verify unchanged addopts pass through untouched.
   run bash -c "
     export PYTEST_ADDOPTS='-q --maxfail=1'
     source '${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh'
@@ -26,7 +26,7 @@ teardown() {
 }
 
 @test "strips invalid --cache-dir from PYTEST_ADDOPTS" {
-  #R005-T01
+  #R005-T01: Verify invalid cache-dir flags are removed while other addopts remain.
   run bash -c "
     export PYTEST_ADDOPTS='--cache-dir=./artifacts/cache/pytest -q'
     source '${FIXTURE_ROOT}/src/scripts/normalize_pytest_addopts.sh'

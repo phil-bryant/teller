@@ -25,7 +25,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
         self.module = load_module()
 
     def test_parse_requirements_and_classify_update(self) -> None:
-        #R001-T01
+        #R001-T01: Verify requirements parsing and update classification behavior for pinned and non-pinned dependencies.
         with tempfile.TemporaryDirectory() as tmp:
             req_path = Path(tmp) / "requirements.txt"
             req_path.write_text(
@@ -44,7 +44,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
         self.assertEqual(self.module.classify_update("1.2.3", "1.2.4"), "patch")
 
     def test_make_report_and_format_text(self) -> None:
-        #R005-T01
+        #R005-T01: Run the script with mocked outdated package rows and verify both report formats contain expected summary/package fields.
         with tempfile.TemporaryDirectory() as tmp:
             req_path = Path(tmp) / "requirements.txt"
             req_path.write_text("requests==2.30.0\n", encoding="utf-8")
@@ -65,7 +65,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
         self.assertIn("transitive", text)
 
     def test_main_fails_for_configured_gates(self) -> None:
-        #R010-T01
+        #R010-T01: Verify each gate independently returns a failing exit status only when its configured condition is present.
         with tempfile.TemporaryDirectory() as tmp:
             req_path = Path(tmp) / "requirements.txt"
             out_json = Path(tmp) / "report.json"
@@ -120,7 +120,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["major_updates"], 1)
 
     def test_main_fails_on_any_actionable_outdated_with_only_transitive_drift(self) -> None:
-        #R010-T01
+        #R010-T01: Verify each gate independently returns a failing exit status only when its configured condition is present.
         with tempfile.TemporaryDirectory() as tmp:
             req_path = Path(tmp) / "requirements.txt"
             out_json = Path(tmp) / "report.json"
@@ -172,7 +172,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
             self.assertEqual(rc, 1)
 
     def test_main_ignores_constrained_only_outdated_for_actionable_gate(self) -> None:
-        #R010-T01
+        #R010-T01: Verify each gate independently returns a failing exit status only when its configured condition is present.
         with tempfile.TemporaryDirectory() as tmp:
             req_path = Path(tmp) / "requirements.txt"
             out_json = Path(tmp) / "report.json"
@@ -224,7 +224,7 @@ class CheckDependencyFreshnessTests(unittest.TestCase):
             self.assertEqual(rc, 0)
 
     def test_main_fails_when_venv_cruft_gate_enabled(self) -> None:
-        #R010-T01
+        #R010-T01: Verify each gate independently returns a failing exit status only when its configured condition is present.
         with tempfile.TemporaryDirectory() as tmp:
             req_path = Path(tmp) / "requirements.txt"
             out_json = Path(tmp) / "report.json"
