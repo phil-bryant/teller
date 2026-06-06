@@ -29,5 +29,9 @@ source "${RUNNER_HOME}/config/runbook/teller.env"
 #R105: Preserve runner hash-pinned toolchain enforcement through passthrough delegation.
 #R110: Preserve runner supply-chain artifact generation behavior through passthrough delegation.
 #R115: Preserve runner CI signing-mode default behavior through passthrough delegation.
+#R420: Preserve runner static-lane finding-count behavior through passthrough delegation.
+#R421: Preserve runner static-lane Semgrep formatter behavior through passthrough delegation.
+#R422: Preserve runner static-lane hash-pin enforcement behavior through passthrough delegation.
+#R423: Preserve runner static-lane supply-chain step behavior through passthrough delegation.
 #R015: Delegate to the mapped runner golden with argument passthrough.
 exec "${RUNNER_HOME}/tests/t03_run_static_security_tests.sh" "$@"

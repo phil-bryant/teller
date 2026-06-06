@@ -52,3 +52,11 @@ load "helpers/common.bash"
   run grep '.env fallback variables:' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"
   [ "$status" -eq 0 ]
 }
+
+@test "script defines cleanup trap for temporary gnupg home" {
+  #R440-T01: Verify the script defines a `cleanup` trap handler that removes `TEMP_GNUPGHOME` on exit.
+  run grep '^cleanup() {' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"
+  [ "$status" -eq 0 ]
+  run grep 'trap cleanup EXIT' "$(repo_root)/src/scripts/security/generate_backup_gpg_keys.sh"
+  [ "$status" -eq 0 ]
+}

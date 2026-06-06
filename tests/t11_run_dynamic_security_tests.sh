@@ -19,5 +19,13 @@ source "${RUNNER_HOME}/config/runbook/teller.env"
 #R045: Preserve runner Schemathesis report-dir execution behavior through passthrough delegation.
 #R050: Preserve runner Schemathesis token-redaction behavior through passthrough delegation.
 #R055: Preserve runner hash-pinned toolchain enforcement through passthrough delegation.
+#R430: Preserve runner dynamic-lane available-port resolution behavior through passthrough delegation.
+#R431: Preserve runner dynamic-lane cleanup-trap behavior through passthrough delegation.
+#R432: Preserve runner dynamic-lane gitleaks-step behavior through passthrough delegation.
+#R433: Preserve runner dynamic-lane ShellCheck-step behavior through passthrough delegation.
+#R434: Preserve runner dynamic-lane ZAP-summary behavior through passthrough delegation.
+#R435: Preserve runner dynamic-lane Matchy seeding behavior through passthrough delegation.
+#R436: Preserve runner dynamic-lane console-script usability checks through passthrough delegation.
+#R437: Preserve runner dynamic-lane port-occupancy probe behavior through passthrough delegation.
 #R015: Delegate to the mapped runner golden with argument passthrough.
 exec "${RUNNER_HOME}/tests/t09_run_dynamic_security_tests.sh" "$@"

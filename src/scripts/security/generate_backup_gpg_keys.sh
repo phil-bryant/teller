@@ -62,6 +62,7 @@ chmod 700 "$OUTPUT_DIR"
 
 TEMP_GNUPGHOME="$(mktemp -d)"
 cleanup() {
+  #R440: Clean up temporary GPG key material on exit.
   rm -rf "$TEMP_GNUPGHOME"
 }
 trap cleanup EXIT

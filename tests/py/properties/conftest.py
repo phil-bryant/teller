@@ -12,6 +12,7 @@ _DEFAULT_HYPOTHESIS_STORAGE = _REPO_ROOT / "artifacts" / "cache" / "hypothesis"
 
 
 def _hypothesis_storage_directory() -> Path:
+    #R001: Cover traceability for this helper/test behavior.
     raw_value = os.environ.get("HYPOTHESIS_STORAGE_DIRECTORY")
     if raw_value:
         return Path(raw_value)
@@ -19,6 +20,7 @@ def _hypothesis_storage_directory() -> Path:
 
 
 def _int_from_env(name: str, default: int) -> int:
+    #R001: Cover traceability for this helper/test behavior.
     raw_value = os.environ.get(name)
     if raw_value is None:
         return default
@@ -30,6 +32,7 @@ def _int_from_env(name: str, default: int) -> int:
 
 
 def _deadline_from_env() -> timedelta | None:
+    #R001: Cover traceability for this helper/test behavior.
     raw_value = os.environ.get("HYPOTHESIS_DEADLINE")
     if raw_value is None:
         return None
@@ -43,6 +46,7 @@ def _deadline_from_env() -> timedelta | None:
 
 
 def _load_teller_fuzz_profile() -> None:
+    #R001: Cover traceability for this helper/test behavior.
     max_examples = _int_from_env("HYPOTHESIS_MAX_EXAMPLES", 100)
     deadline = _deadline_from_env()
     storage_path = _hypothesis_storage_directory()

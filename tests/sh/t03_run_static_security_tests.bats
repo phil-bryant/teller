@@ -64,3 +64,31 @@ src() {
   run grep "exec \"\${RUNNER_HOME}/tests/t03_run_static_security_tests.sh\" \"\$@\"" "$(src)"
   [ "$status" -eq 0 ]
 }
+
+@test "static lane defines report finding counter" {
+  #R420-T01: Verify static-lane source defines `count_report_findings()` and counts report entries.
+  run grep '^count_report_findings() {' "$(repo_root)/src/scripts/security/run_static_security_lane.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "static lane defines semgrep finding formatter" {
+  #R421-T01: Verify static-lane source defines `print_semgrep_findings()` and Semgrep summary output paths.
+  run grep '^print_semgrep_findings() {' "$(repo_root)/src/scripts/security/run_static_security_lane.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "static lane enforces hash-pinned requirements helpers" {
+  #R422-T01: Verify static-lane source defines hash-check and hash-require helper functions.
+  run grep '^requirements_file_has_hashes() {' "$(repo_root)/src/scripts/security/run_static_security_lane.sh"
+  [ "$status" -eq 0 ]
+  run grep '^require_hashed_requirements_file() {' "$(repo_root)/src/scripts/security/run_static_security_lane.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "static lane defines supply-chain generation step" {
+  #R423-T01: Verify static-lane source defines `generate_supply_chain_artifacts()` and invokes the generator script.
+  run grep '^generate_supply_chain_artifacts() {' "$(repo_root)/src/scripts/security/run_static_security_lane.sh"
+  [ "$status" -eq 0 ]
+  run grep 'generate_supply_chain_artifacts.py' "$(repo_root)/src/scripts/security/run_static_security_lane.sh"
+  [ "$status" -eq 0 ]
+}

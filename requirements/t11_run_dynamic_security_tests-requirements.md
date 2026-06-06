@@ -64,3 +64,43 @@ R055  Statement: Wrapper preserves runner hash-pinned toolchain enforcement beha
 Design: Delegate unchanged to the runner dynamic security golden so hash-pin enforcement remains intact.
 Tests:
 - R055-T01: Verify wrapper source preserves runner hash-pin delegation behavior.
+
+R430  Statement: Dynamic lane finds an available TCP port for local DAST services.
+Design: Probe candidate ports and return the first bindable port within the configured search window.
+Tests:
+- R430-T01: Verify dynamic-lane source defines `find_available_tcp_port()` and port-search logic (`tests/sh/t11_run_dynamic_security_tests.bats`).
+
+R431  Statement: Dynamic lane cleans up DAST run state on exit.
+Design: Register cleanup handlers that stop spawned processes and restore baseline artifacts before process exit.
+Tests:
+- R431-T01: Verify dynamic-lane source defines `_cleanup_dast_state()` and installs it as an exit trap (`tests/sh/t11_run_dynamic_security_tests.bats`).
+
+R432  Statement: Dynamic lane runs gitleaks secret scanning.
+Design: Execute gitleaks with JSON output and preserve findings for centralized gate evaluation.
+Tests:
+- R432-T01: Verify dynamic-lane source defines `run_gitleaks_sast()` and gitleaks invocation arguments (`tests/sh/t11_run_dynamic_security_tests.bats`).
+
+R433  Statement: Dynamic lane runs ShellCheck static analysis.
+Design: Execute ShellCheck across numbered scripts, persist JSON output, and continue with gate-visible findings.
+Tests:
+- R433-T01: Verify dynamic-lane source defines `run_shellcheck_sast()` and ShellCheck JSON reporting (`tests/sh/t11_run_dynamic_security_tests.bats`).
+
+R434  Statement: Dynamic lane summarizes ZAP HTML output for gate consumption.
+Design: Parse ZAP HTML reports into machine-readable summary JSON counts.
+Tests:
+- R434-T01: Verify dynamic-lane source defines `summarize_zap_html_report()` and parser invocation (`tests/sh/t11_run_dynamic_security_tests.bats`).
+
+R435  Statement: Dynamic lane seeds Matchy data for Schemathesis.
+Design: Prepare deterministic seeded records and persist seed metadata before contract checks.
+Tests:
+- R435-T01: Verify dynamic-lane source defines `seed_matchy_data_for_schemathesis()` and writes seed payload output (`tests/sh/t11_run_dynamic_security_tests.bats`).
+
+R436  Statement: Dynamic lane verifies security console-script usability.
+Design: Probe console-script entrypoints for executability and expected version/help responses.
+Tests:
+- R436-T01: Verify dynamic-lane source defines `security_console_script_usable()` in toolchain bootstrap flow (`tests/sh/t11_run_dynamic_security_tests.bats`).
+
+R437  Statement: Dynamic lane detects whether a requested TCP port is already in use.
+Design: Probe host/port occupancy and return explicit used/free state for collision handling.
+Tests:
+- R437-T01: Verify dynamic-lane source defines `is_tcp_port_in_use()` and used/free probe behavior (`tests/sh/t11_run_dynamic_security_tests.bats`).

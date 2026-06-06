@@ -114,3 +114,23 @@ R115  Statement: Wrapper preserves runner CI signing-mode default behavior.
 Design: Delegate unchanged to the runner static security golden so CI signing-mode defaults remain intact.
 Tests:
 - R115-T01: Verify wrapper source preserves runner signing-mode delegation behavior.
+
+R420  Statement: Static lane counts findings in generated SAST/SCA reports.
+Design: Parse scanner report payloads by mode and emit finding totals for gate evaluation.
+Tests:
+- R420-T01: Verify static-lane source defines `count_report_findings()` and counts report entries (`tests/sh/t03_run_static_security_tests.bats`).
+
+R421  Statement: Static lane prints Semgrep findings in human-readable form.
+Design: Parse Semgrep JSON reports and emit severity, rule, path, and message summaries.
+Tests:
+- R421-T01: Verify static-lane source defines `print_semgrep_findings()` and Semgrep summary output paths (`tests/sh/t03_run_static_security_tests.bats`).
+
+R422  Statement: Static lane enforces hash-pinned requirements before security toolchain use.
+Design: Require requirements files with `--hash=sha256` pins and stop lane setup when pins are missing.
+Tests:
+- R422-T01: Verify static-lane source defines hash-check and hash-require helper functions (`tests/sh/t03_run_static_security_tests.bats`).
+
+R423  Statement: Static lane generates supply-chain artifacts as part of lane execution.
+Design: Require pinned lockfiles and invoke the supply-chain artifact generator with configured signing mode/output paths.
+Tests:
+- R423-T01: Verify static-lane source defines `generate_supply_chain_artifacts()` and invokes the generator script (`tests/sh/t03_run_static_security_tests.bats`).

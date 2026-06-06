@@ -44,6 +44,7 @@ WRITE_TOKEN_HEADER_NAME="${WRITE_TOKEN_HEADER_NAME:-X-Teller-Write-Token}"
 mkdir -p "$REPORT_DIR"
 
 python_interpreter_usable() {
+  #R001: Shared lane helper validates a candidate Python interpreter.
   local candidate="$1"
   [[ -x "$candidate" ]] || return 1
   "$candidate" -c "import site" >/dev/null 2>&1
@@ -60,6 +61,7 @@ if [[ -d "./${VENV_NAME}" ]] && [[ -f "./${VENV_NAME}/bin/activate" ]]; then
 fi
 
 require_command() {
+  #R001: Shared lane helper validates required command availability.
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "❌ Missing required command: $1"
     echo "Install prerequisites with ./01_install_prerequisites.sh, then run ./03_prepare_supply_chain_integrity.sh and pip install --require-hashes -r ${SECURITY_REQUIREMENTS_FILE}"
@@ -68,6 +70,7 @@ require_command() {
 }
 
 require_file() {
+  #R001: Shared lane helper validates required file presence.
   if [[ ! -f "$1" ]]; then
     echo "❌ Missing required file: $1"
     exit 1
@@ -75,6 +78,7 @@ require_file() {
 }
 
 print_tool_header() {
+  #R001: Shared lane helper prints scanner section headers.
   # Delimit each security tool execution with a boxed descriptor header.
   local tool_name="$1"
   local explainer_line_1="$2"
@@ -135,6 +139,7 @@ ensure_security_venv() {
   local security_schemathesis="${SECURITY_VENV_DIR}/bin/schemathesis"
 
   security_console_script_usable() {
+    #R436: Verify that a security console-script entrypoint is executable.
     local script_path="$1"
     local probe_arg="${2:---version}"
     [[ -x "$script_path" ]] || return 1
@@ -168,10 +173,12 @@ ensure_security_venv() {
 }
 
 security_toolchain_usable() {
+  #R001: Shared lane helper verifies security toolchain readiness.
   python_interpreter_usable "${SECURITY_VENV_DIR}/bin/python"
 }
 
 wait_for_http() {
+  #R001: Shared lane helper waits for HTTP readiness with timeout.
   local url="$1"
   local timeout_seconds="${2:-30}"
   local watch_pid="${3:-}"
@@ -198,6 +205,7 @@ wait_for_http() {
 }
 
 is_tcp_port_in_use() {
+  #R437: Detect whether a TCP port is currently in use.
   # Detect occupied localhost ports before binding DAST API or ZAP quick-scan proxy.
   local host="$1"
   local port="$2"
@@ -218,6 +226,7 @@ PY
 }
 
 find_available_tcp_port() {
+  #R430: Find an available TCP port starting from a preferred base port.
   # Auto-select the next free localhost port when the requested port is in use.
   local host="$1"
   local start_port="$2"
@@ -246,6 +255,7 @@ PY
 }
 
 run_zap_quick_scan() {
+  #R001: Shared lane helper runs a ZAP quick scan command.
   local zap_cli_cmd="$1"
   local zap_home_dir="$2"
   local zap_quiet="$3"
@@ -300,12 +310,14 @@ run_zap_quick_scan() {
 }
 
 summarize_zap_html_report() {
+  #R434: Summarize a ZAP HTML report into machine-readable counts.
   local html_report="$1"
   local summary_json="$2"
   python3 "${SECURITY_PY_DIR}/zap_summary_parser.py" "$html_report" "$summary_json"
 }
 
 read_classifier_write_token() {
+  #R001: Shared lane helper resolves classifier write tokens.
   # Resolve DAST write token from env when present, else 1psa.
   local write_token="${TELLER_CLASSIFIER_WRITE_TOKEN:-}"
   if [[ -z "$write_token" ]]; then
@@ -319,6 +331,7 @@ read_classifier_write_token() {
 }
 
 run_swift_sast() {
+  #R001: Shared lane helper executes Swift SAST checks.
   local swift_report="$1"
   local swift_ui_dir="${SWIFT_UI_DIR:-./src/macos-ui}"
   local swift_targets=()
@@ -375,6 +388,7 @@ run_swift_sast() {
 }
 
 run_shellcheck_sast() {
+  #R433: Run the ShellCheck SAST step and capture findings.
   # Run ShellCheck against shell scripts and persist machine-readable findings.
   local shellcheck_report="$1"
   local shellcheck_targets=()
@@ -410,6 +424,7 @@ run_shellcheck_sast() {
 }
 
 run_gitleaks_sast() {
+  #R432: Run the gitleaks secret-scan step and capture findings.
   # Run gitleaks and preserve JSON findings for centralized secret-leak gating.
   local gitleaks_report="$1"
 
@@ -447,6 +462,7 @@ run_dast_checks() {
   set -euo pipefail
 
   run_category_integrity_checks() {
+    #R001: Shared lane helper runs post-DAST category integrity checks.
     local report_dir_abs="$1"
     local integrity_report_path="${report_dir_abs}/category-integrity.json"
     local seed_sql_path
@@ -464,6 +480,7 @@ run_dast_checks() {
   }
 
   prepare_schemathesis_openapi_fixture() {
+    #R001: Shared lane helper materializes Schemathesis fixture inputs.
     local source_openapi_url="$1"
     local source_base_url="$2"
     local output_schema_path="$3"
@@ -475,6 +492,7 @@ run_dast_checks() {
   }
 
   seed_matchy_data_for_schemathesis() {
+    #R435: Seed Matchy fixtures before executing Schemathesis checks.
     local output_json_path="$1"
     local dast_run_id="${2:-unknown}"
     set +e
@@ -755,6 +773,7 @@ PY
   }
 
   run_delete_category_contract_check() {
+    #R001: Shared lane helper runs delete-category contract verification.
     local schema_path="$1"
     local source_base_url="$2"
     local output_json_path="$3"
@@ -914,6 +933,7 @@ PY
   fi
 
   _cleanup_dast_state() {
+    #R431: Clean up DAST scan state and transient artifacts between runs.
     local exit_code=$?
     if [[ -n "${token_capture_pid:-}" ]] && kill -0 "${token_capture_pid}" >/dev/null 2>&1; then
       kill "${token_capture_pid}" >/dev/null 2>&1 || true

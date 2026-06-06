@@ -36,12 +36,14 @@ ENABLED = os.environ.get("RUN_DAST_DB_HYGIENE_TEST", "false").lower() == "true"
 class TestDastBaselineAndCleanup(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        #R001: Cover traceability for this helper/test behavior.
         sys.path.insert(0, str(REPO_ROOT / "src"))
         from teller.teller_db import get_engine
 
         cls.engine = get_engine()
 
     def _hash_state(self) -> dict[str, str]:
+        #R001: Cover traceability for this helper/test behavior.
         from sqlalchemy import text
 
         queries = {
@@ -59,6 +61,7 @@ class TestDastBaselineAndCleanup(unittest.TestCase):
         return hashes
 
     def _run(self, script: pathlib.Path, *args: str) -> str:
+        #R001: Cover traceability for this helper/test behavior.
         env = os.environ.copy()
         existing = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = (
@@ -79,6 +82,7 @@ class TestDastBaselineAndCleanup(unittest.TestCase):
         return completed.stdout
 
     def test_cleanup_restores_pre_baseline_state(self):
+        #R001: Cover traceability for this helper/test behavior.
         from sqlalchemy import text
 
         run_id = f"dast-test-{uuid.uuid4().hex[:8]}"

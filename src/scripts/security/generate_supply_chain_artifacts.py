@@ -27,6 +27,7 @@ HASH_LINE_RE = re.compile(r"^--hash=sha256:([a-fA-F0-9]{64})$")
 
 
 def sha256_file(path: pathlib.Path) -> str:
+    #R400: Compute the SHA256 digest of a file.
     digest = hashlib.sha256()
     with path.open("rb") as fh:
         while True:
@@ -38,14 +39,17 @@ def sha256_file(path: pathlib.Path) -> str:
 
 
 def normalize_pypi_name(name: str) -> str:
+    #R403: Normalize a PyPI package name to canonical (PEP-503) form.
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
 def build_purl(name: str, version: str) -> str:
+    #R404: Build a Package URL (purl) from package name/version.
     return f"pkg:pypi/{normalize_pypi_name(name)}@{version}"
 
 
 def parse_pinned_requirements(path: pathlib.Path) -> list[dict[str, object]]:
+    #R406: Parse a hash-pinned requirements file into pinned specs.
     components: list[dict[str, object]] = []
     current: dict[str, object] | None = None
     for raw in path.read_text(encoding="utf-8").splitlines():
@@ -79,6 +83,7 @@ def merge_components(
     runtime_components: list[dict[str, object]],
     security_components: list[dict[str, object]],
 ) -> list[dict[str, object]]:
+    #R408: Merge and de-duplicate SBOM components by normalized identity.
     merged: dict[tuple[str, str], dict[str, object]] = {}
     for scope, component_list in (("required", runtime_components), ("optional", security_components)):
         for component in component_list:
@@ -107,6 +112,7 @@ def merge_components(
 
 
 def _license_id_from_classifiers(classifiers: list[str]) -> str | None:
+    #R405: Derive an SPDX license id from trove classifiers.
     classifier_to_spdx = {
         "License :: OSI Approved :: Apache Software License": "Apache-2.0",
         "License :: OSI Approved :: BSD License": "BSD-3-Clause",
@@ -174,6 +180,7 @@ def build_cyclonedx(
     runtime_components: list[dict[str, object]],
     security_components: list[dict[str, object]],
 ) -> dict:
+    #R407: Assemble a CycloneDX SBOM document from parsed dependency inputs.
     timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
     serial_number = f"urn:uuid:{uuid.uuid4()}"
     components = []
@@ -225,10 +232,12 @@ def build_cyclonedx(
 
 
 def write_json(path: pathlib.Path, payload: dict) -> None:
+    #R401: Serialize a payload to JSON on disk deterministically.
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
 def has_command(command: str) -> bool:
+    #R402: Probe whether an external command is available on PATH.
     return subprocess.run(
         ["bash", "-lc", f"command -v {command} >/dev/null 2>&1"],
         check=False,
@@ -240,6 +249,7 @@ def _run_cosign_sign_blob(
     sbom_path: pathlib.Path,
     signature_path: pathlib.Path,
 ) -> bool:
+    #R409: Sign a blob with cosign and confirm detached signature output.
     result = subprocess.run(
         [*command, "--output-signature", str(signature_path), str(sbom_path)],
         check=False,
@@ -289,6 +299,7 @@ def sign_sbom_with_cosign(
 def write_scaffold_signature(
     signature_path: pathlib.Path, sbom_sha256: str, reason: str
 ) -> None:
+    #R410: Write a detached scaffold signature artifact.
     signature_path.write_text(
         "\n".join(
             [
@@ -303,6 +314,7 @@ def write_scaffold_signature(
 
 
 def main(argv: Iterable[str]) -> int:
+    #R411: Orchestrate SBOM build, signing flow, and exit-code policy.
     parser = argparse.ArgumentParser()
     parser.add_argument("--runtime-lock", required=True)
     parser.add_argument("--security-lock", required=True)

@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 def test_hypothesis_storage_directory_lives_under_artifacts_cache() -> None:
+    #R001: Cover traceability for this helper/test behavior.
     storage = os.environ.get("HYPOTHESIS_STORAGE_DIRECTORY")
     assert storage is not None
     path = Path(storage)

@@ -24,6 +24,12 @@ Design: Create temporary GNUPG home, generate an encryption key, export armored 
 Tests:
 - R015-T01: Verify the script includes key generation, armored export, metadata output, and 1psa/.env guidance emission (`tests/sh/generate_backup_gpg_keys.bats`).
 
+R440  Statement: Clean up temporary GPG key material on exit.
+Design: Register an exit trap that removes the temporary GNUPGHOME directory regardless of success or failure.
+Tests:
+- R440-T01: Verify the script defines a `cleanup` trap handler that removes `TEMP_GNUPGHOME` on exit (`tests/sh/generate_backup_gpg_keys.bats`).
+
 ## Changelog
 
 - 2026-05-31: Initial requirements for backup GPG key generation utility.
+- 2026-06-06: Added R440 trap-cleanup requirement for temporary key material lifecycle.

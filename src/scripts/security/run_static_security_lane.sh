@@ -63,6 +63,7 @@ WRITE_TOKEN_HEADER_NAME="${WRITE_TOKEN_HEADER_NAME:-X-Teller-Write-Token}"
 mkdir -p "$REPORT_DIR"
 
 python_interpreter_usable() {
+  #R001: Shared lane helper validates a candidate Python interpreter.
   local candidate="$1"
   [[ -x "$candidate" ]] || return 1
   "$candidate" -c "import site" >/dev/null 2>&1
@@ -79,6 +80,7 @@ if [[ -d "./${VENV_NAME}" ]] && [[ -f "./${VENV_NAME}/bin/activate" ]]; then
 fi
 
 require_command() {
+  #R001: Shared lane helper validates required command availability.
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "❌ Missing required command: $1"
     echo "Install prerequisites with ./01_install_prerequisites.sh, then run ./03_prepare_supply_chain_integrity.sh and pip install --require-hashes -r ${SECURITY_REQUIREMENTS_FILE}"
@@ -87,6 +89,7 @@ require_command() {
 }
 
 require_file() {
+  #R001: Shared lane helper validates required file presence.
   if [[ ! -f "$1" ]]; then
     echo "❌ Missing required file: $1"
     exit 1
@@ -94,6 +97,7 @@ require_file() {
 }
 
 count_report_findings() {
+  #R420: Count findings in generated SAST/SCA report artifacts.
   local mode="$1"
   local report_path="$2"
   python3 - <<'PY' "$mode" "$report_path"
@@ -131,6 +135,7 @@ PY
 }
 
 print_semgrep_findings() {
+  #R421: Print Semgrep findings in human-readable form.
   local report_path="$1"
   python3 - <<'PY' "$report_path"
 import json
@@ -167,6 +172,7 @@ PY
 }
 
 print_tool_header() {
+  #R001: Shared lane helper prints scanner section headers.
   # Delimit each security tool execution with a boxed descriptor header.
   local tool_name="$1"
   local explainer_line_1="$2"
@@ -225,6 +231,7 @@ ensure_security_venv() {
 }
 
 requirements_file_has_hashes() {
+  #R422: Require hash-pinned requirements inputs for toolchain bootstrap.
   local requirements_file="$1"
   python3 - <<'PY' "$requirements_file"
 from pathlib import Path
@@ -239,6 +246,7 @@ PY
 }
 
 require_hashed_requirements_file() {
+  #R422: Reject requirements files that are missing sha256 hash pins.
   local requirements_file="$1"
   require_file "$requirements_file"
   if ! requirements_file_has_hashes "$requirements_file"; then
@@ -249,6 +257,7 @@ require_hashed_requirements_file() {
 }
 
 generate_supply_chain_artifacts() {
+  #R423: Generate supply-chain artifacts as a static-lane step.
   require_hashed_requirements_file "$RUNTIME_REQUIREMENTS_FILE"
   require_hashed_requirements_file "$SECURITY_REQUIREMENTS_FILE"
   local generator_script="${SECURITY_RUNNER_HOME}/src/scripts/security/generate_supply_chain_artifacts.py"
@@ -263,6 +272,7 @@ generate_supply_chain_artifacts() {
 }
 
 security_toolchain_usable() {
+  #R001: Shared lane helper verifies security toolchain readiness.
   local security_semgrep="${SECURITY_VENV_DIR}/bin/semgrep"
   if [[ ! -x "$security_semgrep" ]]; then
     return 1
@@ -271,6 +281,7 @@ security_toolchain_usable() {
 }
 
 wait_for_http() {
+  #R001: Shared lane helper waits for HTTP readiness with timeout.
   local url="$1"
   local timeout_seconds="${2:-30}"
   local curl_args=(-fsS)
@@ -292,6 +303,7 @@ wait_for_http() {
 }
 
 run_zap_quick_scan() {
+  #R001: Shared lane helper runs a ZAP quick scan command.
   local zap_cli_cmd="$1"
   local zap_home_dir="$2"
   local zap_quiet="$3"
@@ -322,6 +334,7 @@ run_zap_quick_scan() {
 }
 
 read_classifier_write_token() {
+  #R001: Shared lane helper resolves classifier write tokens.
   # Resolve DAST write token only from 1psa.
   local write_token
   write_token="$(1psa -p "$WRITE_TOKEN_PSA_ITEM")"
@@ -333,6 +346,7 @@ read_classifier_write_token() {
 }
 
 run_swift_sast() {
+  #R001: Shared lane helper executes Swift SAST checks.
   local swift_report="$1"
   local swift_ui_dir="${SWIFT_UI_DIR:-./src/macos-ui}"
   local swift_targets=()
@@ -527,6 +541,7 @@ run_dast_checks() (
   set -euo pipefail
 
   run_category_integrity_checks() {
+    #R001: Shared lane helper runs post-DAST category integrity checks.
     local report_dir_abs="$1"
     local integrity_report_path="${report_dir_abs}/category-integrity.json"
     local seed_sql_path="./src/sql/postgres/teller_nys_snw_category.sql"
@@ -543,6 +558,7 @@ run_dast_checks() (
   }
 
   prepare_schemathesis_openapi_fixture() {
+    #R001: Shared lane helper materializes Schemathesis fixture inputs.
     local source_openapi_url="$1"
     local source_base_url="$2"
     local output_schema_path="$3"
@@ -552,6 +568,7 @@ run_dast_checks() (
   }
 
   run_delete_category_contract_check() {
+    #R001: Shared lane helper runs delete-category contract verification.
     local schema_path="$1"
     local source_base_url="$2"
     local output_json_path="$3"
