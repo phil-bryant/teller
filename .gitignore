@@ -31,6 +31,7 @@ artifacts/venv/security/
 artifacts/cache/
 artifacts/cache/pycache/private/var/folders/
 artifacts/quality/reports/periphery.txt
+artifacts/telemetry/
 .ruff_cache/
 .hypothesis/
 .schemathesis/
