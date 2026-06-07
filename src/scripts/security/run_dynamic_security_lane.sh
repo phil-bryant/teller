@@ -7,7 +7,6 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/common.sh"
 security_init_repo_root "$SCRIPT_PATH"
-REPO_ROOT="${SECURITY_REPO_ROOT}"
 echo "running DAST (Dynamic Application Security Testing)"
 
 #R005: Runner-owned engine code/SQL resolved repo-override-else-runner; app + DB integration are knobs.
@@ -55,7 +54,7 @@ if [[ -d "./${VENV_NAME}" ]] && [[ -f "./${VENV_NAME}/bin/activate" ]]; then
   if ! python_interpreter_usable "./${VENV_NAME}/bin/python"; then
     echo "⚠️  Skipping ${VENV_NAME} activation because its interpreter is not usable."
   else
-  # shellcheck disable=SC1091
+  # shellcheck disable=SC1090,SC1091
     source "./${VENV_NAME}/bin/activate"
   fi
 fi
@@ -828,7 +827,7 @@ PY
     dast_app_python="python3"
   fi
   if [[ "$dast_app_python" == "python3" ]] && [[ -d "./${VENV_NAME}/lib" ]]; then
-    for site_packages_dir in ./${VENV_NAME}/lib/python*/site-packages; do
+    for site_packages_dir in "./${VENV_NAME}/lib/python"*/site-packages; do
       if [[ -d "$site_packages_dir" ]]; then
         local site_packages_dir_abs
         site_packages_dir_abs="$(cd "$site_packages_dir" && pwd)"
@@ -1435,6 +1434,7 @@ if [[ "$RUN_SAST" == "true" ]]; then
     "Helps catch accidentally committed credentials before release." \
     "https://github.com/Yelp/detect-secrets"
   echo "▶ Running detect-secrets"
+  # shellcheck disable=SC2016
   detect-secrets scan --all-files --force-use-all-plugins \
     --exclude-files '(^\.git/|^${VENV_NAME}/|^artifacts/venv/security/|^artifacts/security/|^artifacts/security-dast/|^artifacts/parallel/|^artifacts/mutation/|^artifacts/fuzz/|^artifacts/cache/ruff/|^artifacts/cache/pytest/|^artifacts/cache/hypothesis/|^artifacts/cache/egg-info/|^backups/|^archive/backup_extracts/|^config/bank_statements/|^src/macos-ui/\.derivedData-ui-tests/|^src/macos-ui/\.build/|^requirements/)' \
     > "${REPORT_DIR}/detect-secrets.json"

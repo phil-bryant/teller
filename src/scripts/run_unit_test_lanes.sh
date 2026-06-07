@@ -218,8 +218,8 @@ if [[ "$RUN_SHELL_TESTS" == "true" ]]; then
         done
       else
         echo "▶ Running shell unit tests (bats, parallel by file; jobs=${BATS_JOBS_RESOLVED})..."
-        printf '%s\0' "${bats_files[@]}" | \
-          BATS_FILTER="$BATS_FILTER" \
+        # shellcheck disable=SC2016
+        printf '%s\0' "${bats_files[@]}" | env BATS_FILTER="${BATS_FILTER:-}" \
           xargs -0 -P "$BATS_JOBS_RESOLVED" -I {} bash -c '
             set -euo pipefail
             file="$1"

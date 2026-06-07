@@ -74,7 +74,7 @@ if [[ -d "./${VENV_NAME}" ]] && [[ -f "./${VENV_NAME}/bin/activate" ]]; then
   if ! python_interpreter_usable "./${VENV_NAME}/bin/python"; then
     echo "⚠️  Skipping ${VENV_NAME} activation because its interpreter is not usable."
   else
-  # shellcheck disable=SC1091
+  # shellcheck disable=SC1090,SC1091
     source "./${VENV_NAME}/bin/activate"
   fi
 fi

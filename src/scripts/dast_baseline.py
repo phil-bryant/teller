@@ -109,8 +109,13 @@ def main() -> int:
             "applicability",
             "is_seed",
         ]
+        category_select_sql = (
+            "SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name, "
+            "level_3, level_4, categorization, applicability, is_seed "
+            "FROM teller.nys_snw_category"
+        )
         category_rows = conn.exec_driver_sql(
-            f"SELECT {', '.join(category_columns)} FROM teller.nys_snw_category"
+            category_select_sql
         ).fetchall()
         payload["categories"] = [_serialize_row(row, category_columns) for row in category_rows]
 
@@ -126,9 +131,12 @@ def main() -> int:
             "active",
             "updated_at",
         ]
-        match_rows = conn.exec_driver_sql(
-            f"SELECT {', '.join(match_columns)} FROM teller.transaction_email_match"
-        ).fetchall()
+        match_select_sql = (
+            "SELECT match_id, transaction_id, email_message_id, state, ai_confidence, selected_by, "
+            "selected_at, moved_to_matchy_at, active, updated_at "
+            "FROM teller.transaction_email_match"
+        )
+        match_rows = conn.exec_driver_sql(match_select_sql).fetchall()
         serialized_matches = []
         for row in match_rows:
             row_dict = _serialize_row(row, match_columns)
@@ -138,9 +146,10 @@ def main() -> int:
         payload["matches"] = serialized_matches
 
         classification_columns = ["transaction_id", "nys_snw_category_id", "type"]
-        classification_rows = conn.exec_driver_sql(
-            f"SELECT {', '.join(classification_columns)} FROM teller.transaction_nys_snw_category"
-        ).fetchall()
+        classification_select_sql = (
+            "SELECT transaction_id, nys_snw_category_id, type FROM teller.transaction_nys_snw_category"
+        )
+        classification_rows = conn.exec_driver_sql(classification_select_sql).fetchall()
         payload["classifications"] = [
             _serialize_row(row, classification_columns) for row in classification_rows
         ]
