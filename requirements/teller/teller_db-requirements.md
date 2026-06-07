@@ -9,12 +9,19 @@ Design: `TELLER_DB_PASSWORD` wins; otherwise `_read_password` reads from libonep
 Tests:
 - R025-T01: With `TELLER_DB_PASSWORD` set, verify the env value is returned and libonepsa is not invoked.
 - R025-T02: With `TELLER_DB_PASSWORD` unset and a profile lacking `1psa_item`, verify a `RuntimeError` is raised.
+- R025-T03: Verify onepsa password command safely quotes item names containing spaces.
+- R025-T04: Verify libonepsa error-pointer responses raise `RuntimeError` with propagated message text.
+- R025-T05: Verify null onepsa pointer responses without explicit errors raise deterministic null-password failures.
+- R025-T06: Verify onepsa read failures fall back to profile env-file password fields.
+- R025-T07: Verify keyboard interrupts during onepsa reads are re-raised without suppression.
 
 R030  Statement: Build one cached SQLAlchemy engine per process.
 Design: `get_engine()` lazily creates a SQLAlchemy engine from the resolved profile, using PostgreSQL settings for postgres/supabase targets and SQLite settings for sqlite target, caching it in module state.
 Tests:
 - R030-T01: Patch `create_engine` and verify two `get_engine()` calls produce one engine and one underlying call.
 - R030-T02: Resolve SQLite profile and verify `get_engine()` builds sqlite engine without password lookup.
+- R030-T03: Resolve PostgreSQL profile and verify DSN/user/password wiring feeds the engine factory.
+- R030-T04: Verify sqlite-memory profile resolution still returns a cached engine instance.
 
 R035  Statement: Apply profile sslmode to the connection.
 Design: For PostgreSQL-family targets, when profile sslmode is non-empty and not `disable`, include it in `connect_args` so Supabase TLS is enforced; SQLite targets skip sslmode handling.
@@ -28,6 +35,7 @@ Rationale: Local PostgreSQL uses the `teller_write` role; Supabase managed Postg
 Tests:
 - R040-T01: Drive the connect listener with `runtime_role = "teller_write"` and verify both `SET search_path` and `SET ROLE` execute against the cursor.
 - R040-T02: Drive the connect listener with empty `runtime_role` and verify `SET ROLE` is not executed.
+- R040-T03: Drive the SQLite connect listener path and verify PostgreSQL session statements are skipped.
 
 ## Changelog
 

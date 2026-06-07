@@ -13,6 +13,7 @@ R005  Statement: Upsert account-level Teller entities idempotently.
 Design: Upsert institution, account links, and account rows using conflict handling while preserving existing link row IDs when updating. For SQLite targets, reject non-USD account currencies because money persistence uses USD-cent integer encoding.
 Tests:
 - R005-T01: Persist the same account payload twice and verify one logical account row remains with updated mutable fields.
+- R005-T02: Verify SQLite-target account persistence rejects non-USD account currencies.
 
 R010  Statement: Upsert identity graph and account-to-identity links without duplication.
 Design: Reuse identity by matching known email rows when present; upsert names/emails/phones/addresses and link identities to accounts via `account_identities`. Identity-email upserts must not reassign an existing email to a different identity (`ON CONFLICT (data) DO NOTHING`).
@@ -20,12 +21,16 @@ Tests:
 - R010-T01: Persist repeated owner payloads and verify identity rows are reused/updated rather than duplicated.
 - R010-T02: Verify account-identity link insert is conflict-safe.
 - R010-T03: Verify identity-email upsert does not reassign ownership when the email already exists for another identity.
+- R010-T04: Verify identity merge path prefers existing email-linked identities over creating duplicates.
 
 R015  Statement: Upsert transactions with normalized relation rows and numeric casting.
 Design: Upsert transaction type, details, links, and transaction rows; cast `amount` and optional `running_balance` to `Decimal`. For SQLite targets, convert money values to integer cents before write to avoid floating-point storage drift.
 Tests:
 - R015-T01: Persist transaction payload with links/details and verify relational rows and transaction row are written.
 - R015-T02: Re-persist with changed mutable fields and verify transaction conflict update path applies.
+- R015-T03: Verify transaction amount casting preserves Decimal precision through persistence helpers.
+- R015-T04: Verify optional running-balance casting handles missing values without write failures.
+- R015-T05: Verify SQLite-target transaction persistence writes money values as integer cents.
 
 R020  Statement: Canonicalize duplicate fetched transaction snapshots by transaction ID.
 Design: `_canonicalize_transactions` deduplicates by ID and prefers incoming `posted` snapshots over existing `pending` snapshots.
@@ -42,6 +47,7 @@ R030  Statement: Prune unreferenced transaction relation rows after reconciliati
 Design: `_prune_unreferenced_transaction_relations` deletes orphaned rows from `transaction_links`, `transaction_details`, and `transaction_details_counterparty`, and reports counts.
 Tests:
 - R030-T01: Delete transactions that leave relation rows orphaned and verify orphan pruning removes only unreferenced rows.
+- R030-T02: Verify prune helper reports per-table deleted-row counts for links/details/counterparties.
 
 R035  Statement: Persist account balance snapshots with upsert behavior.
 Design: Upsert account-balance links and account-balance rows per account, with optional `ledger`/`available` cast to `Decimal` and timestamp refresh on updates. For SQLite targets, convert `ledger`/`available` to integer cents before write.
@@ -55,12 +61,14 @@ Tests:
 - R040-T01: Run `persist_all` with representative payloads and verify all data domains are persisted and committed.
 - R040-T02: Verify `raw_balances_by_account` is optional and does not block persistence when omitted.
 - R040-T03: Force an orchestration failure and verify `persist_all` rolls back the session once.
+- R040-T04: Verify canonicalization/reconciliation hooks are invoked for each account before final commit.
 
 R045  Statement: Ensure SQLite-safe SQL parameter binding for Decimal values.
 Design: The shared `_exec` helper detects SQLite sessions and coerces unsupported bound parameter types (including `Decimal`) into SQLite-bindable scalar values before execution.
 Rationale: SQLite drivers reject direct `Decimal` bindings; coercion keeps transaction and balance upserts backend-compatible without changing domain-level numeric casting.
 Tests:
 - R045-T01: Execute `_exec` with a SQLite-bound session and `Decimal` parameter, and verify bound params are coerced before `session.execute`.
+- R045-T02: Execute `_exec_returning` with SQLite-bound Decimal params and verify coerced binds preserve returning-row behavior.
 
 R050  Statement: Quote reserved transaction table identifiers for cross-dialect SQL compatibility.
 Design: Any SQL referencing the `transaction` table uses quoted identifier form (`teller."transaction"`) so SQLite parses statements successfully while preserving PostgreSQL behavior.

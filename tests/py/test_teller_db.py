@@ -88,6 +88,7 @@ class PasswordResolutionTests(_IsolatedEnvTest):
         fake_lib = MagicMock()
         fake_lib.OnepsaGetField.side_effect = lambda *_args: None
 
+        #R025: nested helper function tag
         def _set_err(_item, _field, err_ptr):
             err_ptr._obj.value = b"boom"
             return None
@@ -101,6 +102,7 @@ class PasswordResolutionTests(_IsolatedEnvTest):
         #R025-T05: null libonepsa pointer without error is rejected.
         fake_lib = MagicMock()
 
+        #R025: nested helper function tag
         def _null_without_error(_item, _field, err_ptr):
             err_ptr._obj.value = None
             return None
@@ -114,7 +116,7 @@ class PasswordResolutionTests(_IsolatedEnvTest):
         #R025-T06: password resolution falls back to profile env fields when onepsa read fails.
         with (
             patch("teller.teller_db._read_password_from_onepsa", side_effect=RuntimeError("unavailable")),
-            patch("teller.teller_db_profile._read_env_file_fields", return_value={"password": "from-env-file"}),
+            patch("teller.teller_db_profile._read_env_file_fields", return_value={"password": "from-env-file"}),  # pragma: allowlist secret
         ):
             password = teller_db._read_password(_LOCAL_PROFILE)
         self.assertEqual(password, "from-env-file")

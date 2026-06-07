@@ -23,11 +23,18 @@ Tests:
 - R010-T01: Load a profile missing `host` and verify a `ProfileError` is raised.
 - R010-T02: Load a profile with `sslmode = "bogus"` and verify a `ProfileError` is raised.
 - R010-T03: Load profile fields with invalid sslmode and verify resolution raises `ProfileError`.
+- R010-T04: Verify onepsa field reads return empty results when libonepsa cannot be loaded.
+- R010-T05: Verify onepsa field reads stop after first libonepsa lookup error.
+- R010-T06: Verify `.env` fallback parser reads only `ITEM.field=value` lines for matching item names.
+- R010-T07: Verify onepsa/env fallback merges host/port/database/user/sslmode/search_path fields deterministically.
+- R010-T08: Verify malformed onepsa/env fallback values (for example invalid port) raise `ProfileError`.
+- R010-T09: Verify sqlite fallback defaults are applied when sqlite profile metadata is incomplete.
 
 R015  Statement: Select the active profile by name with override precedence.
 Design: `TELLER_DB_PROFILE` env var beats the file's `default_profile` field; if neither is present, raise `ProfileError` instead of falling back.
 Tests:
 - R015-T01: With `TELLER_DB_PROFILE=supabase` and a file whose `default_profile` is `local`, verify the supabase profile is resolved.
+- R015-T02: With neither env override nor `default_profile`, verify resolution fails with profile-selection guidance.
 
 R020  Statement: Honor existing `TELLER_DB_*` env vars as overrides.
 Design: After loading the profile, apply PostgreSQL overrides (`TELLER_DB_HOST/PORT/NAME/USER/ROLE/SSLMODE/SEARCH_PATH`) and SQLite path override (`TELLER_DB_SQLITE_PATH`) when active target is SQLite.
@@ -38,6 +45,7 @@ Tests:
 - R020-T03: Resolve with `TELLER_DB_SQLCIPHER_KEY` set and verify it overrides profile sqlcipher key.
 - R020-T04: Change override env vars between calls and verify `resolve_profile()` refreshes cached values.
 - R020-T05: Set non-integer `TELLER_DB_PORT` override and verify a `ProfileError` is raised.
+- R020-T06: Set sqlite-target override env vars and verify sqlite path/key overrides apply without PostgreSQL field pollution.
 
 R021  Statement: Treat the `sqlite` profile name as authoritative for SQLite runtime resolution.
 Design: If the selected profile name is `sqlite`, coerce the resolved profile to SQLite semantics even when upstream 1psa/env target metadata reports `local`; set `target=sqlite`, clear PostgreSQL connection fields, force `sslmode=disable`, and provide a default sqlite path when absent.

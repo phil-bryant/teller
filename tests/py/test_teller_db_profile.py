@@ -319,6 +319,7 @@ class HelperBranchCoverageTests(_IsolatedEnvTest):
         fake_lib = MagicMock()
         fake_lib.calls = 0
 
+        #R010: nested helper function tag
         def _onepsa_get_field(item, field, err_ptr):  # noqa: ARG001
             fake_lib.calls += 1
             err_ptr._obj.value = b"lookup failed"

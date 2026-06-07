@@ -1249,9 +1249,9 @@ ruff==0.15.16 \
     --hash=sha256:d482feaf51512b50f9790ceb417a56a61dd1e9d9bf967662b9ed27c01b34f53a \
     --hash=sha256:f198cf4123602a2280ed46c307bcbafe41758d6fee5b456b6b6058ca1514b3b4
     # via -r requirements/security/requirements-security.in
-schemathesis==4.21.0 \
-    --hash=sha256:38228318f94024cd1186b632761a2eaef21a4b22db73b6dbddd59cccb92643bb \
-    --hash=sha256:b9ff765ff5c1c5a47a6503a23e5b5882ddea3019eda463c05ca11c4390423de8
+schemathesis==4.21.1 \
+    --hash=sha256:58e1530d0fa8b9c96b65bc0952ffbc7dff61e2ca86b46156716fe471aefd28b0 \
+    --hash=sha256:ea28527fb56f0afeb04e24a92cd75ec4bb812c3d36e94b082a6df4ec26d4c2f6
     # via -r requirements/security/requirements-security.in
 semantic-version==2.10.0 \
     --hash=sha256:bdabb6d336998cbb378d4b9db3a4b56a1e3235701dc05ea2690d9a997ed5041c \

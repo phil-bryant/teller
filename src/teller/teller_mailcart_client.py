@@ -12,7 +12,7 @@ import structlog
 log = structlog.get_logger()
 
 _BASE_URL_ENV = "MAILCART_SERVICE_BASE_URL"
-_TOKEN_ENV = "MAILCART_SERVICE_TOKEN"
+_TOKEN_ENV = "MAILCART_SERVICE_TOKEN"  # nosec B105 - env var name, not a credential value
 _DEFAULT_BASE_URL = "https://127.0.0.1:8788"
 _DEFAULT_TIMEOUT_SECONDS = 12.0
 
