@@ -40,9 +40,6 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `04_load_requirements.sh`
 - `05_deploy_database.sh`
 - `06_run_all_tests_parallel.sh`
-- `07_report_quality_trends.sh`
-- `08_validate_quality_target.sh`
-- `09_prune_quality_telemetry.sh`
 - `...` (any future numbered scripts)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
@@ -113,13 +110,6 @@ PARALLEL_CLASSIFIER_API_PORT=8787 \
 PARALLEL_DAST_BASE_PORT=8788 \
 PARALLEL_DAST_REUSE_EXISTING_API=false \
 ./06_run_all_tests_parallel.sh
-```
-
-Quality trend / target checks:
-
-```bash
-./07_report_quality_trends.sh
-./08_validate_quality_target.sh
 ```
 
 Supply-chain lock refresh:
@@ -200,13 +190,7 @@ Active secret and credential sources are:
   - Resolves DB profile and deploys schema/roles/DDL for local or managed targets from `src/sql/postgres/` in dependency order.
   - For sqlite target/profile, applies `src/sql/sqlite/create_database.sql` to `.database/teller.sqlite3` by default.
 - `06_run_all_tests_parallel.sh`
-  - Orchestrates all numbered `tests/t*.sh` checks in parallel, captures per-lane logs/artifacts, and updates quality telemetry summaries.
-- `07_report_quality_trends.sh`
-  - Reads telemetry and prints a local quality trend summary (latest score, rolling windows, and SLO status).
-- `08_validate_quality_target.sh`
-  - Enforces quality target gates from historical telemetry (including consecutive-week attainment checks).
-- `09_prune_quality_telemetry.sh`
-  - Prunes old lane-summary telemetry files, retaining the newest configured count.
+  - Orchestrates all numbered `tests/t*.sh` checks in parallel and captures per-lane logs/artifacts.
 
 The classifier API (`05_run_classification_api.py`), macOS UI launcher (`06_run_classification_macos_ui.sh`), and
 TLS installer (`04_install_classifier_api_tls.sh`) now live in `classy`. The standalone ingest scripts

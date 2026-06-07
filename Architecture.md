@@ -72,7 +72,6 @@ AUTOMATION AND OPERATIONS
 │ 06-07 ingest + bank-statement backfill                                   │
 │ 08-09 classification API + macOS UI launcher                             │
 │ 10    parallel aggregate test runner                                     │
-│ 11-13 quality trends / target / telemetry pruning                        │
 │ 97-99 backup / destroy / restore database                                │
 │                                                                          │
 │ Numbered test lanes (tests/t*.sh, t00-t16)                               │
