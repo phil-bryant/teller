@@ -1,0 +1,21 @@
+{
+  "latest_run_started_at": "2026-06-07T10:06:28+00:00",
+  "latest_score": 10.0,
+  "rolling_21_runs": {
+    "count": 20,
+    "score_avg": 8.969,
+    "wall_p50_seconds": 219.5,
+    "wall_p95_seconds": 358.2
+  },
+  "rolling_14d": {
+    "count": 128,
+    "score_avg": 9.039,
+    "pass_reliability": 0.8962
+  },
+  "performance_slo": {
+    "target_p50_seconds": 130,
+    "target_p95_seconds": 150,
+    "warn": true,
+    "fail": true
+  }
+}
