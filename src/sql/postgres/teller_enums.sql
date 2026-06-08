@@ -55,27 +55,27 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-    CREATE TYPE teller.matchy_trigger_source AS ENUM ('auto', 'manual', 'retry');
-    COMMENT ON TYPE teller.matchy_trigger_source IS 'Source that triggered a matchy matching run';
+    CREATE TYPE matchy.matchy_trigger_source AS ENUM ('auto', 'manual', 'retry');
+    COMMENT ON TYPE matchy.matchy_trigger_source IS 'Source that triggered a matchy matching run';
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-    CREATE TYPE teller.matchy_run_status AS ENUM ('succeeded', 'failed', 'no_candidates', 'needs_review');
-    COMMENT ON TYPE teller.matchy_run_status IS 'Outcome status for a matchy run';
+    CREATE TYPE matchy.matchy_run_status AS ENUM ('succeeded', 'failed', 'no_candidates', 'needs_review');
+    COMMENT ON TYPE matchy.matchy_run_status IS 'Outcome status for a matchy run';
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-    CREATE TYPE teller.transaction_email_match_state AS ENUM (
+    CREATE TYPE matchy.transaction_email_match_state AS ENUM (
         'ai_no_match_found',
         'ai_candidate_uncertain',
         'ai_match_confident',
         'human_confirmed_ai_match',
         'human_overrode_ai_match'
     );
-    COMMENT ON TYPE teller.transaction_email_match_state IS 'Lifecycle state for transaction-to-email matching';
+    COMMENT ON TYPE matchy.transaction_email_match_state IS 'Lifecycle state for transaction-to-email matching';
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
-    CREATE TYPE teller.transaction_email_match_selected_by AS ENUM ('ai', 'human');
-    COMMENT ON TYPE teller.transaction_email_match_selected_by IS 'Actor that selected a transaction-email match row';
+    CREATE TYPE matchy.transaction_email_match_selected_by AS ENUM ('ai', 'human');
+    COMMENT ON TYPE matchy.transaction_email_match_selected_by IS 'Actor that selected a transaction-email match row';
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;

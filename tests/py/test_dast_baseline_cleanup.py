@@ -47,10 +47,10 @@ class TestDastBaselineAndCleanup(unittest.TestCase):
         from sqlalchemy import text
 
         queries = {
-            "nys_snw_category": "SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability, is_seed FROM teller.nys_snw_category ORDER BY nys_snw_category_id",
-            "transaction_email_match": "SELECT match_id, transaction_id, email_message_id, state::text, ai_confidence::text, selected_by::text, selected_at, moved_to_matchy_at, active, updated_at FROM teller.transaction_email_match ORDER BY match_id",
-            "transaction_email_match_audit": "SELECT match_audit_id, match_id, from_state::text, to_state::text, actor::text, note, created_at FROM teller.transaction_email_match_audit ORDER BY match_audit_id",
-            "transaction_nys_snw_category": "SELECT transaction_id, nys_snw_category_id, type::text FROM teller.transaction_nys_snw_category ORDER BY transaction_id",
+            "nys_snw_category": "SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability, is_seed FROM classy.nys_snw_category ORDER BY nys_snw_category_id",
+            "transaction_email_match": "SELECT match_id, transaction_id, email_message_id, state::text, ai_confidence::text, selected_by::text, selected_at, moved_to_matchy_at, active, updated_at FROM matchy.transaction_email_match ORDER BY match_id",
+            "transaction_email_match_audit": "SELECT match_audit_id, match_id, from_state::text, to_state::text, actor::text, note, created_at FROM matchy.transaction_email_match_audit ORDER BY match_audit_id",
+            "transaction_nys_snw_category": "SELECT transaction_id, nys_snw_category_id, type::text FROM classy.transaction_nys_snw_category ORDER BY transaction_id",
         }
         hashes = {}
         with self.engine.connect() as conn:
@@ -99,7 +99,7 @@ class TestDastBaselineAndCleanup(unittest.TestCase):
                 conn.execute(
                     text(
                         """
-                        INSERT INTO teller.nys_snw_category (
+                        INSERT INTO classy.nys_snw_category (
                             level_1, level_1_name, level_2, level_2_name,
                             level_3, level_4, categorization, applicability
                         ) VALUES (

@@ -1,0 +1,65 @@
+kcov: error: bats_debug_trap /var/folders/4c/pn4hbs990t38bvzsmcl6cv1r0000gn/T/bats-run-EYt2zq/1-t01_run_av_test.bats.src
+ is not an integer
+kcov: error: 3load helpers/common.bash
+ is not an integer
+kcov: error: bats_debug_trap /var/folders/4c/pn4hbs990t38bvzsmcl6cv1r0000gn/T/bats-run-EYt2zq/1-t01_run_av_test.bats.src
+ is not an integer
+kcov: error: 1bats_test_function --description 'centralizes umask/strict mode via the shared pointer shim' --tags '' --tags '' -- test_centralizes_umask-2fstrict_mode_via_the_shared_pointer_shim
+ is not an integer
+kcov: error: bats_debug_trap /var/folders/4c/pn4hbs990t38bvzsmcl6cv1r0000gn/T/bats-run-EYt2zq/1-t01_run_av_test.bats.src
+ is not an integer
+kcov: error: 2bats_test_function --description 'resolves the shim from the runner src/scripts tree' --tags '' --tags '' -- test_resolves_the_shim_from_the_runner_src-2fscripts_tree
+ is not an integer
+kcov: error: bats_debug_trap /var/folders/4c/pn4hbs990t38bvzsmcl6cv1r0000gn/T/bats-run-EYt2zq/1-t01_run_av_test.bats.src
+ is not an integer
+kcov: error: 2bats_test_function --description 'selects its runbook profile explicitly before delegation' --tags '' --tags '' -- test_selects_its_runbook_profile_explicitly_before_delegation
+ is not an integer
+kcov: error: bats_debug_trap /var/folders/4c/pn4hbs990t38bvzsmcl6cv1r0000gn/T/bats-run-EYt2zq/1-t01_run_av_test.bats.src
+ is not an integer
+kcov: error: 3bats_test_function --description 'delegates to the mapped runner golden' --tags '' --tags '' -- test_delegates_to_the_mapped_runner_golden
+ is not an integer
+kcov: error: 3load helpers/common.bash
+ is not an integer
+kcov: error: 1bats_test_function --description 'centralizes umask/strict mode via the shared pointer shim' --tags '' --tags '' -- test_centralizes_umask-2fstrict_mode_via_the_shared_pointer_shim
+ is not an integer
+kcov: error: 2bats_test_function --description 'resolves the shim from the runner src/scripts tree' --tags '' --tags '' -- test_resolves_the_shim_from_the_runner_src-2fscripts_tree
+ is not an integer
+kcov: error: 2bats_test_function --description 'selects its runbook profile explicitly before delegation' --tags '' --tags '' -- test_selects_its_runbook_profile_explicitly_before_delegation
+ is not an integer
+kcov: error: 3bats_test_function --description 'delegates to the mapped runner golden' --tags '' --tags '' -- test_delegates_to_the_mapped_runner_golden
+ is not an integer
+kcov: error: 3load helpers/common.bash
+ is not an integer
+kcov: error: 1bats_test_function --description 'centralizes umask/strict mode via the shared pointer shim' --tags '' --tags '' -- test_centralizes_umask-2fstrict_mode_via_the_shared_pointer_shim
+ is not an integer
+kcov: error: 2bats_test_function --description 'resolves the shim from the runner src/scripts tree' --tags '' --tags '' -- test_resolves_the_shim_from_the_runner_src-2fscripts_tree
+ is not an integer
+kcov: error: 2bats_test_function --description 'selects its runbook profile explicitly before delegation' --tags '' --tags '' -- test_selects_its_runbook_profile_explicitly_before_delegation
+ is not an integer
+kcov: error: 3bats_test_function --description 'delegates to the mapped runner golden' --tags '' --tags '' -- test_delegates_to_the_mapped_runner_golden
+ is not an integer
+kcov: error: 3load helpers/common.bash
+ is not an integer
+kcov: error: 1bats_test_function --description 'centralizes umask/strict mode via the shared pointer shim' --tags '' --tags '' -- test_centralizes_umask-2fstrict_mode_via_the_shared_pointer_shim
+ is not an integer
+kcov: error: 2bats_test_function --description 'resolves the shim from the runner src/scripts tree' --tags '' --tags '' -- test_resolves_the_shim_from_the_runner_src-2fscripts_tree
+ is not an integer
+kcov: error: 2bats_test_function --description 'selects its runbook profile explicitly before delegation' --tags '' --tags '' -- test_selects_its_runbook_profile_explicitly_before_delegation
+ is not an integer
+kcov: error: 3bats_test_function --description 'delegates to the mapped runner golden' --tags '' --tags '' -- test_delegates_to_the_mapped_runner_golden
+ is not an integer
+kcov: error: 3load helpers/common.bash
+ is not an integer
+kcov: error: 1bats_test_function --description 'centralizes umask/strict mode via the shared pointer shim' --tags '' --tags '' -- test_centralizes_umask-2fstrict_mode_via_the_shared_pointer_shim
+ is not an integer
+kcov: error: 2bats_test_function --description 'resolves the shim from the runner src/scripts tree' --tags '' --tags '' -- test_resolves_the_shim_from_the_runner_src-2fscripts_tree
+ is not an integer
+kcov: error: 2bats_test_function --description 'selects its runbook profile explicitly before delegation' --tags '' --tags '' -- test_selects_its_runbook_profile_explicitly_before_delegation
+ is not an integer
+kcov: error: 3bats_test_function --description 'delegates to the mapped runner golden' --tags '' --tags '' -- test_delegates_to_the_mapped_runner_golden
+ is not an integer
+1..4
+ok 1 centralizes umask/strict mode via the shared pointer shim
+ok 2 resolves the shim from the runner src/scripts tree
+ok 3 selects its runbook profile explicitly before delegation
+ok 4 delegates to the mapped runner golden

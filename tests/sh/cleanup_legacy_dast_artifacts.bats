@@ -31,11 +31,11 @@ sql_file() {
   #R005-T01: Verify script contains explicit `BEGIN/COMMIT` and dependency-ordered delete statements.
   run grep "^BEGIN;" "$(sql_file)"
   [ "$status" -eq 0 ]
-  run grep "DELETE FROM teller.transaction_nys_snw_category" "$(sql_file)"
+  run grep "DELETE FROM classy.transaction_nys_snw_category" "$(sql_file)"
   [ "$status" -eq 0 ]
-  run grep "DELETE FROM teller.nys_snw_category" "$(sql_file)"
+  run grep "DELETE FROM classy.nys_snw_category" "$(sql_file)"
   [ "$status" -eq 0 ]
-  run grep "DELETE FROM teller.transaction_email_match" "$(sql_file)"
+  run grep "DELETE FROM matchy.transaction_email_match" "$(sql_file)"
   [ "$status" -eq 0 ]
   run grep "^COMMIT;" "$(sql_file)"
   [ "$status" -eq 0 ]

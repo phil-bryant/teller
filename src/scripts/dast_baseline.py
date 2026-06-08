@@ -83,17 +83,17 @@ def main() -> int:
     with engine.connect() as conn:
         payload["baseline_max_category_id"] = int(
             conn.exec_driver_sql(
-                "SELECT COALESCE(MAX(nys_snw_category_id), 0) FROM teller.nys_snw_category"
+                "SELECT COALESCE(MAX(nys_snw_category_id), 0) FROM classy.nys_snw_category"
             ).scalar_one()
         )
         payload["baseline_max_match_id"] = int(
             conn.exec_driver_sql(
-                "SELECT COALESCE(MAX(match_id), 0) FROM teller.transaction_email_match"
+                "SELECT COALESCE(MAX(match_id), 0) FROM matchy.transaction_email_match"
             ).scalar_one()
         )
         payload["baseline_max_match_audit_id"] = int(
             conn.exec_driver_sql(
-                "SELECT COALESCE(MAX(match_audit_id), 0) FROM teller.transaction_email_match_audit"
+                "SELECT COALESCE(MAX(match_audit_id), 0) FROM matchy.transaction_email_match_audit"
             ).scalar_one()
         )
 
@@ -112,7 +112,7 @@ def main() -> int:
         category_select_sql = (
             "SELECT nys_snw_category_id, level_1, level_1_name, level_2, level_2_name, "
             "level_3, level_4, categorization, applicability, is_seed "
-            "FROM teller.nys_snw_category"
+            "FROM classy.nys_snw_category"
         )
         category_rows = conn.exec_driver_sql(
             category_select_sql
@@ -134,7 +134,7 @@ def main() -> int:
         match_select_sql = (
             "SELECT match_id, transaction_id, email_message_id, state, ai_confidence, selected_by, "
             "selected_at, moved_to_matchy_at, active, updated_at "
-            "FROM teller.transaction_email_match"
+            "FROM matchy.transaction_email_match"
         )
         match_rows = conn.exec_driver_sql(match_select_sql).fetchall()
         serialized_matches = []
@@ -147,7 +147,7 @@ def main() -> int:
 
         classification_columns = ["transaction_id", "nys_snw_category_id", "type"]
         classification_select_sql = (
-            "SELECT transaction_id, nys_snw_category_id, type FROM teller.transaction_nys_snw_category"
+            "SELECT transaction_id, nys_snw_category_id, type FROM classy.transaction_nys_snw_category"
         )
         classification_rows = conn.exec_driver_sql(classification_select_sql).fetchall()
         payload["classifications"] = [

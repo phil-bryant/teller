@@ -92,11 +92,11 @@ def _restore_matches(conn, matches_baseline: list[dict[str, Any]], baseline_max_
         result = conn.execute(
             text(
                 """
-                UPDATE teller.transaction_email_match
+                UPDATE matchy.transaction_email_match
                    SET email_message_id = :email_message_id,
-                       state = CAST(:state AS teller.transaction_email_match_state),
+                       state = CAST(:state AS matchy.transaction_email_match_state),
                        ai_confidence = CAST(:ai_confidence AS DECIMAL(5,4)),
-                       selected_by = CAST(:selected_by AS teller.transaction_email_match_selected_by),
+                       selected_by = CAST(:selected_by AS matchy.transaction_email_match_selected_by),
                        selected_at = :selected_at,
                        moved_to_matchy_at = :moved_to_matchy_at,
                        active = :active,
@@ -125,7 +125,7 @@ def _delete_post_baseline_audits(conn, baseline_max_match_audit_id: int) -> int:
     return conn.execute(
         text(
             """
-            DELETE FROM teller.transaction_email_match_audit
+            DELETE FROM matchy.transaction_email_match_audit
              WHERE match_audit_id > :baseline_max_match_audit_id
             """
         ),
@@ -138,7 +138,7 @@ def _delete_post_baseline_matches(conn, baseline_max_match_id: int) -> int:
     return conn.execute(
         text(
             """
-            DELETE FROM teller.transaction_email_match
+            DELETE FROM matchy.transaction_email_match
              WHERE match_id > :baseline_max_match_id
             """
         ),
@@ -153,7 +153,7 @@ def _reconcile_classifications(conn, classifications_baseline: list[dict[str, An
         deleted_classifications = conn.execute(
             text(
                 """
-                DELETE FROM teller.transaction_nys_snw_category
+                DELETE FROM classy.transaction_nys_snw_category
                  WHERE NOT (transaction_id = ANY(:baseline_tx_ids))
                 """
             ),
@@ -161,7 +161,7 @@ def _reconcile_classifications(conn, classifications_baseline: list[dict[str, An
         ).rowcount or 0
     else:
         deleted_classifications = conn.execute(
-            text("DELETE FROM teller.transaction_nys_snw_category")
+            text("DELETE FROM classy.transaction_nys_snw_category")
         ).rowcount or 0
 
     restored_classifications = 0
@@ -169,12 +169,12 @@ def _reconcile_classifications(conn, classifications_baseline: list[dict[str, An
         result = conn.execute(
             text(
                 """
-                INSERT INTO teller.transaction_nys_snw_category (
+                INSERT INTO classy.transaction_nys_snw_category (
                     transaction_id, nys_snw_category_id, type
                 ) VALUES (
                     :transaction_id,
                     :nys_snw_category_id,
-                    CAST(:type AS teller.transaction_categorization_method)
+                    CAST(:type AS classy.transaction_categorization_method)
                 )
                 ON CONFLICT (transaction_id) DO UPDATE
                    SET nys_snw_category_id = EXCLUDED.nys_snw_category_id,
@@ -197,7 +197,7 @@ def _delete_post_baseline_categories(conn, baseline_max_category_id: int, run_id
     return conn.execute(
         text(
             """
-            DELETE FROM teller.nys_snw_category
+            DELETE FROM classy.nys_snw_category
              WHERE is_seed = FALSE
                AND (
                     nys_snw_category_id > :baseline_max_category_id
@@ -224,7 +224,7 @@ def _restore_categories(conn, categories_baseline: list[dict[str, Any]], baselin
         result = conn.execute(
             text(
                 """
-                UPDATE teller.nys_snw_category
+                UPDATE classy.nys_snw_category
                    SET level_1 = :level_1,
                        level_1_name = :level_1_name,
                        level_2 = :level_2,

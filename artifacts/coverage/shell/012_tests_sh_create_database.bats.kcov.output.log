@@ -1,0 +1,53 @@
+kcov: error: bats_debug_trap /var/folders/4c/pn4hbs990t38bvzsmcl6cv1r0000gn/T/bats-run-Z7BWhK/1-create_database.bats.src
+ is not an integer
+kcov: error: 3bats_test_function --description 'sqlite schema sets foreign key pragma' --tags '' --tags '' -- test_sqlite_schema_sets_foreign_key_pragma
+ is not an integer
+kcov: error: bats_debug_trap /var/folders/4c/pn4hbs990t38bvzsmcl6cv1r0000gn/T/bats-run-Z7BWhK/1-create_database.bats.src
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines ingest graph tables' --tags '' --tags '' -- test_sqlite_schema_defines_ingest_graph_tables
+ is not an integer
+kcov: error: bats_debug_trap /var/folders/4c/pn4hbs990t38bvzsmcl6cv1r0000gn/T/bats-run-Z7BWhK/1-create_database.bats.src
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines classification and match tables' --tags '' --tags '' -- test_sqlite_schema_defines_classification_and_match_tables
+ is not an integer
+kcov: error: bats_debug_trap /var/folders/4c/pn4hbs990t38bvzsmcl6cv1r0000gn/T/bats-run-Z7BWhK/1-create_database.bats.src
+ is not an integer
+kcov: error: 2bats_test_function --description 'sqlite schema defines transaction info view' --tags '' --tags '' -- test_sqlite_schema_defines_transaction_info_view
+ is not an integer
+kcov: error: 3bats_test_function --description 'sqlite schema sets foreign key pragma' --tags '' --tags '' -- test_sqlite_schema_sets_foreign_key_pragma
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines ingest graph tables' --tags '' --tags '' -- test_sqlite_schema_defines_ingest_graph_tables
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines classification and match tables' --tags '' --tags '' -- test_sqlite_schema_defines_classification_and_match_tables
+ is not an integer
+kcov: error: 2bats_test_function --description 'sqlite schema defines transaction info view' --tags '' --tags '' -- test_sqlite_schema_defines_transaction_info_view
+ is not an integer
+kcov: error: 3bats_test_function --description 'sqlite schema sets foreign key pragma' --tags '' --tags '' -- test_sqlite_schema_sets_foreign_key_pragma
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines ingest graph tables' --tags '' --tags '' -- test_sqlite_schema_defines_ingest_graph_tables
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines classification and match tables' --tags '' --tags '' -- test_sqlite_schema_defines_classification_and_match_tables
+ is not an integer
+kcov: error: 2bats_test_function --description 'sqlite schema defines transaction info view' --tags '' --tags '' -- test_sqlite_schema_defines_transaction_info_view
+ is not an integer
+kcov: error: 3bats_test_function --description 'sqlite schema sets foreign key pragma' --tags '' --tags '' -- test_sqlite_schema_sets_foreign_key_pragma
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines ingest graph tables' --tags '' --tags '' -- test_sqlite_schema_defines_ingest_graph_tables
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines classification and match tables' --tags '' --tags '' -- test_sqlite_schema_defines_classification_and_match_tables
+ is not an integer
+kcov: error: 2bats_test_function --description 'sqlite schema defines transaction info view' --tags '' --tags '' -- test_sqlite_schema_defines_transaction_info_view
+ is not an integer
+kcov: error: 3bats_test_function --description 'sqlite schema sets foreign key pragma' --tags '' --tags '' -- test_sqlite_schema_sets_foreign_key_pragma
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines ingest graph tables' --tags '' --tags '' -- test_sqlite_schema_defines_ingest_graph_tables
+ is not an integer
+kcov: error: 1bats_test_function --description 'sqlite schema defines classification and match tables' --tags '' --tags '' -- test_sqlite_schema_defines_classification_and_match_tables
+ is not an integer
+kcov: error: 2bats_test_function --description 'sqlite schema defines transaction info view' --tags '' --tags '' -- test_sqlite_schema_defines_transaction_info_view
+ is not an integer
+1..4
+ok 1 sqlite schema sets foreign key pragma
+ok 2 sqlite schema defines ingest graph tables
+ok 3 sqlite schema defines classification and match tables
+ok 4 sqlite schema defines transaction info view

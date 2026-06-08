@@ -24,13 +24,13 @@ _DB_ENV_KEYS = (
 
 _LOCAL_PROFILE = ResolvedProfile(
     name="local", host="localhost", port=5432, dbname="prod", user="teller",
-    onepsa_item="localhost_postgres_teller", search_path="teller",
+    onepsa_item="localhost_postgres_teller", search_path="teller,classy,matchy",
     runtime_role="teller_write", sslmode="disable", target="local", sqlite_path="", sqlcipher_key="",
 )
 
 _SUPABASE_PROFILE = ResolvedProfile(
     name="supabase", host="db.example.supabase.co", port=5432, dbname="postgres",
-    user="postgres", onepsa_item="eggnest_supabase", search_path="teller",
+    user="postgres", onepsa_item="eggnest_supabase", search_path="teller,classy,matchy",
     runtime_role="", sslmode="require", target="managed", sqlite_path="", sqlcipher_key="",
 )
 
@@ -234,13 +234,13 @@ class ConnectListenerTests(_IsolatedEnvTest):
         #R040-T01: Drive the connect listener with `runtime_role = "teller_write"` and verify both `SET search_path` and `SET ROLE` execute against the cursor.
         listener = self._capture_connect_listener()
         cursor = MagicMock()
-        cursor.fetchone.side_effect = [('"teller"',), ('"teller_write"',)]
+        cursor.fetchone.side_effect = [('"teller","classy","matchy"',), ('"teller_write"',)]
         dbapi_conn = MagicMock()
         dbapi_conn.cursor.return_value = cursor
         listener(dbapi_conn, MagicMock())
         executed_sql = [call.args[0] for call in cursor.execute.call_args_list]
         self.assertIn("SELECT string_agg(quote_ident(trim(schema_name)), ',')", executed_sql[0])
-        self.assertIn('SET search_path TO "teller"', executed_sql)
+        self.assertIn('SET search_path TO "teller","classy","matchy"', executed_sql)
         self.assertIn("SELECT quote_ident(%s)", executed_sql)
         self.assertIn('SET ROLE "teller_write"', executed_sql)
 
@@ -249,14 +249,14 @@ class ConnectListenerTests(_IsolatedEnvTest):
         #R040-T02: Drive the connect listener with empty `runtime_role` and verify `SET ROLE` is not executed.
         listener = self._capture_connect_listener(profile=_SUPABASE_PROFILE)
         cursor = MagicMock()
-        cursor.fetchone.return_value = ('"teller"',)
+        cursor.fetchone.return_value = ('"teller","classy","matchy"',)
         dbapi_conn = MagicMock()
         dbapi_conn.cursor.return_value = cursor
         listener(dbapi_conn, MagicMock())
         executed_sql = [call.args[0] for call in cursor.execute.call_args_list]
         self.assertEqual(len(executed_sql), 2)
         self.assertIn("SELECT string_agg(quote_ident(trim(schema_name)), ',')", executed_sql[0])
-        self.assertEqual(executed_sql[1], 'SET search_path TO "teller"')
+        self.assertEqual(executed_sql[1], 'SET search_path TO "teller","classy","matchy"')
         self.assertFalse(any(sql.startswith("SET ROLE ") for sql in executed_sql))
 
     def test_empty_search_path_identifiers_raise_runtime_error(self):

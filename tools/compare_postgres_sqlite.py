@@ -127,10 +127,24 @@ def _connect_sqlite(profile: ResolvedProfile) -> SqliteConnection:
     return conn
 
 
-#R620: Resolve active PostgreSQL schema for table discovery.
-def _get_postgres_schema(profile: ResolvedProfile) -> str:
-    first_schema = next((part.strip() for part in profile.search_path.split(",") if part.strip()), "")
-    return first_schema or "teller"
+#R620: Resolve ordered PostgreSQL schemas from search_path for table discovery.
+def _get_postgres_schemas(profile: ResolvedProfile) -> list[str]:
+    schemas: list[str] = []
+    for part in profile.search_path.split(","):
+        schema_name = part.strip()
+        if not schema_name or schema_name in schemas:
+            continue
+        schemas.append(schema_name)
+    return schemas or ["teller"]
+
+
+#R620: Map PostgreSQL schema/table ownership to SQLite prefixed table names.
+def _sqlite_table_name_for_postgres(schema_name: str, table_name: str) -> str:
+    if schema_name == "classy":
+        return f"classy_{table_name}"
+    if schema_name == "matchy":
+        return f"matchy_{table_name}"
+    return table_name
 
 
 #R620: Enumerate PostgreSQL tables in the resolved schema.
@@ -402,26 +416,53 @@ def compare_databases(
     max_row_examples: int,
 ) -> list[TableDiff]:
     diffs: list[TableDiff] = []
-    pg_schema = _get_postgres_schema(postgres_profile)
+    pg_schemas = _get_postgres_schemas(postgres_profile)
 
     with _connect_postgres(postgres_profile) as pg_conn, _connect_sqlite(sqlite_profile) as sqlite_conn:
         with pg_conn.cursor() as pg_cur:
             sqlite_cur = sqlite_conn.cursor()
 
-            pg_tables = _pg_tables(pg_cur, pg_schema)
+            pg_table_mapping: dict[str, tuple[str, str]] = {}
+            duplicate_sqlite_names: list[str] = []
+            for pg_schema in pg_schemas:
+                for table_name in _pg_tables(pg_cur, pg_schema):
+                    sqlite_table_name = _sqlite_table_name_for_postgres(pg_schema, table_name)
+                    if sqlite_table_name in pg_table_mapping:
+                        duplicate_sqlite_names.append(sqlite_table_name)
+                        continue
+                    pg_table_mapping[sqlite_table_name] = (pg_schema, table_name)
+            if duplicate_sqlite_names:
+                diffs.append(
+                    TableDiff(
+                        table="*",
+                        issue="ambiguous_pg_mapping",
+                        details=", ".join(sorted(set(duplicate_sqlite_names))),
+                    )
+                )
+
+            pg_tables = sorted(pg_table_mapping)
             sqlite_tables = _sqlite_tables(sqlite_cur)
             pg_set = set(pg_tables)
             sqlite_set = set(sqlite_tables)
             only_pg = sorted(pg_set - sqlite_set)
             only_sqlite = sorted(sqlite_set - pg_set)
             if only_pg:
-                diffs.append(TableDiff(table="*", issue="missing_in_sqlite", details=", ".join(only_pg)))
+                missing_details = []
+                for sqlite_table_name in only_pg:
+                    mapped = pg_table_mapping.get(sqlite_table_name)
+                    if not mapped:
+                        missing_details.append(sqlite_table_name)
+                        continue
+                    missing_details.append(f"{mapped[0]}.{mapped[1]}=>{sqlite_table_name}")
+                diffs.append(TableDiff(table="*", issue="missing_in_sqlite", details=", ".join(missing_details)))
             if only_sqlite:
                 diffs.append(TableDiff(table="*", issue="missing_in_postgres", details=", ".join(only_sqlite)))
 
-            for table_name in sorted(pg_set & sqlite_set):
-                pg_cols = _pg_columns(pg_cur, pg_schema, table_name)
-                sqlite_cols = _sqlite_columns(sqlite_cur, table_name)
+            for sqlite_table_name in sorted(pg_set & sqlite_set):
+                pg_schema, pg_table_name = pg_table_mapping[sqlite_table_name]
+                compare_table_label = f"{pg_schema}.{pg_table_name}"
+                pg_cols = _pg_columns(pg_cur, pg_schema, pg_table_name)
+                sqlite_cols = _sqlite_columns(sqlite_cur, sqlite_table_name)
                 pg_col_set = set(pg_cols)
                 sqlite_col_set = set(sqlite_cols)
                 if pg_col_set != sqlite_col_set:
@@ -429,7 +470,7 @@ def compare_databases(
                     only_sqlite_cols = sorted(sqlite_col_set - pg_col_set)
                     diffs.append(
                         TableDiff(
-                            table=table_name,
+                            table=compare_table_label,
                             issue="column_mismatch",
                             details=(
                                 f"missing_in_sqlite={only_pg_cols} "
@@ -441,7 +482,7 @@ def compare_databases(
                 if pg_cols != sqlite_cols:
                     diffs.append(
                         TableDiff(
-                            table=table_name,
+                            table=compare_table_label,
                             issue="column_order_mismatch",
                             details=f"postgres={pg_cols} sqlite={sqlite_cols}",
                         )
@@ -450,21 +491,21 @@ def compare_databases(
                 compare_columns = sorted(column for column in pg_col_set if column not in IGNORED_ROW_COMPARE_COLUMNS)
 
                 if not compare_columns:
-                    pg_count = _pg_row_count(pg_cur, pg_schema, table_name)
-                    sqlite_count = _sqlite_row_count(sqlite_cur, table_name)
+                    pg_count = _pg_row_count(pg_cur, pg_schema, pg_table_name)
+                    sqlite_count = _sqlite_row_count(sqlite_cur, sqlite_table_name)
                     if pg_count != sqlite_count:
                         details = {"postgres_count": pg_count, "sqlite_count": sqlite_count}
                         diffs.append(
                             TableDiff(
-                                table=table_name,
+                                table=compare_table_label,
                                 issue="row_count_mismatch",
                                 details=json.dumps(details),
                             )
                         )
                     continue
 
-                pg_rows = _fetch_pg_rows(pg_cur, pg_schema, table_name, compare_columns)
-                sqlite_rows = _fetch_sqlite_rows(sqlite_cur, table_name, compare_columns)
+                pg_rows = _fetch_pg_rows(pg_cur, pg_schema, pg_table_name, compare_columns)
+                sqlite_rows = _fetch_sqlite_rows(sqlite_cur, sqlite_table_name, compare_columns)
                 if pg_rows == sqlite_rows:
                     continue
 
@@ -476,7 +517,13 @@ def compare_databases(
                     "missing_in_sqlite_examples": _format_counter_examples(missing_in_sqlite, max_row_examples),
                     "missing_in_postgres_examples": _format_counter_examples(missing_in_postgres, max_row_examples),
                 }
-                diffs.append(TableDiff(table=table_name, issue="row_mismatch", details=json.dumps(details, default=str)))
+                diffs.append(
+                    TableDiff(
+                        table=compare_table_label,
+                        issue="row_mismatch",
+                        details=json.dumps(details, default=str),
+                    )
+                )
 
     return diffs
 

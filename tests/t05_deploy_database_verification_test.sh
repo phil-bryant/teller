@@ -110,9 +110,9 @@ SQL
     account
     transaction_type
     "transaction"
-    nys_snw_category
-    transaction_nys_snw_category
-    transaction_email_match
+    classy_nys_snw_category
+    classy_transaction_nys_snw_category
+    matchy_transaction_email_match
   )
   failures=()
   for table_name in "${required_tables[@]}"; do
@@ -219,6 +219,18 @@ if [[ "$PROFILE_TARGET" != "managed" ]]; then
           ('teller_api_reader'),
           ('teller_api_writer'),
           ('teller_migration_admin'),
+          ('classy_read'),
+          ('classy_write'),
+          ('classy_admin'),
+          ('classy_api_reader'),
+          ('classy_api_writer'),
+          ('classy_migration_admin'),
+          ('matchy_read'),
+          ('matchy_write'),
+          ('matchy_admin'),
+          ('matchy_service_reader'),
+          ('matchy_service_writer'),
+          ('matchy_migration_admin'),
           ('teller')
       )
       SELECT expected.role_name
@@ -235,50 +247,56 @@ if [[ "$PROFILE_TARGET" != "managed" ]]; then
 fi
 
 #R020: Verify required deployed schema exists.
-if [[ "$(db_scalar "SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'teller');")" != "t" ]]; then
-  record_failure "missing schema: teller"
-fi
+for schema_name in teller classy matchy; do
+  if [[ "$(db_scalar "SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = '${schema_name}');")" != "t" ]]; then
+    record_failure "missing schema: ${schema_name}"
+  fi
+done
 
 #R020: Verify core relations from deploy are present.
 missing_tables="$(
   db_lines "
-    WITH expected(table_name) AS (
+    WITH expected(table_schema, table_name) AS (
       VALUES
-        ('institution'),
-        ('account_links'),
-        ('account'),
-        ('identity'),
-        ('identity_name'),
-        ('identity_email'),
-        ('identity_phone_number'),
-        ('identity_address_data'),
-        ('identity_address'),
-        ('account_identities'),
-        ('routing_numbers'),
-        ('account_details_links'),
-        ('account_details'),
-        ('account_balances_links'),
-        ('account_balances'),
-        ('transaction_type'),
-        ('transaction_details_counterparty'),
-        ('transaction_links'),
-        ('transaction_details'),
-        ('transaction'),
-        ('nys_snw_category'),
-        ('transaction_nys_snw_category')
+        ('teller', 'institution'),
+        ('teller', 'account_links'),
+        ('teller', 'account'),
+        ('teller', 'identity'),
+        ('teller', 'identity_name'),
+        ('teller', 'identity_email'),
+        ('teller', 'identity_phone_number'),
+        ('teller', 'identity_address_data'),
+        ('teller', 'identity_address'),
+        ('teller', 'account_identities'),
+        ('teller', 'routing_numbers'),
+        ('teller', 'account_details_links'),
+        ('teller', 'account_details'),
+        ('teller', 'account_balances_links'),
+        ('teller', 'account_balances'),
+        ('teller', 'transaction_type'),
+        ('teller', 'transaction_details_counterparty'),
+        ('teller', 'transaction_links'),
+        ('teller', 'transaction_details'),
+        ('teller', 'transaction'),
+        ('classy', 'nys_snw_category'),
+        ('classy', 'transaction_nys_snw_category'),
+        ('matchy', 'transaction_email_match_run'),
+        ('matchy', 'transaction_email_candidate'),
+        ('matchy', 'transaction_email_match'),
+        ('matchy', 'transaction_email_match_audit')
     )
-    SELECT expected.table_name
+    SELECT expected.table_schema || '.' || expected.table_name
     FROM expected
     LEFT JOIN information_schema.tables tables
-      ON tables.table_schema = 'teller'
+      ON tables.table_schema = expected.table_schema
      AND tables.table_name = expected.table_name
      AND tables.table_type = 'BASE TABLE'
     WHERE tables.table_name IS NULL
-    ORDER BY expected.table_name;
+    ORDER BY expected.table_schema, expected.table_name;
   "
 )"
 if [[ -n "$missing_tables" ]]; then
-  record_failure "missing teller tables: ${missing_tables//$'\n'/, }"
+  record_failure "missing tables: ${missing_tables//$'\n'/, }"
 fi
 
 #R020: Verify the deployed transaction info view exists and remains queryable.
@@ -302,7 +320,7 @@ if [[ "$(db_scalar "
     JOIN pg_namespace parent_ns
       ON parent_ns.oid = parent_rel.relnamespace
     WHERE con.contype = 'f'
-      AND child_ns.nspname = 'teller'
+      AND child_ns.nspname = 'classy'
       AND child_rel.relname = 'transaction_nys_snw_category'
       AND parent_ns.nspname = 'teller'
       AND parent_rel.relname = 'transaction'
@@ -338,7 +356,7 @@ if [[ "$(db_scalar "
       ON proc.oid = trg.tgfoid
     JOIN pg_namespace proc_ns
       ON proc_ns.oid = proc.pronamespace
-    WHERE rel_ns.nspname = 'teller'
+    WHERE rel_ns.nspname = 'classy'
       AND rel.relname = 'transaction_nys_snw_category'
       AND proc_ns.nspname = 'teller'
       AND proc.proname = 'update_updated_at'
@@ -346,24 +364,24 @@ if [[ "$(db_scalar "
       AND trg.tgenabled <> 'D'
   );
 ")" != "t" ]]; then
-  record_failure "missing updated_at trigger on teller.transaction_nys_snw_category"
+  record_failure "missing updated_at trigger on classy.transaction_nys_snw_category"
 fi
 
-#R040: Verify every teller table with updated_at is covered by teller.update_updated_at.
+#R040: Verify every product table with updated_at is covered by teller.update_updated_at.
 missing_updated_at_coverage="$(
   db_lines "
     WITH expected AS (
-      SELECT tables.table_name
+      SELECT tables.table_schema, tables.table_name
       FROM information_schema.tables tables
       JOIN information_schema.columns columns
         ON columns.table_schema = tables.table_schema
        AND columns.table_name = tables.table_name
-      WHERE tables.table_schema = 'teller'
+      WHERE tables.table_schema IN ('teller', 'classy', 'matchy')
         AND tables.table_type = 'BASE TABLE'
         AND columns.column_name = 'updated_at'
     ),
     actual AS (
-      SELECT DISTINCT rel.relname AS table_name
+      SELECT DISTINCT rel_ns.nspname AS table_schema, rel.relname AS table_name
       FROM pg_trigger trg
       JOIN pg_class rel
         ON rel.oid = trg.tgrelid
@@ -373,18 +391,19 @@ missing_updated_at_coverage="$(
         ON proc.oid = trg.tgfoid
       JOIN pg_namespace proc_ns
         ON proc_ns.oid = proc.pronamespace
-      WHERE rel_ns.nspname = 'teller'
+      WHERE rel_ns.nspname IN ('teller', 'classy', 'matchy')
         AND proc_ns.nspname = 'teller'
         AND proc.proname = 'update_updated_at'
         AND trg.tgisinternal = false
         AND trg.tgenabled <> 'D'
     )
-    SELECT expected.table_name
+    SELECT expected.table_schema || '.' || expected.table_name
     FROM expected
     LEFT JOIN actual
-      ON actual.table_name = expected.table_name
+      ON actual.table_schema = expected.table_schema
+     AND actual.table_name = expected.table_name
     WHERE actual.table_name IS NULL
-    ORDER BY expected.table_name;
+    ORDER BY expected.table_schema, expected.table_name;
   "
 )"
 if [[ -n "$missing_updated_at_coverage" ]]; then
@@ -399,35 +418,35 @@ if [[ "$PROFILE_TARGET" != "managed" ]]; then
   # Verify single-tenant RLS is enabled on high-risk financial/PII tables.
   rls_gaps="$(
   db_lines "
-    WITH expected(table_name) AS (
+    WITH expected(table_schema, table_name) AS (
       VALUES
-        ('transaction'),
-        ('account_details'),
-        ('identity_email'),
-        ('identity_phone_number'),
-        ('identity_address_data'),
-        ('transaction_nys_snw_category'),
-        ('transaction_email_candidate'),
-        ('transaction_email_match')
+        ('teller', 'transaction'),
+        ('teller', 'account_details'),
+        ('teller', 'identity_email'),
+        ('teller', 'identity_phone_number'),
+        ('teller', 'identity_address_data'),
+        ('classy', 'transaction_nys_snw_category'),
+        ('matchy', 'transaction_email_candidate'),
+        ('matchy', 'transaction_email_match')
     )
-    SELECT expected.table_name
+    SELECT expected.table_schema || '.' || expected.table_name
     FROM expected
     LEFT JOIN pg_class rel
       ON rel.relname = expected.table_name
     LEFT JOIN pg_namespace rel_ns
       ON rel_ns.oid = rel.relnamespace
-    WHERE rel_ns.nspname = 'teller'
+    WHERE rel_ns.nspname = expected.table_schema
       AND (
         rel.relrowsecurity IS DISTINCT FROM TRUE
         OR rel.relforcerowsecurity IS DISTINCT FROM TRUE
       )
-    ORDER BY expected.table_name;
+    ORDER BY expected.table_schema, expected.table_name;
   "
   )"
   if [[ -n "$rls_gaps" ]]; then
     while IFS= read -r table_name; do
       [[ -n "$table_name" ]] || continue
-      record_failure "missing enforced RLS on teller.${table_name}"
+      record_failure "missing enforced RLS on ${table_name}"
     done <<< "$rls_gaps"
   fi
 

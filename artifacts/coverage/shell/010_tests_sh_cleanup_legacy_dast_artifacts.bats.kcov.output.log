@@ -1,0 +1,4 @@
+1..3
+ok 1 uses conservative DAST cleanup predicates
+ok 2 wraps deletes in transaction and FK-safe sequence
+ok 3 includes pre-delete count queries for operator visibility

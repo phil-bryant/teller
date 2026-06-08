@@ -234,81 +234,101 @@ GRANT SELECT ON teller.identity_address_data_secure_v1 TO teller_read, teller_ap
 
 DO $$
 DECLARE
+    qualified_table text;
+    table_schema text;
     table_name text;
 BEGIN
-    FOREACH table_name IN ARRAY ARRAY[
-        'transaction',
-        'account_details',
-        'identity_email',
-        'identity_phone_number',
-        'identity_address_data',
-        'transaction_nys_snw_category',
-        'transaction_email_candidate',
-        'transaction_email_match'
+    FOREACH qualified_table IN ARRAY ARRAY[
+        'teller.transaction',
+        'teller.account_details',
+        'teller.identity_email',
+        'teller.identity_phone_number',
+        'teller.identity_address_data',
+        'classy.transaction_nys_snw_category',
+        'matchy.transaction_email_candidate',
+        'matchy.transaction_email_match'
     ]
     LOOP
-        EXECUTE format('ALTER TABLE teller.%I ENABLE ROW LEVEL SECURITY;', table_name);
-        EXECUTE format('ALTER TABLE teller.%I FORCE ROW LEVEL SECURITY;', table_name);
+        table_schema := split_part(qualified_table, '.', 1);
+        table_name := split_part(qualified_table, '.', 2);
+        EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY;', table_schema, table_name);
+        EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY;', table_schema, table_name);
 
-        IF NOT EXISTS (
-            SELECT 1
-            FROM pg_policies
-            WHERE schemaname = 'teller'
-              AND tablename = table_name
-              AND policyname = 'secure_read_policy'
-        ) THEN
-            EXECUTE format(
-                'CREATE POLICY secure_read_policy ON teller.%I FOR SELECT USING (
-                    current_user IN (
-                        ''postgres'',
-                        ''teller'',
-                        ''teller_read'',
-                        ''teller_write'',
-                        ''teller_admin'',
-                        ''teller_api_reader'',
-                        ''teller_api_writer'',
-                        ''teller_ingest_writer'',
-                        ''teller_migration_admin''
-                    )
-                );',
-                table_name
-            );
-        END IF;
+        EXECUTE format('DROP POLICY IF EXISTS secure_read_policy ON %I.%I;', table_schema, table_name);
+        EXECUTE format(
+            'CREATE POLICY secure_read_policy ON %I.%I FOR SELECT USING (
+                current_user IN (
+                    ''postgres'',
+                    ''teller'',
+                    ''teller_read'',
+                    ''teller_write'',
+                    ''teller_admin'',
+                    ''teller_api_reader'',
+                    ''teller_api_writer'',
+                    ''teller_ingest_writer'',
+                    ''teller_migration_admin'',
+                    ''classy_read'',
+                    ''classy_write'',
+                    ''classy_admin'',
+                    ''classy_api_reader'',
+                    ''classy_api_writer'',
+                    ''classy_migration_admin'',
+                    ''matchy_read'',
+                    ''matchy_write'',
+                    ''matchy_admin'',
+                    ''matchy_service_reader'',
+                    ''matchy_service_writer'',
+                    ''matchy_migration_admin''
+                )
+            );',
+            table_schema,
+            table_name
+        );
 
-        IF NOT EXISTS (
-            SELECT 1
-            FROM pg_policies
-            WHERE schemaname = 'teller'
-              AND tablename = table_name
-              AND policyname = 'secure_write_policy'
-        ) THEN
-            EXECUTE format(
-                'CREATE POLICY secure_write_policy ON teller.%I FOR ALL
-                 USING (
-                    current_user IN (
-                        ''postgres'',
-                        ''teller'',
-                        ''teller_write'',
-                        ''teller_admin'',
-                        ''teller_api_writer'',
-                        ''teller_ingest_writer'',
-                        ''teller_migration_admin''
-                    )
-                 )
-                 WITH CHECK (
-                    current_user IN (
-                        ''postgres'',
-                        ''teller'',
-                        ''teller_write'',
-                        ''teller_admin'',
-                        ''teller_api_writer'',
-                        ''teller_ingest_writer'',
-                        ''teller_migration_admin''
-                    )
-                 );',
-                table_name
-            );
-        END IF;
+        EXECUTE format('DROP POLICY IF EXISTS secure_write_policy ON %I.%I;', table_schema, table_name);
+        EXECUTE format(
+            'CREATE POLICY secure_write_policy ON %I.%I FOR ALL
+             USING (
+                current_user IN (
+                    ''postgres'',
+                    ''teller'',
+                    ''teller_write'',
+                    ''teller_admin'',
+                    ''teller_api_writer'',
+                    ''teller_ingest_writer'',
+                    ''teller_migration_admin'',
+                    ''classy_write'',
+                    ''classy_admin'',
+                    ''classy_api_writer'',
+                    ''classy_migration_admin'',
+                    ''matchy_write'',
+                    ''matchy_admin'',
+                    ''matchy_service_writer'',
+                    ''matchy_migration_admin''
+                )
+             )
+             WITH CHECK (
+                current_user IN (
+                    ''postgres'',
+                    ''teller'',
+                    ''teller_write'',
+                    ''teller_admin'',
+                    ''teller_api_writer'',
+                    ''teller_ingest_writer'',
+                    ''teller_migration_admin'',
+                    ''classy_write'',
+                    ''classy_admin'',
+                    ''classy_api_writer'',
+                    ''classy_migration_admin'',
+                    ''matchy_write'',
+                    ''matchy_admin'',
+                    ''matchy_service_writer'',
+                    ''matchy_migration_admin''
+                )
+             );',
+            table_schema,
+            table_name
+        );
     END LOOP;
 END;
 $$;

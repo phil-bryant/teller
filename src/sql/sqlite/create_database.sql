@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS "transaction" (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS nys_snw_category (
+CREATE TABLE IF NOT EXISTS classy_nys_snw_category (
     nys_snw_category_id INTEGER PRIMARY KEY AUTOINCREMENT,
     level_1 TEXT,
     level_1_name TEXT,
@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS nys_snw_category (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT OR IGNORE INTO nys_snw_category (
+INSERT OR IGNORE INTO classy_nys_snw_category (
     nys_snw_category_id,
     level_1,
     level_1_name,
@@ -338,32 +338,32 @@ VALUES
     (116, 'III.', 'GROSS INCOME INFORMATION:', '(b)', 'To the extent not already included in gross income in (a) above:', '12.', NULL, 'Annuity payments', 'N/A', 1);
 
 -- Align known punctuation/spacing variants with canonical Postgres seed text.
-UPDATE nys_snw_category
+UPDATE classy_nys_snw_category
    SET categorization = 'Homeowners/Renter’s Insurance'
  WHERE nys_snw_category_id = 4;
-UPDATE nys_snw_category
+UPDATE classy_nys_snw_category
    SET categorization = 'Homeowner’s Association/Maintenance charges/Condominium Charges'
  WHERE nys_snw_category_id = 5;
-UPDATE nys_snw_category
+UPDATE classy_nys_snw_category
    SET categorization = 'Worker’s Compensation'
  WHERE nys_snw_category_id = 34;
-UPDATE nys_snw_category
+UPDATE classy_nys_snw_category
    SET categorization = 'Child(ren)’s extra-curricular and educational enrichment activities (Dance, Music, Sports, etc.)'
  WHERE nys_snw_category_id = 70;
-UPDATE nys_snw_category
+UPDATE classy_nys_snw_category
    SET level_2_name = 'To the extent not already included in gross income in (a) above:',
        categorization = 'Worker’s compensation (indicate percentage of amount due to lost wages)'
  WHERE nys_snw_category_id = 106;
 
-CREATE TABLE IF NOT EXISTS transaction_nys_snw_category (
+CREATE TABLE IF NOT EXISTS classy_transaction_nys_snw_category (
     transaction_id TEXT PRIMARY KEY REFERENCES "transaction"(transaction_id) ON DELETE CASCADE,
-    nys_snw_category_id INTEGER REFERENCES nys_snw_category(nys_snw_category_id),
+    nys_snw_category_id INTEGER REFERENCES classy_nys_snw_category(nys_snw_category_id),
     type TEXT NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS transaction_email_match_run (
+CREATE TABLE IF NOT EXISTS matchy_transaction_email_match_run (
     match_run_id INTEGER PRIMARY KEY AUTOINCREMENT,
     transaction_id TEXT NOT NULL REFERENCES "transaction"(transaction_id) ON DELETE CASCADE,
     trigger_source TEXT NOT NULL,
@@ -377,9 +377,9 @@ CREATE TABLE IF NOT EXISTS transaction_email_match_run (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS transaction_email_candidate (
+CREATE TABLE IF NOT EXISTS matchy_transaction_email_candidate (
     candidate_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    match_run_id INTEGER NOT NULL REFERENCES transaction_email_match_run(match_run_id) ON DELETE CASCADE,
+    match_run_id INTEGER NOT NULL REFERENCES matchy_transaction_email_match_run(match_run_id) ON DELETE CASCADE,
     transaction_id TEXT NOT NULL REFERENCES "transaction"(transaction_id) ON DELETE CASCADE,
     email_message_id TEXT NOT NULL,
     email_received_at TEXT,
@@ -396,7 +396,7 @@ CREATE TABLE IF NOT EXISTS transaction_email_candidate (
     UNIQUE(match_run_id, email_message_id)
 );
 
-CREATE TABLE IF NOT EXISTS transaction_email_match (
+CREATE TABLE IF NOT EXISTS matchy_transaction_email_match (
     match_id INTEGER PRIMARY KEY AUTOINCREMENT,
     transaction_id TEXT NOT NULL REFERENCES "transaction"(transaction_id) ON DELETE CASCADE,
     email_message_id TEXT,
@@ -411,9 +411,9 @@ CREATE TABLE IF NOT EXISTS transaction_email_match (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS transaction_email_match_audit (
+CREATE TABLE IF NOT EXISTS matchy_transaction_email_match_audit (
     match_audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    match_id INTEGER NOT NULL REFERENCES transaction_email_match(match_id) ON DELETE CASCADE,
+    match_id INTEGER NOT NULL REFERENCES matchy_transaction_email_match(match_id) ON DELETE CASCADE,
     from_state TEXT,
     to_state TEXT NOT NULL,
     actor TEXT NOT NULL,
@@ -596,4 +596,4 @@ SELECT t.transaction_id,
        t.status,
        n.nys_snw_category_id
   FROM "transaction" t
-  LEFT JOIN transaction_nys_snw_category n ON n.transaction_id = t.transaction_id;
+  LEFT JOIN classy_transaction_nys_snw_category n ON n.transaction_id = t.transaction_id;

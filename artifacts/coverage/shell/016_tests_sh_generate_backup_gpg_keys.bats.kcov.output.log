@@ -1,0 +1,6 @@
+1..5
+ok 1 script defines strict mode and rejects unknown args
+ok 2 script exposes expected customization flags and env defaults
+ok 3 script enforces non-empty passphrase handling
+ok 4 script contains key generation, export, metadata and guidance output
+ok 5 script defines cleanup trap for temporary gnupg home

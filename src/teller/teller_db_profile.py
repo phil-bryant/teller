@@ -165,6 +165,7 @@ def _record_from_fields(fields: dict[str, str]) -> dict:
         port_raw=fields.get("port"),
         database=fields.get("database"),
         username=fields.get("username"),
+        password_raw=fields.get("password"),
         schema=fields.get("schema"),
         runtime_role=fields.get("runtime_role"),
         target=fields.get("target"),
@@ -206,6 +207,7 @@ def _build_record(
     port_raw,
     database,
     username,
+    password_raw,
     schema,
     runtime_role,
     target,
@@ -220,13 +222,15 @@ def _build_record(
         sqlite_path = (sqlite_path_raw or database or "").strip()
         if not sqlite_path:
             sqlite_path = str(Path.cwd() / ".database" / "teller.sqlite3")
-        sqlcipher_key = (sqlcipher_key_raw or "").strip()
+        # LOCALHOST_SQLITE_* fallbacks traditionally store the SQLCipher key as
+        # ".password". Prefer explicit sqlcipher_key, then reuse password.
+        sqlcipher_key = (sqlcipher_key_raw or password_raw or "").strip()
     return {
         "host": "" if resolved_target == "sqlite" else (host or "localhost"),
         "port": 0 if resolved_target == "sqlite" else _parse_port(port_raw),
         "dbname": "" if resolved_target == "sqlite" else (database or "prod"),
         "user": "" if resolved_target == "sqlite" else (username or "teller"),
-        "search_path": "teller" if resolved_target == "sqlite" else (schema or "teller"),
+        "search_path": "teller" if resolved_target == "sqlite" else (schema or "teller,classy,matchy"),
         "runtime_role": "" if resolved_target == "sqlite" else (runtime_role or ""),
         "target": resolved_target,
         "sslmode": _resolve_sslmode(sslmode, resolved_target),
@@ -403,6 +407,12 @@ def _resolve_profile_cached(_cache_key: tuple) -> ResolvedProfile:
     # metadata is missing/stale (common fallback path when ~/.env supplies values).
     if name == "sqlite":
         final = _force_sqlite_target(final)
+        if not (final.get("sqlcipher_key") or "").strip():
+            env_fields = _read_env_file_fields(onepsa_item)
+            final["sqlcipher_key"] = (
+                (env_fields.get("sqlcipher_key") or "").strip()
+                or (env_fields.get("password") or "").strip()
+            )
     return ResolvedProfile(
         name=name,
         host=final["host"],

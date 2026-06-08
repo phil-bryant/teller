@@ -235,8 +235,11 @@ def test_table_enumeration_helpers_return_expected_names() -> None:
             #R600: Helper for compare traceability test setup and fixtures.
             return self.rows
 
-    profile = SimpleNamespace(search_path="teller, public")
-    assert MODULE._get_postgres_schema(profile) == "teller"
+    profile = SimpleNamespace(search_path="teller, classy, matchy, public")
+    assert MODULE._get_postgres_schemas(profile) == ["teller", "classy", "matchy", "public"]
+    assert MODULE._sqlite_table_name_for_postgres("teller", "transaction") == "transaction"
+    assert MODULE._sqlite_table_name_for_postgres("classy", "nys_snw_category") == "classy_nys_snw_category"
+    assert MODULE._sqlite_table_name_for_postgres("matchy", "transaction_email_match") == "matchy_transaction_email_match"
 
     pg_cur = FakeCursor([("account",), ("transaction",)])
     sqlite_cur = FakeCursor([("account",), ("transaction",)])

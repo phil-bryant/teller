@@ -25,7 +25,7 @@ SELECT ok(
       FROM pg_constraint c
       JOIN pg_class rel ON rel.oid = c.conrelid
       JOIN pg_namespace ns ON ns.oid = rel.relnamespace
-     WHERE ns.nspname = 'teller'
+     WHERE ns.nspname = 'classy'
        AND rel.relname = 'transaction_nys_snw_category'
        AND c.contype = 'f'
        AND c.confdeltype = 'c'
@@ -35,7 +35,7 @@ SELECT ok(
 );
 
 SELECT has_trigger('teller', 'transaction', 'update_transaction_updated_at', 'transaction updated_at trigger exists');
-SELECT has_trigger('teller', 'transaction_nys_snw_category', 'update_transaction_nys_snw_category_updated_at', 'classification updated_at trigger exists');
+SELECT has_trigger('classy', 'transaction_nys_snw_category', 'update_transaction_nys_snw_category_updated_at', 'classification updated_at trigger exists');
 
 SELECT lives_ok(
   $$
@@ -154,20 +154,20 @@ SELECT lives_ok(
         account_id_v, -8.55, DATE '2026-05-21', 'pgTAP cascade test', tx_details_id_v, 'posted', tx_id_v, tx_links_id_v, 90.00, tx_type_id_v
       );
 
-      INSERT INTO teller.nys_snw_category (level_1_name, categorization, applicability)
+      INSERT INTO classy.nys_snw_category (level_1_name, categorization, applicability)
       VALUES ('PGTAP', 'Cascade', 'All')
       RETURNING nys_snw_category_id INTO category_id_v;
 
-      INSERT INTO teller.transaction_nys_snw_category (transaction_id, nys_snw_category_id, type)
+      INSERT INTO classy.transaction_nys_snw_category (transaction_id, nys_snw_category_id, type)
       VALUES (tx_id_v, category_id_v, 'user');
 
-      UPDATE teller.transaction_nys_snw_category
+      UPDATE classy.transaction_nys_snw_category
          SET type = 'ai'
        WHERE transaction_id = tx_id_v;
 
       IF NOT EXISTS (
         SELECT 1
-          FROM teller.transaction_nys_snw_category
+          FROM classy.transaction_nys_snw_category
          WHERE transaction_id = tx_id_v
            AND type = 'ai'
       ) THEN
@@ -178,7 +178,7 @@ SELECT lives_ok(
 
       IF EXISTS (
         SELECT 1
-          FROM teller.transaction_nys_snw_category
+          FROM classy.transaction_nys_snw_category
          WHERE transaction_id = tx_id_v
       ) THEN
         RAISE EXCEPTION 'classification row did not cascade-delete with transaction';

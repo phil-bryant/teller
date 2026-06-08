@@ -24,12 +24,12 @@ SELECT has_table('teller', 'transaction_links', 'teller.transaction_links table 
 SELECT has_table('teller', 'transaction_details_counterparty', 'teller.transaction_details_counterparty table exists');
 SELECT has_table('teller', 'transaction_details', 'teller.transaction_details table exists');
 SELECT has_table('teller', 'transaction_type', 'teller.transaction_type table exists');
-SELECT has_table('teller', 'transaction_email_candidate', 'teller.transaction_email_candidate table exists');
-SELECT has_table('teller', 'transaction_email_match_run', 'teller.transaction_email_match_run table exists');
-SELECT has_table('teller', 'transaction_email_match', 'teller.transaction_email_match table exists');
-SELECT has_table('teller', 'transaction_email_match_audit', 'teller.transaction_email_match_audit table exists');
-SELECT has_table('teller', 'transaction_nys_snw_category', 'teller.transaction_nys_snw_category table exists');
-SELECT has_table('teller', 'nys_snw_category', 'teller.nys_snw_category table exists');
+SELECT has_table('matchy', 'transaction_email_candidate', 'matchy.transaction_email_candidate table exists');
+SELECT has_table('matchy', 'transaction_email_match_run', 'matchy.transaction_email_match_run table exists');
+SELECT has_table('matchy', 'transaction_email_match', 'matchy.transaction_email_match table exists');
+SELECT has_table('matchy', 'transaction_email_match_audit', 'matchy.transaction_email_match_audit table exists');
+SELECT has_table('classy', 'transaction_nys_snw_category', 'classy.transaction_nys_snw_category table exists');
+SELECT has_table('classy', 'nys_snw_category', 'classy.nys_snw_category table exists');
 
 SELECT * FROM finish();
 

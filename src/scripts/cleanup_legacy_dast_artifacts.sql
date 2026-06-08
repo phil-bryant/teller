@@ -20,7 +20,7 @@ BEGIN;
 -- Surface what is about to be removed for the operator.
 WITH category_targets AS (
     SELECT nys_snw_category_id
-      FROM teller.nys_snw_category
+      FROM classy.nys_snw_category
      WHERE is_seed = FALSE
        AND level_1 = 'DAST'
        AND level_1_name IN ('DAST Seed', 'DAST Contract')
@@ -31,8 +31,8 @@ SELECT 'nys_snw_category orphans (non-seed DAST rows)' AS what,
 
 SELECT 'transaction_nys_snw_category mappings pointing at DAST orphans' AS what,
        COUNT(*) AS row_count
-  FROM teller.transaction_nys_snw_category t
-  JOIN teller.nys_snw_category c
+  FROM classy.transaction_nys_snw_category t
+  JOIN classy.nys_snw_category c
     ON c.nys_snw_category_id = t.nys_snw_category_id
  WHERE c.is_seed = FALSE
    AND c.level_1 = 'DAST'
@@ -40,26 +40,26 @@ SELECT 'transaction_nys_snw_category mappings pointing at DAST orphans' AS what,
 
 SELECT 'transaction_email_match seeder rows' AS what,
        COUNT(*) AS row_count
-  FROM teller.transaction_email_match
+  FROM matchy.transaction_email_match
  WHERE email_message_id LIKE 'schemathesis-seed-%@example.invalid'
     OR email_message_id LIKE 'dast-seed-%@example.invalid';
 
 -- Drop classifications that reference DAST orphan categories first so the
 -- subsequent category delete is FK-safe.
-DELETE FROM teller.transaction_nys_snw_category t
- USING teller.nys_snw_category c
+DELETE FROM classy.transaction_nys_snw_category t
+ USING classy.nys_snw_category c
  WHERE c.nys_snw_category_id = t.nys_snw_category_id
    AND c.is_seed = FALSE
    AND c.level_1 = 'DAST'
    AND c.level_1_name IN ('DAST Seed', 'DAST Contract');
 
-DELETE FROM teller.nys_snw_category
+DELETE FROM classy.nys_snw_category
  WHERE is_seed = FALSE
    AND level_1 = 'DAST'
    AND level_1_name IN ('DAST Seed', 'DAST Contract');
 
 -- Audit rows cascade via the transaction_email_match FK ON DELETE CASCADE.
-DELETE FROM teller.transaction_email_match
+DELETE FROM matchy.transaction_email_match
  WHERE email_message_id LIKE 'schemathesis-seed-%@example.invalid'
     OR email_message_id LIKE 'dast-seed-%@example.invalid';
 

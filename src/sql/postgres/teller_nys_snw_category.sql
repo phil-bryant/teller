@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS teller.nys_snw_category (
+CREATE TABLE IF NOT EXISTS classy.nys_snw_category (
     nys_snw_category_id BIGSERIAL PRIMARY KEY,
     level_1 TEXT,
     level_1_name TEXT,
@@ -44,16 +44,16 @@ CREATE TABLE IF NOT EXISTS teller.nys_snw_category (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-COMMENT ON TABLE teller.nys_snw_category IS 'NYS Statement of Net Worth category mapping table.';
-COMMENT ON COLUMN teller.nys_snw_category.categorization IS 'NYS SNW category label.';
-COMMENT ON COLUMN teller.nys_snw_category.applicability IS 'Applicability guidance from the source document.';
-COMMENT ON COLUMN teller.nys_snw_category.is_seed IS 'True for canonical taxonomy rows loaded from seed SQL.';
-CREATE UNIQUE INDEX IF NOT EXISTS nys_snw_category_unique_hierarchy_idx ON teller.nys_snw_category (
+COMMENT ON TABLE classy.nys_snw_category IS 'NYS Statement of Net Worth category mapping table.';
+COMMENT ON COLUMN classy.nys_snw_category.categorization IS 'NYS SNW category label.';
+COMMENT ON COLUMN classy.nys_snw_category.applicability IS 'Applicability guidance from the source document.';
+COMMENT ON COLUMN classy.nys_snw_category.is_seed IS 'True for canonical taxonomy rows loaded from seed SQL.';
+CREATE UNIQUE INDEX IF NOT EXISTS nys_snw_category_unique_hierarchy_idx ON classy.nys_snw_category (
     level_1, level_1_name, level_2, level_2_name, level_3, COALESCE(level_4, ''), COALESCE(categorization, ''),
     COALESCE(applicability, '')
 );
 
-INSERT INTO teller.nys_snw_category (level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability)
+INSERT INTO classy.nys_snw_category (level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability)
 SELECT * FROM (VALUES
     ('II.', 'EXPENSES:', '(a)', 'Housing: Monthly', '1.', NULL, 'Mortgage/Co-op Loan', 'N/A'),
     ('II.', 'EXPENSES:', '(a)', 'Housing: Monthly', '2.', NULL, 'Home Equity Line of Credit/Second Mortgage', 'N/A'),
@@ -173,15 +173,15 @@ SELECT * FROM (VALUES
     ('III.', 'GROSS INCOME INFORMATION:', '(b)', 'To the extent not already included in gross income in (a) above:', '12.', NULL, 'Annuity payments', 'N/A')
 ) AS seed_rows(level_1, level_1_name, level_2, level_2_name, level_3, level_4, categorization, applicability)
 WHERE NOT EXISTS (
-    SELECT 1 FROM teller.nys_snw_category existing WHERE existing.is_seed = TRUE
+    SELECT 1 FROM classy.nys_snw_category existing WHERE existing.is_seed = TRUE
 );
 
-UPDATE teller.nys_snw_category
+UPDATE classy.nys_snw_category
    SET is_seed = TRUE
  WHERE nys_snw_category_id BETWEEN 1 AND 116
    AND is_seed = FALSE;
 
-CREATE OR REPLACE FUNCTION teller.prevent_seed_category_mutation()
+CREATE OR REPLACE FUNCTION classy.prevent_seed_category_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -207,8 +207,8 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS nys_snw_category_seed_guard_trg ON teller.nys_snw_category;
+DROP TRIGGER IF EXISTS nys_snw_category_seed_guard_trg ON classy.nys_snw_category;
 CREATE TRIGGER nys_snw_category_seed_guard_trg
-BEFORE UPDATE OR DELETE ON teller.nys_snw_category
+BEFORE UPDATE OR DELETE ON classy.nys_snw_category
 FOR EACH ROW
-EXECUTE FUNCTION teller.prevent_seed_category_mutation();
+EXECUTE FUNCTION classy.prevent_seed_category_mutation();

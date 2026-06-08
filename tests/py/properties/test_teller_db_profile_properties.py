@@ -20,7 +20,7 @@ def test_build_record_always_returns_expected_shape(
     #R001: Cover traceability for this helper/test behavior.
     host, port_raw, database, username, schema, runtime_role, target, sslmode
 ):
-    result = _build_record(host, port_raw, database, username, schema, runtime_role, target, sslmode)
+    result = _build_record(host, port_raw, database, username, None, schema, runtime_role, target, sslmode)
     assert set(result.keys()) == {
         "host",
         "port",
@@ -42,19 +42,24 @@ def test_build_record_always_returns_expected_shape(
 @settings(max_examples=500, deadline=None, derandomize=True)
 def test_build_record_invalid_port_falls_back_to_default(port_raw):
     #R001: Cover traceability for this helper/test behavior.
-    result = _build_record("localhost", port_raw, "prod", "teller", "teller", "", "local", "disable")
-    if port_raw and port_raw.isdigit():
-        assert result["port"] == int(port_raw)
-    else:
-        assert result["port"] == 5432
+    result = _build_record("localhost", port_raw, "prod", "teller", None, "teller", "", "local", "disable")
+    try:
+        expected_port = int(port_raw) if port_raw is not None else 5432
+    except (TypeError, ValueError):
+        expected_port = 5432
+    assert result["port"] == expected_port
 
 
-@given(st.text(min_size=1, max_size=24).filter(lambda value: value.strip() not in set(_VALID_SSLMODES)))
+@given(
+    st.text(min_size=1, max_size=24).filter(
+        lambda value: value.strip() and value.strip().lower() not in set(_VALID_SSLMODES)
+    )
+)
 @settings(max_examples=500, deadline=None, derandomize=True)
 def test_build_record_invalid_sslmode_raises_profile_error(sslmode):
     #R001: Cover traceability for this helper/test behavior.
     try:
-        _build_record("localhost", "5432", "prod", "teller", "teller", "", "local", sslmode)
+        _build_record("localhost", "5432", "prod", "teller", None, "teller", "", "local", sslmode)
     except ProfileError:
         return
     raise AssertionError(f"Expected ProfileError for invalid sslmode {sslmode!r}")

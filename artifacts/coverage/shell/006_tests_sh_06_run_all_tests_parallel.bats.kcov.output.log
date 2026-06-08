@@ -1,0 +1,7 @@
+1..6
+ok 1 centralizes umask/strict mode via the shared pointer shim
+ok 2 resolves the shim from the runner src/scripts tree
+ok 3 selects its runbook profile explicitly before delegation
+ok 4 delegates to the mapped runner golden
+ok 5 forwards optional skip flags without local filtering
+ok 6 delegated runner lock is scoped to runbook repo root

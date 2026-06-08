@@ -2,7 +2,7 @@ BEGIN;
 
 -- #R001: Normalize mutable hierarchy text fields before constraint enforcement.
 -- Normalize printable hierarchy values before enforcing constraints.
-UPDATE teller.nys_snw_category
+UPDATE classy.nys_snw_category
    SET level_1 = NULLIF(BTRIM(REGEXP_REPLACE(level_1, '[[:cntrl:]]', '', 'g')), ''),
        level_1_name = NULLIF(BTRIM(REGEXP_REPLACE(level_1_name, '[[:cntrl:]]', '', 'g')), ''),
        level_2 = NULLIF(BTRIM(REGEXP_REPLACE(level_2, '[[:cntrl:]]', '', 'g')), ''),
@@ -19,7 +19,7 @@ BEGIN
     -- #R005: Refuse constraint installation while empty hierarchy rows remain.
     SELECT COUNT(*)
       INTO empty_rows
-      FROM teller.nys_snw_category
+      FROM classy.nys_snw_category
      WHERE COALESCE(
                NULLIF(BTRIM(level_1), ''),
                NULLIF(BTRIM(level_1_name), ''),
@@ -37,12 +37,12 @@ BEGIN
     END IF;
 END $$;
 
-ALTER TABLE teller.nys_snw_category
+ALTER TABLE classy.nys_snw_category
     -- #R010: Recreate and validate hierarchy integrity constraints.
     DROP CONSTRAINT IF EXISTS nys_snw_category_non_empty_hierarchy_chk,
     DROP CONSTRAINT IF EXISTS nys_snw_category_no_control_chars_chk;
 
-ALTER TABLE teller.nys_snw_category
+ALTER TABLE classy.nys_snw_category
     ADD CONSTRAINT nys_snw_category_non_empty_hierarchy_chk CHECK (
         COALESCE(
             NULLIF(BTRIM(level_1), ''),
@@ -66,10 +66,10 @@ ALTER TABLE teller.nys_snw_category
         AND (applicability IS NULL OR applicability !~ '[[:cntrl:]]')
     ) NOT VALID;
 
-ALTER TABLE teller.nys_snw_category
+ALTER TABLE classy.nys_snw_category
     VALIDATE CONSTRAINT nys_snw_category_non_empty_hierarchy_chk;
 
-ALTER TABLE teller.nys_snw_category
+ALTER TABLE classy.nys_snw_category
     VALIDATE CONSTRAINT nys_snw_category_no_control_chars_chk;
 
 COMMIT;

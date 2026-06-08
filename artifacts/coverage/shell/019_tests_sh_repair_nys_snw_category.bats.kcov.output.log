@@ -1,0 +1,4 @@
+1..3
+ok 1 normalizes hierarchy fields before constraints
+ok 2 contains guard block for empty hierarchy rows
+ok 3 recreates and validates both constraints
