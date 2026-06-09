@@ -28,6 +28,7 @@ artifacts/parallel/
 artifacts/mutation/
 artifacts/fuzz/
 artifacts/venv/security/
+artifacts/quality/reports/radon.txt
 artifacts/cache/
 artifacts/cache/pycache/private/var/folders/
 artifacts/quality/reports/periphery.txt
