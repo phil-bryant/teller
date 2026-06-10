@@ -23,8 +23,8 @@ This inventory classifies current `teller` schema fields for pre-production hard
 | Table | Column(s) | Why |
 | --- | --- | --- |
 | `teller.transaction` | `description`, `amount`, `running_balance`, `date` | Financial behavior and balances. |
-| `teller.transaction_email_candidate` | `cached_subject`, `cached_sender`, `cached_snippet` | May contain personal message content. |
-| `teller.transaction_email_match` | `email_message_id` | Links transactions to personal communications. |
+| `matchy.transaction_email_candidate` | `cached_subject`, `cached_sender`, `cached_snippet` | May contain personal message content. |
+| `matchy.transaction_email_match` | `email_message_id` | Links transactions to personal communications. |
 | `teller.account` | `enrollment_id`, `name` | Account linkage metadata. |
 
 ## Internal Fields

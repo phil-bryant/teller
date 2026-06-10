@@ -465,7 +465,7 @@ run_dast_checks() {
     local report_dir_abs="$1"
     local integrity_report_path="${report_dir_abs}/category-integrity.json"
     local seed_sql_path
-    seed_sql_path="$(security_resolve_asset src/sql/postgres/teller_nys_snw_category.sql)"
+    seed_sql_path="$(security_resolve_asset src/sql/postgres/classy_nys_snw_category.sql)"
     local strict_mode="${DAST_CATEGORY_INTEGRITY_STRICT:-true}"
 
     echo "▶ Running post-DAST category integrity checks"

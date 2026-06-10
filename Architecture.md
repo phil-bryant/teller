@@ -1,7 +1,8 @@
 # Architecture
 
-Teller-owned architecture reference: Teller bank ingest, the `teller.*` schema, DB profiles, backup/restore,
-shared DB/session helpers, the local test/security stack, and OCR statement-line reconstruction.
+Teller-owned architecture reference: Teller bank ingest, `teller.*` system-of-record schema ownership, centralized
+DDL/deploy orchestration for `classy`/`matchy`, DB profiles, backup/restore, shared DB/session helpers, the local
+test/security stack, and OCR statement-line reconstruction.
 
 For the cross-repo ecosystem view (Teller ↔ Matchy ↔ Mailcart system landscape and trigger flow), see the
 eggnest root [`../Architecture.md`](../Architecture.md). Classification API / macOS UI architecture lives in
@@ -278,7 +279,7 @@ Legend:
 Classification branch (child -> parent):
 
 ┌──────────────────────────────────────────────────────────────┐
-│ teller.transaction_nys_snw_category [W]                      │
+│ classy.transaction_nys_snw_category [W]                      │
 │ PK/FK transaction_id -> transaction.id                       │
 │ FK nys_snw_category_id -> nys_snw_category.id                │
 └──────────────────────────────────────────────────────────────┘
@@ -287,35 +288,35 @@ Classification branch (child -> parent):
             - nys_snw_category.nys_snw_category_id
 
 ┌───────────────────────────────┐
-│ teller.nys_snw_category [R]   │
+│ classy.nys_snw_category [R]   │
 │ PK nys_snw_category_id        │
 └───────────────────────────────┘
 
 Matchy branch (child -> parent):
 
 ┌──────────────────────────────────────────────────────────────┐
-│ teller.transaction_email_match_run [W]                       │
+│ matchy.transaction_email_match_run [W]                       │
 │ PK match_run_id                                              │
 │ FK transaction_id -> transaction.id                          │
 └──────────────────────────────────────────────────────────────┘
                          ^
                          | FK transaction_email_candidate.match_run_id
 ┌──────────────────────────────────────────────────────────────┐
-│ teller.transaction_email_candidate [W]                       │
+│ matchy.transaction_email_candidate [W]                       │
 │ PK candidate_id                                              │
 │ FK match_run_id -> transaction_email_match_run.id            │
 │ FK transaction_id -> transaction.id                          │
 └──────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
-│ teller.transaction_email_match [W]                           │
+│ matchy.transaction_email_match [W]                           │
 │ PK match_id                                                  │
 │ FK transaction_id -> transaction.id                          │
 └──────────────────────────────────────────────────────────────┘
                          ^
                          | FK transaction_email_match_audit.match_id
 ┌──────────────────────────────────────────────────────────────┐
-│ teller.transaction_email_match_audit [W]                     │
+│ matchy.transaction_email_match_audit [W]                     │
 │ PK match_audit_id                                            │
 │ FK match_id -> transaction_email_match.id                    │
 └──────────────────────────────────────────────────────────────┘
@@ -336,7 +337,7 @@ FK direction map (child -> parent):
 Notes:
 
 - `enrollment` is currently modeled as `account.enrollment_id` (no `teller.enrollment` table in `src/sql/postgres/`).
-- `transaction_classification` is implemented as `teller.transaction_nys_snw_category`.
+- `transaction_classification` is implemented as `classy.transaction_nys_snw_category`.
 - Matchy tables (`transaction_email_match_run`, `transaction_email_candidate`, `transaction_email_match`, `transaction_email_match_audit`) are in active use by the classification API.
 
 ### 4) LOCAL RUNTIME TOPOLOGY (PROCESSES, PORTS, FILES, ENV)

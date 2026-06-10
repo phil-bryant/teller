@@ -5,7 +5,7 @@ Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema and th
 > Note: The **classification API** and the **macOS review UI** were extracted into the sibling
 > [`classy`](../classy) repo. Run them from there (`../classy/05_run_classification_api.py`,
 > `../classy/06_run_classification_macos_ui.sh`). `classy` imports this package for DB/session/profile/mailcart-client
-> and reads/writes the teller-owned schema. The classifier API/UI scripts, their TLS installer, and the
+> and reads/writes `classy.*` and `matchy.*` product-state schemas while keeping relational joins to `teller.transaction`. The classifier API/UI scripts, their TLS installer, and the
 > Swift/macOS lanes (classy `t08`/`t11`/`t12`/`t13`) now live in `classy`.
 >
 > The standalone bank-ingest scripts (`07_fetch_teller_api_data.py`, `08_backfill_bank_statements.py`) are

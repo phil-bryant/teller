@@ -544,7 +544,7 @@ run_dast_checks() (
     #R001: Shared lane helper runs post-DAST category integrity checks.
     local report_dir_abs="$1"
     local integrity_report_path="${report_dir_abs}/category-integrity.json"
-    local seed_sql_path="./src/sql/postgres/teller_nys_snw_category.sql"
+    local seed_sql_path="./src/sql/postgres/classy_nys_snw_category.sql"
     local strict_mode="${DAST_CATEGORY_INTEGRITY_STRICT:-true}"
 
     echo "▶ Running post-DAST category integrity checks"
