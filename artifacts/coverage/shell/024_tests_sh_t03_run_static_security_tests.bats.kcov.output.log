@@ -1,9 +1,0 @@
-1..8
-ok 1 enables secure umask and strict shell mode
-ok 2 derives script and runner paths from script location
-ok 3 loads teller runbook profile before delegation
-ok 4 delegates to mapped runner golden script
-ok 5 static lane defines report finding counter
-ok 6 static lane defines semgrep finding formatter
-ok 7 static lane enforces hash-pinned requirements helpers
-ok 8 static lane defines supply-chain generation step

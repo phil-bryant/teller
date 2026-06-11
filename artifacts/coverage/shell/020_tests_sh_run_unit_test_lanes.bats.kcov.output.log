@@ -1,9 +1,0 @@
-1..8
-ok 1 exports hypothesis storage under artifacts/cache
-ok 2 runs from repo root and honors disabled lanes
-ok 3 fails fast when db profile helper is missing
-ok 4 swift lane invokes lock helper and retries stale-cache failure once
-ok 5 swift lane skips gracefully when sandbox_apply is denied
-ok 6 strips invalid --cache-dir from inherited PYTEST_ADDOPTS
-ok 7 python lane survives invalid --cache-dir in PYTEST_ADDOPTS
-ok 8 sql lane runs sqlite sql tests when sqlite profile is active

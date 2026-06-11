@@ -1,3 +1,0 @@
-1..2
-ok 1 view joins transaction to related teller data
-ok 2 view orders by date and description

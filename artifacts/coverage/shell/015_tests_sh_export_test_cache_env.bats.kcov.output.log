@@ -1,3 +1,0 @@
-1..2
-ok 1 exports canonical cache locations under artifacts/cache
-ok 2 defaults hypothesis storage away from repository root

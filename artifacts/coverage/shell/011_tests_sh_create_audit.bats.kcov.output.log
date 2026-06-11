@@ -1,5 +1,0 @@
-1..4
-ok 1 define audit log table
-ok 2 define primary key column lookup and audit trigger
-ok 3 normalize single and composite record ids
-ok 4 attach audit triggers to teller base tables
