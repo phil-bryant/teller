@@ -17,6 +17,8 @@ This directory contains `bats-core` unit tests for repository shell scripts.
 
 ## Tier 2 (implemented after Tier 1 baseline)
 
+- `96_clean_generated_files.bats` -> `96_clean_generated_files.sh`
+  - Requirement IDs: `R001`, `R005`, `R010`, `R015`
 - `97_backup_database.bats` -> `97_backup_database.sh`
   - Requirement IDs: `R005`, `R010`, `R015`, `R020`, `R025`, `R030`, `R035`
 - `98_destroy_database.bats` -> `98_destroy_database.sh`

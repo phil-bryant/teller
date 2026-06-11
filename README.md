@@ -41,6 +41,7 @@ Run setup scripts in numeric order. The workflow is designed around:
 - `05_deploy_database.sh`
 - `06_run_all_tests_parallel.sh`
 - `...` (any future numbered scripts)
+- `96_clean_generated_files.sh` (moves generated artifacts to `~/.Trash`)
 - `97_backup_database.sh` (creates timestamped backup + globals)
 - `98_destroy_database.sh` (cleanup/teardown)
 - `99_restore_database.sh` (restores latest or selected backup)
@@ -231,6 +232,8 @@ Core lane scripts under `tests/`:
 
 Operational recovery scripts:
 
+- `96_clean_generated_files.sh`
+  - Clears generated logs/reports and other run artifacts by moving them to `~/.Trash` (no destructive delete).
 - `97_backup_database.sh`
   - Creates timestamped custom-format DB backup plus matching globals dump for PostgreSQL targets, then encrypts artifacts to `.gpg`.
   - For sqlite target/profile, copies the sqlite DB file (default `.database/teller.sqlite3`) to `backups/*.dump.gpg`.
