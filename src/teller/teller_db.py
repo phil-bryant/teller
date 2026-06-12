@@ -2,7 +2,7 @@ import ctypes
 import os
 import shlex
 import structlog
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, exc
 from sqlalchemy.orm import sessionmaker
 
 from teller.teller_db_profile import ResolvedProfile, resolve_profile
@@ -113,6 +113,36 @@ def _resolve_sqlcipher_key(profile: ResolvedProfile) -> str:
     )
 
 
+#R045: Normalize sqlite file path and ensure its parent directory exists.
+def _prepare_sqlite_path(sqlite_path: str) -> str:
+    resolved_path = os.path.abspath(os.path.expanduser(sqlite_path))
+    parent_dir = os.path.dirname(resolved_path)
+    if parent_dir:
+        os.makedirs(parent_dir, exist_ok=True)
+    return resolved_path
+
+
+#R045: Adapt pysqlcipher connections to sqlite3's optional deterministic callback API.
+class _SqlcipherConnectionAdapter:
+    def __init__(self, connection):
+        self._connection = connection
+
+    def create_function(self, name, num_params, func, deterministic=False):
+        try:
+            return self._connection.create_function(
+                name,
+                num_params,
+                func,
+                deterministic=deterministic,
+            )
+        except TypeError:
+            #R045: Older pysqlcipher builds do not support the deterministic kwarg.
+            return self._connection.create_function(name, num_params, func)
+
+    def __getattr__(self, attr_name):
+        return getattr(self._connection, attr_name)
+
+
 _engine = None
 
 
@@ -124,6 +154,8 @@ def get_engine():
         if profile.target == "sqlite":
             sqlite_url = "sqlite://"
             sqlite_path = profile.sqlite_path or ""
+            if sqlite_path:
+                sqlite_path = _prepare_sqlite_path(sqlite_path)
             sqlcipher_key = _resolve_sqlcipher_key(profile)
 
             #R030: Open SQLCipher connection and attach the configured Teller database.
@@ -147,9 +179,24 @@ def get_engine():
                     )
                 cursor.execute("PRAGMA foreign_keys = ON")
                 cursor.close()
-                return dbapi_conn
+                #R030: Disable the DBAPI's implicit transaction management so
+                #R030: SQLAlchemy owns BEGIN/COMMIT; required for SAVEPOINT
+                #R030: (Session.begin_nested) to work on the sqlite target.
+                dbapi_conn.isolation_level = None
+                return _SqlcipherConnectionAdapter(dbapi_conn)
 
             _engine = create_engine(sqlite_url, echo=False, creator=_connect_sqlcipher)
+
+            #R030: Emit BEGIN explicitly because the DBAPI-level autobegin is
+            #R030: disabled above (standard SQLAlchemy sqlite SAVEPOINT recipe).
+            def _sqlite_begin(conn):
+                conn.exec_driver_sql("BEGIN")
+
+            try:
+                event.listen(_engine, "begin", _sqlite_begin)
+            except exc.InvalidRequestError:
+                #R030: Unit lanes substitute mock engines that expose no events.
+                pass
         else:
             password = _read_password(profile)
             connect_args = {

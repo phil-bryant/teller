@@ -45,14 +45,22 @@ fi
 
 if [[ "$EMIT_SQLCIPHER_KEY" == "true" ]]; then
     PYTHONPATH="${REPO_ROOT}/src:${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" "$PYTHON_BIN" - <<'PY'
+import contextlib
+import io
 import sys
 from teller.teller_db_profile import ProfileError, resolve_profile
 
+captured_stdout = io.StringIO()
 try:
-    profile = resolve_profile()
+    #R067: Keep stdout clean so callers receive only the key bytes.
+    with contextlib.redirect_stdout(captured_stdout):
+        profile = resolve_profile()
 except ProfileError as exc:
     print(str(exc), file=sys.stderr)
     raise SystemExit(1)
+captured_logs = captured_stdout.getvalue()
+if captured_logs:
+    print(captured_logs, file=sys.stderr, end="")
 sys.stdout.write(profile.sqlcipher_key)
 PY
     exit 0

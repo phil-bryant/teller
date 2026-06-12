@@ -1,4 +1,5 @@
 import os
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -206,6 +207,64 @@ class EngineConstructionTests(_IsolatedEnvTest):
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(RuntimeError):
                 teller_db._resolve_sqlcipher_key(missing_key_profile)
+
+    def test_sqlite_creator_creates_parent_dir_before_attach(self):
+        #R045-T01: sqlite creator ensures the parent directory exists before ATTACH.
+        sqlite_profile = ResolvedProfile(
+            name="sqlite",
+            host="",
+            port=0,
+            dbname="",
+            user="",
+            onepsa_item="",
+            search_path="teller",
+            runtime_role="",
+            sslmode="disable",
+            target="sqlite",
+            sqlite_path=".database/test-sqlcipher.sqlite3",
+            sqlcipher_key="k",
+        )
+        fake_cursor = MagicMock()
+        fake_conn = MagicMock()
+        fake_conn.cursor.return_value = fake_cursor
+        fake_dbapi = MagicMock()
+        fake_dbapi.connect.return_value = fake_conn
+        fake_pysqlcipher = type("FakePysqlcipher3", (), {"dbapi2": fake_dbapi})()
+
+        with patch("teller.teller_db.resolve_profile", return_value=sqlite_profile), \
+             patch("teller.teller_db.create_engine") as fake_create_engine, \
+             patch("teller.teller_db.os.makedirs") as fake_makedirs, \
+             patch.dict(sys.modules, {"pysqlcipher3": fake_pysqlcipher}):
+            fake_create_engine.return_value = MagicMock(name="engine")
+            teller_db.get_engine()
+            creator = fake_create_engine.call_args.kwargs["creator"]
+            creator()
+
+        expected_sqlite_path = os.path.abspath(sqlite_profile.sqlite_path)
+        fake_makedirs.assert_called_once_with(os.path.dirname(expected_sqlite_path), exist_ok=True)
+        executed_sql = [call.args[0] for call in fake_cursor.execute.call_args_list]
+        attach_sql = next(sql for sql in executed_sql if sql.startswith("ATTACH DATABASE "))
+        self.assertIn(expected_sqlite_path.replace("'", "''"), attach_sql)
+
+    def test_sqlcipher_adapter_handles_old_create_function_signature(self):
+        #R045-T02: SQLCipher adapter retries create_function without deterministic kwarg.
+        calls = []
+
+        #R045: simulate old pysqlcipher create_function(name, num_params, func) API.
+        def old_create_function(name, num_params, func):
+            calls.append((name, num_params, func))
+            return None
+
+        raw_conn = MagicMock()
+        raw_conn.create_function.side_effect = old_create_function
+        adapter = teller_db._SqlcipherConnectionAdapter(raw_conn)
+
+        adapter.create_function("regexp", 2, lambda *_args: True, deterministic=True)
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(raw_conn.create_function.call_count, 2)
+        self.assertEqual(raw_conn.create_function.call_args_list[0].kwargs, {"deterministic": True})
+        self.assertEqual(raw_conn.create_function.call_args_list[1].kwargs, {})
 
 
 class ConnectListenerTests(_IsolatedEnvTest):

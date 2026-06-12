@@ -406,6 +406,15 @@ def _resolve_profile_cached(_cache_key: tuple) -> ResolvedProfile:
     #R021: sqlite profile name must resolve sqlite target even when 1psa target
     # metadata is missing/stale (common fallback path when ~/.env supplies values).
     if name == "sqlite":
+        #R021: The SQLCipher file path is per-machine configuration, so an explicit
+        #R021: ~/.env sqlite_path beats 1psa-derived values (which often only carry
+        #R021: a postgres-style database name) and prevents the cwd-relative
+        #R021: default from splitting data across repos. The TELLER_DB_SQLITE_PATH
+        #R021: env var, applied above, still wins outright.
+        if not os.environ.get("TELLER_DB_SQLITE_PATH", "").strip():
+            env_fields = _read_env_file_fields(onepsa_item)
+            if (env_fields.get("sqlite_path") or "").strip():
+                final["sqlite_path"] = env_fields["sqlite_path"].strip()
         final = _force_sqlite_target(final)
         if not (final.get("sqlcipher_key") or "").strip():
             env_fields = _read_env_file_fields(onepsa_item)

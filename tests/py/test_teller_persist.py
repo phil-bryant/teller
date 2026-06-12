@@ -296,11 +296,16 @@ class TellerPersistTests(unittest.TestCase):
         #R025-T01: Persist pending transactions, fetch a reduced set, and verify missing pending rows are deleted.
         #R050-T01: Reconcile pending transaction cleanup SQL with non-empty fetched IDs and verify delete statement targets `teller."transaction"`.
         session = MagicMock()
-        session.execute.return_value.fetchall.return_value = [("txn_old",), ("txn_older",)]
+        first_result = MagicMock()
+        first_result.fetchall.return_value = [("txn_old",), ("txn_older",)]
+        session.execute.side_effect = [first_result, MagicMock()]
         deleted = teller_persist._reconcile_missing_pending_transactions(session, "acc_1", ["txn_keep"])
-        sql = str(session.execute.call_args.args[0])
-        self.assertIn('DELETE FROM teller."transaction"', sql)
-        self.assertIn("transaction_id NOT IN", sql)
+        select_sql = str(session.execute.call_args_list[0].args[0])
+        delete_sql = str(session.execute.call_args_list[1].args[0])
+        self.assertIn('FROM teller."transaction"', select_sql)
+        self.assertIn("transaction_id NOT IN", select_sql)
+        self.assertIn('DELETE FROM teller."transaction"', delete_sql)
+        self.assertIn("transaction_id IN", delete_sql)
         self.assertEqual(deleted, ["txn_old", "txn_older"])
 
     @patch("teller.teller_persist._exec")
@@ -320,8 +325,12 @@ class TellerPersistTests(unittest.TestCase):
             _Result(many=[(3,)]),
             _Result(many=[]),
         ]
-        pruned = teller_persist._prune_unreferenced_transaction_relations(MagicMock())
-        first_delete_sql = str(exec_mock.call_args_list[0].args[1])
+        session = MagicMock()
+        pruned = teller_persist._prune_unreferenced_transaction_relations(session)
+        first_select_sql = str(exec_mock.call_args_list[0].args[1])
+        self.assertIn("FROM teller.transaction_links", first_select_sql)
+        self.assertNotIn("FROM teller.transaction_links tl", first_select_sql)
+        first_delete_sql = str(session.execute.call_args_list[0].args[0])
         self.assertIn("DELETE FROM teller.transaction_links", first_delete_sql)
         self.assertNotIn("DELETE FROM teller.transaction_links tl", first_delete_sql)
         self.assertEqual(

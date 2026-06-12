@@ -306,54 +306,89 @@ def _reconcile_missing_pending_transactions(session, account_id, fetched_transac
     #R025: Delete stale pending transactions absent from current fetch.
     if not fetched_transaction_ids:
         return []
-    deleted = session.execute(
+    stale_rows = session.execute(
+        text(
+            """
+            SELECT transaction_id
+            FROM teller."transaction"
+            WHERE account_id = :account_id
+              AND status = 'pending'
+              AND transaction_id NOT IN :fetched_ids
+        """
+        ).bindparams(bindparam("fetched_ids", expanding=True)),
+        {"account_id": account_id, "fetched_ids": fetched_transaction_ids},
+    ).fetchall()
+    deleted_ids = [row[0] for row in stale_rows]
+    if not deleted_ids:
+        return []
+    session.execute(
         text(
             """
             DELETE FROM teller."transaction"
             WHERE account_id = :account_id
               AND status = 'pending'
-              AND transaction_id NOT IN :fetched_ids
-            RETURNING transaction_id
+              AND transaction_id IN :deleted_ids
         """
-        ).bindparams(bindparam("fetched_ids", expanding=True)),
-        {"account_id": account_id, "fetched_ids": fetched_transaction_ids},
-    ).fetchall()
-    return [row[0] for row in deleted]
+        ).bindparams(bindparam("deleted_ids", expanding=True)),
+        {"account_id": account_id, "deleted_ids": deleted_ids},
+    )
+    return deleted_ids
 
 def _prune_unreferenced_transaction_relations(session):
     #R030: Remove orphaned transaction relation rows after reconciliation.
     #R055: SQLite portability - avoid aliasing the DELETE target table.
-    removed_links = _exec(session, """
-        DELETE FROM teller.transaction_links
+    orphaned_links = _exec(session, """
+        SELECT transaction_links_id
+        FROM teller.transaction_links
         WHERE NOT EXISTS (
             SELECT 1
             FROM teller."transaction" t
             WHERE t.transaction_links_id = teller.transaction_links.transaction_links_id
         )
-        RETURNING transaction_links_id
     """).fetchall()
-    removed_details = _exec(session, """
-        DELETE FROM teller.transaction_details
+    orphaned_details = _exec(session, """
+        SELECT transaction_details_id
+        FROM teller.transaction_details
         WHERE NOT EXISTS (
             SELECT 1
             FROM teller."transaction" t
             WHERE t.transaction_details_id = teller.transaction_details.transaction_details_id
         )
-        RETURNING transaction_details_id
     """).fetchall()
-    removed_counterparties = _exec(session, """
-        DELETE FROM teller.transaction_details_counterparty
+    orphaned_counterparties = _exec(session, """
+        SELECT transaction_details_counterparty_id
+        FROM teller.transaction_details_counterparty
         WHERE NOT EXISTS (
             SELECT 1
             FROM teller.transaction_details td
             WHERE td.transaction_details_counterparty_id = teller.transaction_details_counterparty.transaction_details_counterparty_id
         )
-        RETURNING transaction_details_counterparty_id
     """).fetchall()
+    removed_links = [row[0] for row in orphaned_links]
+    removed_details = [row[0] for row in orphaned_details]
+    removed_counterparties = [row[0] for row in orphaned_counterparties]
+    if removed_links:
+        session.execute(
+            text("DELETE FROM teller.transaction_links WHERE transaction_links_id IN :ids")
+            .bindparams(bindparam("ids", expanding=True)),
+            {"ids": removed_links},
+        )
+    if removed_details:
+        session.execute(
+            text("DELETE FROM teller.transaction_details WHERE transaction_details_id IN :ids")
+            .bindparams(bindparam("ids", expanding=True)),
+            {"ids": removed_details},
+        )
+    if removed_counterparties:
+        session.execute(
+            text("DELETE FROM teller.transaction_details_counterparty WHERE transaction_details_counterparty_id IN :ids")
+            .bindparams(bindparam("ids", expanding=True)),
+            {"ids": removed_counterparties},
+        )
     return {
-        "transaction_links": len(removed_links),
-        "transaction_details": len(removed_details),
-        "transaction_details_counterparty": len(removed_counterparties),
+        "transaction_links": len(orphaned_links),
+        "transaction_details": len(orphaned_details),
+        "transaction_details_counterparty": len(orphaned_counterparties),
     }
 
 #R035: Upsert account-balance link rows with conflict-safe behavior.
