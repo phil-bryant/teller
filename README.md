@@ -1,6 +1,9 @@
 # teller
 
-Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema and the shared `teller_db` / `teller_db_profile` / `teller_persist` / `teller_mailcart_client` Python modules. Owns the database schema and the bank-ingest persistence library used by sibling repos.
+Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema, the portable C++ core
+(`tellercore`, under `src/core/`), and the shared `teller_db` / `teller_db_profile` / `teller_persist` /
+`teller_mailcart_client` Python modules. Owns the database schema and the bank-ingest persistence library
+used by sibling repos.
 
 > Note: The **classification API** and the **macOS review UI** were extracted into the sibling
 > [`classy`](../classy) repo. Run them from there (`../classy/05_run_classification_api.py`,
@@ -8,9 +11,37 @@ Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema and th
 > and reads/writes `classy.*` and `matchy.*` product-state schemas while keeping relational joins to `teller.transaction`. The classifier API/UI scripts, their TLS installer, and the
 > Swift/macOS lanes (classy `t08`/`t11`/`t12`/`t13`) now live in `classy`.
 >
-> The standalone bank-ingest scripts (`07_fetch_teller_api_data.py`, `08_backfill_bank_statements.py`) are
-> **deprecated** and retained only under [`deprecated/`](deprecated). The ingest/normalization/persistence logic
-> they exercised still lives in the active `src/teller/` package (notably `teller_persist.py`).
+> The bank-ingest scripts (`07_fetch_teller_api_data.py`, `08_backfill_bank_statements.py`) are **active**
+> and live at the repo root (an earlier README revision mislabeled them as deprecated). The API ingest also
+> has a C++ port (`teller_fetch`, built from `src/core/`) verified for output parity against the Python
+> script; the OCR statement backfill (`08`) remains Python-only.
+
+## C++ Core (`src/core/`)
+
+`tellercore` is the C++20 port of the Python library's db/profile/persist/mailcart layers, following the
+migration pattern established in `classy`. Python is **not** retired: `matchy` still imports
+`teller.teller_db` / `teller_db_profile`, so both implementations coexist (with the t17 oracle lane proving
+behavioral parity) until matchy migrates.
+
+- `src/core/include/tellercore/`, `src/core/src/` - static library: profile resolution (PostgreSQL +
+  SQLite/SQLCipher targets, 1psa via `dlopen` + `~/.env` fallback), dual DB backends (SQLCipher and libpq),
+  the `persist_all` ingest upsert layer, and the Mailcart HTTPS client.
+- `src/core/include/tellercore/ffi.h` - C ABI (`teller_core_open` / `teller_core_invoke` /
+  `teller_core_free` / `teller_core_close`) with the same JSON envelope contract as `classycore`.
+- `src/core/tools/` - `teller_fetch` (mTLS API ingest CLI) and `teller_oracle_runner` (parity harness CLI).
+- `src/core/oracle/` - `scenarios.json` + `compare_oracle.py`: every persist scenario runs through both the
+  Python reference and the C++ core on identical fixtures; full-database snapshots must match.
+
+```bash
+make core      # cmake build (RelWithDebInfo)
+make test      # t15: Catch2 unit suite
+make sanitize  # t16: ASan+UBSan rebuild + rerun
+make parity    # t17: Python/C++ oracle parity (sqlite always; postgres when admin creds available)
+make pg-test   # t18: [postgres] integration cases against a provisioned scratch database
+```
+
+Embedding the static library requires linking: `-ltellercore -lsqlcipher -lpq -lssl -lcrypto -lz` plus
+`-framework CoreFoundation -framework Security` on macOS.
 
 ## Pre-release CI/CD Policy
 
@@ -76,11 +107,12 @@ Current architecture assumes Teller API account currency is USD for sqlite money
 
 ## Repository Layout
 
-- `src/teller/` - Python package (ORM models, DB profile/engine, ingest persistence, Mailcart proxy client). Imported by `classy` for the classification API/UI.
+- `src/teller/` - Python package (ORM models, DB profile/engine, ingest persistence, Mailcart proxy client). Imported by `classy` and `matchy`.
+- `src/core/` - portable C++ core (`tellercore`): profile/db/persist/mailcart port, FFI, ingest CLI, oracle parity harness.
 - `src/sql/postgres/` and `src/sql/sqlite/` - canonical schema objects, triggers, and views for the `teller` schema (PostgreSQL) plus the SQLite/SQLCipher bootstrap.
-- `tests/` - `py/` (`unittest`), `sh/` (`bats`), and `sql/` (`pgTAP`). Swift/macOS UI lanes live in `classy`.
+- `tests/` - `py/` (`unittest`), `sh/` (`bats`), `sql/` (`pgTAP`), and the self-contained C++ lanes (`t15`-`t18`). Swift/macOS UI lanes live in `classy`.
 - `requirements/` - requirements traceability docs mapped to source `#R...` tags.
-- `deprecated/` - retired scripts kept for reference (e.g. the standalone bank-ingest scripts).
+- `Makefile` - thin facades over the numbered scripts and `tests/t*.sh` lanes (`core`, `test`, `sanitize`, `parity`, `pg-test`, `test-all`, `clean`).
 
 ## Testing and Verification
 
@@ -141,6 +173,10 @@ All primary lanes live under `tests/t*.sh`:
 - `./tests/t12_run_teller_api_smoke_tests.sh` - Teller API smoke checks
 - `./tests/t13_run_teller_live_canary_test.sh` - strict live Teller upstream canary (requires mTLS + token)
 - `./tests/t14_verify_filevault_encryption_test.sh` - macOS FileVault encryption verification
+- `./tests/t15_run_cpp_core_unit_tests.sh` - C++ core unit tests (Catch2; self-contained, no runner delegation)
+- `./tests/t16_run_cpp_core_sanitizer_tests.sh` - C++ core unit suite under ASan+UBSan
+- `./tests/t17_run_python_cpp_oracle_parity_test.sh` - Python/C++ oracle parity (persist scenarios diffed on identical fixtures)
+- `./tests/t18_run_cpp_postgres_integration_tests.sh` - C++ PostgreSQL integration cases against a provisioned scratch database (skips without admin credentials)
 
 The Swift/macOS UI lanes (classy `t08`, `t11`, `t12`) and classification-persistence lane (classy `t13`) live in `classy`.
 
@@ -194,8 +230,9 @@ Active secret and credential sources are:
   - Orchestrates all numbered `tests/t*.sh` checks in parallel and captures per-lane logs/artifacts.
 
 The classifier API (`05_run_classification_api.py`), macOS UI launcher (`06_run_classification_macos_ui.sh`), and
-TLS installer (`04_install_classifier_api_tls.sh`) now live in `classy`. The standalone ingest scripts
-(`07_fetch_teller_api_data.py`, `08_backfill_bank_statements.py`) are deprecated under `deprecated/`.
+TLS installer (`04_install_classifier_api_tls.sh`) now live in `classy`. The ingest scripts stay active at the
+repo root: `07_fetch_teller_api_data.py` (Teller API ingest; also available as the C++ `teller_fetch` CLI built
+from `src/core/`) and `08_backfill_bank_statements.py` (OCR bank-statement backfill).
 
 Core lane scripts under `tests/`:
 
@@ -307,17 +344,17 @@ Credential source resolution order used by recovery scripts:
 
 ## Ingest + Normalization + Persistence
 
-### Sequence (deprecated `07_fetch_teller_api_data.py`)
+### Sequence (`07_fetch_teller_api_data.py` / `teller_fetch`)
 
-The standalone fetch script is deprecated (retained under `deprecated/`), but the flow below still describes how
-the active `src/teller` persistence library normalizes and upserts data; it makes reruns safe and clarifies where
-idempotency is enforced before data lands in Postgres.
+The flow below describes how the fetch script (Python `07_fetch_teller_api_data.py` or its C++ port
+`src/core/build/teller_fetch`) and the persistence layer normalize and upsert data; it makes reruns safe and
+clarifies where idempotency is enforced before data lands in the database.
 
 ```text
 [scheduler/manual]
       |
       v
-deprecated/07_fetch_teller_api_data.py
+07_fetch_teller_api_data.py  (or src/core/build/teller_fetch)
       |
       +--> fetch institutions/accounts/transactions (+ balances/identity per account)
       |

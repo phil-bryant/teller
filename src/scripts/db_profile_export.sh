@@ -52,7 +52,7 @@ from teller.teller_db_profile import ProfileError, resolve_profile
 
 captured_stdout = io.StringIO()
 try:
-    #R067: Keep stdout clean so callers receive only the key bytes.
+    #R015: Keep stdout clean so callers receive only the key bytes.
     with contextlib.redirect_stdout(captured_stdout):
         profile = resolve_profile()
 except ProfileError as exc:

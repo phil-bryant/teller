@@ -5,6 +5,7 @@ __pycache__/
 *.egg-info/
 teller-venv/*
 .DS_Store
+src/core/build*/
 src/macos-ui/.build/
 src/macos-ui/.swiftpm/
 src/macos-ui/.derivedData-ui-tests/

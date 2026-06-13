@@ -125,6 +125,7 @@ def _prepare_sqlite_path(sqlite_path: str) -> str:
 #R045: Adapt pysqlcipher connections to sqlite3's optional deterministic callback API.
 class _SqlcipherConnectionAdapter:
     def __init__(self, connection):
+        #R045: Wrap the raw pysqlcipher connection for callback-API adaptation.
         self._connection = connection
 
     def create_function(self, name, num_params, func, deterministic=False):
@@ -140,6 +141,7 @@ class _SqlcipherConnectionAdapter:
             return self._connection.create_function(name, num_params, func)
 
     def __getattr__(self, attr_name):
+        #R045: Delegate every other DBAPI attribute to the wrapped connection.
         return getattr(self._connection, attr_name)
 
 

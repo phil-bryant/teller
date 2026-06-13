@@ -26,16 +26,28 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
                                          |
                                          v
  ┌──────────────────────────────────────────────────────────────────────────────┐
- │                              PYTHON BACKEND LAYER                            │
+ │                              PYTHON LIBRARY LAYER                            │
  ├──────────────────────────────────────────────────────────────────────────────┤
  │ Runtime: Python 3.10+ (venv; prefers 3.12 in setup script)                   │
- │ Frameworks/Libs: FastAPI, Starlette, Uvicorn, Pydantic, SQLAlchemy,          │
- │                  psycopg2-binary, requests, structlog, python-dotenv         │
+ │ Frameworks/Libs: SQLAlchemy, psycopg2-binary, pysqlcipher3, requests,        │
+ │                  structlog, python-dotenv, pydantic                          │
  │ Main flows:                                                                  │
  │   - Ingest: 07_fetch_teller_api_data.py                                      │
- │   - Backfill: 08_backfill_bank_statements.py                                 │
- │   - API: 09_run_classification_api.py ->                                     │
- │         src/teller/teller_classification_api.py -> src/teller/classification │
+ │   - Backfill: 08_backfill_bank_statements.py (OCR; Python-only)              │
+ │   - Library: src/teller (teller_db, teller_db_profile, teller_persist,      │
+ │              teller_mailcart_client) imported by classy + matchy             │
+ └───────────────────────────────────────┬──────────────────────────────────────┘
+                                         |
+                                         v
+ ┌──────────────────────────────────────────────────────────────────────────────┐
+ │                            C++ CORE LAYER (src/core)                         │
+ ├──────────────────────────────────────────────────────────────────────────────┤
+ │ C++20 static lib `tellercore` (cmake; nlohmann::json, SQLCipher, libpq,      │
+ │ cpp-httplib + OpenSSL; Catch2 tests). Port of profile/db/persist/mailcart    │
+ │ with the same behavior, proven by the t17 Python/C++ oracle parity lane.     │
+ │ C ABI: teller_core_open/invoke/free/close (JSON envelope, classycore style). │
+ │ Tools: teller_fetch (mTLS API ingest CLI), teller_oracle_runner (parity).    │
+ │ Python stays live until matchy migrates off teller.teller_db (coexistence).  │
  └───────────────────────────────────────┬──────────────────────────────────────┘
                                          |
                                          v
@@ -47,19 +59,11 @@ TELLER TECH STACK (repo: /Users/phil/local/src/teller)
  │ SQLite path: existing script entrypoints with sqlite profile branching        │
 │ SQLite money storage: integer cents for amount/running_balance/ledger/available │
 │ Current dependency: Teller account currency is USD for sqlite money encoding  │
- │ DB helpers in: src/teller/teller_db.py,                                      │
- │                  src/teller/teller_db_profile.py                             │
- └───────────────────────────────────────┬──────────────────────────────────────┘
-                                         ^
-                                         |
- ┌───────────────────────────────────────┴──────────────────────────────────────┐
- │                              MACOS APP / UI LAYER                            │
- ├──────────────────────────────────────────────────────────────────────────────┤
- │ Swift 5.9, SwiftUI, macOS 14+                                                │
- │ Package: src/macos-ui/Package.swift                                          │
- │ App: TransactionClassifier                                                   │
- │ Includes WKWebView Connect flows + PLCrashReporter                           │
+ │ DB helpers in: src/teller/teller_db.py, src/teller/teller_db_profile.py      │
+ │                (C++ equivalents in src/core/src/{db_*,profile}.cpp)          │
  └──────────────────────────────────────────────────────────────────────────────┘
+
+ The classification API and macOS SwiftUI review UI live in ../classy (extracted).
 
 
 AUTOMATION AND OPERATIONS
@@ -68,14 +72,14 @@ AUTOMATION AND OPERATIONS
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Numbered workflow scripts (project root)                                 │
 ├──────────────────────────────────────────────────────────────────────────┤
-│ 01-04 setup (prereqs, venv, dependencies, classifier TLS)                │
+│ 01-04 setup (prereqs, venv, supply chain, dependencies)                  │
 │ 05    DB deploy                                                          │
-│ 06-07 ingest + bank-statement backfill                                   │
-│ 08-09 classification API + macOS UI launcher                             │
-│ 10    parallel aggregate test runner                                     │
+│ 06    parallel aggregate test runner                                     │
+│ 07-08 ingest + bank-statement backfill (Python; 07 also as teller_fetch) │
+│ 96    clean generated files                                              │
 │ 97-99 backup / destroy / restore database                                │
 │                                                                          │
-│ Numbered test lanes (tests/t*.sh, t00-t16)                               │
+│ Numbered test lanes (tests/t*.sh, t00-t18)                               │
 ├──────────────────────────────────────────────────────────────────────────┤
 │ t00          code-quality analyzers                                      │
 │ t01          antivirus (ClamAV)                                          │
@@ -83,13 +87,15 @@ AUTOMATION AND OPERATIONS
 │ t03          static security (SAST)                                      │
 │ t04          requirements traceability                                   │
 │ t05          deploy database verification                                │
-│ t06-t08, t10 unit-test lanes (SQL / shell / Python / Swift)              │
+│ t06-t08      unit-test lanes (SQL / shell / Python)                      │
 │ t09          mutation testing                                            │
-│ t11          property + stateful fuzz                                    │
-│ t12          dynamic security (DAST, ZAP)                                │
-│ t13          Teller API smoke                                            │
-│ t14-t15      macOS UI regression + crash verify                          │
-│ t16          classification persistence E2E                              │
+│ t10          property + stateful fuzz (Hypothesis)                       │
+│ t11          dynamic security (DAST, ZAP; targets classy's API)          │
+│ t12-t13      Teller API smoke + strict live canary                       │
+│ t14          macOS FileVault verification                                │
+│ t15-t16      C++ core unit tests + ASan/UBSan sanitizer rerun            │
+│ t17          Python/C++ oracle parity (persist scenarios)                │
+│ t18          C++ PostgreSQL integration (scratch database)               │
 └──────────────────────────────────────────────────────────────────────────┘
 
 
@@ -99,8 +105,8 @@ TESTING STACK
   Shell lane      : bats            (tests/sh)
   Python lane     : unittest        (tests/py)
   SQL lane        : pgTAP/pg_prove  (tests/sql)
-  Swift lane      : swift test      (src/macos-ui/Tests)
-  macOS UI lane   : snapshot + XCUITest
+  C++ lane        : Catch2          (src/core/tests; t15/t16/t18)
+  Parity lane     : compare_oracle.py + teller_oracle_runner (t17)
 
 
 SECURITY STACK
@@ -134,10 +140,13 @@ SECURITY RUNBOOK (LOCAL COMPROMISE RESPONSE)
 HIGH-LEVEL FLOW
 ===============
 
-  Teller API --> Python ingest/backfill --> PostgreSQL <--> FastAPI classification API <--> SwiftUI macOS app
-                           ^                      ^
-                           |                      |
-                        1psa secrets         SQL schema + tests
+  Teller API --> ingest (07_fetch... / teller_fetch) --> PostgreSQL or SQLCipher SQLite
+                           ^                                   ^           ^
+                           |                                   |           |
+                        1psa secrets                  SQL schema + tests   |
+                                                                           |
+                       classy (C++ core + SwiftUI) and matchy (Python) <---+
+                       consume the deployed schema / teller Python package
 
 
 INGEST + NORMALIZATION + PERSISTENCE (SCRIPT 06)
@@ -399,37 +408,42 @@ Why: Explains why there are many numbered scripts and what each gate protects.
 Gate map (left = execution lane, right = protection intent):
 
 - 01-05 setup/deploy scripts        -> env/bootstrap/deploy preconditions before deeper validation
-- t00 code quality                  -> dead code (Vulture/Periphery) + complexity (Radon/Xenon, Lizard)
+- t00 code quality                  -> dead code (Vulture) + complexity (Radon/Xenon, Lizard)
 - t01 antivirus                     -> ClamAV signature freshness + repo scan
 - t02 dependency freshness          -> Python deps + Postgres + Teller API version drift
-- t03 static security (SAST)        -> Semgrep, Bandit, pip-audit, detect-secrets, gitleaks, ShellCheck, SwiftLint
+- t03 static security (SAST)        -> Semgrep, Bandit, pip-audit, detect-secrets, gitleaks, ShellCheck
 - t04 requirements traceability     -> `#R...` tag <-> requirements doc mapping
 - t05 deploy database verification  -> schema/role/constraint invariants on the deployed DB
 - t06 sql unit tests                -> pgTAP schema/contract checks
 - t07 shell unit tests              -> bats coverage of script flags/outputs/failure semantics
-- t08 python unit tests             -> package/unit behavior for Python ingestion/API helpers
+- t08 python unit tests             -> package/unit behavior for the Python ingestion library
 - t09 mutation testing              -> mutmut score + coverage gate
-- t10 swift unit tests              -> macOS client unit behavior
-- t11 fuzz                          -> Hypothesis property + stateful fuzz with budget gating
-- t12 dynamic security (DAST)       -> Schemathesis + ZAP runtime probes
-- t13 Teller API smoke              -> external API assumptions + minimal end-to-end liveliness
-- t14 macOS UI regression           -> snapshot + XCUITest flow stability
-- t15 macOS crash verify            -> crash reporter path + recovery metadata
-- t16 classification persistence    -> API -> DB write/read correctness
-- 10 parallel runner                -> aggregate readiness signal across the t00-t16 gates
+- t10 fuzz                          -> Hypothesis property + stateful fuzz with budget gating
+- t11 dynamic security (DAST)       -> Schemathesis + ZAP runtime probes (classy's API)
+- t12 Teller API smoke              -> external API assumptions + minimal end-to-end liveliness
+- t13 Teller live canary            -> strict upstream contract check (mTLS + token)
+- t14 FileVault verification        -> disk-encryption posture on macOS
+- t15 C++ core unit tests           -> Catch2 coverage of profile/db/persist/mailcart ports
+- t16 C++ sanitizer rerun           -> ASan+UBSan memory/UB gate over the same suite
+- t17 oracle parity                 -> Python and C++ persist outputs must match on identical fixtures
+- t18 C++ postgres integration      -> [postgres] cases against a provisioned scratch database
+- 06 parallel runner                -> aggregate readiness signal across the t00-t18 gates
 
 How to interpret failures:
 
 - 01-05 fail: stop early; developer/runtime prerequisites are not trustworthy yet.
 - t00-t04 fail: code quality / freshness / security / traceability hygiene regression.
-- t05-t08, t10 fail: lane-specific regression in SQL/shell/python/swift unit behavior.
+- t05-t08 fail: lane-specific regression in SQL/shell/python unit behavior.
 - t09 fail: mutation score regression — review surviving mutants.
-- t11 fail: property/stateful fuzz found a counterexample; capture the example and add a unit test.
-- t12 fail: potential exploitable runtime behavior; treat as security triage.
-- t13 fail: likely upstream/external contract drift or availability issue.
-- t14-t15 fail: macOS UI regression or crash-handling path break.
-- t16 fail: persistence contract break between API and database layers.
-- 10 (parallel runner) fail: composite readiness not met; inspect failing child lanes.
+- t10 fail: property/stateful fuzz found a counterexample; capture the example and add a unit test.
+- t11 fail: potential exploitable runtime behavior; treat as security triage.
+- t12/t13 fail: likely upstream/external contract drift or availability issue.
+- t14 fail: disk-encryption posture regression.
+- t15/t16 fail: C++ core regression (t16 additionally means a memory/UB defect).
+- t17 fail: behavioral divergence between the Python reference and the C++ core — treat as a
+  migration-correctness stop-ship until explained or allowlisted with a documented cause.
+- t18 fail: C++ PostgreSQL backend regression (named-param translation, NUMERIC binding, txn semantics).
+- 06 (parallel runner) fail: composite readiness not met; inspect failing child lanes.
 
 ### 6) SECURITY THREAT MODEL (TRUST BOUNDARIES + DATA FLOWS)
 

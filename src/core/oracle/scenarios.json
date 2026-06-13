@@ -1,0 +1,149 @@
+{
+  "comment": "Persist parity scenarios. Each step is a teller_persist payload {identities, transactions_by_account, balances_by_account}. teller_persist (Python) and tellercore::persist (C++) must leave identical normalized teller.* state. See compare_oracle.py / oracle_runner.cpp.",
+  "scenarios": [
+    {
+      "name": "fresh_insert_single_account",
+      "steps": [
+        {
+          "identities": [
+            {
+              "account": {
+                "id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242",
+                "name": "Checking", "type": "depository", "subtype": "checking", "status": "open",
+                "institution": {"id": "ins_1", "name": "Test Bank"},
+                "links": {"self": "https://example/acc_1", "details": "https://example/acc_1/details", "balances": "https://example/acc_1/balances", "transactions": "https://example/acc_1/transactions"}
+              },
+              "owners": [
+                {
+                  "type": "person",
+                  "names": [{"type": "name", "data": "Jane Doe"}],
+                  "emails": [{"data": "jane@example.com"}],
+                  "phone_numbers": [{"type": "mobile", "data": "+15551112222"}],
+                  "addresses": [{"primary": true, "data": {"street": "1 Main St", "city": "Albany", "region": "NY", "country": "US", "postal_code": "12207"}}]
+                }
+              ]
+            }
+          ],
+          "transactions_by_account": {
+            "acc_1": [
+              {"id": "txn_1", "account_id": "acc_1", "amount": "12.34", "date": "2026-06-01", "description": "WHOLE FOODS", "status": "posted", "type": "card_payment", "running_balance": "100.00", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "WHOLE FOODS", "type": "organization"}}, "links": {"self": "https://example/txn_1", "account": "acc_1"}},
+              {"id": "txn_2", "account_id": "acc_1", "amount": "-56.00", "date": "2026-06-02", "description": "CON EDISON", "status": "posted", "type": "ach", "running_balance": "44.00", "details": {"processing_status": "complete", "category": "utilities", "counterparty": {"name": "CON EDISON", "type": "organization"}}, "links": {"self": "https://example/txn_2", "account": "acc_1"}}
+            ]
+          },
+          "balances_by_account": {
+            "acc_1": {"account_id": "acc_1", "ledger": "1000.00", "available": "950.50", "links": {"self": "https://example/acc_1/bal", "account": "https://example/acc_1"}}
+          }
+        }
+      ]
+    },
+    {
+      "name": "idempotent_rerun",
+      "steps": [
+        {
+          "identities": [
+            {"account": {"id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242", "name": "Checking", "type": "depository", "subtype": "checking", "status": "open", "institution": {"id": "ins_1", "name": "Test Bank"}, "links": {"self": "https://example/acc_1", "details": "https://example/acc_1/details", "balances": "https://example/acc_1/balances", "transactions": "https://example/acc_1/transactions"}}, "owners": [{"type": "person", "names": [{"type": "name", "data": "Jane Doe"}], "emails": [{"data": "jane@example.com"}], "phone_numbers": [], "addresses": []}]}
+          ],
+          "transactions_by_account": {"acc_1": [{"id": "txn_1", "account_id": "acc_1", "amount": "12.34", "date": "2026-06-01", "description": "WHOLE FOODS", "status": "posted", "type": "card_payment", "running_balance": "100.00", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "WHOLE FOODS", "type": "organization"}}, "links": {"self": "https://example/txn_1", "account": "acc_1"}}]}
+        },
+        {
+          "identities": [
+            {"account": {"id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242", "name": "Checking", "type": "depository", "subtype": "checking", "status": "open", "institution": {"id": "ins_1", "name": "Test Bank"}, "links": {"self": "https://example/acc_1", "details": "https://example/acc_1/details", "balances": "https://example/acc_1/balances", "transactions": "https://example/acc_1/transactions"}}, "owners": [{"type": "person", "names": [{"type": "name", "data": "Jane Doe"}], "emails": [{"data": "jane@example.com"}], "phone_numbers": [], "addresses": []}]}
+          ],
+          "transactions_by_account": {"acc_1": [{"id": "txn_1", "account_id": "acc_1", "amount": "12.34", "date": "2026-06-01", "description": "WHOLE FOODS", "status": "posted", "type": "card_payment", "running_balance": "100.00", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "WHOLE FOODS", "type": "organization"}}, "links": {"self": "https://example/txn_1", "account": "acc_1"}}]}
+        }
+      ]
+    },
+    {
+      "name": "transaction_update_in_place",
+      "steps": [
+        {
+          "identities": [
+            {"account": {"id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242", "name": "Checking", "type": "depository", "subtype": "checking", "status": "open", "institution": {"id": "ins_1", "name": "Test Bank"}, "links": {"self": "https://example/acc_1", "details": "", "balances": "", "transactions": "https://example/acc_1/transactions"}}, "owners": [{"type": "person", "names": [], "emails": [{"data": "jane@example.com"}], "phone_numbers": [], "addresses": []}]}
+          ],
+          "transactions_by_account": {"acc_1": [{"id": "txn_1", "account_id": "acc_1", "amount": "10.00", "date": "2026-06-01", "description": "PENDING DESC", "status": "pending", "type": "card_payment", "details": {"processing_status": "processing", "category": null, "counterparty": null}, "links": {"self": "https://example/txn_1", "account": "acc_1"}}]}
+        },
+        {
+          "identities": [],
+          "transactions_by_account": {"acc_1": [{"id": "txn_1", "account_id": "acc_1", "amount": "11.50", "date": "2026-06-01", "description": "FINAL DESC", "status": "posted", "type": "card_payment", "running_balance": "88.50", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "WHOLE FOODS", "type": "organization"}}, "links": {"self": "https://example/txn_1", "account": "acc_1"}}]}
+        }
+      ]
+    },
+    {
+      "name": "posted_wins_over_pending_duplicate",
+      "steps": [
+        {
+          "identities": [
+            {"account": {"id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242", "name": "Checking", "type": "depository", "subtype": "checking", "status": "open", "institution": {"id": "ins_1", "name": "Test Bank"}, "links": {"self": "https://example/acc_1", "details": "", "balances": "", "transactions": "https://example/acc_1/transactions"}}, "owners": [{"type": "person", "names": [], "emails": [], "phone_numbers": [], "addresses": []}]}
+          ],
+          "transactions_by_account": {"acc_1": [
+            {"id": "txn_dup", "account_id": "acc_1", "amount": "5.00", "date": "2026-06-01", "description": "DUP PENDING", "status": "pending", "type": "card_payment", "details": {"processing_status": "processing", "category": null, "counterparty": null}, "links": {"self": "https://example/txn_dup", "account": "acc_1"}},
+            {"id": "txn_dup", "account_id": "acc_1", "amount": "5.00", "date": "2026-06-01", "description": "DUP POSTED", "status": "posted", "type": "card_payment", "details": {"processing_status": "complete", "category": "groceries", "counterparty": null}, "links": {"self": "https://example/txn_dup", "account": "acc_1"}}
+          ]}
+        }
+      ]
+    },
+    {
+      "name": "stale_pending_reconciliation",
+      "steps": [
+        {
+          "identities": [
+            {"account": {"id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242", "name": "Checking", "type": "depository", "subtype": "checking", "status": "open", "institution": {"id": "ins_1", "name": "Test Bank"}, "links": {"self": "https://example/acc_1", "details": "", "balances": "", "transactions": "https://example/acc_1/transactions"}}, "owners": [{"type": "person", "names": [], "emails": [], "phone_numbers": [], "addresses": []}]}
+          ],
+          "transactions_by_account": {"acc_1": [
+            {"id": "txn_keep", "account_id": "acc_1", "amount": "5.00", "date": "2026-06-01", "description": "KEEP", "status": "posted", "type": "card_payment", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "STORE A", "type": "organization"}}, "links": {"self": "https://example/txn_keep", "account": "acc_1"}},
+            {"id": "txn_pending", "account_id": "acc_1", "amount": "9.00", "date": "2026-06-02", "description": "PENDING", "status": "pending", "type": "card_payment", "details": {"processing_status": "processing", "category": null, "counterparty": {"name": "STORE B", "type": "organization"}}, "links": {"self": "https://example/txn_pending", "account": "acc_1"}}
+          ]}
+        },
+        {
+          "identities": [],
+          "transactions_by_account": {"acc_1": [
+            {"id": "txn_keep", "account_id": "acc_1", "amount": "5.00", "date": "2026-06-01", "description": "KEEP", "status": "posted", "type": "card_payment", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "STORE A", "type": "organization"}}, "links": {"self": "https://example/txn_keep", "account": "acc_1"}}
+          ]}
+        }
+      ]
+    },
+    {
+      "name": "identity_reuse_by_email",
+      "steps": [
+        {
+          "identities": [
+            {"account": {"id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "1111", "name": "Checking", "type": "depository", "subtype": "checking", "status": "open", "institution": {"id": "ins_1", "name": "Bank One"}, "links": {"self": "https://example/acc_1", "details": "", "balances": "", "transactions": "https://example/acc_1/transactions"}}, "owners": [{"type": "person", "names": [{"type": "name", "data": "Shared Owner"}], "emails": [{"data": "shared@example.com"}], "phone_numbers": [], "addresses": []}]},
+            {"account": {"id": "acc_2", "currency": "USD", "enrollment_id": "enr_2", "last_four": "2222", "name": "Savings", "type": "depository", "subtype": "savings", "status": "open", "institution": {"id": "ins_2", "name": "Bank Two"}, "links": {"self": "https://example/acc_2", "details": "", "balances": "", "transactions": "https://example/acc_2/transactions"}}, "owners": [{"type": "person", "names": [{"type": "name", "data": "Shared Owner"}], "emails": [{"data": "shared@example.com"}], "phone_numbers": [], "addresses": []}]}
+          ],
+          "transactions_by_account": {}
+        }
+      ]
+    },
+    {
+      "name": "counterparty_dedup",
+      "steps": [
+        {
+          "identities": [
+            {"account": {"id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242", "name": "Checking", "type": "depository", "subtype": "checking", "status": "open", "institution": {"id": "ins_1", "name": "Test Bank"}, "links": {"self": "https://example/acc_1", "details": "", "balances": "", "transactions": "https://example/acc_1/transactions"}}, "owners": [{"type": "person", "names": [], "emails": [], "phone_numbers": [], "addresses": []}]}
+          ],
+          "transactions_by_account": {"acc_1": [
+            {"id": "txn_a", "account_id": "acc_1", "amount": "1.00", "date": "2026-06-01", "description": "A", "status": "posted", "type": "card_payment", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "SAME STORE", "type": "organization"}}, "links": {"self": "https://example/txn_a", "account": "acc_1"}},
+            {"id": "txn_b", "account_id": "acc_1", "amount": "2.00", "date": "2026-06-02", "description": "B", "status": "posted", "type": "card_payment", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "SAME STORE", "type": "organization"}}, "links": {"self": "https://example/txn_b", "account": "acc_1"}}
+          ]}
+        }
+      ]
+    },
+    {
+      "name": "balance_update",
+      "steps": [
+        {
+          "identities": [
+            {"account": {"id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242", "name": "Checking", "type": "depository", "subtype": "checking", "status": "open", "institution": {"id": "ins_1", "name": "Test Bank"}, "links": {"self": "https://example/acc_1", "details": "", "balances": "https://example/acc_1/balances", "transactions": "https://example/acc_1/transactions"}}, "owners": [{"type": "person", "names": [], "emails": [], "phone_numbers": [], "addresses": []}]}
+          ],
+          "transactions_by_account": {},
+          "balances_by_account": {"acc_1": {"account_id": "acc_1", "ledger": "100.00", "available": "90.00", "links": {"self": "https://example/acc_1/bal", "account": "https://example/acc_1"}}}
+        },
+        {
+          "identities": [],
+          "transactions_by_account": {},
+          "balances_by_account": {"acc_1": {"account_id": "acc_1", "ledger": "250.25", "available": "240.00", "links": {"self": "https://example/acc_1/bal", "account": "https://example/acc_1"}}}
+        }
+      ]
+    }
+  ]
+}

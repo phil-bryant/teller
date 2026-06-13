@@ -37,7 +37,14 @@ Tests:
 - R040-T02: Drive the connect listener with empty `runtime_role` and verify `SET ROLE` is not executed.
 - R040-T03: Drive the SQLite connect listener path and verify PostgreSQL session statements are skipped.
 
+R045  Statement: Harden the sqlite/SQLCipher connection path for filesystem and DBAPI variance.
+Design: `_prepare_sqlite_path` normalizes/absolutizes the sqlite path and creates its parent directory before ATTACH; `_SqlcipherConnectionAdapter` adapts pysqlcipher connections to sqlite3's optional `deterministic` callback API, retrying `create_function` without the kwarg on older builds.
+Tests:
+- R045-T01: sqlite creator ensures the parent directory exists before ATTACH.
+- R045-T02: SQLCipher adapter retries create_function without deterministic kwarg.
+
 ## Changelog
 
+- 2026-06-12: Documented R045 sqlite path/adapter hardening (tags already present in source/tests).
 - 2026-05-30: Extended engine requirements to include SQLite target behavior.
 - 2026-05-21: Initial requirements for `teller_db` profile-aware engine factory.
