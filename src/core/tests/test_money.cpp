@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-throwing-static-initialization,cert-err58-cpp)
 #include <catch2/catch_test_macros.hpp>
 
 #include "tellercore/persist.hpp"
@@ -25,3 +26,4 @@ TEST_CASE("money_to_cents preserves sign", "[money]") {
     CHECK(money_to_cents("-0.01") == -1);
     CHECK(money_to_cents("+7.50") == 750);
 }
+// NOLINTEND(bugprone-throwing-static-initialization,cert-err58-cpp)

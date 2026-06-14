@@ -71,6 +71,8 @@ find_package(OpenSSL REQUIRED)
 if(TELLERCORE_ENABLE_HTTP)
   set(HTTPLIB_USE_BROTLI_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
   set(HTTPLIB_USE_ZSTD_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
+  # Disable install/CPack path when embedding httplib via FetchContent.
+  set(HTTPLIB_INSTALL OFF CACHE BOOL "" FORCE)
   FetchContent_Declare(httplib
     URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.18.3.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP ON)

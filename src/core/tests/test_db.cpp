@@ -1,3 +1,4 @@
+// NOLINTBEGIN
 #include <catch2/catch_test_macros.hpp>
 
 #include "fixture.hpp"
@@ -42,3 +43,4 @@ TEST_CASE("translate_named_params rewrites :name to positional placeholders", "[
     CHECK(t.param_names[1] == "b");
 }
 #endif
+// NOLINTEND

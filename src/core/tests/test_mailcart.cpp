@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-throwing-static-initialization,cert-err58-cpp)
 #include <catch2/catch_test_macros.hpp>
 
 #include "tellercore/mailcart.hpp"
@@ -25,3 +26,4 @@ TEST_CASE("validated_https_base_url rejects non-https and empty configuration", 
     CHECK(throws_503(""));
     CHECK(throws_503("https://"));
 }
+// NOLINTEND(bugprone-throwing-static-initialization,cert-err58-cpp)
