@@ -6,8 +6,8 @@ Local-first Teller data platform: profile-driven PostgreSQL/SQLite schema, the p
 used by sibling repos.
 
 > Note: The **classification API** and the **macOS review UI** were extracted into the sibling
-> [`classy`](../classy) repo. Run them from there (`../classy/05_run_classification_api.py`,
-> `../classy/06_run_classification_macos_ui.sh`). `classy` imports this package for DB/session/profile/mailcart-client
+> [`classy`](../classy) repo. Run them from there (`../classy/src/core/scripts/launch_dast_targets.py`
+> for DAST API surfacing, `../classy/03_run_classification_macos_ui.sh` for the native app). `classy` imports this package for DB/session/profile/mailcart-client
 > and reads/writes `classy.*` and `matchy.*` product-state schemas while keeping relational joins to `teller.transaction`. The classifier API/UI scripts, their TLS installer, and the
 > Swift/macOS lanes (classy `t08`/`t11`/`t12`/`t13`) now live in `classy`.
 >
@@ -96,8 +96,8 @@ cp config/db-profiles-EXAMPLE.json config/db-profiles.json
 ./06_run_all_tests_parallel.sh
 ```
 
-The classification API and macOS UI live in `classy` (`../classy/05_run_classification_api.py`,
-`../classy/06_run_classification_macos_ui.sh`); run them from that repo.
+The classification API surfacing and macOS UI live in `classy`
+(`../classy/src/core/scripts/launch_dast_targets.py`, `../classy/03_run_classification_macos_ui.sh`); run them from that repo.
 
 Before `./05_deploy_database.sh`, ensure dependencies match your selected profile target: PostgreSQL installed/running for `local`/`supabase*` targets, or `sqlcipher` installed for `sqlite` target.
 For sqlite profile runs, the default database path is `.database/teller.sqlite3` (override with `TELLER_DB_SQLITE_PATH`).
@@ -229,8 +229,8 @@ Active secret and credential sources are:
 - `06_run_all_tests_parallel.sh`
   - Orchestrates all numbered `tests/t*.sh` checks in parallel and captures per-lane logs/artifacts.
 
-The classifier API (`05_run_classification_api.py`), macOS UI launcher (`06_run_classification_macos_ui.sh`), and
-TLS installer (`04_install_classifier_api_tls.sh`) now live in `classy`. The ingest scripts stay active at the
+The classifier DAST launcher (`src/core/scripts/launch_dast_targets.py`) and macOS UI launcher
+(`03_run_classification_macos_ui.sh`) now live in `classy`. The ingest scripts stay active at the
 repo root: `07_fetch_teller_api_data.py` (Teller API ingest; also available as the C++ `teller_fetch` CLI built
 from `src/core/`) and `08_backfill_bank_statements.py` (OCR bank-statement backfill).
 
@@ -402,7 +402,7 @@ Local app-based enrollment and token refresh:
 After completing Teller Connect in the native app, the returned token is saved under `~/.teller`. The Connect/enrollment UI lives in `classy`:
 
 ```bash
-../classy/06_run_classification_macos_ui.sh
+../classy/03_run_classification_macos_ui.sh
 ```
 
 Connect behavior:
