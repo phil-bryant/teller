@@ -144,6 +144,75 @@
           "balances_by_account": {"acc_1": {"account_id": "acc_1", "ledger": "250.25", "available": "240.00", "links": {"self": "https://example/acc_1/bal", "account": "https://example/acc_1"}}}
         }
       ]
+    },
+    {
+      "name": "reingest_owner_with_address_into_populated_db",
+      "comment": "Step 2 re-ingests an owner whose name/phone/address already exist, exercising the identity_address_data INSERT ... ON CONFLICT DO UPDATE upsert. Regression guard: resolving the upserted id via last_insert_rowid() (instead of RETURNING) yields a stale rowid on the update path and writes a dangling identity_address foreign key, which a fresh-DB scenario never reaches.",
+      "steps": [
+        {
+          "identities": [
+            {
+              "account": {
+                "id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242",
+                "name": "Checking", "type": "depository", "subtype": "checking", "status": "open",
+                "institution": {"id": "ins_1", "name": "Test Bank"},
+                "links": {"self": "https://example/acc_1", "details": "", "balances": "", "transactions": "https://example/acc_1/transactions"}
+              },
+              "owners": [
+                {
+                  "type": "person",
+                  "names": [{"type": "name", "data": "Jane Doe"}],
+                  "emails": [{"data": "jane@example.com"}],
+                  "phone_numbers": [{"type": "mobile", "data": "+15551112222"}],
+                  "addresses": [{"primary": true, "data": {"street": "1 Main St", "city": "Albany", "region": "NY", "country": "US", "postal_code": "12207"}}]
+                }
+              ]
+            }
+          ],
+          "transactions_by_account": {"acc_1": [{"id": "txn_1", "account_id": "acc_1", "amount": "12.34", "date": "2026-06-01", "description": "WHOLE FOODS", "status": "posted", "type": "card_payment", "running_balance": "100.00", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "WHOLE FOODS", "type": "organization"}}, "links": {"self": "https://example/txn_1", "account": "acc_1"}}]}
+        },
+        {
+          "identities": [
+            {
+              "account": {
+                "id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "4242",
+                "name": "Checking", "type": "depository", "subtype": "checking", "status": "open",
+                "institution": {"id": "ins_1", "name": "Test Bank"},
+                "links": {"self": "https://example/acc_1", "details": "", "balances": "", "transactions": "https://example/acc_1/transactions"}
+              },
+              "owners": [
+                {
+                  "type": "person",
+                  "names": [{"type": "name", "data": "Jane Doe"}],
+                  "emails": [{"data": "jane@example.com"}],
+                  "phone_numbers": [{"type": "mobile", "data": "+15551112222"}],
+                  "addresses": [{"primary": false, "data": {"street": "1 Main St", "city": "Albany", "region": "NY", "country": "US", "postal_code": "12207"}}]
+                }
+              ]
+            }
+          ],
+          "transactions_by_account": {"acc_1": [{"id": "txn_1", "account_id": "acc_1", "amount": "12.34", "date": "2026-06-01", "description": "WHOLE FOODS", "status": "posted", "type": "card_payment", "running_balance": "100.00", "details": {"processing_status": "complete", "category": "groceries", "counterparty": {"name": "WHOLE FOODS", "type": "organization"}}, "links": {"self": "https://example/txn_1", "account": "acc_1"}}]}
+        }
+      ]
+    },
+    {
+      "name": "shared_owner_address_across_accounts",
+      "comment": "Two accounts in one step share an owner (same email) and the same physical address, so the second account's identity_address_data insert hits ON CONFLICT DO UPDATE within a single run.",
+      "steps": [
+        {
+          "identities": [
+            {
+              "account": {"id": "acc_1", "currency": "USD", "enrollment_id": "enr_1", "last_four": "1111", "name": "Checking", "type": "depository", "subtype": "checking", "status": "open", "institution": {"id": "ins_1", "name": "Bank One"}, "links": {"self": "https://example/acc_1", "details": "", "balances": "", "transactions": "https://example/acc_1/transactions"}},
+              "owners": [{"type": "person", "names": [{"type": "name", "data": "Shared Owner"}], "emails": [{"data": "shared@example.com"}], "phone_numbers": [], "addresses": [{"primary": true, "data": {"street": "9 Shared Ave", "city": "Buffalo", "region": "NY", "country": "US", "postal_code": "14201"}}]}]
+            },
+            {
+              "account": {"id": "acc_2", "currency": "USD", "enrollment_id": "enr_2", "last_four": "2222", "name": "Savings", "type": "depository", "subtype": "savings", "status": "open", "institution": {"id": "ins_2", "name": "Bank Two"}, "links": {"self": "https://example/acc_2", "details": "", "balances": "", "transactions": "https://example/acc_2/transactions"}},
+              "owners": [{"type": "person", "names": [{"type": "name", "data": "Shared Owner"}], "emails": [{"data": "shared@example.com"}], "phone_numbers": [], "addresses": [{"primary": true, "data": {"street": "9 Shared Ave", "city": "Buffalo", "region": "NY", "country": "US", "postal_code": "14201"}}]}]
+            }
+          ],
+          "transactions_by_account": {}
+        }
+      ]
     }
   ]
 }
