@@ -1,3 +1,4 @@
+-- #R200: ClassyMobile bootstrap schema for the on-device sqlite profile.
 -- #R001: Enable foreign keys for SQLite parity with relational constraints.
 PRAGMA foreign_keys = ON;
 

@@ -24,6 +24,12 @@ Design: `create_database.sql` defines `transaction_info_view` joining transactio
 Tests:
 - R015-T01: Parse `create_database.sql` and verify `transaction_info_view` DDL is present.
 
+R200  Statement: SQLite deploy includes the ClassyMobile bootstrap schema required by the on-device profile.
+Design: `create_database.sql` carries the `#R200` bootstrap marker and includes the table/view inventory expected by local mobile bootstrap workflows.
+Tests:
+- R200-T01: Parse `create_database.sql` and verify the `#R200` bootstrap marker is present.
+
 ## Changelog
 
 - 2026-05-30: Added SQLite create-database SQL requirements for file-backed deploy path.
+- 2026-06-14: Added R200 bootstrap marker requirement for ClassyMobile sqlite profile bootstrap.

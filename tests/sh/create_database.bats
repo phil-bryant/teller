@@ -27,3 +27,10 @@
   run rg -n "CREATE VIEW IF NOT EXISTS transaction_info_view AS" src/sql/sqlite/create_database.sql
   [ "$status" -eq 0 ]
 }
+
+@test "sqlite schema carries classy mobile bootstrap marker" {
+  #R200-T01: Parse create_database.sql and verify the #R200 bootstrap marker is present.
+  #R200: SQLite deploy includes the ClassyMobile bootstrap schema required by the on-device profile.
+  run rg -n "^-- #R200: ClassyMobile bootstrap schema" src/sql/sqlite/create_database.sql
+  [ "$status" -eq 0 ]
+}
