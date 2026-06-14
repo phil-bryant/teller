@@ -12,7 +12,12 @@ source "${RUNNER_HOME}/config/runbook/teller.env"
 source "${RUNNER_HOME}/src/scripts/runbook_common.sh"
 REPO_ROOT="$RUNBOOK_REPO_ROOT"
 cd "$REPO_ROOT"
-DB_PROFILE_HELPER="${REPO_ROOT}/src/scripts/db_profile_export.sh"
+# Prefer the runner helper so verification resolves the same profile exports as
+# deploy and SQL lanes; fall back to repo-local helper for compatibility.
+DB_PROFILE_HELPER="${RUNNER_HOME}/src/scripts/db_profile_export.sh"
+if [[ ! -x "$DB_PROFILE_HELPER" ]]; then
+  DB_PROFILE_HELPER="${REPO_ROOT}/src/scripts/db_profile_export.sh"
+fi
 
 #R050: Resolve target/profile so verification can adapt to local vs managed Postgres.
 PROFILE_NAME="local"
@@ -33,7 +38,7 @@ load_profile_exports_from_file() {
       key=$0
       sub(/^export[[:space:]]+/, "", key)
       sub(/=.*/, "", key)
-      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH)$/) {
+      if (key !~ /^(DB_DIALECT|PROFILE_NAME|PROFILE_TARGET|PG_HOST|PG_PORT|PG_DBNAME|PG_USER|PG_SSLMODE|PG_SEARCH_PATH|PG_RUNTIME_ROLE|PG_ONEPSA_ITEM|SQLITE_PATH|SQLCIPHER_KEY)$/) {
         print
       }
     }
@@ -71,8 +76,8 @@ DB_DIALECT="${DB_DIALECT:-postgresql}"
 
 #R066: Run SQLite-specific verification checks when the active profile target is SQLite.
 if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; then
-  SQLITE_DB_PATH="${SQLITE_PATH:-${TELLER_DB_SQLITE_PATH:-}}"
-  SQLITE_CIPHER_KEY="${TELLER_DB_SQLCIPHER_KEY:-}"
+  SQLITE_DB_PATH="${TELLER_DB_SQLITE_PATH:-${SQLITE_PATH:-}}"
+  SQLITE_CIPHER_KEY="${TELLER_DB_SQLCIPHER_KEY:-${SQLCIPHER_KEY:-}}"
   if [[ -z "$SQLITE_CIPHER_KEY" ]]; then
     if ! SQLITE_CIPHER_KEY="$(resolve_sqlcipher_key_from_profile)"; then
       echo "❌ FAIL: SQLite verification could not resolve SQLCipher key from profile helper."
@@ -83,7 +88,7 @@ if [[ "$DB_DIALECT" == "sqlite" || "${PROFILE_TARGET:-local}" == "sqlite" ]]; th
   #R066: Run scalar sqlite verification query via sqlcipher client.
   sqlcipher_scalar() {
     local query="$1"
-    sqlcipher "$SQLITE_DB_PATH" <<SQL
+    sqlcipher "$SQLITE_DB_PATH" <<SQL | awk '$0 != "ok"'
 .bail on
 PRAGMA key='${SQLITE_ESCAPED_KEY}';
 ${query}
@@ -94,7 +99,7 @@ SQL
     exit 1
   fi
   if [[ -z "$SQLITE_CIPHER_KEY" ]]; then
-    echo "❌ FAIL: SQLite verification requires SQLCIPHER_KEY via TELLER_DB_SQLCIPHER_KEY or profile sqlcipher_key."
+    echo "❌ FAIL: SQLite verification requires SQLCIPHER_KEY via TELLER_DB_SQLCIPHER_KEY, SQLCIPHER_KEY, or profile sqlcipher_key."
     exit 1
   fi
   if [[ ! -f "$SQLITE_DB_PATH" ]]; then
@@ -104,6 +109,20 @@ SQL
   if ! command -v sqlcipher >/dev/null 2>&1; then
     echo "❌ FAIL: sqlcipher is required for sqlite verification."
     exit 1
+  fi
+  sqlite_master_count="$(sqlcipher_scalar "SELECT COUNT(1) FROM sqlite_master WHERE type IN ('table','view');" | tr -d '\r\n' || true)"
+  if [[ -z "$sqlite_master_count" ]]; then
+    echo "❌ FAIL: sqlite verification could not query sqlite_master (database file may be unreadable or key is invalid)."
+    exit 1
+  fi
+  if [[ "$sqlite_master_count" == "0" ]]; then
+    sqlite_file_size="$(wc -c < "$SQLITE_DB_PATH" | tr -d '[:space:]')"
+    if [[ "${sqlite_file_size:-0}" -gt 0 ]]; then
+      echo "❌ FAIL: sqlite verification opened an empty sqlite_master from a non-empty DB file (${sqlite_file_size} bytes)."
+      echo "- likely cause: SQLCipher key mismatch between deploy and verification contexts"
+      echo "- key precedence: TELLER_DB_SQLCIPHER_KEY -> SQLCIPHER_KEY -> profile helper"
+      exit 1
+    fi
   fi
   required_tables=(
     institution
