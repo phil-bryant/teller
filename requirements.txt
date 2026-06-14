@@ -269,9 +269,9 @@ coverage==7.14.1 \
     --hash=sha256:fc459e5d73be2d6332fcfe8dbf3d8994671fe33c700f4565988ecfa511547253 \
     --hash=sha256:fd86572566fb40189a8260446158235159bc7a82dfbc87a3b39cf4fb57fcec1c
     # via mutmut
-fastapi==0.136.3 \
-    --hash=sha256:3d2a69bdf04b7e9f3afa292c3bc7a98816bbfafa10bc9b45f3f3700d2f761620 \
-    --hash=sha256:e487fae93ad408e6f47641ee4dfe389864fd7bec92e547ea8498fc13f43e83ab
+fastapi==0.137.0 \
+    --hash=sha256:6dcbde8d464f92117c1accb9e42720f8e423fa9b86cb563b1f5862f785a06498 \
+    --hash=sha256:d0565d551f65a803ecff245390840867186f456ef98971f750724eed16e1541c
     # via -r requirements.in
 h11==0.16.0 \
     --hash=sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1 \
@@ -614,9 +614,9 @@ pygments==2.20.0 \
 pysqlcipher3==1.2.0 \
     --hash=sha256:3c8033812655947ebf29a809ac5106b2bc69be0274eaccef6b58f4580c8d06c5
     # via -r requirements.in
-pytest==9.0.3 \
-    --hash=sha256:2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9 \
-    --hash=sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c
+pytest==9.1.0 \
+    --hash=sha256:41dd9148c08072446394cefd3d79701701335a9f4cae69ba92e39f6c7f5c061c \
+    --hash=sha256:8ebb0e7888bdf2bdfc602ec51f8f62d50200af37356c74e503c79a94f5c81f32
     # via
     #   -r requirements.in
     #   mutmut
@@ -884,9 +884,9 @@ sqlalchemy==2.0.50 \
     --hash=sha256:f96233858e3df43932ac11589e22520da6e8aeb624b03fedfeebb0e8ea213086 \
     --hash=sha256:faffef4bcc20a1892e65e155293d99d60855bbbc79250ab712819cfd56a8e6bb
     # via -r requirements.in
-starlette==1.3.0 \
-    --hash=sha256:bb58cbb7a699da4ee4be9ed4cdfe4bc5b0390aa6dac1d1ac714ebebe8dc3c8df \
-    --hash=sha256:ff4ca1bc23de6a45cdfbbeb9b3caaea524c9221cdd8a6684ad7a4f651a83890b
+starlette==1.3.1 \
+    --hash=sha256:05d0213193f2fbaae60e2ecb593b4add4262ad4e46536b54abe36f11a71724e0 \
+    --hash=sha256:c7372aae11c3c3f26a42df7bd626cec2f47d03483d261d369516a615a53714c6
     # via
     #   -r requirements.in
     #   fastapi
