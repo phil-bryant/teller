@@ -10,13 +10,16 @@
 
 namespace tellercore::db {
 
+// #R001: Traceability for function `has`.
 bool Row::has(const std::string& name) const { return columns.count(name) > 0; }
 
+// #R001: Traceability for function `is_null`.
 bool Row::is_null(const std::string& name) const {
     auto it = columns.find(name);
     return it == columns.end() || std::holds_alternative<std::monostate>(it->second);
 }
 
+// #R001: Traceability for function `get_int`.
 std::optional<int64_t> Row::get_int(const std::string& name) const {
     auto it = columns.find(name);
     if (it == columns.end()) return std::nullopt;
@@ -32,6 +35,7 @@ std::optional<int64_t> Row::get_int(const std::string& name) const {
     return std::nullopt;
 }
 
+// #R001: Traceability for function `get_double`.
 std::optional<double> Row::get_double(const std::string& name) const {
     auto it = columns.find(name);
     if (it == columns.end()) return std::nullopt;
@@ -47,6 +51,7 @@ std::optional<double> Row::get_double(const std::string& name) const {
     return std::nullopt;
 }
 
+// #R001: Traceability for function `get_text`.
 std::optional<std::string> Row::get_text(const std::string& name) const {
     auto it = columns.find(name);
     if (it == columns.end() || std::holds_alternative<std::monostate>(it->second)) return std::nullopt;
@@ -55,6 +60,7 @@ std::optional<std::string> Row::get_text(const std::string& name) const {
     return std::to_string(std::get<double>(it->second));
 }
 
+// #R001: Traceability for function `open_from_profile`.
 std::unique_ptr<Db> open_from_profile(const DbProfile& profile) {
     if (profile.target == DbTarget::kSqlite) {
         return std::make_unique<SqliteDb>(profile.sqlite_path, profile.sqlcipher_key);
@@ -80,12 +86,15 @@ std::unique_ptr<Db> open_from_profile(const DbProfile& profile) {
 #endif
 }
 
+// #R001: Traceability for function `Transaction`.
 Transaction::Transaction(Db& db) : db_(db) { db_.begin(); }
 
+// #R001: Traceability for function `Transaction`.
 Transaction::~Transaction() {
     if (!done_) db_.rollback();
 }
 
+// #R001: Traceability for function `commit`.
 void Transaction::commit() {
     db_.commit();
     done_ = true;

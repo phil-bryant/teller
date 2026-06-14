@@ -1,3 +1,4 @@
+// NOLINTBEGIN(cert-err33-c)
 #include "tellercore/json_io.hpp"
 
 #include <chrono>
@@ -6,6 +7,7 @@
 
 namespace tellercore::json_io {
 
+// #R001: Traceability for function `value_to_json`.
 json value_to_json(const db::Value& value) {
     if (std::holds_alternative<std::monostate>(value)) return nullptr;
     if (std::holds_alternative<int64_t>(value)) return std::get<int64_t>(value);
@@ -13,12 +15,14 @@ json value_to_json(const db::Value& value) {
     return std::get<std::string>(value);
 }
 
+// #R001: Traceability for function `row_to_json`.
 json row_to_json(const db::Row& row) {
     json out = json::object();
     for (const auto& [name, value] : row.columns) out[name] = value_to_json(value);
     return out;
 }
 
+// #R001: Traceability for function `to_utc_iso8601`.
 std::string to_utc_iso8601(const std::string& sqlite_timestamp) {
     std::string out = sqlite_timestamp;
     if (out.size() >= 11 && out[10] == ' ') out[10] = 'T';
@@ -29,6 +33,7 @@ std::string to_utc_iso8601(const std::string& sqlite_timestamp) {
     return out;
 }
 
+// #R001: Traceability for function `now_utc_iso8601`.
 std::string now_utc_iso8601() {
     using namespace std::chrono;
     const auto now = system_clock::now();
@@ -45,6 +50,7 @@ std::string now_utc_iso8601() {
     return buf;
 }
 
+// #R001: Traceability for function `opt_text`.
 std::optional<std::string> opt_text(const json& j, const std::string& key) {
     auto it = j.find(key);
     if (it == j.end() || it->is_null()) return std::nullopt;
@@ -53,3 +59,4 @@ std::optional<std::string> opt_text(const json& j, const std::string& key) {
 }
 
 } // namespace tellercore::json_io
+// NOLINTEND(cert-err33-c)

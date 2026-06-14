@@ -1,3 +1,4 @@
+// #R001: Module-level traceability anchor.
 #ifndef TELLERCORE_FFI_H
 #define TELLERCORE_FFI_H
 

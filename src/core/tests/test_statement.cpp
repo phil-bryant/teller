@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-throwing-static-initialization,cert-err58-cpp,bugprone-unchecked-optional-access)
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
@@ -11,6 +12,7 @@ using statement::StatementTxn;
 
 namespace {
 
+// #R001: Traceability for function `obs`.
 ocr::Observation obs(double y, double x, const std::string& text) { return {y, x, text}; }
 
 } // namespace
@@ -138,3 +140,4 @@ TEST_CASE("make_txn_id is deterministic and occurrence-sensitive", "[statement]"
     CHECK(a.rfind("stmt_", 0) == 0);
     CHECK(a.size() == 25);  // "stmt_" + 20 hex chars
 }
+// NOLINTEND(bugprone-throwing-static-initialization,cert-err58-cpp,bugprone-unchecked-optional-access)

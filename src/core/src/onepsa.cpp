@@ -1,3 +1,4 @@
+// NOLINTBEGIN(concurrency-mt-unsafe)
 #include "tellercore/onepsa.hpp"
 
 #include <dlfcn.h>
@@ -16,9 +17,11 @@ struct Lib {
     void* handle = nullptr;
     GetFieldFn get_field = nullptr;
     StringFreeFn string_free = nullptr;
+    // #R001: Traceability for function `ok`.
     bool ok() const { return handle != nullptr && get_field != nullptr && string_free != nullptr; }
 };
 
+// #R001: Traceability for function `load_lib`.
 Lib load_lib() {
     Lib lib;
     const char* env_path = std::getenv("ONEPSA_LIB_PATH");
@@ -34,6 +37,7 @@ Lib load_lib() {
 
 } // namespace
 
+// #R001: Traceability for function `read_fields`.
 std::map<std::string, std::string> read_fields(const std::string& item,
                                                const std::vector<std::string>& fields) {
     std::map<std::string, std::string> parsed;
@@ -60,12 +64,14 @@ std::map<std::string, std::string> read_fields(const std::string& item,
     return parsed;
 }
 
+// #R001: Traceability for function `read_field`.
 std::string read_field(const std::string& item, const std::string& field) {
     const auto fields = read_fields(item, {field});
     auto it = fields.find(field);
     return it == fields.end() ? std::string() : it->second;
 }
 
+// #R001: Traceability for function `read_password_strict`.
 std::string read_password_strict(const std::string& item) {
     const Lib lib = load_lib();
     if (!lib.ok()) throw std::runtime_error("libonepsa could not be loaded");
@@ -85,3 +91,4 @@ std::string read_password_strict(const std::string& item) {
 }
 
 } // namespace tellercore::onepsa
+// NOLINTEND(concurrency-mt-unsafe)

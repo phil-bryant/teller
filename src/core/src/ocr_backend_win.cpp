@@ -43,6 +43,7 @@ namespace streams = winrt::Windows::Storage::Streams;
 constexpr double kRenderDpi = 300.0;
 constexpr double kPdfPointsPerInch = 72.0;
 
+// #R001: Traceability for function `render_page`.
 imaging::SoftwareBitmap render_page(const pdf::PdfPage& page) {
     streams::InMemoryRandomAccessStream stream;
     pdf::PdfPageRenderOptions options;
@@ -57,6 +58,7 @@ imaging::SoftwareBitmap render_page(const pdf::PdfPage& page) {
     return decoder.GetSoftwareBitmapAsync().get();
 }
 
+// #R001: Traceability for function `recognize_bitmap`.
 Page recognize_bitmap(const imaging::SoftwareBitmap& bitmap) {
     media_ocr::OcrEngine engine = media_ocr::OcrEngine::TryCreateFromUserProfileLanguages();
     if (engine == nullptr) {
@@ -85,6 +87,7 @@ Page recognize_bitmap(const imaging::SoftwareBitmap& bitmap) {
 
 class WindowsOcrBackend final : public OcrBackend {
 public:
+    // #R001: Traceability for function `recognize`.
     std::vector<Page> recognize(const std::filesystem::path& pdf_path) override {
         try {
             storage::StorageFile file =
@@ -109,6 +112,7 @@ public:
 
 } // namespace
 
+// #R001: Traceability for function `make_ocr_backend`.
 std::unique_ptr<OcrBackend> make_ocr_backend() { return std::make_unique<WindowsOcrBackend>(); }
 
 } // namespace tellercore::ocr

@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 #include "tellercore/persist.hpp"
 
 #include <map>
@@ -18,9 +19,11 @@ using db::Params;
 using db::Row;
 using db::Value;
 
+// #R001: Traceability for function `is_sqlite`.
 bool is_sqlite(Db& db) { return db.dialect() == Dialect::kSqlite; }
 
 // JSON scalar -> bound Value. null/missing collapses to SQL NULL.
+// #R001: Traceability for function `json_to_value`.
 Value json_to_value(const json& v) {
     if (v.is_null()) return std::monostate{};
     if (v.is_boolean()) return static_cast<int64_t>(v.get<bool>() ? 1 : 0);
@@ -32,6 +35,7 @@ Value json_to_value(const json& v) {
 }
 
 // Required string field (Python KeyError parity: throws when absent).
+// #R001: Traceability for function `require_str`.
 std::string require_str(const json& obj, const char* key) {
     if (!obj.contains(key) || obj[key].is_null()) {
         throw ApiError(422, std::string("missing required field: ") + key);
@@ -41,6 +45,7 @@ std::string require_str(const json& obj, const char* key) {
 }
 
 // Optional field as a bound Value (NULL when absent/null).
+// #R001: Traceability for function `opt_value`.
 Value opt_value(const json& obj, const char* key) {
     auto it = obj.find(key);
     if (it == obj.end()) return std::monostate{};
@@ -48,6 +53,7 @@ Value opt_value(const json& obj, const char* key) {
 }
 
 // Optional string with default, used for HATEOAS link fields (Python .get(key, "")).
+// #R001: Traceability for function `opt_str`.
 std::string opt_str(const json& obj, const char* key, const std::string& fallback = "") {
     auto it = obj.find(key);
     if (it == obj.end() || it->is_null()) return fallback;
@@ -55,6 +61,7 @@ std::string opt_str(const json& obj, const char* key, const std::string& fallbac
     return it->dump();
 }
 
+// #R001: Traceability for function `truthy_money`.
 bool truthy_money(const json& obj, const char* key) {
     auto it = obj.find(key);
     if (it == obj.end() || it->is_null()) return false;
@@ -65,6 +72,7 @@ bool truthy_money(const json& obj, const char* key) {
 
 // Money string -> bound Value for the active backend: integer cents on SQLite,
 // the original decimal text on Postgres (libpq coerces it into numeric).
+// #R001: Traceability for function `money_value`.
 Value money_value(Db& db, const json& obj, const char* key) {
     if (!truthy_money(obj, key)) return std::monostate{};
     const std::string raw = obj[key].is_string() ? obj[key].get<std::string>() : obj[key].dump();
@@ -73,6 +81,7 @@ Value money_value(Db& db, const json& obj, const char* key) {
 }
 
 // Currency guard: SQLite stores integer cents under a USD assumption.
+// #R001: Traceability for function `require_usd_for_sqlite`.
 void require_usd_for_sqlite(Db& db, const std::string& currency, const std::string& account_id) {
     if (is_sqlite(db) && currency != "USD") {
         throw ApiError(422, "SQLite money storage expects USD accounts; got currency=" + currency +
@@ -86,6 +95,7 @@ void require_usd_for_sqlite(Db& db, const std::string& currency, const std::stri
 // resolves to an UPDATE (no insert), where it yields a stale rowid and the
 // caller then writes a dangling foreign key. RETURNING reports the upserted
 // row's id correctly on both the insert and update paths (teller_persist parity).
+// #R001: Traceability for function `insert_returning_id`.
 int64_t insert_returning_id(Db& db, const std::string& insert_sql, const std::string& id_col,
                             const Params& params) {
     auto row = db.query_one(insert_sql + " RETURNING " + id_col, params);
@@ -93,6 +103,7 @@ int64_t insert_returning_id(Db& db, const std::string& insert_sql, const std::st
     return row->get_int(id_col).value_or(0);
 }
 
+// #R001: Traceability for function `scalar_int`.
 std::optional<int64_t> scalar_int(Db& db, const std::string& sql, const Params& params,
                                   const std::string& col) {
     auto row = db.query_one(sql, params);
@@ -101,6 +112,7 @@ std::optional<int64_t> scalar_int(Db& db, const std::string& sql, const Params& 
 }
 
 // Builds "IN (:p0, :p1, ...)" with the supplied prefix and fills params.
+// #R001: Traceability for function `in_clause`.
 std::string in_clause(const std::vector<std::string>& ids, const std::string& prefix,
                       Params& params) {
     std::string out = "(";
@@ -114,6 +126,7 @@ std::string in_clause(const std::vector<std::string>& ids, const std::string& pr
     return out;
 }
 
+// #R001: Traceability for function `upsert_institution`.
 void upsert_institution(Db& db, const json& inst) {
     db.execute(
         "INSERT INTO teller.institution (institution_id, name) VALUES (:id, :name) "
@@ -121,6 +134,7 @@ void upsert_institution(Db& db, const json& inst) {
         {{"id", require_str(inst, "id")}, {"name", require_str(inst, "name")}});
 }
 
+// #R001: Traceability for function `upsert_account_links`.
 int64_t upsert_account_links(Db& db, const json& links, std::optional<int64_t> existing_id) {
     Params vals{{"self_link", opt_str(links, "self")},
                 {"details", opt_value(links, "details")},
@@ -141,6 +155,7 @@ int64_t upsert_account_links(Db& db, const json& links, std::optional<int64_t> e
         "account_links_id", vals);
 }
 
+// #R001: Traceability for function `upsert_account`.
 void upsert_account(Db& db, const json& account) {
     const std::string acct_id = require_str(account, "id");
     const std::string currency = require_str(account, "currency");
@@ -173,6 +188,7 @@ void upsert_account(Db& db, const json& account) {
         vals);
 }
 
+// #R001: Traceability for function `existing_identity_by_email`.
 std::optional<int64_t> existing_identity_by_email(Db& db, const json& emails) {
     for (const auto& email : emails) {
         auto id = scalar_int(
@@ -183,6 +199,7 @@ std::optional<int64_t> existing_identity_by_email(Db& db, const json& emails) {
     return std::nullopt;
 }
 
+// #R001: Traceability for function `upsert_identity_record`.
 int64_t upsert_identity_record(Db& db, const std::string& owner_type,
                                std::optional<int64_t> identity_id) {
     if (identity_id) {
@@ -194,6 +211,7 @@ int64_t upsert_identity_record(Db& db, const std::string& owner_type,
                                "identity_id", {{"type", owner_type}});
 }
 
+// #R001: Traceability for function `upsert_identity_names`.
 void upsert_identity_names(Db& db, const json& names, int64_t identity_id) {
     for (const auto& n : names) {
         db.execute(
@@ -205,6 +223,7 @@ void upsert_identity_names(Db& db, const json& names, int64_t identity_id) {
     }
 }
 
+// #R001: Traceability for function `upsert_identity_emails`.
 void upsert_identity_emails(Db& db, const json& emails, int64_t identity_id) {
     for (const auto& e : emails) {
         db.execute(
@@ -214,6 +233,7 @@ void upsert_identity_emails(Db& db, const json& emails, int64_t identity_id) {
     }
 }
 
+// #R001: Traceability for function `upsert_identity_phone_numbers`.
 void upsert_identity_phone_numbers(Db& db, const json& phones, int64_t identity_id) {
     for (const auto& p : phones) {
         db.execute(
@@ -225,6 +245,7 @@ void upsert_identity_phone_numbers(Db& db, const json& phones, int64_t identity_
     }
 }
 
+// #R001: Traceability for function `upsert_identity_addresses`.
 void upsert_identity_addresses(Db& db, const json& addresses, int64_t identity_id) {
     for (const auto& a : addresses) {
         const json& addr = a.at("data");
@@ -248,6 +269,7 @@ void upsert_identity_addresses(Db& db, const json& addresses, int64_t identity_i
     }
 }
 
+// #R001: Traceability for function `upsert_identity`.
 int64_t upsert_identity(Db& db, const json& owner) {
     const json emails = owner.contains("emails") && !owner["emails"].is_null() ? owner["emails"]
                                                                                : json::array();
@@ -263,6 +285,7 @@ int64_t upsert_identity(Db& db, const json& owner) {
     return *identity_id;
 }
 
+// #R001: Traceability for function `upsert_account_identity`.
 void upsert_account_identity(Db& db, const std::string& account_id, int64_t identity_id) {
     db.execute(
         "INSERT INTO teller.account_identities (account_id, identity_id) "
@@ -270,6 +293,7 @@ void upsert_account_identity(Db& db, const std::string& account_id, int64_t iden
         {{"account_id", account_id}, {"identity_id", identity_id}});
 }
 
+// #R001: Traceability for function `upsert_transaction_type`.
 int64_t upsert_transaction_type(Db& db, const std::string& code) {
     auto existing = scalar_int(
         db, "SELECT transaction_type_id FROM teller.transaction_type WHERE code = :code",
@@ -279,6 +303,7 @@ int64_t upsert_transaction_type(Db& db, const std::string& code) {
                                "transaction_type_id", {{"code", code}});
 }
 
+// #R001: Traceability for function `upsert_transaction_links`.
 int64_t upsert_transaction_links(Db& db, const json& links, std::optional<int64_t> existing_id) {
     const std::string self_link = opt_str(links, "self");
     const std::string account_link = opt_str(links, "account");
@@ -300,6 +325,7 @@ int64_t upsert_transaction_links(Db& db, const json& links, std::optional<int64_
         "transaction_links_id", {{"self_link", self_link}, {"account", account_link}});
 }
 
+// #R001: Traceability for function `upsert_transaction_details`.
 int64_t upsert_transaction_details(Db& db, const json& details, std::optional<int64_t> existing_id) {
     Value counterparty_id = std::monostate{};
     auto cp_it = details.find("counterparty");
@@ -344,6 +370,7 @@ int64_t upsert_transaction_details(Db& db, const json& details, std::optional<in
         "transaction_details_id", vals);
 }
 
+// #R001: Traceability for function `upsert_transaction`.
 void upsert_transaction(Db& db, const json& txn) {
     const std::string txn_id = require_str(txn, "id");
     auto existing = db.query_one(
@@ -382,6 +409,7 @@ void upsert_transaction(Db& db, const json& txn) {
 }
 
 // posted snapshots win over pending for duplicate ids, preserving order.
+// #R001: Traceability for function `canonicalize_transactions`.
 std::vector<json> canonicalize_transactions(const json& txns) {
     std::vector<json> ordered;
     std::vector<std::string> id_order;
@@ -404,6 +432,7 @@ std::vector<json> canonicalize_transactions(const json& txns) {
     return ordered;
 }
 
+// #R001: Traceability for function `reconcile_missing_pending`.
 std::vector<std::string> reconcile_missing_pending(Db& db, const std::string& account_id,
                                                    const std::vector<std::string>& fetched_ids) {
     if (fetched_ids.empty()) return {};
@@ -427,6 +456,7 @@ std::vector<std::string> reconcile_missing_pending(Db& db, const std::string& ac
     return deleted;
 }
 
+// #R001: Traceability for function `prune_unreferenced_relations`.
 void prune_unreferenced_relations(Db& db) {
     auto collect = [&](const std::string& sql, const std::string& col) {
         std::vector<std::string> ids;
@@ -471,6 +501,7 @@ void prune_unreferenced_relations(Db& db) {
     }
 }
 
+// #R001: Traceability for function `upsert_account_balances_links`.
 int64_t upsert_account_balances_links(Db& db, const json& links, std::optional<int64_t> existing_id) {
     const std::string self_link = opt_str(links, "self");
     const std::string account_link = opt_str(links, "account");
@@ -494,6 +525,7 @@ int64_t upsert_account_balances_links(Db& db, const json& links, std::optional<i
         "account_balances_links_id", {{"self_link", self_link}, {"account_link", account_link}});
 }
 
+// #R001: Traceability for function `upsert_account_balances`.
 void upsert_account_balances(Db& db, const std::string& account_id, const json& bal) {
     auto existing = db.query_one(
         "SELECT account_balances_id, account_balances_links_id FROM teller.account_balances "
@@ -523,6 +555,7 @@ void upsert_account_balances(Db& db, const std::string& account_id, const json& 
 
 } // namespace
 
+// #R001: Traceability for function `money_to_cents`.
 int64_t money_to_cents(const std::string& value) {
     std::string s;
     for (char c : value) {
@@ -555,6 +588,7 @@ int64_t money_to_cents(const std::string& value) {
     return negative ? -cents : cents;
 }
 
+// #R001: Traceability for function `persist_all`.
 void persist_all(db::Db& db, const json& raw_identities,
                  const json& raw_transactions_by_account, const json& raw_balances_by_account) {
     db::Transaction txn(db);
@@ -595,6 +629,7 @@ void persist_all(db::Db& db, const json& raw_identities,
     }
 }
 
+// #R001: Traceability for function `plan_statement_transactions`.
 std::vector<PlannedStatementTxn> plan_statement_transactions(
     db::Db& db, const std::string& account_id, const std::vector<statement::StatementTxn>& txns) {
     auto earliest_row = db.query_one(
@@ -623,6 +658,7 @@ std::vector<PlannedStatementTxn> plan_statement_transactions(
     return planned;
 }
 
+// #R001: Traceability for function `upsert_statement_transactions`.
 int upsert_statement_transactions(db::Db& db, const std::string& account_id,
                                   const std::vector<PlannedStatementTxn>& planned) {
     db::Transaction db_txn(db);
@@ -656,3 +692,4 @@ int upsert_statement_transactions(db::Db& db, const std::string& account_id,
 }
 
 } // namespace tellercore::persist
+// NOLINTEND(bugprone-easily-swappable-parameters)

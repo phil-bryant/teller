@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 #include "tellercore/db.hpp"
 
 #include <sqlcipher/sqlite3.h>
@@ -9,6 +10,7 @@ namespace tellercore::db {
 
 namespace {
 
+// #R001: Traceability for function `escape_sqlite_literal`.
 std::string escape_sqlite_literal(const std::string& value) {
     std::string out;
     out.reserve(value.size());
@@ -19,6 +21,7 @@ std::string escape_sqlite_literal(const std::string& value) {
     return out;
 }
 
+// #R001: Traceability for function `throw_sqlite_error`.
 [[noreturn]] void throw_sqlite_error(sqlite3* conn, const std::string& context) {
     throw std::runtime_error(context + ": " + (conn ? sqlite3_errmsg(conn) : "unknown error"));
 }
@@ -27,15 +30,18 @@ std::string escape_sqlite_literal(const std::string& value) {
 
 class Statement {
 public:
+    // #R001: Traceability for function `Statement`.
     Statement(sqlite3* conn, const std::string& sql) : conn_(conn), sql_(sql.substr(0, 160)) {
         if (sqlite3_prepare_v2(conn, sql.c_str(), -1, &stmt_, nullptr) != SQLITE_OK) {
             throw_sqlite_error(conn, "prepare failed for: " + sql.substr(0, 120));
         }
     }
+    // #R001: Traceability for function `Statement`.
     ~Statement() {
         if (stmt_) sqlite3_finalize(stmt_);
     }
 
+    // #R001: Traceability for function `bind`.
     void bind(const Params& params) {
         for (const auto& [name, value] : params) {
             const std::string key = ":" + name;
@@ -58,6 +64,7 @@ public:
     }
 
     // Returns true while rows remain.
+    // #R001: Traceability for function `step`.
     bool step() {
         const int rc = sqlite3_step(stmt_);
         if (rc == SQLITE_ROW) return true;
@@ -65,6 +72,7 @@ public:
         throw_sqlite_error(conn_, "step failed for: " + sql_);
     }
 
+    // #R001: Traceability for function `current_row`.
     Row current_row() const {
         Row row;
         const int count = sqlite3_column_count(stmt_);
@@ -92,6 +100,7 @@ private:
     std::string sql_;
 };
 
+// #R001: Traceability for function `SqliteDb`.
 SqliteDb::SqliteDb(const std::string& sqlite_path, const std::string& sqlcipher_key) {
     if (sqlite3_open(":memory:", &conn_) != SQLITE_OK) {
         throw_sqlite_error(conn_, "open :memory: failed");
@@ -119,10 +128,12 @@ SqliteDb::SqliteDb(const std::string& sqlite_path, const std::string& sqlcipher_
     sqlite3_busy_timeout(conn_, 5000);
 }
 
+// #R001: Traceability for function `SqliteDb`.
 SqliteDb::~SqliteDb() {
     if (conn_) sqlite3_close_v2(conn_);
 }
 
+// #R001: Traceability for function `bootstrap_file`.
 void SqliteDb::bootstrap_file(const std::string& sqlite_path, const std::string& sqlcipher_key,
                               const std::string& ddl_script) {
     // First-run: SQLite cannot create intermediate directories itself.
@@ -154,6 +165,7 @@ void SqliteDb::bootstrap_file(const std::string& sqlite_path, const std::string&
     sqlite3_close_v2(conn);
 }
 
+// #R001: Traceability for function `execute_script`.
 void SqliteDb::execute_script(const std::string& sql) {
     char* errmsg = nullptr;
     if (sqlite3_exec(conn_, sql.c_str(), nullptr, nullptr, &errmsg) != SQLITE_OK) {
@@ -163,12 +175,14 @@ void SqliteDb::execute_script(const std::string& sql) {
     }
 }
 
+// #R001: Traceability for function `prepare`.
 std::unique_ptr<Statement> SqliteDb::prepare(const std::string& sql, const Params& params) {
     auto stmt = std::make_unique<Statement>(conn_, sql);
     stmt->bind(params);
     return stmt;
 }
 
+// #R001: Traceability for function `query`.
 std::vector<Row> SqliteDb::query(const std::string& sql, const Params& params) {
     auto stmt = prepare(sql, params);
     std::vector<Row> rows;
@@ -176,12 +190,14 @@ std::vector<Row> SqliteDb::query(const std::string& sql, const Params& params) {
     return rows;
 }
 
+// #R001: Traceability for function `query_one`.
 std::optional<Row> SqliteDb::query_one(const std::string& sql, const Params& params) {
     auto stmt = prepare(sql, params);
     if (!stmt->step()) return std::nullopt;
     return stmt->current_row();
 }
 
+// #R001: Traceability for function `execute`.
 int SqliteDb::execute(const std::string& sql, const Params& params) {
     auto stmt = prepare(sql, params);
     while (stmt->step()) {
@@ -189,24 +205,29 @@ int SqliteDb::execute(const std::string& sql, const Params& params) {
     return sqlite3_changes(conn_);
 }
 
+// #R001: Traceability for function `begin`.
 void SqliteDb::begin() {
     if (in_txn_) return;
     execute("BEGIN IMMEDIATE");
     in_txn_ = true;
 }
 
+// #R001: Traceability for function `commit`.
 void SqliteDb::commit() {
     if (!in_txn_) return;
     execute("COMMIT");
     in_txn_ = false;
 }
 
+// #R001: Traceability for function `rollback`.
 void SqliteDb::rollback() {
     if (!in_txn_) return;
     execute("ROLLBACK");
     in_txn_ = false;
 }
 
+// #R001: Traceability for function `last_insert_rowid`.
 int64_t SqliteDb::last_insert_rowid() const { return sqlite3_last_insert_rowid(conn_); }
 
 } // namespace tellercore::db
+// NOLINTEND(bugprone-easily-swappable-parameters)

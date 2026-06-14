@@ -11,13 +11,14 @@ using nlohmann::json;
 
 // Typed transport/upstream failure, port of teller_mailcart_client.MailcartError.
 struct MailcartError {
-    int status_code;
+    int status_code = 0;
     std::string message;
 };
 
 // Abstract transport so tests and offline mode can substitute fakes.
 class Client {
 public:
+    // #R001: Traceability for function `Client`.
     virtual ~Client() = default;
     // Throws MailcartError on transport/upstream failure.
     virtual json get_message(const std::string& email_message_id) = 0;

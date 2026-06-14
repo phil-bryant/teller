@@ -13,6 +13,7 @@
 // Statement root resolution (mirrors the Python script):
 //   --statements-root, else $TELLER_BANK_STATEMENTS_ROOT, else
 //   ./config/bank_statements relative to the current directory.
+// NOLINTBEGIN(concurrency-mt-unsafe,bugprone-exception-escape)
 
 #include <algorithm>
 #include <cstdlib>
@@ -52,6 +53,7 @@ struct AccountRow {
     std::optional<std::string> last_four;
 };
 
+// #R001: Traceability for function `parse_args`.
 bool parse_args(int argc, char** argv, Args& args) {
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -72,6 +74,7 @@ bool parse_args(int argc, char** argv, Args& args) {
     return true;
 }
 
+// #R001: Traceability for function `statements_root`.
 fs::path statements_root(const std::optional<std::string>& cli_root) {
     std::string root;
     if (cli_root && !cli_root->empty()) {
@@ -87,6 +90,7 @@ fs::path statements_root(const std::optional<std::string>& cli_root) {
     return fs::absolute(fs::path(root));
 }
 
+// #R001: Traceability for function `list_institution_ids`.
 std::vector<std::string> list_institution_ids(db::Db& db, const std::optional<std::string>& only) {
     if (only) return {*only};
     std::vector<std::string> ids;
@@ -97,6 +101,7 @@ std::vector<std::string> list_institution_ids(db::Db& db, const std::optional<st
     return ids;
 }
 
+// #R001: Traceability for function `pdfs_for_institution`.
 std::vector<fs::path> pdfs_for_institution(const fs::path& root, const std::string& institution_id) {
     const fs::path dir = root / institution_id;
     std::error_code ec;
@@ -111,6 +116,7 @@ std::vector<fs::path> pdfs_for_institution(const fs::path& root, const std::stri
     return pdfs;
 }
 
+// #R001: Traceability for function `accounts_for_institution`.
 std::vector<AccountRow> accounts_for_institution(db::Db& db, const std::string& institution_id) {
     std::vector<AccountRow> rows;
     for (const auto& row : db.query(
@@ -129,6 +135,7 @@ std::vector<AccountRow> accounts_for_institution(db::Db& db, const std::string& 
     return rows;
 }
 
+// #R001: Traceability for function `match_statement_to_account`.
 std::string match_statement_to_account(const fs::path& pdf_path,
                                         const std::vector<std::string>& pages,
                                         const std::vector<AccountRow>& account_rows,
@@ -166,6 +173,7 @@ std::string match_statement_to_account(const fs::path& pdf_path,
 }
 
 // Sum the absolute cents of positive (deposits) or negative (withdrawals) txns.
+// #R001: Traceability for function `sum_cents`.
 int64_t sum_cents(const std::vector<statement::StatementTxn>& txns, bool positive) {
     int64_t total = 0;
     for (const auto& txn : txns) {
@@ -176,6 +184,7 @@ int64_t sum_cents(const std::vector<statement::StatementTxn>& txns, bool positiv
     return total;
 }
 
+// #R001: Traceability for function `cents_to_string`.
 std::string cents_to_string(int64_t cents) {
     const bool negative = cents < 0;
     const int64_t abs_cents = negative ? -cents : cents;
@@ -189,6 +198,7 @@ struct ParsedStatement {
     std::vector<statement::StatementTxn> txns;
 };
 
+// #R001: Traceability for function `parse_statement_pdf`.
 ParsedStatement parse_statement_pdf(ocr::OcrBackend& backend, const fs::path& pdf_path,
                                     const std::string& institution_id,
                                     const std::vector<AccountRow>& account_rows,
@@ -235,6 +245,7 @@ struct Counts {
     int parsed = 0;
 };
 
+// #R001: Traceability for function `process_institution`.
 Counts process_institution(db::Db& db, ocr::OcrBackend& backend, const fs::path& root,
                            const std::string& institution_id,
                            const std::optional<std::string>& account_id_override, bool dry_run) {
@@ -285,6 +296,7 @@ Counts process_institution(db::Db& db, ocr::OcrBackend& backend, const fs::path&
 
 } // namespace
 
+// #R001: Traceability for function `main`.
 int main(int argc, char** argv) {
     Args args;
     try {
@@ -333,3 +345,4 @@ int main(int argc, char** argv) {
         return 1;
     }
 }
+// NOLINTEND(concurrency-mt-unsafe,bugprone-exception-escape)

@@ -34,27 +34,33 @@ std::mutex g_mutex;
 // run. teller_core_close() exists for callers wanting an orderly shutdown.
 CoreState* g_core = nullptr;
 
+// #R001: Traceability for function `dup_string`.
 char* dup_string(const std::string& value) {
     char* out = static_cast<char*>(std::malloc(value.size() + 1));
     if (out != nullptr) std::memcpy(out, value.c_str(), value.size() + 1);
     return out;
 }
 
+// #R001: Traceability for function `dump_replacing_invalid_utf8`.
 std::string dump_replacing_invalid_utf8(const json& value) {
     return value.dump(-1, ' ', false, json::error_handler_t::replace);
 }
 
+// #R001: Traceability for function `ok_envelope`.
 char* ok_envelope(const json& body) {
     return dup_string(dump_replacing_invalid_utf8(json{{"ok", true}, {"body", body}}));
 }
 
+// #R001: Traceability for function `ok_bare`.
 char* ok_bare() { return dup_string(dump_replacing_invalid_utf8(json{{"ok", true}})); }
 
+// #R001: Traceability for function `error_envelope`.
 char* error_envelope(int status, const std::string& detail) {
     return dup_string(
         dump_replacing_invalid_utf8(json{{"ok", false}, {"status", status}, {"detail", detail}}));
 }
 
+// #R001: Traceability for function `read_file`.
 std::string read_file(const std::string& path) {
     std::ifstream in(path);
     if (!in.is_open()) throw ApiError(500, "cannot open DDL file: " + path);
@@ -63,6 +69,7 @@ std::string read_file(const std::string& path) {
     return buffer.str();
 }
 
+// #R001: Traceability for function `profile_from_config`.
 DbProfile profile_from_config(const json& config) {
     const std::string sqlite_path = config.value("sqlite_path", "");
     if (!sqlite_path.empty()) {
@@ -76,6 +83,7 @@ DbProfile profile_from_config(const json& config) {
     return resolve_profile();
 }
 
+// #R001: Traceability for function `invoke_op`.
 json invoke_op(CoreState& core, const std::string& op, const json& args) {
     if (op == "persist") {
         const json identities = args.contains("identities") ? args["identities"] : json::array();
@@ -138,6 +146,7 @@ json invoke_op(CoreState& core, const std::string& op, const json& args) {
 
 extern "C" {
 
+// #R001: Traceability for function `teller_core_open`.
 char* teller_core_open(const char* config_json) {
     std::lock_guard<std::mutex> lock(g_mutex);
     try {
@@ -172,6 +181,7 @@ char* teller_core_open(const char* config_json) {
     }
 }
 
+// #R001: Traceability for function `teller_core_invoke`.
 char* teller_core_invoke(const char* request_json) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_core == nullptr) return error_envelope(409, "core is not open; call teller_core_open first");
@@ -192,8 +202,10 @@ char* teller_core_invoke(const char* request_json) {
     }
 }
 
+// #R001: Traceability for function `teller_core_free`.
 void teller_core_free(char* ptr) { std::free(ptr); }
 
+// #R001: Traceability for function `teller_core_close`.
 char* teller_core_close(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
     delete g_core;

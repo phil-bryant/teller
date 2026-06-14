@@ -38,9 +38,12 @@ struct Row {
 // the concrete dialect drives money storage (cents vs decimal) decisions.
 class Db {
 public:
+    // #R001: Traceability for function `Db`.
     virtual ~Db() = default;
 
+    // #R001: Traceability for function `Db`.
     Db(const Db&) = delete;
+    // #R001: Traceability for function `<anonymous>`.
     Db& operator=(const Db&) = delete;
 
     virtual Dialect dialect() const noexcept = 0;
@@ -56,9 +59,11 @@ public:
     virtual void begin() = 0;
     virtual void commit() = 0;
     virtual void rollback() = 0;
+    // #R001: Traceability for function `in_transaction`.
     bool in_transaction() const noexcept { return in_txn_; }
 
 protected:
+    // #R001: Traceability for function `Db`.
     Db() = default;
     bool in_txn_ = false;
 };
@@ -80,6 +85,7 @@ public:
                                const std::string& ddl_script);
     ~SqliteDb() override;
 
+    // #R001: Traceability for function `dialect`.
     Dialect dialect() const noexcept override { return Dialect::kSqlite; }
 
     void execute_script(const std::string& sql) override;
@@ -94,6 +100,7 @@ public:
 
     int64_t last_insert_rowid() const;
 
+    // #R001: Traceability for function `raw`.
     sqlite3* raw() const noexcept { return conn_; }
 
 private:

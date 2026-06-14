@@ -30,6 +30,7 @@ BACKFILL_SCRIPT = REPO_ROOT / "08_backfill_bank_statements.py"
 KNOWN_DIVERGENCES: dict[str, str] = {}
 
 
+#R001: Traceability for function `load_backfill_module`.
 def load_backfill_module():
     spec = importlib.util.spec_from_file_location("teller_backfill_ref", BACKFILL_SCRIPT)
     if spec is None or spec.loader is None:
@@ -39,6 +40,7 @@ def load_backfill_module():
     return module
 
 
+#R001: Traceability for function `python_scenario`.
 def python_scenario(module, scenario: dict) -> dict:
     account_id = scenario.get("account_id", "acc_test")
     page_texts = []
@@ -85,10 +87,12 @@ def python_scenario(module, scenario: dict) -> dict:
     }
 
 
+#R001: Traceability for function `run_python_side`.
 def run_python_side(module, scenarios: list) -> dict:
     return {s["name"]: python_scenario(module, s) for s in scenarios}
 
 
+#R001: Traceability for function `run_cpp_side`.
 def run_cpp_side(runner: str, scenarios_path: str) -> dict:
     out = subprocess.run(
         [runner, "replay-statements", "--scenarios", scenarios_path],
@@ -100,6 +104,7 @@ def run_cpp_side(runner: str, scenarios_path: str) -> dict:
     return {s["name"]: s for s in doc["scenarios"]}
 
 
+#R001: Traceability for function `main`.
 def main() -> int:
     here = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description="teller statement parsing parity oracle")

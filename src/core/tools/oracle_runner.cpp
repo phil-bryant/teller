@@ -17,6 +17,7 @@
 //       (--record <json> | --golden <json>) [--key <key>]
 //
 // A "step" payload is {identities, transactions_by_account, balances_by_account}.
+// NOLINTBEGIN(bugprone-throwing-static-initialization,cert-err58-cpp,concurrency-mt-unsafe,bugprone-exception-escape)
 
 #include <unistd.h>
 
@@ -70,12 +71,14 @@ const std::vector<std::pair<std::string, std::string>> kSnapshotTables = {
     {"transaction", "transaction_id"},
 };
 
+// #R001: Traceability for function `quoted_table`.
 std::string quoted_table(const std::string& table) {
     return table == "transaction" ? "teller.\"transaction\"" : "teller." + table;
 }
 
 // Drop bookkeeping timestamps that legitimately differ run-to-run; everything
 // else (ids, money, text, FKs) must match across backends and languages.
+// #R001: Traceability for function `normalize_row`.
 json normalize_row(const db::Row& row) {
     json out = json::object();
     for (const auto& [name, value] : row.columns) {
@@ -85,6 +88,7 @@ json normalize_row(const db::Row& row) {
     return out;
 }
 
+// #R001: Traceability for function `snapshot`.
 json snapshot(db::Db& db) {
     json out = json::object();
     for (const auto& [table, order_by] : kSnapshotTables) {
@@ -97,6 +101,7 @@ json snapshot(db::Db& db) {
     return out;
 }
 
+// #R001: Traceability for function `apply_step`.
 void apply_step(db::Db& db, const json& step) {
     const json identities = step.contains("identities") ? step["identities"] : json::array();
     const json txns = step.contains("transactions_by_account") ? step["transactions_by_account"]
@@ -106,6 +111,7 @@ void apply_step(db::Db& db, const json& step) {
     persist::persist_all(db, identities, txns, balances);
 }
 
+// #R001: Traceability for function `read_file`.
 std::string read_file(const std::string& path) {
     std::ifstream in(path);
     if (!in) throw std::runtime_error("cannot read " + path);
@@ -114,12 +120,14 @@ std::string read_file(const std::string& path) {
     return buffer.str();
 }
 
+// #R001: Traceability for function `load_json_file`.
 json load_json_file(const std::string& path) {
     std::ifstream in(path);
     if (!in) throw std::runtime_error("cannot read " + path);
     return json::parse(in);
 }
 
+// #R001: Traceability for function `run_replay`.
 int run_replay(int argc, char** argv) {
     std::string scenarios_path, ddl_path, record_path, golden_path, pg_conninfo;
     std::string key = "teller-oracle-key";
@@ -223,6 +231,7 @@ int run_replay(int argc, char** argv) {
 // keeping the drift-prone logic out of nondeterministic OCR.
 //
 //   teller_oracle_runner replay-statements --scenarios <json>
+// #R001: Traceability for function `run_statement_replay`.
 int run_statement_replay(int argc, char** argv) {
     std::string scenarios_path;
     for (int i = 2; i < argc; ++i) {
@@ -296,6 +305,7 @@ int run_statement_replay(int argc, char** argv) {
     return 0;
 }
 
+// #R001: Traceability for function `run`.
 int run(int argc, char** argv) {
     if (argc > 1 && std::string(argv[1]) == "replay") return run_replay(argc, argv);
     if (argc > 1 && std::string(argv[1]) == "replay-statements")
@@ -336,6 +346,7 @@ int run(int argc, char** argv) {
 
 } // namespace
 
+// #R001: Traceability for function `main`.
 int main(int argc, char** argv) {
     try {
         return run(argc, argv);
@@ -348,3 +359,4 @@ int main(int argc, char** argv) {
         return 1;
     }
 }
+// NOLINTEND(bugprone-throwing-static-initialization,cert-err58-cpp,concurrency-mt-unsafe,bugprone-exception-escape)

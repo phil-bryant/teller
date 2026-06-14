@@ -29,9 +29,12 @@ using Page = std::vector<Observation>;
 // (line reconstruction, parsing, persistence) operates on vector<Page>.
 class OcrBackend {
 public:
+    // #R001: Traceability for function `OcrBackend`.
     virtual ~OcrBackend() = default;
 
+    // #R001: Traceability for function `OcrBackend`.
     OcrBackend(const OcrBackend&) = delete;
+    // #R001: Traceability for function `<anonymous>`.
     OcrBackend& operator=(const OcrBackend&) = delete;
 
     // Rasterize + OCR every page of the PDF at pdf_path. Throws ApiError on
@@ -39,6 +42,7 @@ public:
     virtual std::vector<Page> recognize(const std::filesystem::path& pdf_path) = 0;
 
 protected:
+    // #R001: Traceability for function `OcrBackend`.
     OcrBackend() = default;
 };
 

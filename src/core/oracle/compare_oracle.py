@@ -28,25 +28,28 @@ if str(SRC_ROOT) not in sys.path:
 
 from pysqlcipher3 import dbapi2 as sqlcipher  # noqa: E402
 
-# (table, order-by column) -- must match oracle_runner.cpp kSnapshotTables.
+# (table, snapshot query) -- must match oracle_runner.cpp kSnapshotTables order.
 SNAPSHOT_TABLES = [
-    ("institution", "institution_id"),
-    ("account_links", "account_links_id"),
-    ("account", "account_id"),
-    ("identity", "identity_id"),
-    ("identity_name", "identity_name_id"),
-    ("identity_email", "identity_email_id"),
-    ("identity_phone_number", "identity_phone_number_id"),
-    ("identity_address_data", "identity_address_data_id"),
-    ("identity_address", "identity_address_id"),
-    ("account_identities", "account_identities_id"),
-    ("account_balances_links", "account_balances_links_id"),
-    ("account_balances", "account_balances_id"),
-    ("transaction_type", "transaction_type_id"),
-    ("transaction_details_counterparty", "transaction_details_counterparty_id"),
-    ("transaction_details", "transaction_details_id"),
-    ("transaction_links", "transaction_links_id"),
-    ("transaction", "transaction_id"),
+    ("institution", "SELECT * FROM institution ORDER BY institution_id"),
+    ("account_links", "SELECT * FROM account_links ORDER BY account_links_id"),
+    ("account", "SELECT * FROM account ORDER BY account_id"),
+    ("identity", "SELECT * FROM identity ORDER BY identity_id"),
+    ("identity_name", "SELECT * FROM identity_name ORDER BY identity_name_id"),
+    ("identity_email", "SELECT * FROM identity_email ORDER BY identity_email_id"),
+    ("identity_phone_number", "SELECT * FROM identity_phone_number ORDER BY identity_phone_number_id"),
+    ("identity_address_data", "SELECT * FROM identity_address_data ORDER BY identity_address_data_id"),
+    ("identity_address", "SELECT * FROM identity_address ORDER BY identity_address_id"),
+    ("account_identities", "SELECT * FROM account_identities ORDER BY account_identities_id"),
+    ("account_balances_links", "SELECT * FROM account_balances_links ORDER BY account_balances_links_id"),
+    ("account_balances", "SELECT * FROM account_balances ORDER BY account_balances_id"),
+    ("transaction_type", "SELECT * FROM transaction_type ORDER BY transaction_type_id"),
+    (
+        "transaction_details_counterparty",
+        "SELECT * FROM transaction_details_counterparty ORDER BY transaction_details_counterparty_id",
+    ),
+    ("transaction_details", "SELECT * FROM transaction_details ORDER BY transaction_details_id"),
+    ("transaction_links", "SELECT * FROM transaction_links ORDER BY transaction_links_id"),
+    ('transaction', 'SELECT * FROM "transaction" ORDER BY transaction_id'),
 ]
 DROP_COLUMNS = {"created_at", "updated_at"}
 
@@ -56,17 +59,14 @@ DROP_COLUMNS = {"created_at", "updated_at"}
 KNOWN_DIVERGENCES: dict[str, str] = {}
 
 
-def quoted(table: str) -> str:
-    return '"transaction"' if table == "transaction" else table
-
-
+#R001: Traceability for function `python_snapshot`.
 def python_snapshot(db_path: str, key: str) -> dict:
     conn = sqlcipher.connect(db_path)
     cur = conn.cursor()
     cur.execute(f"PRAGMA key = '{key}'")
     snapshot: dict[str, list] = {}
-    for table, order_by in SNAPSHOT_TABLES:
-        cur.execute(f"SELECT * FROM {quoted(table)} ORDER BY {order_by}")
+    for table, snapshot_query in SNAPSHOT_TABLES:
+        cur.execute(snapshot_query)
         columns = [d[0] for d in cur.description]
         rows = []
         for raw in cur.fetchall():
@@ -78,6 +78,7 @@ def python_snapshot(db_path: str, key: str) -> dict:
     return snapshot
 
 
+#R001: Traceability for function `run_python_side`.
 def run_python_side(scenarios: list, ddl_sql: str, key: str) -> dict:
     import teller.teller_db as teller_db
     from teller.teller_db_profile import reset_profile_cache
@@ -116,6 +117,7 @@ def run_python_side(scenarios: list, ddl_sql: str, key: str) -> dict:
     return results
 
 
+#R001: Traceability for function `run_cpp_side`.
 def run_cpp_side(runner: str, scenarios_path: str, ddl_path: str, key: str) -> dict:
     with tempfile.NamedTemporaryFile("r", suffix=".json", delete=False) as out:
         record_path = out.name
@@ -129,6 +131,7 @@ def run_cpp_side(runner: str, scenarios_path: str, ddl_path: str, key: str) -> d
     return {s["name"]: s["snapshot"] for s in doc["scenarios"]}
 
 
+#R001: Traceability for function `main`.
 def main() -> int:
     here = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description="teller persist parity oracle")

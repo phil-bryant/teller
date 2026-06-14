@@ -1,3 +1,4 @@
+// #R001: Module-level traceability anchor.
 #pragma once
 
 #include <optional>

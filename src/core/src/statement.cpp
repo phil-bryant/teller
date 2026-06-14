@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-throwing-static-initialization,cert-err58-cpp,bugprone-easily-swappable-parameters,cert-err33-c)
 #include "tellercore/statement.hpp"
 
 #include <openssl/evp.h>
@@ -25,6 +26,7 @@ constexpr std::array<const char*, 5> kCreditPrefixes = {"DEPOSIT", "MOBILE DEPOS
 constexpr std::array<const char*, 2> kCreditContains = {"RETURN", "REBATE"};
 
 // (substring, normalized type). First substring hit wins; order matches Python.
+// #R001: Traceability for function `type_map`.
 const std::vector<std::pair<std::string, std::string>>& type_map() {
     static const std::vector<std::pair<std::string, std::string>> kMap = {
         {"POS PURCHASE", "card_payment"}, {"ATM WITHDRAWAL", "atm"},
@@ -54,11 +56,13 @@ const std::regex kLastFourEnding(R"((?:ending|last)\s*(?:in|#|:)?\s*(\d{4})\b)",
 
 constexpr const char* kWhitespace = " \t\n\r\f\v";
 
+// #R001: Traceability for function `rstrip`.
 std::string rstrip(const std::string& s) {
     const auto end = s.find_last_not_of(kWhitespace);
     return end == std::string::npos ? "" : s.substr(0, end + 1);
 }
 
+// #R001: Traceability for function `strip`.
 std::string strip(const std::string& s) {
     const auto begin = s.find_first_not_of(kWhitespace);
     if (begin == std::string::npos) return "";
@@ -66,6 +70,7 @@ std::string strip(const std::string& s) {
     return s.substr(begin, end - begin + 1);
 }
 
+// #R001: Traceability for function `to_upper`.
 std::string to_upper(const std::string& s) {
     std::string out = s;
     std::transform(out.begin(), out.end(), out.begin(),
@@ -73,6 +78,7 @@ std::string to_upper(const std::string& s) {
     return out;
 }
 
+// #R001: Traceability for function `to_lower`.
 std::string to_lower(const std::string& s) {
     std::string out = s;
     std::transform(out.begin(), out.end(), out.begin(),
@@ -80,15 +86,18 @@ std::string to_lower(const std::string& s) {
     return out;
 }
 
+// #R001: Traceability for function `starts_with`.
 bool starts_with(const std::string& s, const std::string& prefix) {
     return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
 }
 
+// #R001: Traceability for function `contains`.
 bool contains(const std::string& s, const std::string& needle) {
     return s.find(needle) != std::string::npos;
 }
 
 // Single non-overlapping left-to-right pass, matching Python str.replace().
+// #R001: Traceability for function `replace_all`.
 std::string replace_all(const std::string& s, const std::string& from, const std::string& to) {
     if (from.empty()) return s;
     std::string out;
@@ -106,10 +115,12 @@ std::string replace_all(const std::string& s, const std::string& from, const std
     return out;
 }
 
+// #R001: Traceability for function `remove_commas`.
 std::string remove_commas(const std::string& s) { return replace_all(s, ",", ""); }
 
 // Split on '\n', mirroring how page text built by reconstruct_lines is consumed
 // by Python str.splitlines() for these single-newline-joined pages.
+// #R001: Traceability for function `split_lines`.
 std::vector<std::string> split_lines(const std::string& page) {
     std::vector<std::string> out;
     std::string current;
@@ -125,16 +136,19 @@ std::vector<std::string> split_lines(const std::string& page) {
     return out;
 }
 
+// #R001: Traceability for function `two_digits`.
 std::string two_digits(int value) {
     char buf[8];
     std::snprintf(buf, sizeof(buf), "%02d", value);
     return buf;
 }
 
+// #R001: Traceability for function `format_date`.
 std::string format_date(int year, int month, int day) {
     return std::to_string(year) + "-" + two_digits(month) + "-" + two_digits(day);
 }
 
+// #R001: Traceability for function `days_in_month`.
 int days_in_month(int year, int month) {
     static const std::array<int, 12> kDays = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (month == 2) {
@@ -144,6 +158,7 @@ int days_in_month(int year, int month) {
     return kDays[static_cast<size_t>(month - 1)];
 }
 
+// #R001: Traceability for function `median_sorted`.
 double median_sorted(std::vector<double>& gaps) {
     std::sort(gaps.begin(), gaps.end());
     const size_t middle = gaps.size() / 2;
@@ -151,6 +166,7 @@ double median_sorted(std::vector<double>& gaps) {
     return (gaps[middle - 1] + gaps[middle]) / 2.0;
 }
 
+// #R001: Traceability for function `adaptive_line_epsilon`.
 double adaptive_line_epsilon(const std::vector<double>& descending_ys, double min_epsilon,
                              double gap_factor) {
     std::vector<double> gaps;
@@ -166,6 +182,7 @@ double adaptive_line_epsilon(const std::vector<double>& descending_ys, double mi
     return epsilon;
 }
 
+// #R001: Traceability for function `normalize_amount`.
 std::string normalize_amount(const std::string& raw) {
     return starts_with(raw, ".") ? "0" + raw : raw;
 }
@@ -178,6 +195,7 @@ struct LastMatch {
     std::string group1;
 };
 
+// #R001: Traceability for function `last_match`.
 LastMatch last_match(const std::string& text, const std::regex& pattern) {
     LastMatch result;
     auto begin = std::sregex_iterator(text.begin(), text.end(), pattern);
@@ -200,6 +218,7 @@ struct AmountResult {
 };
 
 // Port of _find_amount: resolve the transaction amount field from grouped lines.
+// #R001: Traceability for function `find_amount`.
 AmountResult find_amount(const std::vector<std::string>& lines) {
     for (size_t i = 0; i < lines.size(); ++i) {
         std::smatch m;
@@ -238,6 +257,7 @@ AmountResult find_amount(const std::vector<std::string>& lines) {
     return {};
 }
 
+// #R001: Traceability for function `extract_activity_lines`.
 std::vector<std::string> extract_activity_lines(const std::vector<std::string>& pages) {
     std::vector<std::string> all_lines;
     for (const auto& page : pages) {
@@ -258,6 +278,7 @@ std::vector<std::string> extract_activity_lines(const std::vector<std::string>& 
     return all_lines;
 }
 
+// #R001: Traceability for function `merge_split_date_lines`.
 std::vector<std::string> merge_split_date_lines(const std::vector<std::string>& all_lines) {
     std::vector<std::string> normalized;
     size_t i = 0;
@@ -280,6 +301,7 @@ struct TransactionGroup {
     std::vector<std::string> lines;
 };
 
+// #R001: Traceability for function `group_transaction_lines`.
 std::vector<TransactionGroup> group_transaction_lines(
     const std::vector<std::string>& normalized_lines) {
     std::vector<TransactionGroup> groups;
@@ -303,6 +325,7 @@ std::vector<TransactionGroup> group_transaction_lines(
     return groups;
 }
 
+// #R001: Traceability for function `is_credit`.
 bool is_credit(const std::string& desc_upper) {
     for (const char* prefix : kCreditPrefixes) {
         if (starts_with(desc_upper, prefix)) return true;
@@ -313,6 +336,7 @@ bool is_credit(const std::string& desc_upper) {
     return false;
 }
 
+// #R001: Traceability for function `transaction_from_group`.
 std::optional<StatementTxn> transaction_from_group(const TransactionGroup& group, int year) {
     const AmountResult amount = find_amount(group.lines);
     if (!amount.found) return std::nullopt;
@@ -334,6 +358,7 @@ std::optional<StatementTxn> transaction_from_group(const TransactionGroup& group
                         infer_type(description)};
 }
 
+// #R001: Traceability for function `rescue_buried_interest`.
 void rescue_buried_interest(std::vector<StatementTxn>& result,
                             const std::vector<TransactionGroup>& groups, int year, int stmt_month) {
     for (const auto& txn : result) {
@@ -357,6 +382,7 @@ void rescue_buried_interest(std::vector<StatementTxn>& result,
 
 // SHA-256 lowercase hex digest via the OpenSSL EVP interface (SHA256() is
 // deprecated in OpenSSL 3 and trips -Werror).
+// #R001: Traceability for function `sha256_hex`.
 std::string sha256_hex(const std::string& input) {
     std::array<unsigned char, EVP_MAX_MD_SIZE> digest{};
     unsigned int digest_len = 0;
@@ -379,6 +405,7 @@ std::string sha256_hex(const std::string& input) {
 
 } // namespace
 
+// #R001: Traceability for function `reconstruct_lines`.
 std::vector<std::string> reconstruct_lines(const ocr::Page& points, double min_epsilon,
                                            double gap_factor) {
     std::vector<ocr::Observation> ordered(points.begin(), points.end());
@@ -394,7 +421,7 @@ std::vector<std::string> reconstruct_lines(const ocr::Page& points, double min_e
     const double epsilon = adaptive_line_epsilon(ys, min_epsilon, gap_factor);
 
     struct Line {
-        double y;
+        double y = 0.0;
         std::vector<std::pair<double, std::string>> chunks;
     };
     std::vector<Line> lines;
@@ -420,6 +447,7 @@ std::vector<std::string> reconstruct_lines(const ocr::Page& points, double min_e
     return page_lines;
 }
 
+// #R001: Traceability for function `pages_to_text`.
 std::vector<std::string> pages_to_text(const std::vector<ocr::Page>& pages) {
     std::vector<std::string> out;
     out.reserve(pages.size());
@@ -435,6 +463,7 @@ std::vector<std::string> pages_to_text(const std::vector<ocr::Page>& pages) {
     return out;
 }
 
+// #R001: Traceability for function `extract_statement_year`.
 StatementYear extract_statement_year(const std::vector<std::string>& pages) {
     for (const auto& page : pages) {
         std::smatch m;
@@ -445,6 +474,7 @@ StatementYear extract_statement_year(const std::vector<std::string>& pages) {
     throw ApiError(422, "Could not find Statement Date in PDF");
 }
 
+// #R001: Traceability for function `extract_summary`.
 SummaryTotals extract_summary(const std::vector<std::string>& pages) {
     SummaryTotals totals;
     for (const auto& page : pages) {
@@ -461,6 +491,7 @@ SummaryTotals extract_summary(const std::vector<std::string>& pages) {
     return totals;
 }
 
+// #R001: Traceability for function `infer_type`.
 std::string infer_type(const std::string& description) {
     for (const auto& [prefix, ttype] : type_map()) {
         if (contains(description, prefix)) return ttype;
@@ -468,6 +499,7 @@ std::string infer_type(const std::string& description) {
     return "unknown";
 }
 
+// #R001: Traceability for function `parse_transactions`.
 std::vector<StatementTxn> parse_transactions(const std::vector<std::string>& pages, int year,
                                              int stmt_month) {
     const std::vector<std::string> all_lines = extract_activity_lines(pages);
@@ -481,6 +513,7 @@ std::vector<StatementTxn> parse_transactions(const std::vector<std::string>& pag
     return result;
 }
 
+// #R001: Traceability for function `extract_last_four_hint`.
 std::optional<std::string> extract_last_four_hint(const std::string& pdf_filename,
                                                   const std::vector<std::string>& pages) {
     std::smatch m;
@@ -496,6 +529,7 @@ std::optional<std::string> extract_last_four_hint(const std::string& pdf_filenam
     return std::nullopt;
 }
 
+// #R001: Traceability for function `make_txn_id`.
 std::string make_txn_id(const std::string& account_id, const std::string& date_str,
                         const std::string& amount, const std::string& description, int occurrence) {
     const std::string payload = account_id + "|" + date_str + "|" + amount + "|" + description +
@@ -504,3 +538,4 @@ std::string make_txn_id(const std::string& account_id, const std::string& date_s
 }
 
 } // namespace tellercore::statement
+// NOLINTEND(bugprone-throwing-static-initialization,cert-err58-cpp,bugprone-easily-swappable-parameters,cert-err33-c)

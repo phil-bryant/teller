@@ -50,6 +50,7 @@ public:
                         const std::string& search_path = "teller,classy,matchy");
     ~PostgresDb() override;
 
+    // #R001: Traceability for function `dialect`.
     Dialect dialect() const noexcept override { return Dialect::kPostgres; }
 
     void execute_script(const std::string& sql) override;

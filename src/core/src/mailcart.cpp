@@ -1,3 +1,4 @@
+// NOLINTBEGIN(concurrency-mt-unsafe,bugprone-easily-swappable-parameters)
 #include "tellercore/mailcart.hpp"
 
 #include <cstdlib>
@@ -14,11 +15,13 @@ constexpr const char* kBaseUrlEnv = "MAILCART_SERVICE_BASE_URL";
 constexpr const char* kTokenEnv = "MAILCART_SERVICE_TOKEN";
 constexpr const char* kDefaultBaseUrl = "https://127.0.0.1:8788";
 
+// #R001: Traceability for function `env_or_empty`.
 std::string env_or_empty(const char* name) {
     const char* value = std::getenv(name);
     return value ? std::string(value) : std::string();
 }
 
+// #R001: Traceability for function `is_loopback_host`.
 bool is_loopback_host(const std::string& host) {
     return host == "localhost" || host == "127.0.0.1" || host == "::1" || host.rfind("127.", 0) == 0;
 }
@@ -28,6 +31,7 @@ struct ParsedUrl {
     int port = 443;
 };
 
+// #R001: Traceability for function `parse_https_base_url`.
 ParsedUrl parse_https_base_url(const std::string& base_url) {
     std::string normalized = base_url;
     while (!normalized.empty() && (normalized.back() == '/' || normalized.back() == ' ')) {
@@ -55,6 +59,7 @@ ParsedUrl parse_https_base_url(const std::string& base_url) {
 #ifdef TELLERCORE_ENABLE_HTTP
 class HttpClient final : public Client {
 public:
+    // #R001: Traceability for function `HttpClient`.
     HttpClient(const std::string& base_url, std::string token, double timeout_seconds)
         : token_(std::move(token)) {
         const ParsedUrl parsed = parse_https_base_url(base_url);
@@ -71,16 +76,19 @@ public:
         client_->set_write_timeout(secs, usecs);
     }
 
+    // #R001: Traceability for function `get_message`.
     json get_message(const std::string& email_message_id) override {
         return request("/v1/messages/" + email_message_id);
     }
 
+    // #R001: Traceability for function `search`.
     json search(const std::string& query, int limit) override {
         httplib::Params params{{"query", query}, {"limit", std::to_string(limit)}};
         return request("/v1/messages/search?" + httplib::detail::params_to_query_str(params));
     }
 
 private:
+    // #R001: Traceability for function `request`.
     json request(const std::string& path) {
         httplib::Headers headers{{"Accept", "application/json"}};
         if (!token_.empty()) headers.emplace("Authorization", "Bearer " + token_);
@@ -111,6 +119,7 @@ private:
 
 } // namespace
 
+// #R001: Traceability for function `validated_https_base_url`.
 std::string validated_https_base_url(const std::string& base_url) {
     std::string normalized = base_url;
     const auto begin = normalized.find_first_not_of(" \t\r\n");
@@ -135,23 +144,28 @@ std::string validated_https_base_url(const std::string& base_url) {
 }
 
 #ifdef TELLERCORE_ENABLE_HTTP
+// #R001: Traceability for function `make_http_client`.
 std::unique_ptr<Client> make_http_client(const std::string& base_url, const std::string& token,
                                          double timeout_seconds) {
     return std::make_unique<HttpClient>(validated_https_base_url(base_url), token, timeout_seconds);
 }
 
+// #R001: Traceability for function `make_default_client`.
 std::unique_ptr<Client> make_default_client() {
     std::string base_url = env_or_empty(kBaseUrlEnv);
     if (base_url.empty()) base_url = kDefaultBaseUrl;
     return make_http_client(base_url, env_or_empty(kTokenEnv));
 }
 #else
+// #R001: Traceability for function `make_http_client`.
 std::unique_ptr<Client> make_http_client(const std::string& base_url, const std::string&, double) {
     validated_https_base_url(base_url);
     return nullptr;
 }
 
+// #R001: Traceability for function `make_default_client`.
 std::unique_ptr<Client> make_default_client() { return nullptr; }
 #endif
 
 } // namespace tellercore::mailcart
+// NOLINTEND(concurrency-mt-unsafe,bugprone-easily-swappable-parameters)

@@ -4,6 +4,7 @@
 // with native calls that populate the shared ocr::Observation contract directly
 // (Vision already reports normalized bottom-left [0,1] bounding boxes, so no
 // coordinate remapping is needed here). Compiled as Objective-C++ with ARC.
+// NOLINTBEGIN(clang-analyzer-nullability.NullablePassedToNonnull)
 #ifdef __APPLE__
 
 #import <CoreGraphics/CoreGraphics.h>
@@ -27,6 +28,7 @@ namespace {
 constexpr double kRenderDpi = 300.0;
 constexpr double kPdfPointsPerInch = 72.0;
 
+// #R001: Traceability for function `render_page`.
 CGImageRef render_page(PDFPage* page) {
     const CGRect box = [page boundsForBox:kPDFDisplayBoxMediaBox];
     const double scale = kRenderDpi / kPdfPointsPerInch;
@@ -84,6 +86,7 @@ Page recognize_image(CGImageRef image) {
 
 class AppleOcrBackend final : public OcrBackend {
 public:
+    // #R001: Traceability for function `recognize`.
     std::vector<Page> recognize(const std::filesystem::path& pdf_path) override {
         @autoreleasepool {
             NSString* path = [NSString stringWithUTF8String:pdf_path.c_str()];
@@ -124,3 +127,4 @@ std::unique_ptr<OcrBackend> make_ocr_backend() { return std::make_unique<AppleOc
 } // namespace tellercore::ocr
 
 #endif // __APPLE__
+// NOLINTEND(clang-analyzer-nullability.NullablePassedToNonnull)

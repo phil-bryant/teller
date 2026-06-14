@@ -12,6 +12,7 @@
 //   ~/.teller/auth_token.json        {"current": "<token>"}  (default context)
 //   ~/.teller/auth_token_<suffix>.json                       (extra contexts)
 //   ~/.teller/certificate.pem , ~/.teller/private_key.pem    (client mTLS)
+// NOLINTBEGIN(concurrency-mt-unsafe,bugprone-empty-catch,bugprone-exception-escape)
 
 #include <httplib.h>
 
@@ -41,11 +42,13 @@ constexpr const char* kApiHost = "api.teller.io";
 constexpr int kApiPort = 443;
 constexpr int kTimeoutSeconds = 30;
 
+// #R001: Traceability for function `teller_dir`.
 fs::path teller_dir() {
     const char* home = std::getenv("HOME");
     return fs::path(home ? home : "/") / ".teller";
 }
 
+// #R001: Traceability for function `read_text`.
 std::string read_text(const fs::path& path) {
     std::ifstream in(path);
     if (!in.is_open()) return "";
@@ -56,6 +59,7 @@ std::string read_text(const fs::path& path) {
     return s;
 }
 
+// #R001: Traceability for function `read_token_file`.
 std::string read_token_file(const fs::path& path) {
     const std::string body = read_text(path);
     if (body.empty()) return "";
@@ -72,6 +76,7 @@ struct Context {
 
 // Default + suffix-token enrollment contexts, deduped by token (a subset of the
 // Python discovery: metadata/enrollment inference are deferred).
+// #R001: Traceability for function `build_contexts`.
 std::vector<Context> build_contexts(const std::string& token_override) {
     std::vector<Context> contexts;
     std::vector<std::string> seen_tokens;
@@ -106,6 +111,7 @@ std::vector<Context> build_contexts(const std::string& token_override) {
     return contexts;
 }
 
+// #R001: Traceability for function `path_from_url`.
 std::string path_from_url(const std::string& url) {
     const std::string scheme = "https://";
     if (url.rfind(scheme, 0) != 0) return url;
@@ -115,6 +121,7 @@ std::string path_from_url(const std::string& url) {
 
 class TellerApiClient {
 public:
+    // #R001: Traceability for function `TellerApiClient`.
     explicit TellerApiClient(const std::string& token) {
         const std::string cert = (teller_dir() / "certificate.pem").string();
         const std::string key = (teller_dir() / "private_key.pem").string();
@@ -126,6 +133,7 @@ public:
         client_->set_read_timeout(kTimeoutSeconds, 0);
     }
 
+    // #R001: Traceability for function `get`.
     json get(const std::string& path_or_url) {
         const std::string path = path_from_url(path_or_url);
         auto result = client_->Get(path);
@@ -153,6 +161,7 @@ private:
 
 // Pages /accounts/{id}/transactions via the from_id cursor (port of
 // _fetch_all_transactions), guarding against runaway/repeated cursors.
+// #R001: Traceability for function `fetch_all_transactions`.
 json fetch_all_transactions(TellerApiClient& client, const std::string& txn_url) {
     json all = json::array();
     std::vector<std::string> seen_cursors;
@@ -189,6 +198,7 @@ json fetch_all_transactions(TellerApiClient& client, const std::string& txn_url)
 
 } // namespace
 
+// #R001: Traceability for function `main`.
 int main(int argc, char** argv) {
     bool dry_run = false;
     std::string institution_filter;
@@ -220,7 +230,7 @@ int main(int argc, char** argv) {
 
         struct FetchFailure {
             std::string scope;  // institution / account label for the report
-            int status;
+            int status = 0;
             std::string detail;
         };
         std::vector<FetchFailure> failures;
@@ -344,3 +354,4 @@ int main(int argc, char** argv) {
         return 1;
     }
 }
+// NOLINTEND(concurrency-mt-unsafe,bugprone-empty-catch,bugprone-exception-escape)

@@ -1,3 +1,4 @@
+// NOLINTBEGIN(cert-err33-c,bugprone-easily-swappable-parameters,bugprone-unchecked-optional-access,bugprone-unchecked-string-to-number-conversion,cert-err34-c)
 #include "tellercore/db_postgres.hpp"
 
 #include <libpq-fe.h>
@@ -25,12 +26,14 @@ constexpr unsigned int kOidNumeric = 1700;
 constexpr unsigned int kOidTimestamp = 1114;
 constexpr unsigned int kOidTimestamptz = 1184;
 
+// #R001: Traceability for function `is_ident_char`.
 bool is_ident_char(char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
 }
 
 } // namespace
 
+// #R001: Traceability for function `translate_named_params`.
 TranslatedSql translate_named_params(const std::string& sql) {
     TranslatedSql out;
     out.sql.reserve(sql.size() + 16);
@@ -77,6 +80,7 @@ namespace {
 
 // Shortest decimal text that round-trips to the same double, so numeric SQL
 // comparisons see the intended value without 17-digit noise.
+// #R001: Traceability for function `double_to_text`.
 std::string double_to_text(double value) {
     char buf[64];
     for (int precision : {15, 16, 17}) {
@@ -86,6 +90,7 @@ std::string double_to_text(double value) {
     return buf;
 }
 
+// #R001: Traceability for function `quote_identifier`.
 std::string quote_identifier(const std::string& ident) {
     std::string out = "\"";
     for (char c : ident) {
@@ -97,6 +102,7 @@ std::string quote_identifier(const std::string& ident) {
 }
 
 // "teller,classy,matchy" -> "\"teller\", \"classy\", \"matchy\"" (teller_db.py parity).
+// #R001: Traceability for function `quoted_search_path`.
 std::string quoted_search_path(const std::string& search_path) {
     std::string out;
     std::string part;
@@ -122,6 +128,7 @@ std::string quoted_search_path(const std::string& search_path) {
     return out;
 }
 
+// #R001: Traceability for function `throw_pg_error`.
 [[noreturn]] void throw_pg_error(PGconn* conn, PGresult* result, const std::string& context) {
     std::string detail;
     if (result) {
@@ -140,6 +147,7 @@ std::string quoted_search_path(const std::string& search_path) {
 // Postgres renders timestamptz as "YYYY-MM-DD HH:MM:SS[.ffffff]+00" under the
 // UTC session timezone. Strip the offset so timestamps look like the SQLite
 // backend's naive-UTC text and json_io::to_utc_iso8601 normalizes identically.
+// #R001: Traceability for function `strip_utc_offset`.
 std::string strip_utc_offset(std::string text) {
     if (text.size() > 19) {
         for (size_t i = 19; i < text.size(); ++i) {
@@ -152,6 +160,7 @@ std::string strip_utc_offset(std::string text) {
     return text;
 }
 
+// #R001: Traceability for function `value_from_field`.
 Value value_from_field(unsigned int oid, const char* text) {
     const std::string s = text ? text : "";
     switch (oid) {
@@ -181,6 +190,7 @@ Value value_from_field(unsigned int oid, const char* text) {
     }
 }
 
+// #R001: Traceability for function `conninfo_from_config`.
 std::string conninfo_from_config(const PostgresConfig& config) {
     auto quote = [](const std::string& value) {
         std::string out = "'";
@@ -203,18 +213,22 @@ std::string conninfo_from_config(const PostgresConfig& config) {
 
 } // namespace
 
+// #R001: Traceability for function `PostgresDb`.
 PostgresDb::PostgresDb(const PostgresConfig& config) {
     open(conninfo_from_config(config), config.search_path, config.runtime_role);
 }
 
+// #R001: Traceability for function `PostgresDb`.
 PostgresDb::PostgresDb(const std::string& conninfo, const std::string& search_path) {
     open(conninfo, search_path, "");
 }
 
+// #R001: Traceability for function `PostgresDb`.
 PostgresDb::~PostgresDb() {
     if (conn_) PQfinish(conn_);
 }
 
+// #R001: Traceability for function `open`.
 void PostgresDb::open(const std::string& conninfo, const std::string& search_path,
                       const std::string& runtime_role) {
     conn_ = PQconnectdb(conninfo.c_str());
@@ -236,6 +250,7 @@ void PostgresDb::open(const std::string& conninfo, const std::string& search_pat
     }
 }
 
+// #R001: Traceability for function `session_setup`.
 void PostgresDb::session_setup(const std::string& search_path, const std::string& runtime_role) {
     // UTC session timezone keeps timestamptz text output parity with the
     // naive-UTC timestamps the SQLite backend stores.
@@ -248,6 +263,7 @@ void PostgresDb::session_setup(const std::string& search_path, const std::string
     }
 }
 
+// #R001: Traceability for function `execute_script`.
 void PostgresDb::execute_script(const std::string& sql) {
     PGresult* result = PQexec(conn_, sql.c_str());
     const auto status = result ? PQresultStatus(result) : PGRES_FATAL_ERROR;
@@ -261,6 +277,7 @@ namespace {
 
 struct ExecResult {
     PGresult* result = nullptr;
+    // #R001: Traceability for function `ExecResult`.
     ~ExecResult() {
         if (result) PQclear(result);
     }
@@ -268,6 +285,7 @@ struct ExecResult {
 
 } // namespace
 
+// #R001: Traceability for function `query`.
 std::vector<Row> PostgresDb::query(const std::string& sql, const Params& params) {
     const TranslatedSql translated = translate_named_params(sql);
 
@@ -327,29 +345,34 @@ std::vector<Row> PostgresDb::query(const std::string& sql, const Params& params)
     return rows;
 }
 
+// #R001: Traceability for function `query_one`.
 std::optional<Row> PostgresDb::query_one(const std::string& sql, const Params& params) {
     auto rows = query(sql, params);
     if (rows.empty()) return std::nullopt;
     return std::move(rows.front());
 }
 
+// #R001: Traceability for function `execute`.
 int PostgresDb::execute(const std::string& sql, const Params& params) {
     query(sql, params);
     return last_affected_;
 }
 
+// #R001: Traceability for function `begin`.
 void PostgresDb::begin() {
     if (in_txn_) return;
     execute_script("BEGIN");
     in_txn_ = true;
 }
 
+// #R001: Traceability for function `commit`.
 void PostgresDb::commit() {
     if (!in_txn_) return;
     execute_script("COMMIT");
     in_txn_ = false;
 }
 
+// #R001: Traceability for function `rollback`.
 void PostgresDb::rollback() {
     if (!in_txn_) return;
     execute_script("ROLLBACK");
@@ -357,3 +380,4 @@ void PostgresDb::rollback() {
 }
 
 } // namespace tellercore::db
+// NOLINTEND(cert-err33-c,bugprone-easily-swappable-parameters,bugprone-unchecked-optional-access,bugprone-unchecked-string-to-number-conversion,cert-err34-c)

@@ -1,3 +1,4 @@
+// NOLINTBEGIN(concurrency-mt-unsafe,bugprone-throwing-static-initialization,cert-err58-cpp)
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstdlib>
@@ -10,6 +11,7 @@ namespace {
 
 // RAII env var override that restores the prior value on scope exit.
 struct ScopedEnv {
+    // #R001: Traceability for function `ScopedEnv`.
     ScopedEnv(const char* name, const char* value) : name_(name) {
         const char* prior = std::getenv(name);
         had_prior_ = prior != nullptr;
@@ -20,6 +22,7 @@ struct ScopedEnv {
             unsetenv(name);
         }
     }
+    // #R001: Traceability for function `ScopedEnv`.
     ~ScopedEnv() {
         if (had_prior_) {
             setenv(name_.c_str(), prior_.c_str(), 1);
@@ -48,3 +51,4 @@ TEST_CASE("TELLER_DB_SQLITE_PATH env forces the sqlite target", "[profile]") {
     CHECK(sp.sqlite_path == "/tmp/teller-profile-test.sqlite3");
     CHECK(sp.sqlcipher_key == "secret-key");
 }
+// NOLINTEND(concurrency-mt-unsafe,bugprone-throwing-static-initialization,cert-err58-cpp)

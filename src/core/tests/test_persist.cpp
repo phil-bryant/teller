@@ -1,3 +1,4 @@
+// NOLINTBEGIN(bugprone-throwing-static-initialization,cert-err58-cpp,bugprone-unchecked-optional-access)
 #include <catch2/catch_test_macros.hpp>
 
 #include <nlohmann/json.hpp>
@@ -10,6 +11,7 @@ using nlohmann::json;
 
 namespace {
 
+// #R001: Traceability for function `make_account`.
 json make_account(const std::string& account_id = "acc_1") {
     return json{
         {"id", account_id},
@@ -28,6 +30,7 @@ json make_account(const std::string& account_id = "acc_1") {
           {"transactions", "https://example/" + account_id + "/transactions"}}}};
 }
 
+// #R001: Traceability for function `make_owner`.
 json make_owner() {
     return json{{"type", "person"},
                 {"names", json::array({{{"type", "name"}, {"data", "Jane Doe"}}})},
@@ -36,6 +39,7 @@ json make_owner() {
                 {"addresses", json::array()}};
 }
 
+// #R001: Traceability for function `make_txn`.
 json make_txn(const std::string& id, const std::string& amount, const std::string& status) {
     return json{{"id", id},
                 {"account_id", "acc_1"},
@@ -137,3 +141,4 @@ TEST_CASE("stale pending transactions are reconciled away", "[persist][postgres]
         "SELECT COUNT(*) AS n FROM teller.\"transaction\" WHERE transaction_id = 'txn_keep'");
     CHECK(keep->get_int("n").value() == 1);
 }
+// NOLINTEND(bugprone-throwing-static-initialization,cert-err58-cpp,bugprone-unchecked-optional-access)

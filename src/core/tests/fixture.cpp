@@ -1,3 +1,4 @@
+// NOLINTBEGIN(concurrency-mt-unsafe)
 #include "fixture.hpp"
 
 #include <cstdlib>
@@ -14,6 +15,7 @@ namespace tellercore::testfx {
 
 namespace {
 
+// #R001: Traceability for function `read_file`.
 std::string read_file(const std::string& path) {
     std::ifstream in(path);
     if (!in.is_open()) throw std::runtime_error("cannot open DDL: " + path);
@@ -22,6 +24,7 @@ std::string read_file(const std::string& path) {
     return buffer.str();
 }
 
+// #R001: Traceability for function `make_temp_dir`.
 std::filesystem::path make_temp_dir() {
     std::random_device rd;
     auto dir = std::filesystem::temp_directory_path() / ("tellercore-test-" + std::to_string(rd()));
@@ -55,6 +58,7 @@ RESTART IDENTITY CASCADE;
 
 } // namespace
 
+// #R001: Traceability for function `Fixture`.
 Fixture::Fixture(bool force_sqlite) {
 #ifdef TELLERCORE_ENABLE_POSTGRES
     if (!force_sqlite) {
@@ -78,6 +82,7 @@ Fixture::Fixture(bool force_sqlite) {
     }
 }
 
+// #R001: Traceability for function `Fixture`.
 Fixture::~Fixture() {
     db.reset();
     if (!dir.empty()) {
@@ -86,6 +91,7 @@ Fixture::~Fixture() {
     }
 }
 
+// #R001: Traceability for function `reopen`.
 void Fixture::reopen() {
     if (postgres()) {
 #ifdef TELLERCORE_ENABLE_POSTGRES
@@ -97,3 +103,4 @@ void Fixture::reopen() {
 }
 
 } // namespace tellercore::testfx
+// NOLINTEND(concurrency-mt-unsafe)

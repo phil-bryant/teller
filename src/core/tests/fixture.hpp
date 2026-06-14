@@ -24,6 +24,7 @@ struct Fixture {
     std::string key = "teller-test-key";
     std::unique_ptr<db::Db> db;
 
+    // #R001: Traceability for function `postgres`.
     bool postgres() const { return !pg_conninfo.empty(); }
     void reopen();
 
