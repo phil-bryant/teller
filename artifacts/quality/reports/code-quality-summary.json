@@ -1,12 +1,12 @@
 {
-  "vulture_exit": 0,
+  "vulture_exit": 3,
   "radon_exit": 0,
   "xenon_exit": 0,
   "periphery_exit": 0,
   "lizard_exit": 0,
-  "vulture_gate_failed": false,
+  "vulture_gate_failed": true,
   "xenon_gate_failed": false,
   "periphery_gate_failed": false,
   "lizard_gate_failed": false,
-  "gate_failed": false
+  "gate_failed": true
 }
