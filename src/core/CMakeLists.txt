@@ -64,14 +64,24 @@ FetchContent_Declare(nlohmann_json
   DOWNLOAD_EXTRACT_TIMESTAMP ON)
 FetchContent_MakeAvailable(nlohmann_json)
 
+# OpenSSL is now an unconditional dependency: the statement parser hashes
+# deterministic transaction ids with EVP_sha256 regardless of the HTTP option.
+find_package(OpenSSL REQUIRED)
+
 if(TELLERCORE_ENABLE_HTTP)
-  find_package(OpenSSL REQUIRED)
   set(HTTPLIB_USE_BROTLI_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
   set(HTTPLIB_USE_ZSTD_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
   FetchContent_Declare(httplib
     URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.18.3.tar.gz
     DOWNLOAD_EXTRACT_TIMESTAMP ON)
   FetchContent_MakeAvailable(httplib)
+endif()
+
+# Objective-C++ is needed for the Apple OCR backend (Vision + PDFKit).
+if(APPLE)
+  enable_language(OBJCXX)
+  set(CMAKE_OBJCXX_STANDARD 20)
+  set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
 endif()
 
 add_library(tellercore STATIC
@@ -81,16 +91,30 @@ add_library(tellercore STATIC
   src/db_sqlite.cpp
   src/json_io.cpp
   src/persist.cpp
+  src/statement.cpp
   src/mailcart.cpp
   src/ffi.cpp)
 target_include_directories(tellercore PUBLIC include PRIVATE ${SQLCIPHER_INCLUDE_DIR})
 target_compile_definitions(tellercore PRIVATE SQLITE_HAS_CODEC)
 target_link_libraries(tellercore
   PUBLIC nlohmann_json::nlohmann_json
-  PRIVATE ${SQLCIPHER_LIBRARY} Threads::Threads)
+  PRIVATE ${SQLCIPHER_LIBRARY} Threads::Threads OpenSSL::Crypto)
 if(TELLERCORE_ENABLE_HTTP)
   target_compile_definitions(tellercore PRIVATE TELLERCORE_ENABLE_HTTP=1)
-  target_link_libraries(tellercore PRIVATE httplib::httplib OpenSSL::SSL OpenSSL::Crypto)
+  target_link_libraries(tellercore PRIVATE httplib::httplib OpenSSL::SSL)
+endif()
+
+# Thin per-platform OCR adapter compiled into the core. Only the backend file is
+# platform-specific; the statement parser above is shared.
+if(APPLE)
+  target_sources(tellercore PRIVATE src/ocr_backend_apple.mm)
+  set_source_files_properties(src/ocr_backend_apple.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+  target_link_libraries(tellercore PRIVATE
+    "-framework Foundation" "-framework AppKit" "-framework CoreGraphics"
+    "-framework PDFKit" "-framework Vision")
+elseif(WIN32)
+  target_sources(tellercore PRIVATE src/ocr_backend_win.cpp)
+  target_link_libraries(tellercore PRIVATE WindowsApp)
 endif()
 if(TELLERCORE_ENABLE_POSTGRES)
   target_sources(tellercore PRIVATE src/db_postgres.cpp)
@@ -119,6 +143,19 @@ if(TELLERCORE_BUILD_TOOLS)
     target_compile_definitions(teller_fetch PRIVATE
       TELLER_SQLITE_DDL_PATH="${TELLER_SQLITE_DDL}" TELLERCORE_ENABLE_HTTP=1)
   endif()
+
+  # Statement backfill CLI (port of 08_backfill_bank_statements.py). Needs a
+  # platform OCR backend, so it is only built where one exists.
+  if(APPLE OR WIN32)
+    add_executable(teller_backfill tools/teller_backfill.cpp)
+    target_link_libraries(teller_backfill PRIVATE tellercore)
+    target_include_directories(teller_backfill PRIVATE ${SQLCIPHER_INCLUDE_DIR})
+    target_compile_definitions(teller_backfill PRIVATE
+      TELLER_SQLITE_DDL_PATH="${TELLER_SQLITE_DDL}")
+    if(TELLERCORE_ENABLE_POSTGRES)
+      target_compile_definitions(teller_backfill PRIVATE TELLERCORE_ENABLE_POSTGRES=1)
+    endif()
+  endif()
 endif()
 
 if(TELLERCORE_BUILD_TESTS)
@@ -133,6 +170,7 @@ if(TELLERCORE_BUILD_TESTS)
     tests/test_db.cpp
     tests/test_money.cpp
     tests/test_persist.cpp
+    tests/test_statement.cpp
     tests/test_mailcart.cpp)
   target_include_directories(tellercore_tests PRIVATE ${SQLCIPHER_INCLUDE_DIR})
   target_compile_definitions(tellercore_tests PRIVATE

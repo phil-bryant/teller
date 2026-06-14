@@ -3,9 +3,11 @@
 #include <map>
 #include <optional>
 #include <stdexcept>
+#include <tuple>
 #include <vector>
 
 #include "tellercore/error.hpp"
+#include "tellercore/statement.hpp"
 
 namespace tellercore::persist {
 
@@ -591,6 +593,66 @@ void persist_all(db::Db& db, const json& raw_identities,
         db.rollback();
         throw;
     }
+}
+
+std::vector<PlannedStatementTxn> plan_statement_transactions(
+    db::Db& db, const std::string& account_id, const std::vector<statement::StatementTxn>& txns) {
+    auto earliest_row = db.query_one(
+        "SELECT MIN(date) AS min_date FROM teller.\"transaction\" "
+        "WHERE account_id = :aid AND transaction_id LIKE 'txn_%'",
+        {{"aid", account_id}});
+    std::optional<std::string> earliest_api_date;
+    if (earliest_row && !earliest_row->is_null("min_date")) {
+        earliest_api_date = earliest_row->get_text("min_date");
+    }
+    std::map<std::tuple<std::string, std::string, std::string>, int> seen_occurrences;
+    std::vector<PlannedStatementTxn> planned;
+    planned.reserve(txns.size());
+    for (const auto& txn : txns) {
+        const auto key = std::make_tuple(txn.date, txn.amount, txn.description);
+        const int occurrence = ++seen_occurrences[key];
+        PlannedStatementTxn entry;
+        entry.transaction_id =
+            statement::make_txn_id(account_id, txn.date, txn.amount, txn.description, occurrence);
+        entry.txn = txn;
+        entry.occurrence = occurrence;
+        // ISO date strings compare lexicographically in chronological order.
+        entry.skipped_api_overlap = earliest_api_date && txn.date >= *earliest_api_date;
+        planned.push_back(std::move(entry));
+    }
+    return planned;
+}
+
+int upsert_statement_transactions(db::Db& db, const std::string& account_id,
+                                  const std::vector<PlannedStatementTxn>& planned) {
+    db::Transaction db_txn(db);
+    int inserted = 0;
+    try {
+        for (const auto& entry : planned) {
+            if (entry.skipped_api_overlap) continue;
+            const json record = {
+                {"id", entry.transaction_id},
+                {"account_id", account_id},
+                {"amount", entry.txn.amount},
+                {"date", entry.txn.date},
+                {"description", entry.txn.description},
+                {"type", entry.txn.type},
+                {"status", "posted"},
+                {"running_balance", nullptr},
+                {"details",
+                 {{"processing_status", "complete"}, {"category", nullptr}, {"counterparty", nullptr}}},
+                {"links",
+                 {{"self", "stmt://" + entry.transaction_id},
+                  {"account", "https://api.teller.io/accounts/" + account_id}}}};
+            upsert_transaction(db, record);
+            ++inserted;
+        }
+        db_txn.commit();
+    } catch (...) {
+        db.rollback();
+        throw;
+    }
+    return inserted;
 }
 
 } // namespace tellercore::persist

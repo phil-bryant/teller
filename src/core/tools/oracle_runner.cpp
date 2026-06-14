@@ -25,9 +25,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <regex>
 #include <sstream>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -37,7 +39,9 @@
 #endif
 #include "tellercore/error.hpp"
 #include "tellercore/json_io.hpp"
+#include "tellercore/ocr.hpp"
 #include "tellercore/persist.hpp"
+#include "tellercore/statement.hpp"
 
 using namespace tellercore;
 using nlohmann::json;
@@ -211,8 +215,91 @@ int run_replay(int argc, char** argv) {
     return failures ? 1 : 0;
 }
 
+// Statement parsing parity lane (t19): drive the tellercore::statement parser
+// from canned OCR observation fixtures and emit the parsed transactions (with
+// deterministic ids), period, and summary totals as JSON on stdout. The Python
+// harness runs the retired 08_backfill_bank_statements functions on the same
+// fixtures and diffs the two, holding the C++ parser to the Python oracle while
+// keeping the drift-prone logic out of nondeterministic OCR.
+//
+//   teller_oracle_runner replay-statements --scenarios <json>
+int run_statement_replay(int argc, char** argv) {
+    std::string scenarios_path;
+    for (int i = 2; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "--scenarios" && i + 1 < argc) scenarios_path = argv[++i];
+        else throw std::runtime_error("unknown replay-statements argument: " + arg);
+    }
+    if (scenarios_path.empty()) {
+        std::cerr << "usage: teller_oracle_runner replay-statements --scenarios <json>\n";
+        return 2;
+    }
+
+    const json script = load_json_file(scenarios_path);
+    json recorded = json::array();
+    for (const auto& scenario : script.at("scenarios")) {
+        const std::string name = scenario.at("name").get<std::string>();
+        const std::string account_id = scenario.value("account_id", "acc_test");
+
+        std::vector<ocr::Page> pages;
+        for (const auto& page_json : scenario.at("pages")) {
+            ocr::Page page;
+            for (const auto& o : page_json.at("observations")) {
+                page.push_back({o.at("y").get<double>(), o.at("x").get<double>(),
+                                o.at("text").get<std::string>()});
+            }
+            pages.push_back(std::move(page));
+        }
+        const std::vector<std::string> page_texts = statement::pages_to_text(pages);
+
+        int year = 0;
+        int month = 0;
+        if (scenario.contains("year") && scenario.contains("month")) {
+            year = scenario.at("year").get<int>();
+            month = scenario.at("month").get<int>();
+        } else {
+            const statement::StatementYear period = statement::extract_statement_year(page_texts);
+            year = period.year;
+            month = period.month;
+        }
+
+        const std::vector<statement::StatementTxn> txns =
+            statement::parse_transactions(page_texts, year, month);
+        std::map<std::tuple<std::string, std::string, std::string>, int> seen;
+        json txn_arr = json::array();
+        for (const auto& t : txns) {
+            const int occurrence = ++seen[std::make_tuple(t.date, t.amount, t.description)];
+            txn_arr.push_back(json{
+                {"id", statement::make_txn_id(account_id, t.date, t.amount, t.description, occurrence)},
+                {"date", t.date},
+                {"amount", t.amount},
+                {"description", t.description},
+                {"type", t.type}});
+        }
+
+        const statement::SummaryTotals summary = statement::extract_summary(page_texts);
+        json summary_json = {
+            {"deposit_count", summary.deposit_count ? json(*summary.deposit_count) : json(nullptr)},
+            {"deposit_total", summary.deposit_total ? json(*summary.deposit_total) : json(nullptr)},
+            {"withdrawal_count",
+             summary.withdrawal_count ? json(*summary.withdrawal_count) : json(nullptr)},
+            {"withdrawal_total",
+             summary.withdrawal_total ? json(*summary.withdrawal_total) : json(nullptr)}};
+
+        recorded.push_back(json{{"name", name},
+                                {"year", year},
+                                {"month", month},
+                                {"transactions", txn_arr},
+                                {"summary", summary_json}});
+    }
+    std::cout << json{{"scenarios", recorded}}.dump() << "\n";
+    return 0;
+}
+
 int run(int argc, char** argv) {
     if (argc > 1 && std::string(argv[1]) == "replay") return run_replay(argc, argv);
+    if (argc > 1 && std::string(argv[1]) == "replay-statements")
+        return run_statement_replay(argc, argv);
     std::string db_path, key, op;
     std::vector<std::string> args;
     for (int i = 1; i < argc; ++i) {

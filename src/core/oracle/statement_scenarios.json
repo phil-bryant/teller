@@ -1,0 +1,46 @@
+{
+  "scenarios": [
+    {
+      "name": "single_account_basic",
+      "account_id": "acc_basic",
+      "pages": [
+        {
+          "observations": [
+            {"y": 0.95, "x": 0.10, "text": "Statement Date 05/31/26"},
+            {"y": 0.50, "x": 0.10, "text": "Deposits / Misc Credits 2 1,200.12"},
+            {"y": 0.45, "x": 0.10, "text": "Withdrawals / Misc Debits 1 45.67"}
+          ]
+        },
+        {
+          "observations": [
+            {"y": 0.80, "x": 0.10, "text": "Date Activity Description Amount"},
+            {"y": 0.77, "x": 0.10, "text": "05/03"},
+            {"y": 0.77, "x": 0.50, "text": "WHOLE FOODS"},
+            {"y": 0.77, "x": 0.30, "text": "POS PURCHASE"},
+            {"y": 0.77, "x": 0.80, "text": "45.67"},
+            {"y": 0.74, "x": 0.10, "text": "05/05 DEPOSIT PAYROLL 1,200.00"},
+            {"y": 0.71, "x": 0.10, "text": "05/31 INTEREST EARNED 0.12"}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "interest_rescue_and_edge_cases",
+      "account_id": "acc_edges",
+      "year": 2026,
+      "month": 6,
+      "pages": [
+        {
+          "observations": [
+            {"y": 0.90, "x": 0.10, "text": "Date Activity Description Amount"},
+            {"y": 0.86, "x": 0.10, "text": "06/15 ACCT ANALYSIS INTEREST EARNED 1.23"},
+            {"y": 0.82, "x": 0.10, "text": "06/04"},
+            {"y": 0.78, "x": 0.10, "text": "ATM WITHDRAWAL .50"},
+            {"y": 0.74, "x": 0.10, "text": "06/20 BILL PAY ELECTRIC 88.00"},
+            {"y": 0.70, "x": 0.10, "text": "06/20 BILL PAY ELECTRIC 88.00"}
+          ]
+        }
+      ]
+    }
+  ]
+}
