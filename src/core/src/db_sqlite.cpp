@@ -27,7 +27,7 @@ std::string escape_sqlite_literal(const std::string& value) {
 
 class Statement {
 public:
-    Statement(sqlite3* conn, const std::string& sql) : conn_(conn) {
+    Statement(sqlite3* conn, const std::string& sql) : conn_(conn), sql_(sql.substr(0, 160)) {
         if (sqlite3_prepare_v2(conn, sql.c_str(), -1, &stmt_, nullptr) != SQLITE_OK) {
             throw_sqlite_error(conn, "prepare failed for: " + sql.substr(0, 120));
         }
@@ -62,7 +62,7 @@ public:
         const int rc = sqlite3_step(stmt_);
         if (rc == SQLITE_ROW) return true;
         if (rc == SQLITE_DONE) return false;
-        throw_sqlite_error(conn_, "step failed");
+        throw_sqlite_error(conn_, "step failed for: " + sql_);
     }
 
     Row current_row() const {
@@ -89,6 +89,7 @@ public:
 private:
     sqlite3* conn_;
     sqlite3_stmt* stmt_ = nullptr;
+    std::string sql_;
 };
 
 SqliteDb::SqliteDb(const std::string& sqlite_path, const std::string& sqlcipher_key) {

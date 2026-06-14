@@ -193,13 +193,16 @@ int main(int argc, char** argv) {
     bool dry_run = false;
     std::string institution_filter;
     std::string token_override;
+    std::string dump_payload_path;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--dry-run") dry_run = true;
         else if (arg == "--institution_id" && i + 1 < argc) institution_filter = argv[++i];
         else if (arg == "--token" && i + 1 < argc) token_override = argv[++i];
+        else if (arg == "--dump-payload" && i + 1 < argc) dump_payload_path = argv[++i];
         else {
-            std::cerr << "usage: teller_fetch [--dry-run] [--institution_id <id>] [--token <token>]\n";
+            std::cerr << "usage: teller_fetch [--dry-run] [--institution_id <id>] [--token <token>]"
+                         " [--dump-payload <path>]\n";
             return 2;
         }
     }
@@ -215,32 +218,111 @@ int main(int argc, char** argv) {
         json txns_by_account = json::object();
         json balances_by_account = json::object();
 
+        struct FetchFailure {
+            std::string scope;  // institution / account label for the report
+            int status;
+            std::string detail;
+        };
+        std::vector<FetchFailure> failures;
+        bool saw_disconnected = false;
+        auto note_failure = [&](const std::string& scope, int status, const std::string& detail) {
+            failures.push_back({scope, status, detail});
+            if (detail.find("enrollment.disconnected") != std::string::npos) saw_disconnected = true;
+        };
+
         for (const auto& context : contexts) {
+            // Context-level failures (token/identity) discard only this enrollment;
+            // healthy enrollments still ingest. 07_fetch is resilient across
+            // contexts; this port additionally isolates failures per account so a
+            // single inactive enrollment cannot sink its healthy siblings.
+            json identities;
+            try {
+                TellerApiClient identity_client(context.token);
+                identities = identity_client.get("/identity");
+            } catch (const ApiError& exc) {
+                const std::string scope =
+                    context.institution_id.empty() ? "enrollment(" + context.source + ")"
+                                                    : "institution=" + context.institution_id;
+                note_failure(scope, exc.status(), exc.detail());
+                continue;
+            }
+
             TellerApiClient client(context.token);
-            json identities = client.get("/identity");
             for (const auto& item : identities) {
                 const json& account = item.at("account");
                 const std::string inst_id = account.at("institution").value("id", "");
                 if (!institution_filter.empty() && inst_id != institution_filter) continue;
                 const std::string account_id = account.value("id", "");
-                std::cout << "Account fetched: id=" << account_id << " institution="
-                          << account.at("institution").value("name", "") << "\n";
-                raw_identities.push_back(item);
-                const std::string txn_url = account.at("links").value("transactions", "");
-                if (!txn_url.empty()) {
-                    json txns = fetch_all_transactions(client, txn_url);
-                    std::cout << "  Transactions fetched: " << txns.size() << "\n";
-                    txns_by_account[account_id] = std::move(txns);
-                }
-                const std::string bal_url = account.at("links").value("balances", "");
-                if (!bal_url.empty()) {
-                    balances_by_account[account_id] = client.get(bal_url);
-                    std::cout << "  Balances fetched.\n";
+                const std::string inst_name = account.at("institution").value("name", "");
+                std::cout << "Account fetched: id=" << account_id << " institution=" << inst_name
+                          << "\n";
+                // Per-account all-or-nothing: a partial fetch is never persisted,
+                // so the stale-pending reconciliation never deletes against an
+                // incomplete transaction set.
+                try {
+                    json account_txns;
+                    bool has_txns = false;
+                    const std::string txn_url = account.at("links").value("transactions", "");
+                    if (!txn_url.empty()) {
+                        account_txns = fetch_all_transactions(client, txn_url);
+                        std::cout << "  Transactions fetched: " << account_txns.size() << "\n";
+                        has_txns = true;
+                    }
+                    json account_bal;
+                    bool has_bal = false;
+                    const std::string bal_url = account.at("links").value("balances", "");
+                    if (!bal_url.empty()) {
+                        account_bal = client.get(bal_url);
+                        std::cout << "  Balances fetched.\n";
+                        has_bal = true;
+                    }
+                    raw_identities.push_back(item);
+                    if (has_txns) txns_by_account[account_id] = std::move(account_txns);
+                    if (has_bal) balances_by_account[account_id] = std::move(account_bal);
+                } catch (const ApiError& exc) {
+                    note_failure("account=" + account_id + " (" + inst_name + ")", exc.status(),
+                                 exc.detail());
+                    std::cout << "  Skipped: " << exc.detail() << "\n";
                 }
             }
         }
 
         std::cout << "Fetched identity records: " << raw_identities.size() << "\n";
+
+        // Hard-fail only when nothing was gathered (07_fetch parity); otherwise
+        // report the skipped enrollments and persist the healthy accounts.
+        if (raw_identities.empty()) {
+            if (!failures.empty()) {
+                const auto& first = failures.front();
+                std::cerr << "teller_fetch failed (" << first.status << "): " << first.detail << "\n";
+                if (saw_disconnected) {
+                    std::cerr << "Reconnect via the classy macOS app "
+                                 "(../classy/06_run_classification_macos_ui.sh, Connect tab) to repair.\n";
+                }
+                return 1;
+            }
+            std::cout << "No accounts found for the requested scope.\n";
+        }
+        for (const auto& f : failures) {
+            std::cerr << "WARNING: skipped " << f.scope << " (status " << f.status << "): " << f.detail
+                      << "\n";
+        }
+        if (saw_disconnected) {
+            std::cerr << "One or more enrollments are disconnected. Reconnect them via the classy "
+                         "macOS app (../classy/06_run_classification_macos_ui.sh, Connect tab), then "
+                         "rerun to ingest them.\n";
+        }
+
+        if (!dump_payload_path.empty()) {
+            std::ofstream out(dump_payload_path);
+            if (!out) throw ApiError(500, "cannot write payload dump: " + dump_payload_path);
+            out << json{{"identities", raw_identities},
+                        {"transactions_by_account", txns_by_account},
+                        {"balances_by_account", balances_by_account}}
+                       .dump(2)
+                << "\n";
+            std::cout << "Wrote fetched payload to " << dump_payload_path << "\n";
+        }
 
         if (dry_run) {
             std::cout << "Dry run complete. No database changes were made.\n";
@@ -250,7 +332,9 @@ int main(int argc, char** argv) {
         const DbProfile profile = resolve_profile();
         std::unique_ptr<db::Db> database = db::open_from_profile(profile);
         persist::persist_all(*database, raw_identities, txns_by_account, balances_by_account);
-        std::cout << "Persisted to database.\n";
+        std::cout << "Persisted to database (" << raw_identities.size() << " account(s)"
+                  << (failures.empty() ? "" : ", " + std::to_string(failures.size()) + " skipped")
+                  << ").\n";
         return 0;
     } catch (const ApiError& exc) {
         std::cerr << "teller_fetch failed (" << exc.status() << "): " << exc.detail() << "\n";

@@ -78,18 +78,17 @@ void require_usd_for_sqlite(Db& db, const std::string& currency, const std::stri
     }
 }
 
-// INSERT helper that returns the generated primary key on both backends. SQLite
-// avoids RETURNING (pysqlcipher3 parity / older builds) via last_insert_rowid().
+// INSERT helper that returns the generated primary key on both backends. Uses
+// RETURNING (SQLite >= 3.35 / SQLCipher; Postgres) rather than last_insert_rowid:
+// the latter is wrong for "INSERT ... ON CONFLICT DO UPDATE" when a conflict
+// resolves to an UPDATE (no insert), where it yields a stale rowid and the
+// caller then writes a dangling foreign key. RETURNING reports the upserted
+// row's id correctly on both the insert and update paths (teller_persist parity).
 int64_t insert_returning_id(Db& db, const std::string& insert_sql, const std::string& id_col,
                             const Params& params) {
-    if (db.dialect() == Dialect::kPostgres) {
-        auto row = db.query_one(insert_sql + " RETURNING " + id_col, params);
-        if (!row) throw ApiError(500, "insert did not return id for " + id_col);
-        return row->get_int(id_col).value_or(0);
-    }
-    db.execute(insert_sql, params);
-    auto row = db.query_one("SELECT last_insert_rowid() AS id");
-    return row ? row->get_int("id").value_or(0) : 0;
+    auto row = db.query_one(insert_sql + " RETURNING " + id_col, params);
+    if (!row) throw ApiError(500, "insert did not return id for " + id_col);
+    return row->get_int(id_col).value_or(0);
 }
 
 std::optional<int64_t> scalar_int(Db& db, const std::string& sql, const Params& params,

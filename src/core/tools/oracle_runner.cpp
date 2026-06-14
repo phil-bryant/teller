@@ -222,6 +222,9 @@ int run(int argc, char** argv) {
         else if (op.empty()) op = arg;
         else args.push_back(arg);
     }
+    if (key.empty()) {
+        if (const char* env_key = std::getenv("TELLER_DB_SQLCIPHER_KEY")) key = env_key;
+    }
     if (db_path.empty() || op.empty()) {
         std::cerr << "usage: teller_oracle_runner --db <path> --key <key> <persist|snapshot|bootstrap> [arg]\n";
         return 2;
